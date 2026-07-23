@@ -14,6 +14,19 @@ const formRequest = (
   });
 };
 
+const bufferedFormRequest = async (
+  entries: ReadonlyArray<readonly [string, string]>,
+): Promise<Request> => {
+  const original = formRequest(entries);
+  const request = new Request(original.url, {
+    body: await original.arrayBuffer(),
+    headers: { "content-type": original.headers.get("content-type") ?? "" },
+    method: "POST",
+  });
+  request.headers.delete("content-length");
+  return request;
+};
+
 describe("multipart form body limits", () => {
   it("parses a valid multipart form without changing its fields", async () => {
     const parsed = await readMultipartFormData(
@@ -45,7 +58,7 @@ describe("multipart form body limits", () => {
   });
 
   it("enforces the streamed byte count when Content-Length is absent", async () => {
-    const request = formRequest([["payload", "x".repeat(1_024)]]);
+    const request = await bufferedFormRequest([["payload", "x".repeat(1_024)]]);
     await expect(readMultipartFormData(request, 128)).rejects.toMatchObject({
       code: "REQUEST_BODY_TOO_LARGE",
       status: 413,
@@ -53,10 +66,7 @@ describe("multipart form body limits", () => {
   });
 
   it("does not trust an undersized Content-Length", async () => {
-    const original = formRequest([["payload", "x".repeat(1_024)]]);
-    const request = new Request(original, {
-      headers: new Headers(original.headers),
-    });
+    const request = await bufferedFormRequest([["payload", "x".repeat(1_024)]]);
     request.headers.set("content-length", "1");
     await expect(readMultipartFormData(request, 128)).rejects.toMatchObject({
       code: "REQUEST_BODY_TOO_LARGE",
