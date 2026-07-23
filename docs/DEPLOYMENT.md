@@ -4,6 +4,26 @@ Complete [installation prerequisites](INSTALLATION.md) first. All production
 deployments require HTTPS, one durable `/data` volume, a strong setup token,
 an explicit provider-host allowlist, and the correct public Veda Mail URL.
 
+## Published GHCR image
+
+Veda Mail publishes a signed OCI image for both `linux/amd64` and
+`linux/arm64`:
+
+```bash
+docker pull ghcr.io/bestmaa/veda-mail:latest
+```
+
+The `latest` tag follows the default branch. Each build also publishes a
+`sha-<commit>` tag, and version tags such as `v1.2.3` publish `1.2.3` and
+`1.2`. Pin a version or digest in production:
+
+```dotenv
+VEDA_MAIL_IMAGE=ghcr.io/bestmaa/veda-mail:latest
+```
+
+Published images include an SBOM, OCI provenance, and a GitHub artifact
+attestation. Anonymous pulls work once the GHCR package is public.
+
 ## Docker Compose
 
 ```bash
@@ -26,11 +46,15 @@ The provider allowlist contains hostnames only. The public URL is the Veda Mail
 origin, uses HTTPS, and has no trailing slash. Then:
 
 ```bash
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 docker compose ps
 docker compose logs --tail=100 veda-mail
 curl --fail http://127.0.0.1:3000/api/health
 ```
+
+The supplied Compose file uses the published GHCR image by default. To build
+the checked-out source instead, use `docker compose up --build -d`.
 
 The default bind is `127.0.0.1:3000`. Keep it that way behind a local reverse
 proxy. To bind another host port:
