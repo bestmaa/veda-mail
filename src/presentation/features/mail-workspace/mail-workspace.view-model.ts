@@ -1,0 +1,118 @@
+import type {
+  ChangeEventHandler,
+  FormEventHandler,
+  MouseEventHandler,
+} from "react";
+import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
+
+export type MailboxIconName =
+  | "archive"
+  | "custom"
+  | "drafts"
+  | "inbox"
+  | "sent"
+  | "spam"
+  | "trash";
+
+export interface FolderViewModel {
+  readonly color: string;
+  readonly count: number;
+  readonly id: string;
+  readonly icon: MailboxIconName;
+  readonly isActive: boolean;
+  readonly label: string;
+  readonly onSelect: () => void;
+}
+
+export interface MessageItemViewModel {
+  readonly avatar: string;
+  readonly date: string;
+  readonly hasAttachment: boolean;
+  readonly id: string;
+  readonly isActive: boolean;
+  readonly isStarred: boolean;
+  readonly isUnread: boolean;
+  readonly onSelect: () => void;
+  readonly preview: string;
+  readonly sender: string;
+  readonly subject: string;
+}
+
+export interface AttachmentViewModel {
+  readonly id: string;
+  readonly meta: string;
+  readonly name: string;
+}
+
+export interface ReaderViewModel {
+  readonly attachments: readonly AttachmentViewModel[];
+  readonly avatar: string;
+  readonly body: string;
+  readonly canArchive: boolean;
+  readonly date: string;
+  readonly error: string | null;
+  readonly from: string;
+  readonly fromEmail: string;
+  readonly htmlBody: string | null;
+  readonly isLoading: boolean;
+  readonly isStarred: boolean;
+  readonly isUnread: boolean;
+  readonly subject: string;
+  readonly to: string;
+}
+
+export interface ComposerViewModel {
+  readonly body: string;
+  readonly bodyInput: ChangeEventHandler<HTMLTextAreaElement>;
+  readonly error: string | null;
+  readonly isOpen: boolean;
+  readonly isSending: boolean;
+  readonly onClose: () => void;
+  readonly onSubmit: FormEventHandler<HTMLFormElement>;
+  readonly subject: string;
+  readonly subjectInput: ChangeEventHandler<HTMLInputElement>;
+  readonly to: string;
+  readonly toInput: ChangeEventHandler<HTMLInputElement>;
+}
+
+export interface MemberSessionViewModel {
+  readonly canSignOut: boolean;
+  readonly isSigningOut: boolean;
+  readonly onSignOut: () => void;
+}
+
+export interface MailWorkspaceViewProps {
+  readonly account: {
+    readonly avatar: string;
+    readonly email: string;
+    readonly name: string;
+    readonly provider: string;
+  };
+  readonly branding: BrandingViewModel;
+  readonly activeFolder: string;
+  readonly composer: ComposerViewModel;
+  readonly error: string | null;
+  readonly folders: readonly FolderViewModel[];
+  readonly isLoading: boolean;
+  readonly messages: readonly MessageItemViewModel[];
+  readonly navigation: {
+    readonly isOpen: boolean;
+    readonly onClose: () => void;
+    readonly onOpen: () => void;
+  };
+  readonly onArchive: () => void;
+  readonly onCloseReader: () => void;
+  readonly onCompose: () => void;
+  readonly onDelete: () => void;
+  readonly onRefresh: MouseEventHandler<HTMLButtonElement>;
+  readonly onReply: () => void;
+  readonly onSearchClear: () => void;
+  readonly onSearchSubmit: FormEventHandler<HTMLFormElement>;
+  readonly onToggleRead: () => void;
+  readonly onToggleStar: () => void;
+  readonly reader: ReaderViewModel | null;
+  readonly searchInput: ChangeEventHandler<HTMLInputElement>;
+  readonly searchValue: string;
+  readonly session: MemberSessionViewModel;
+  readonly total: number;
+}

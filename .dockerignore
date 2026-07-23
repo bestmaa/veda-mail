@@ -1,0 +1,16 @@
+.git
+.github
+.next
+coverage
+data
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+Dockerfile*
+compose*.yaml
+README.md
+docs
+tests
+scripts

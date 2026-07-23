@@ -1,0 +1,55 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/@img/colour/**/*",
+      "./node_modules/@img/sharp-*/**/*",
+      "./node_modules/sharp/**/*",
+    ],
+  },
+  outputFileTracingExcludes: {
+    "/*": [
+      "./.github/**/*",
+      "./data/**/*",
+      "./docs/**/*",
+      "./scripts/**/*",
+      "./src/**/*",
+      "./tests/**/*",
+      "./CHANGELOG.md",
+      "./CODE_OF_CONDUCT.md",
+      "./CONTRIBUTING.md",
+      "./README.md",
+      "./SECURITY.md",
+      "./TRADEMARKS.md",
+      "./compose.yaml",
+      "./eslint.config.mjs",
+      "./tsconfig.json",
+      "./vitest.config.ts",
+    ],
+  },
+  poweredByHeader: false,
+  reactStrictMode: true,
+  turbopack: {
+    root: process.cwd(),
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;

@@ -1,0 +1,41 @@
+import type {
+  ComposeInput,
+  MailAccount,
+  Mailbox,
+  MessageDetail,
+  MessageListQuery,
+  MessageMutation,
+  MessagePage,
+  SendReceipt,
+} from "@/domain/mail/mail";
+import type {
+  MemberCredentials,
+  ProviderConnection,
+  ProviderManifest,
+} from "@/domain/provider/provider";
+import type { MessageId } from "@/domain/shared/brand";
+
+export interface MailGateway {
+  getAccount(): Promise<MailAccount>;
+  getMessage(messageId: MessageId): Promise<MessageDetail>;
+  listMailboxes(): Promise<readonly Mailbox[]>;
+  listMessages(query: MessageListQuery): Promise<MessagePage>;
+  mutateMessage(mutation: MessageMutation): Promise<void>;
+  sendMessage(input: ComposeInput): Promise<SendReceipt>;
+  testConnection(): Promise<void>;
+}
+
+export interface ProviderModule {
+  readonly manifest: ProviderManifest;
+  createGateway(connection: ProviderConnection): Promise<MailGateway>;
+  createMemberConfig(
+    serviceConfig: Readonly<Record<string, string>>,
+    credentials: MemberCredentials,
+  ): Readonly<Record<string, string>>;
+  parseServiceConfig(
+    input: Readonly<Record<string, string>>,
+  ): Readonly<Record<string, string>>;
+  validateServiceConfig(
+    input: Readonly<Record<string, string>>,
+  ): Promise<Readonly<Record<string, string>>>;
+}

@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f9fc;
+  --brand-accent: #ff6b57;
+  --brand-primary: #27276f;
+  --foreground: #172033;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand-accent) 28%, white);
+  color: var(--brand-primary);
+}
+
+* {
+  scrollbar-color: #cbd0df transparent;
+  scrollbar-width: thin;
+}
+
+.mail-sidebar {
+  background:
+    radial-gradient(
+      circle at 15% 0%,
+      color-mix(in srgb, var(--brand-accent) 34%, transparent),
+      transparent 28%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--brand-primary) 90%, white) 0%,
+      color-mix(in srgb, var(--brand-primary) 76%, black) 100%
+    );
+}
+
+.mail-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mail-workspace-grid > * {
+  min-height: 0;
+}
+
+.mail-workspace-grid > div > section {
+  height: 100%;
+}
+
+.mail-body a {
+  color: var(--brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 768px) {
+  .mail-workspace-grid {
+    grid-template-columns: 236px minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .mail-workspace-grid {
+    grid-template-columns: 236px 368px minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1440px) {
+  .mail-workspace-grid {
+    grid-template-columns: 252px 408px minmax(0, 1fr);
+  }
+}

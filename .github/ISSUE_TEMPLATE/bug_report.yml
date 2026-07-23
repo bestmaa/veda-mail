@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible Veda Mail problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove secrets, mailbox content, and private organization data.
+        Report security vulnerabilities through SECURITY.md, not this form.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag or commit hash
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Docker Compose
+        - Dockploy
+        - Local Node.js
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Minimal, numbered steps using non-sensitive test data
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed passwords, tokens, email content, and personal data.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

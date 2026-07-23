@@ -1,0 +1,177 @@
+# Installation and first-run setup
+
+This guide installs one Veda Mail instance for one organization. The instance
+may allow multiple email domains, but it has one organization brand and one
+active mail-provider profile.
+
+## Before you begin
+
+You need:
+
+- A Linux server or development machine
+- Docker Engine 26+ with Docker Compose v2, or Node.js 24+ and npm 11+
+- A public HTTPS hostname for production, such as `webmail.example.com`
+- A supported mail server with existing users
+- For Stalwart, a public JMAP HTTPS URL such as `mail.example.com`
+- A durable directory or Docker volume for `/data`
+
+Review [mail-server prerequisites](MAIL-SERVER-SETUP.md) before inviting users.
+
+## Option A: Docker Compose
+
+```bash
+git clone https://github.com/bestmaa/veda-mail.git
+cd veda-mail
+cp .env.example .env
+```
+
+Generate the one-time installation claim token:
+
+```bash
+openssl rand -hex 32
+```
+
+If OpenSSL is unavailable, use:
+
+```bash
+npm run setup:token
+```
+
+Put the value in `.env`:
+
+```dotenv
+VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
+VEDA_MAIL_DATA_DIR=/data
+VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
+VEDA_MAIL_TRUST_PROXY_HEADERS=false
+VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
+```
+
+`VEDA_MAIL_ALLOWED_PROVIDER_HOSTS` is required in production and contains
+provider hostnames only, without schemes, paths, or ports.
+`VEDA_MAIL_PUBLIC_URL` is the public Veda Mail origin, not the provider URL,
+and must use HTTPS without a trailing slash. Do not quote values or commit
+`.env`.
+
+Start the service:
+
+```bash
+docker compose up --build -d
+docker compose ps
+docker compose logs --tail=100 veda-mail
+```
+
+Compose publishes port `3000` on `127.0.0.1` by default. Open
+<http://127.0.0.1:3000/setup> locally, or configure an HTTPS reverse proxy
+before opening it remotely.
+
+## Option B: local Node.js
+
+```bash
+git clone https://github.com/bestmaa/veda-mail.git
+cd veda-mail
+npm ci
+cp .env.example .env.local
+npm run setup:token
+```
+
+Set the printed value as `VEDA_MAIL_SETUP_TOKEN` in `.env.local`, then:
+
+```dotenv
+VEDA_MAIL_DATA_DIR=./data
+VEDA_MAIL_PUBLIC_URL=http://localhost:3000
+```
+
+If the local app connects to a public provider, also set its hostname in
+`VEDA_MAIL_ALLOWED_PROVIDER_HOSTS`. Then:
+
+```bash
+npm run dev
+```
+
+Open <http://localhost:3000/setup>.
+
+## The setup wizard
+
+The wizard is available only while the configured data directory has no
+completed installation (`/data` in the supplied container).
+
+### Step 1: claim the installation
+
+Enter `VEDA_MAIL_SETUP_TOKEN`. The token must be at least 24 characters. Failed
+attempts are rate-limited. Never send this token by email or chat.
+
+### Step 2: create the administrator
+
+Choose:
+
+- Administrator username: separate from every mailbox address
+- Administrator password: unique and stored only as a scrypt hash
+
+The administrator account manages branding and provider configuration. It
+cannot read a member's mailbox merely because it is an administrator.
+
+### Step 3: brand the organization
+
+Enter:
+
+- Organization name
+- Product name shown to members
+- Primary and accent colors
+- Optional PNG, JPEG, or WebP logo no larger than 2 MB
+- Optional public repository URL
+
+Uploaded branding is validated, resized within 512×512, converted to WebP, and
+stored on the `/data` volume. Organization admins may white-label their
+deployed interface. This does not transfer the Veda Mail or Veda Concepts
+trademarks.
+
+### Step 4: connect the mail service
+
+For Stalwart JMAP, enter:
+
+- A recognizable connection name
+- The public HTTPS server URL
+- One or more allowed member email domains
+
+Example:
+
+```text
+Connection: Example Organization Mail
+Server URL: https://mail.example.com
+Domains:    example.com, example.org
+```
+
+The server hostname must be included in
+`VEDA_MAIL_ALLOWED_PROVIDER_HOSTS`. This allowlist is required in production;
+private, loopback, and insecure provider URLs are rejected.
+
+### Step 5: finish and verify
+
+Review the summary and finish setup. The application writes installation,
+branding metadata, and provider state as one atomic record in `/data` and
+locks `/setup`.
+
+Then:
+
+1. Sign in at `/admin` with the new administrator account.
+2. Verify organization branding and provider settings.
+3. Sign out of admin.
+4. Open `/`.
+5. Sign in with an existing mailbox's full email address and password.
+6. Send a message to an external address and reply to it.
+
+## What setup does not do
+
+Veda Mail does not create provider domains, DNS records, or mailbox users.
+Create those in the mail server first. It also does not migrate messages; use
+the mail provider's supported migration tooling.
+
+## Setup lock
+
+Once completed, `/setup` cannot be claimed again merely by knowing the setup
+token. Do not edit or delete `/data/installation.json` manually. Back up
+`/data` immediately after setup and before every upgrade.
+
+There is currently no self-service administrator password reset. See
+[backup and recovery](BACKUP-AND-RECOVERY.md) before going live.

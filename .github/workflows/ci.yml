@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Check, build, and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VEDA_MAIL_SETUP_TOKEN: ci-only-token-not-used-in-production
+      VEDA_MAIL_DATA_DIR: ${{ runner.temp }}/veda-mail-data
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run quality gates
+        run: npm run check
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Audit production and development dependencies
+        run: npm audit --audit-level=high
