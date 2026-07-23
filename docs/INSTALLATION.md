@@ -56,10 +56,14 @@ and must use HTTPS without a trailing slash. Do not quote values or commit
 Start the service:
 
 ```bash
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 docker compose ps
 docker compose logs --tail=100 veda-mail
 ```
+
+This uses the published GHCR image. To build the checked-out source, replace
+the first two commands with `docker compose up --build -d`.
 
 Compose publishes port `3000` on `127.0.0.1` by default. Open
 <http://127.0.0.1:3000/setup> locally, or configure an HTTPS reverse proxy

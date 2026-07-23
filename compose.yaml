@@ -1,5 +1,6 @@
 services:
   veda-mail:
+    image: ${VEDA_MAIL_IMAGE:-ghcr.io/bestmaa/veda-mail:latest}
     build:
       context: .
       dockerfile: Dockerfile

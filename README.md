@@ -23,6 +23,18 @@ provider adapter boundary. Stalwart JMAP is included.
 - Strict TypeScript, architecture checks, and a 250-line source limit
 - Docker, Compose, reverse-proxy, and Dockploy support
 
+## Published container image
+
+The signed multi-platform image supports `linux/amd64` and `linux/arm64`:
+
+```bash
+docker pull ghcr.io/bestmaa/veda-mail:latest
+```
+
+`latest` tracks the default branch. Every publication also receives a
+`sha-<commit>` tag. A `vX.Y.Z` Git tag additionally publishes `X.Y.Z` and
+`X.Y` image tags. Pin a release tag or digest for production.
+
 ## Quick start with Docker Compose
 
 Requirements: Docker Engine with Compose v2 and an HTTPS-accessible Stalwart
@@ -54,9 +66,13 @@ VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 Provider allowlist entries are hostnames only—no scheme, path, or port. Then:
 
 ```bash
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 docker compose ps
 ```
+
+The Compose file uses `ghcr.io/bestmaa/veda-mail:latest` by default. To build
+the checked-out source instead, run `docker compose up --build -d`.
 
 Open <http://127.0.0.1:3000/setup>. For any public deployment, configure HTTPS
 before completing the wizard.
