@@ -5,6 +5,7 @@ import {
   mapMessageDetail,
   mapMessageSummary,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.mapper";
+import { jmapEmailSchema } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
 import type { JmapEmail } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 const email: JmapEmail = {
@@ -36,6 +37,30 @@ describe("Stalwart JMAP mapper", () => {
     expect(summary.isStarred).toBe(true);
     expect(summary.isUnread).toBe(true);
     expect(summary.mailboxIds).toEqual(["inbox"]);
+  });
+
+  it("accepts RFC-valid nullable message headers", () => {
+    const nullableHeaders = jmapEmailSchema.parse({
+      bcc: null,
+      cc: null,
+      from: null,
+      hasAttachment: false,
+      id: "email-null-headers",
+      keywords: {},
+      mailboxIds: { inbox: true },
+      preview: "",
+      receivedAt: "2026-07-23T10:00:00.000Z",
+      size: 0,
+      subject: null,
+      threadId: "thread-null-headers",
+      to: null,
+    });
+
+    expect(mapMessageSummary(nullableHeaders)).toMatchObject({
+      from: [],
+      subject: "(No subject)",
+      to: [],
+    });
   });
 
   it("sanitizes active and tracking HTML", () => {

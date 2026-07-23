@@ -26,15 +26,15 @@ const bodyPartSchema = z
 export const jmapEmailSchema = z
   .object({
     attachments: z.array(bodyPartSchema).optional(),
-    bcc: z.array(addressSchema).optional(),
+    bcc: z.array(addressSchema).nullable().optional(),
     bodyValues: z
       .record(
         z.string(),
         z.object({ value: z.string() }).passthrough(),
       )
       .optional(),
-    cc: z.array(addressSchema).optional(),
-    from: z.array(addressSchema).optional(),
+    cc: z.array(addressSchema).nullable().optional(),
+    from: z.array(addressSchema).nullable().optional(),
     hasAttachment: z.boolean(),
     htmlBody: z.array(bodyPartSchema).optional(),
     id: z.string().min(1),
@@ -43,10 +43,10 @@ export const jmapEmailSchema = z
     preview: z.string(),
     receivedAt: z.string().min(1),
     size: z.number().nonnegative(),
-    subject: z.string(),
+    subject: z.string().nullable(),
     textBody: z.array(bodyPartSchema).optional(),
     threadId: z.string().min(1),
-    to: z.array(addressSchema).optional(),
+    to: z.array(addressSchema).nullable().optional(),
   })
   .passthrough();
 

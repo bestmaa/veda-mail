@@ -45,7 +45,9 @@ const mailboxRole = (role?: string | null): MailboxRole => {
     : "custom";
 };
 
-const addresses = (values?: readonly JmapAddress[]): readonly MailAddress[] =>
+const addresses = (
+  values?: readonly JmapAddress[] | null,
+): readonly MailAddress[] =>
   (values ?? []).map((address) => ({
     email: address.email,
     name: address.name ?? null,

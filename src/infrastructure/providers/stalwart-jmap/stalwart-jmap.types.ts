@@ -61,12 +61,12 @@ export interface JmapBodyPart {
 
 export interface JmapEmail {
   readonly attachments?: readonly JmapBodyPart[] | undefined;
-  readonly bcc?: readonly JmapAddress[] | undefined;
+  readonly bcc?: readonly JmapAddress[] | null | undefined;
   readonly bodyValues?:
     | Readonly<Record<string, { readonly value: string }>>
     | undefined;
-  readonly cc?: readonly JmapAddress[] | undefined;
-  readonly from?: readonly JmapAddress[] | undefined;
+  readonly cc?: readonly JmapAddress[] | null | undefined;
+  readonly from?: readonly JmapAddress[] | null | undefined;
   readonly hasAttachment: boolean;
   readonly htmlBody?: readonly JmapBodyPart[] | undefined;
   readonly id: string;
@@ -75,8 +75,8 @@ export interface JmapEmail {
   readonly preview: string;
   readonly receivedAt: string;
   readonly size: number;
-  readonly subject: string;
+  readonly subject: string | null;
   readonly textBody?: readonly JmapBodyPart[] | undefined;
   readonly threadId: string;
-  readonly to?: readonly JmapAddress[] | undefined;
+  readonly to?: readonly JmapAddress[] | null | undefined;
 }
