@@ -48,7 +48,6 @@ describe("Stalwart JMAP mapper", () => {
       id: "email-null-headers",
       keywords: {},
       mailboxIds: { inbox: true },
-      preview: "",
       receivedAt: "2026-07-23T10:00:00.000Z",
       size: 0,
       subject: null,
@@ -58,9 +57,41 @@ describe("Stalwart JMAP mapper", () => {
 
     expect(mapMessageSummary(nullableHeaders)).toMatchObject({
       from: [],
+      preview: "",
       subject: "(No subject)",
       to: [],
     });
+  });
+
+  it("accepts nullable multipart body identifiers from Stalwart", () => {
+    const multipartEmail = jmapEmailSchema.parse({
+      attachments: [
+        {
+          blobId: null,
+          name: null,
+          partId: null,
+          size: null,
+          type: "multipart/mixed",
+        },
+      ],
+      hasAttachment: true,
+      id: "email-multipart",
+      keywords: {},
+      mailboxIds: { inbox: true },
+      receivedAt: "2026-07-23T10:00:00.000Z",
+      size: 0,
+      subject: null,
+      threadId: "thread-multipart",
+    });
+
+    expect(mapMessageDetail(multipartEmail).attachments).toEqual([
+      {
+        id: "attachment-0",
+        mimeType: "multipart/mixed",
+        name: "Attachment 1",
+        size: 0,
+      },
+    ]);
   });
 
   it("sanitizes active and tracking HTML", () => {

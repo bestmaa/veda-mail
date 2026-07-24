@@ -52,10 +52,10 @@ export interface JmapAddress {
 }
 
 export interface JmapBodyPart {
-  readonly blobId?: string | undefined;
+  readonly blobId?: string | null | undefined;
   readonly name?: string | null | undefined;
-  readonly partId?: string | undefined;
-  readonly size?: number | undefined;
+  readonly partId?: string | null | undefined;
+  readonly size?: number | null | undefined;
   readonly type: string;
 }
 

@@ -15,10 +15,10 @@ const addressSchema = z
 
 const bodyPartSchema = z
   .object({
-    blobId: z.string().optional(),
+    blobId: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
-    partId: z.string().optional(),
-    size: z.number().nonnegative().optional(),
+    partId: z.string().nullable().optional(),
+    size: z.number().nonnegative().nullable().optional(),
     type: z.string().min(1),
   })
   .passthrough();
@@ -40,7 +40,7 @@ export const jmapEmailSchema = z
     id: z.string().min(1),
     keywords: booleanRecord,
     mailboxIds: booleanRecord,
-    preview: z.string(),
+    preview: z.string().default(""),
     receivedAt: z.string().min(1),
     size: z.number().nonnegative(),
     subject: z.string().nullable(),
