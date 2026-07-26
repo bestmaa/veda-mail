@@ -3,6 +3,7 @@
 import { type FormEvent, useCallback, useState } from "react";
 
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
+import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
 import {
   memberSettingsApi,
   type MemberSettingsSnapshot,
@@ -11,6 +12,7 @@ import {
 const defaultCapabilities = {
   passwordChange: false,
   profileSettings: false,
+  twoFactorAuthentication: false,
 };
 
 export const useAccountSettingsModel = (
@@ -31,17 +33,23 @@ export const useAccountSettingsModel = (
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+  const {
+    reset: resetTwoFactor,
+    view: twoFactorView,
+  } = useTwoFactorSettingsModel();
 
   const open = useCallback(() => {
     setIsOpen(true);
     setIsLoading(true);
     setDisplayName(fallbackName);
     setProfileError(null);
+    resetTwoFactor(false);
     void memberSettingsApi
       .get()
       .then((next) => {
         setSnapshot(next);
         setDisplayName(next.profile.displayName);
+        resetTwoFactor(next.security.twoFactorEnabled);
       })
       .catch((error: unknown) => {
         setProfileError(
@@ -49,7 +57,7 @@ export const useAccountSettingsModel = (
         );
       })
       .finally(() => setIsLoading(false));
-  }, [fallbackName]);
+  }, [fallbackName, resetTwoFactor]);
 
   const onProfileSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -89,7 +97,11 @@ export const useAccountSettingsModel = (
           newPassword,
           ...(otpCode ? { otpCode } : {}),
         })
-        .then(() => {
+        .then(({ sessionActive }) => {
+          if (!sessionActive) {
+            window.location.assign("/");
+            return;
+          }
           setCurrentPassword("");
           setNewPassword("");
           setConfirmPassword("");
@@ -138,5 +150,9 @@ export const useAccountSettingsModel = (
       success: profileSuccess,
     },
     profileName: snapshot?.profile.displayName ?? null,
+    twoFactor: {
+      ...twoFactorView,
+      canManage: capabilities.twoFactorAuthentication,
+    },
   };
 };

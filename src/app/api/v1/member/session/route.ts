@@ -26,6 +26,7 @@ import {
 } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
 
 export const runtime = "nodejs";
 
@@ -114,7 +115,28 @@ export const POST = async (request: Request) => {
       );
     }
     const provider = getProviderRegistry().get(profile.providerId);
-    const config = provider.createMemberConfig(profile.config, credentials);
+    const authentication = await provider.authenticateMember(
+      profile.config,
+      {
+        email: credentials.email,
+        password: credentials.password,
+        ...(credentials.otpCode ? { otpCode: credentials.otpCode } : {}),
+      },
+    );
+    if (authentication.status === "mfa-required") {
+      return apiSuccess(
+        { authenticated: false, mfaRequired: true },
+        { status: 202 },
+      );
+    }
+    if (authentication.status === "rejected") {
+      throw new ApiError(
+        "Incorrect email address, password or verification code.",
+        "INVALID_MEMBER_CREDENTIALS",
+        401,
+      );
+    }
+    const { config } = authentication;
     const candidate: ProviderConnection = {
       config,
       createdAt: new Date().toISOString(),
@@ -171,6 +193,7 @@ export const DELETE = async (request: Request) => {
     assertSameOrigin(request);
     const connection = await getCurrentConnection().catch(() => null);
     if (connection) {
+      twoFactorEnrollmentStore.remove(connection.id);
       connectionStore.remove(connection.id);
     }
     const response = new NextResponse(null, { status: 204 });

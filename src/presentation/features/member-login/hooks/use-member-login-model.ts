@@ -24,6 +24,8 @@ export const useMemberLoginModel = (
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [isTwoFactorStep, setIsTwoFactorStep] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,6 +37,10 @@ export const useMemberLoginModel = (
     (event) => setPassword(event.target.value),
     [],
   );
+  const onOtpCodeInput: ChangeEventHandler<HTMLInputElement> = useCallback(
+    (event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6)),
+    [],
+  );
 
   const onSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     async (event) => {
@@ -42,10 +48,17 @@ export const useMemberLoginModel = (
       setError(null);
       setIsSubmitting(true);
       try {
-        await memberSessionApi.signIn({
+        const result = await memberSessionApi.signIn({
           email: email.trim(),
           password,
+          ...(otpCode ? { otpCode } : {}),
         });
+        if (result.mfaRequired) {
+          setIsTwoFactorStep(true);
+          setOtpCode("");
+          setIsSubmitting(false);
+          return;
+        }
         router.replace(successPath);
         router.refresh();
       } catch (caught) {
@@ -57,7 +70,7 @@ export const useMemberLoginModel = (
         setIsSubmitting(false);
       }
     },
-    [email, password, router, successPath],
+    [email, otpCode, password, router, successPath],
   );
 
   return {
@@ -66,11 +79,23 @@ export const useMemberLoginModel = (
     email,
     error,
     isSubmitting,
+    isTwoFactorStep,
+    onBackToPassword: () => {
+      setError(null);
+      setOtpCode("");
+      setIsTwoFactorStep(false);
+    },
     onEmailInput,
+    onOtpCodeInput,
     onPasswordInput,
     onSubmit,
+    otpCode,
     password,
     providerLabel,
-    submitLabel: isSubmitting ? "Opening mailbox…" : "Open mailbox",
+    submitLabel: isSubmitting
+      ? "Verifying…"
+      : isTwoFactorStep
+        ? "Verify and open mailbox"
+        : "Open mailbox",
   };
 };

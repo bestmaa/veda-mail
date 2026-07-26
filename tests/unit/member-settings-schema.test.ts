@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   memberPasswordChangeSchema,
   memberProfileUpdateSchema,
+  memberTwoFactorConfirmSchema,
 } from "@/transport/http/request-schemas";
 
 describe("member settings validation", () => {
@@ -35,5 +36,23 @@ describe("member settings validation", () => {
       newPassword: "new-password",
       otpCode: "123456",
     });
+  });
+
+  it("requires an exact 6-digit authenticator code", () => {
+    expect(
+      memberTwoFactorConfirmSchema.parse({
+        currentPassword: "mailbox-password",
+        otpCode: " 123456 ",
+      }),
+    ).toEqual({
+      currentPassword: "mailbox-password",
+      otpCode: "123456",
+    });
+    expect(() =>
+      memberTwoFactorConfirmSchema.parse({
+        currentPassword: "mailbox-password",
+        otpCode: "12345",
+      }),
+    ).toThrow();
   });
 });

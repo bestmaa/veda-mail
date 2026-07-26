@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   ArrowRight,
   AtSign,
   KeyRound,
@@ -15,9 +16,13 @@ export const MemberLoginView = ({
   email,
   error,
   isSubmitting,
+  isTwoFactorStep,
+  onBackToPassword,
   onEmailInput,
+  onOtpCodeInput,
   onPasswordInput,
   onSubmit,
+  otpCode,
   password,
   providerLabel,
   submitLabel,
@@ -41,17 +46,19 @@ export const MemberLoginView = ({
       </div>
 
       <h1 className="mt-9 text-3xl font-extrabold tracking-[-0.05em]">
-        Sign in to your mail
+        {isTwoFactorStep ? "Verify it’s you" : "Sign in to your mail"}
       </h1>
       <p className="mt-2 text-sm leading-6 text-slate-500">
-        Use the complete email address and password issued by your organization.
+        {isTwoFactorStep
+          ? `Enter the 6-digit code from your authenticator app for ${email}.`
+          : "Use the complete email address and password issued by your organization."}
       </p>
       <p className="mt-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
         Service: {providerLabel}
       </p>
 
       <form aria-busy={isSubmitting} className="mt-7 space-y-4" onSubmit={onSubmit}>
-        <label className="block">
+        {!isTwoFactorStep ? <label className="block">
           <span className="mb-2 block text-xs font-bold text-slate-700">
             Email address
           </span>
@@ -69,8 +76,8 @@ export const MemberLoginView = ({
               value={email}
             />
           </span>
-        </label>
-        <label className="block">
+        </label> : null}
+        {!isTwoFactorStep ? <label className="block">
           <span className="mb-2 block text-xs font-bold text-slate-700">
             Password
           </span>
@@ -86,7 +93,28 @@ export const MemberLoginView = ({
               value={password}
             />
           </span>
-        </label>
+        </label> : (
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold text-slate-700">
+              Authenticator code
+            </span>
+            <span className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 px-4 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-100">
+              <ShieldCheck aria-hidden className="text-indigo-500" size={19} />
+              <input
+                autoComplete="one-time-code"
+                autoFocus
+                className="min-w-0 flex-1 bg-transparent text-center font-mono text-xl font-bold tracking-[0.35em] outline-none"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={onOtpCodeInput}
+                pattern="[0-9]{6}"
+                placeholder="000000"
+                required
+                value={otpCode}
+              />
+            </span>
+          </label>
+        )}
         {error ? (
           <p
             className="rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700"
@@ -107,6 +135,17 @@ export const MemberLoginView = ({
           )}
           <span aria-live="polite">{submitLabel}</span>
         </button>
+        {isTwoFactorStep ? (
+          <button
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50"
+            disabled={isSubmitting}
+            onClick={onBackToPassword}
+            type="button"
+          >
+            <ArrowLeft aria-hidden size={15} />
+            Use a different password
+          </button>
+        ) : null}
       </form>
 
       <p className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">

@@ -10,6 +10,7 @@ import type { MessageId } from "@/domain/shared/brand";
 import type {
   MemberPasswordChange,
   MemberProfileUpdate,
+  MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
 import { StalwartAccountManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-account-manager";
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
@@ -41,6 +42,10 @@ export class StalwartMailGateway implements MailGateway {
     return this.accountManager.getProfile();
   }
 
+  public getTwoFactorEnabled() {
+    return this.accountManager.getTwoFactorEnabled();
+  }
+
   public getMessage(messageId: MessageId) {
     return this.reader.getMessage(messageId);
   }
@@ -67,5 +72,9 @@ export class StalwartMailGateway implements MailGateway {
 
   public updateMemberProfile(input: MemberProfileUpdate) {
     return this.accountManager.updateProfile(input);
+  }
+
+  public updateTwoFactor(input: MemberTwoFactorUpdate) {
+    return this.accountManager.updateTwoFactor(input);
   }
 }

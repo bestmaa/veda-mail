@@ -8,6 +8,7 @@ import type {
 import { id } from "@/domain/shared/brand";
 import { assertSafeProviderOrigin } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 import { StalwartMailGateway } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.gateway";
+import { StalwartOAuthClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-oauth.client";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { z } from "zod";
 
@@ -30,13 +31,28 @@ const serviceConfigSchema = z
   })
   .strict();
 
-const memberConfigSchema = serviceConfigSchema
+const basicMemberConfigSchema = serviceConfigSchema
   .extend({
     authType: z.literal("basic"),
     secret: z.string().min(1, "A password is required."),
     username: z.string().email(),
   })
   .strict();
+
+const bearerMemberConfigSchema = serviceConfigSchema
+  .extend({
+    authType: z.literal("bearer"),
+    expiresAt: z.string().datetime(),
+    refreshToken: z.string().min(1),
+    secret: z.string().min(1),
+    username: z.string().email(),
+  })
+  .strict();
+
+const memberConfigSchema = z.discriminatedUnion("authType", [
+  basicMemberConfigSchema,
+  bearerMemberConfigSchema,
+]);
 
 export class StalwartProviderModule implements ProviderModule {
   public readonly manifest = {
@@ -48,6 +64,7 @@ export class StalwartProviderModule implements ProviderModule {
       supportsPush: true,
       supportsServerSearch: true,
       supportsThreads: true,
+      supportsTwoFactorAuthentication: true,
     },
     description: "Connect directly to a Stalwart JMAP mail server.",
     fields: [
@@ -111,11 +128,24 @@ export class StalwartProviderModule implements ProviderModule {
     }) satisfies StalwartConfig;
   }
 
+  public authenticateMember(
+    serviceConfig: Readonly<Record<string, string>>,
+    credentials: MemberCredentials,
+  ) {
+    return StalwartOAuthClient.authenticate(
+      { baseUrl: String(serviceConfig["baseUrl"] ?? "") },
+      credentials,
+    );
+  }
+
   public rotateMemberSecret(
     config: Readonly<Record<string, string>>,
     newPassword: string,
   ) {
-    return memberConfigSchema.parse({ ...config, secret: newPassword });
+    const parsed = memberConfigSchema.parse(config);
+    return parsed.authType === "bearer"
+      ? config
+      : basicMemberConfigSchema.parse({ ...parsed, secret: newPassword });
   }
 
   public async createGateway(connection: ProviderConnection) {

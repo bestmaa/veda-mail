@@ -4,9 +4,11 @@ import type {
   MemberPasswordChange,
   MemberProfile,
   MemberProfileUpdate,
+  MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import {
+  jmapAccountPasswordResultSchema,
   jmapIdentityResultSchema,
   jmapSetResultSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
@@ -85,6 +87,58 @@ export class StalwartAccountManager {
     );
     if (result.notUpdated?.["singleton"]) {
       throw new Error("Stalwart rejected the password update.");
+    }
+  }
+
+  public async getTwoFactorEnabled(): Promise<boolean> {
+    const response = await this.client.request(
+      [
+        [
+          "x:AccountPassword/get",
+          { ids: ["singleton"] },
+          "account-password",
+        ],
+      ],
+      [STALWART_JMAP],
+    );
+    const result = this.client.result(
+      response,
+      "account-password",
+      "x:AccountPassword/get",
+      jmapAccountPasswordResultSchema,
+    );
+    return Boolean(result.list[0]?.otpAuth.otpUrl);
+  }
+
+  public async updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void> {
+    const response = await this.client.request(
+      [
+        [
+          "x:AccountPassword/set",
+          {
+            update: {
+              singleton: {
+                currentSecret: input.currentPassword,
+                otpAuth: {
+                  otpCode: input.otpCode,
+                  otpUrl: input.otpUrl,
+                },
+              },
+            },
+          },
+          "two-factor",
+        ],
+      ],
+      [STALWART_JMAP],
+    );
+    const result = this.client.result(
+      response,
+      "two-factor",
+      "x:AccountPassword/set",
+      jmapSetResultSchema,
+    );
+    if (result.notUpdated?.["singleton"]) {
+      throw new Error("Stalwart rejected the two-factor update.");
     }
   }
 

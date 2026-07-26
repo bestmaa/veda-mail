@@ -6,6 +6,7 @@ import {
   jmapResponseSchema,
   jmapSessionSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
+import { StalwartOAuthClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-oauth.client";
 import {
   JMAP_CORE,
   type JmapMethodCall,
@@ -27,10 +28,7 @@ const responseJson = async (response: Response): Promise<unknown> => {
   }
 };
 
-const authorizationHeader = (config: StalwartConfig): string => {
-  if (config.authType === "bearer") {
-    return `Bearer ${config.secret}`;
-  }
+const basicAuthorizationHeader = (config: StalwartConfig): string => {
   const encoded = Buffer.from(`${config.username}:${config.secret}`).toString(
     "base64",
   );
@@ -72,11 +70,20 @@ const fetchSameOrigin = async (
 };
 
 export class StalwartJmapClient {
-  private readonly authHeader: string;
+  private accessToken: string | null;
+  private accessTokenExpiresAt: number | null;
+  private refreshPromise: Promise<void> | null = null;
+  private refreshToken: string | null;
   private sessionPromise: Promise<JmapSession> | null = null;
 
   public constructor(private readonly config: StalwartConfig) {
-    this.authHeader = authorizationHeader(config);
+    this.accessToken = config.authType === "bearer" ? config.secret : null;
+    this.accessTokenExpiresAt =
+      config.authType === "bearer" && config.expiresAt
+        ? Date.parse(config.expiresAt)
+        : null;
+    this.refreshToken =
+      config.authType === "bearer" ? (config.refreshToken ?? null) : null;
   }
 
   public getSession(): Promise<JmapSession> {
@@ -92,13 +99,14 @@ export class StalwartJmapClient {
     using: readonly string[],
   ): Promise<JmapResponse> {
     const session = await this.getSession();
+    const authHeader = await this.authorizationHeader();
     const origin = (await assertSafeProviderOrigin(this.config.baseUrl)).origin;
     const apiUrl = sameOriginUrl(session.apiUrl, origin);
     const response = await fetch(apiUrl, {
       body: JSON.stringify({ methodCalls, using: [JMAP_CORE, ...using] }),
       cache: "no-store",
       headers: {
-        Authorization: this.authHeader,
+        Authorization: authHeader,
         "Content-Type": "application/json",
       },
       method: "POST",
@@ -149,9 +157,10 @@ export class StalwartJmapClient {
   private async discover(): Promise<JmapSession> {
     const origin = (await assertSafeProviderOrigin(this.config.baseUrl)).origin;
     const discoveryUrl = new URL("/.well-known/jmap", origin);
+    const authHeader = await this.authorizationHeader();
     const response = await fetchSameOrigin(discoveryUrl, origin, {
       cache: "no-store",
-      headers: { Authorization: this.authHeader },
+      headers: { Authorization: authHeader },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
@@ -166,6 +175,43 @@ export class StalwartJmapClient {
     sameOriginUrl(session.uploadUrl, origin);
     sameOriginUrl(session.downloadUrl, origin);
     return session;
+  }
+
+  private async authorizationHeader(): Promise<string> {
+    if (this.config.authType === "basic") {
+      return basicAuthorizationHeader(this.config);
+    }
+    const refreshBefore = Date.now() + 30_000;
+    if (
+      this.accessTokenExpiresAt !== null &&
+      this.accessTokenExpiresAt <= refreshBefore
+    ) {
+      await this.refreshAccessToken();
+    }
+    if (!this.accessToken) {
+      throw new Error("The Stalwart OAuth access token is missing.");
+    }
+    return `Bearer ${this.accessToken}`;
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    if (!this.refreshToken) {
+      throw new Error("The Stalwart OAuth refresh token is missing.");
+    }
+    this.refreshPromise ??= StalwartOAuthClient.refresh(
+      this.config.baseUrl,
+      this.refreshToken,
+    )
+      .then((tokens) => {
+        this.accessToken = tokens.accessToken;
+        this.accessTokenExpiresAt = Date.parse(tokens.expiresAt);
+        this.refreshToken = tokens.refreshToken;
+        this.sessionPromise = null;
+      })
+      .finally(() => {
+        this.refreshPromise = null;
+      });
+    await this.refreshPromise;
   }
 
   private async toHttpError(response: Response): Promise<Error> {

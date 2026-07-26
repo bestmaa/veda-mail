@@ -3,6 +3,7 @@ import { CONNECTION_COOKIE, getCurrentConnection } from "@/server/connections/co
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
+import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import { assertSessionRateLimit } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
@@ -17,13 +18,24 @@ const context = async () => {
   const connection = await getCurrentConnection();
   const gateway = await resolveGateway(connection);
   const provider = getProviderRegistry().get(connection.providerId);
+  const profile = await mailServiceProfileStore.get();
+  if (!profile) {
+    throw new ApiError(
+      "The mail service is not configured.",
+      "MAIL_SERVICE_NOT_CONFIGURED",
+      503,
+    );
+  }
   return {
     capabilities: {
       passwordChange: provider.manifest.capabilities.supportsPasswordChange,
       profileSettings: provider.manifest.capabilities.supportsProfileSettings,
+      twoFactorAuthentication:
+        provider.manifest.capabilities.supportsTwoFactorAuthentication,
     },
     connection,
     gateway,
+    profile,
     provider,
   };
 };
@@ -34,6 +46,11 @@ export const GET = async () => {
     return apiSuccess({
       capabilities,
       profile: await gateway.getMemberProfile(),
+      security: {
+        twoFactorEnabled: capabilities.twoFactorAuthentication
+          ? await gateway.getTwoFactorEnabled()
+          : false,
+      },
     });
   } catch (error) {
     return apiFailure(error, "Unable to load profile settings.");
@@ -77,7 +94,8 @@ export const PUT = async (request: Request) => {
       15 * 60 * 1000,
     );
     const input = memberPasswordChangeSchema.parse(await request.json());
-    const { connection, gateway, provider } = await context();
+    const { connection, gateway, profile, provider } = await context();
+    const account = await gateway.getAccount();
     try {
       await gateway.changePassword(input);
     } catch {
@@ -87,12 +105,20 @@ export const PUT = async (request: Request) => {
         400,
       );
     }
-    const config = provider.rotateMemberSecret(
-      connection.config,
-      input.newPassword,
+    const authentication = await provider.authenticateMember(
+      profile.config,
+      {
+        email: account.email,
+        password: input.newPassword,
+        ...(input.otpCode ? { otpCode: input.otpCode } : {}),
+      },
     );
-    connectionStore.updateConfig(connection.id, config);
-    return apiSuccess({ changed: true });
+    if (authentication.status === "authenticated") {
+      connectionStore.updateConfig(connection.id, authentication.config);
+      return apiSuccess({ changed: true, sessionActive: true });
+    }
+    connectionStore.remove(connection.id);
+    return apiSuccess({ changed: true, sessionActive: false });
   } catch (error) {
     return apiFailure(error, "Unable to change the mailbox password.");
   }

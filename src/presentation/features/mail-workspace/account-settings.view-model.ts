@@ -1,4 +1,5 @@
 import type { ChangeEventHandler, FormEventHandler } from "react";
+import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
@@ -31,4 +32,20 @@ export interface AccountSettingsViewModel {
     readonly success: string | null;
   };
   readonly profileName: string | null;
+  readonly twoFactor: {
+    readonly cancelEnrollment: () => void;
+    readonly canManage: boolean;
+    readonly currentPassword: string;
+    readonly currentPasswordInput: ChangeEventHandler<HTMLInputElement>;
+    readonly enabled: boolean;
+    readonly enrollment: MemberTwoFactorEnrollment | null;
+    readonly error: string | null;
+    readonly isSaving: boolean;
+    readonly onDisable: FormEventHandler<HTMLFormElement>;
+    readonly onEnable: FormEventHandler<HTMLFormElement>;
+    readonly otpCode: string;
+    readonly otpCodeInput: ChangeEventHandler<HTMLInputElement>;
+    readonly startEnrollment: () => void;
+    readonly success: string | null;
+  };
 }

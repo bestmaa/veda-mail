@@ -132,3 +132,17 @@ export const jmapIdentityResultSchema = z
     list: z.array(jmapIdentitySchema),
   })
   .passthrough();
+
+export const jmapAccountPasswordResultSchema = z
+  .object({
+    list: z.array(
+      z
+        .object({
+          otpAuth: z
+            .object({ otpUrl: z.string().nullable().optional() })
+            .passthrough(),
+        })
+        .passthrough(),
+    ),
+  })
+  .passthrough();

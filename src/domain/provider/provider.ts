@@ -11,6 +11,7 @@ export interface ProviderCapabilities {
   readonly supportsPush: boolean;
   readonly supportsServerSearch: boolean;
   readonly supportsThreads: boolean;
+  readonly supportsTwoFactorAuthentication: boolean;
 }
 
 export type ProviderFieldKind = "email" | "password" | "select" | "text" | "url";
@@ -64,8 +65,17 @@ export interface MailServiceProfile extends MailServiceProfileInput {
 
 export interface MemberCredentials {
   readonly email: string;
+  readonly otpCode?: string;
   readonly password: string;
 }
+
+export type MemberAuthenticationResult =
+  | {
+      readonly config: Readonly<Record<string, string>>;
+      readonly status: "authenticated";
+    }
+  | { readonly status: "mfa-required" }
+  | { readonly status: "rejected" };
 
 export interface ProviderConnection {
   readonly config: Readonly<Record<string, string>>;

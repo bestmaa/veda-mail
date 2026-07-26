@@ -1,6 +1,13 @@
-import { KeyRound, LoaderCircle, ShieldCheck, UserRound, X } from "lucide-react";
+import {
+  KeyRound,
+  LoaderCircle,
+  ShieldCheck,
+  UserRound,
+  X,
+} from "lucide-react";
 
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
+import { TwoFactorSettingsView } from "@/presentation/features/mail-workspace/ui/two-factor-settings.view";
 
 const status = (error: string | null, success: string | null) =>
   error ? (
@@ -95,6 +102,8 @@ export const AccountSettingsView = ({
                   </button>
                 </div>
               </form>
+
+              <TwoFactorSettingsView settings={settings.twoFactor} />
 
               <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" onSubmit={settings.password.onSubmit}>
                 <div className="mb-4 flex items-center gap-3">

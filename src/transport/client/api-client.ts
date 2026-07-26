@@ -7,6 +7,7 @@ import type {
 } from "@/domain/mail/mail";
 import type { ProviderManifest } from "@/domain/provider/provider";
 import type { MemberProfile } from "@/domain/member/member-settings";
+import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 
 interface ApiEnvelope<TData> {
@@ -19,6 +20,7 @@ interface ApiErrorEnvelope {
 
 export interface MemberSignInInput {
   readonly email: string;
+  readonly otpCode?: string;
   readonly password: string;
 }
 
@@ -26,8 +28,12 @@ export interface MemberSettingsSnapshot {
   readonly capabilities: {
     readonly passwordChange: boolean;
     readonly profileSettings: boolean;
+    readonly twoFactorAuthentication: boolean;
   };
   readonly profile: MemberProfile;
+  readonly security: {
+    readonly twoFactorEnabled: boolean;
+  };
 }
 
 export interface MemberPasswordInput {
@@ -39,6 +45,7 @@ export interface MemberPasswordInput {
 
 export interface SessionResult {
   readonly authenticated: boolean;
+  readonly mfaRequired?: boolean;
   readonly providerLabel?: string;
 }
 
@@ -147,7 +154,10 @@ export const memberSessionApi = {
 
 export const memberSettingsApi = {
   changePassword(input: MemberPasswordInput) {
-    return fetchData<{ readonly changed: boolean }>("/api/v1/member/settings", {
+    return fetchData<{
+      readonly changed: boolean;
+      readonly sessionActive: boolean;
+    }>("/api/v1/member/settings", {
       body: JSON.stringify(input),
       method: "PUT",
     });
@@ -164,6 +174,41 @@ export const memberSettingsApi = {
         body: JSON.stringify({ displayName }),
         method: "PATCH",
       },
+    );
+  },
+};
+
+export const memberTwoFactorApi = {
+  confirm(currentPassword: string, otpCode: string) {
+    return fetchData<{
+      readonly enabled: true;
+      readonly sessionActive: boolean;
+    }>(
+      "/api/v1/member/two-factor",
+      {
+        body: JSON.stringify({ currentPassword, otpCode }),
+        method: "PUT",
+      },
+    );
+  },
+
+  disable(currentPassword: string, otpCode: string) {
+    return fetchData<{
+      readonly enabled: false;
+      readonly sessionActive: boolean;
+    }>(
+      "/api/v1/member/two-factor",
+      {
+        body: JSON.stringify({ currentPassword, otpCode }),
+        method: "DELETE",
+      },
+    );
+  },
+
+  start() {
+    return fetchData<{ readonly enrollment: MemberTwoFactorEnrollment }>(
+      "/api/v1/member/two-factor",
+      { method: "POST" },
     );
   },
 };

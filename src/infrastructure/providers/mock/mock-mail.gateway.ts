@@ -13,6 +13,7 @@ import { id } from "@/domain/shared/brand";
 import type {
   MemberPasswordChange,
   MemberProfileUpdate,
+  MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
 import {
   createMockMessages,
@@ -50,6 +51,10 @@ export class MockMailGateway implements MailGateway {
 
   public async getMemberProfile() {
     return this.profile;
+  }
+
+  public async getTwoFactorEnabled() {
+    return false;
   }
 
   public async getMessage(messageId: MessageId): Promise<MessageDetail> {
@@ -152,6 +157,10 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async testConnection(): Promise<void> {}
+
+  public async updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void> {
+    void input;
+  }
 
   public async updateMemberProfile(input: MemberProfileUpdate) {
     this.profile = { ...this.profile, displayName: input.displayName };

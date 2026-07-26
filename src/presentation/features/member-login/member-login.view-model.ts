@@ -10,9 +10,13 @@ export interface MemberLoginViewProps {
   readonly email: string;
   readonly error: string | null;
   readonly isSubmitting: boolean;
+  readonly isTwoFactorStep: boolean;
+  readonly onBackToPassword: () => void;
   readonly onEmailInput: ChangeEventHandler<HTMLInputElement>;
+  readonly onOtpCodeInput: ChangeEventHandler<HTMLInputElement>;
   readonly onPasswordInput: ChangeEventHandler<HTMLInputElement>;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
+  readonly otpCode: string;
   readonly password: string;
   readonly providerLabel: string;
   readonly submitLabel: string;

@@ -61,3 +61,13 @@ export const memberPasswordChangeSchema = z
     newPassword,
     ...(otpCode ? { otpCode } : {}),
   }));
+
+const memberTwoFactorProofSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(1024),
+    otpCode: z.string().trim().regex(/^\d{6}$/),
+  })
+  .strict();
+
+export const memberTwoFactorConfirmSchema = memberTwoFactorProofSchema;
+export const memberTwoFactorDisableSchema = memberTwoFactorProofSchema;

@@ -15,6 +15,7 @@ export class MockProviderModule implements ProviderModule {
       supportsPush: false,
       supportsServerSearch: true,
       supportsThreads: true,
+      supportsTwoFactorAuthentication: false,
     },
     description: "Explore every workflow with safe, deterministic demo mail.",
     fields: [],
@@ -38,6 +39,16 @@ export class MockProviderModule implements ProviderModule {
     credentials: MemberCredentials,
   ) {
     return { username: credentials.email };
+  }
+
+  public async authenticateMember(
+    serviceConfig: Readonly<Record<string, string>>,
+    credentials: MemberCredentials,
+  ) {
+    return {
+      config: this.createMemberConfig(serviceConfig, credentials),
+      status: "authenticated" as const,
+    };
   }
 
   public async createGateway() {

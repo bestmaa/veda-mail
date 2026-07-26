@@ -120,4 +120,41 @@ describe("Stalwart account manager", () => {
       }),
     ).rejects.toThrow("rejected");
   });
+
+  it("reads whether an authenticator credential is configured", async () => {
+    const client = {
+      request: async () => ({ methodResponses: [], sessionState: "state" }),
+      result: () => ({
+        list: [{ otpAuth: { otpUrl: "********" } }],
+      }),
+    } as unknown as StalwartJmapClient;
+
+    await expect(
+      new StalwartAccountManager(client, reader).getTwoFactorEnabled(),
+    ).resolves.toBe(true);
+  });
+
+  it("sends password and OTP proof when disabling two-factor auth", async () => {
+    const { client, requests } = createClient();
+    const manager = new StalwartAccountManager(client, reader);
+
+    await manager.updateTwoFactor({
+      currentPassword: "password",
+      otpCode: "123456",
+      otpUrl: null,
+    });
+
+    expect(requests[0]?.calls[0]).toEqual([
+      "x:AccountPassword/set",
+      {
+        update: {
+          singleton: {
+            currentSecret: "password",
+            otpAuth: { otpCode: "123456", otpUrl: null },
+          },
+        },
+      },
+      "two-factor",
+    ]);
+  });
 });

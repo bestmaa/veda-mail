@@ -1,11 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock(
-  "@/infrastructure/providers/stalwart-jmap/provider-url-policy",
-  () => ({
-    assertSafeProviderOrigin: async (value: string) => new URL(value),
-  }),
-);
+vi.mock("@/infrastructure/providers/stalwart-jmap/provider-url-policy", () => ({
+  assertSafeProviderOrigin: async (value: string) => new URL(value),
+}));
 
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import { jmapSetResultSchema } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
@@ -65,9 +62,9 @@ describe("Stalwart JMAP client", () => {
       ),
     );
 
-    await expect(
-      new StalwartJmapClient(config).getSession(),
-    ).rejects.toThrow("cross-origin");
+    await expect(new StalwartJmapClient(config).getSession()).rejects.toThrow(
+      "cross-origin",
+    );
   });
 
   it("rejects malformed session JSON", async () => {
@@ -76,9 +73,40 @@ describe("Stalwart JMAP client", () => {
       vi.fn().mockResolvedValue(Response.json({ apiUrl: 42 })),
     );
 
-    await expect(
-      new StalwartJmapClient(config).getSession(),
-    ).rejects.toThrow("invalid JMAP session");
+    await expect(new StalwartJmapClient(config).getSession()).rejects.toThrow(
+      "invalid JMAP session",
+    );
+  });
+
+  it("refreshes an expired bearer token before discovery", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          access_token: "fresh-access-token",
+          expires_in: 3600,
+          token_type: "Bearer",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json(session));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new StalwartJmapClient({
+      authType: "bearer",
+      baseUrl: "https://mail.example.com",
+      expiresAt: new Date(0).toISOString(),
+      refreshToken: "current-refresh-token",
+      secret: "expired-access-token",
+      username: "user@example.com",
+    });
+
+    await expect(client.getSession()).resolves.toEqual(session);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://mail.example.com/auth/token",
+    );
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toEqual({
+      Authorization: "Bearer fresh-access-token",
+    });
   });
 
   it("rejects malformed JMAP response envelopes", async () => {

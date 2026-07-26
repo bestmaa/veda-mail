@@ -6,6 +6,8 @@ export const STALWART_JMAP = "urn:stalwart:jmap";
 export interface StalwartConfig {
   readonly authType: "basic" | "bearer";
   readonly baseUrl: string;
+  readonly expiresAt?: string;
+  readonly refreshToken?: string;
   readonly secret: string;
   readonly username: string;
 }
