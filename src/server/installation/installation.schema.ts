@@ -10,7 +10,7 @@ const httpsUrlSchema = z
   .trim()
   .url()
   .max(500)
-  .refine((value) => new URL(value).protocol === "https:", {
+  .refine((value) => value.toLowerCase().startsWith("https://"), {
     message: "Repository URL must use HTTPS.",
   });
 
@@ -71,6 +71,31 @@ export const passwordDigestSchema = z
   })
   .strict();
 
+const adminEncryptedSecretSchema = z
+  .object({
+    algorithm: z.literal("aes-256-gcm"),
+    ciphertext: z.string().min(1),
+    iv: z.string().min(1),
+    tag: z.string().min(1),
+  })
+  .strict();
+
+const adminRecoveryCodeDigestSchema = z
+  .object({
+    algorithm: z.literal("sha256"),
+    digest: z.string().min(1),
+    salt: z.string().min(1),
+  })
+  .strict();
+
+const adminTwoFactorSchema = z
+  .object({
+    enabledAt: z.string().datetime(),
+    otpUrl: adminEncryptedSecretSchema,
+    recoveryCodes: z.array(adminRecoveryCodeDigestSchema).max(10),
+  })
+  .strict();
+
 export const installationRecordSchema = z
   .object({
     installedAt: z.string().datetime(),
@@ -80,6 +105,7 @@ export const installationRecordSchema = z
       .object({
         authVersion: z.number().int().positive(),
         password: passwordDigestSchema,
+        twoFactor: adminTwoFactorSchema.nullable().default(null),
         updatedAt: z.string().datetime(),
         username: adminUsernameSchema,
       })
@@ -92,6 +118,7 @@ export const installationRecordSchema = z
 
 export const adminLoginSchema = z
   .object({
+    otpCode: z.string().trim().min(1).max(64).optional(),
     password: z.string().min(1).max(1024),
     username: adminUsernameSchema,
   })
@@ -101,6 +128,21 @@ export const adminAccountUpdateSchema = z
   .object({
     currentPassword: z.string().min(1).max(1024),
     newPassword: adminPasswordSchema.optional(),
+    otpCode: z.string().trim().min(1).max(64).optional(),
     username: adminUsernameSchema,
+  })
+  .strict();
+
+export const adminTwoFactorConfirmSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(1024),
+    otpCode: z.string().trim().regex(/^\d{6}$/, "Enter a 6-digit code."),
+  })
+  .strict();
+
+export const adminTwoFactorDisableSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(1024),
+    otpCode: z.string().trim().min(1).max(64),
   })
   .strict();

@@ -1,6 +1,7 @@
 import { KeyRound, LoaderCircle, Save, ShieldCheck } from "lucide-react";
 
 import type { AdminSecurityViewProps } from "@/presentation/features/admin-security/admin-security.view-model";
+import { AdminTwoFactorView } from "@/presentation/features/admin-security/ui/admin-two-factor.view";
 
 export const AdminSecurityView = (model: AdminSecurityViewProps) => (
   <section>
@@ -31,11 +32,20 @@ export const AdminSecurityView = (model: AdminSecurityViewProps) => (
             <label className="block"><span className="mb-2 block text-xs font-bold">New password <span className="font-normal text-slate-400">(optional)</span></span><input autoComplete="new-password" className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" minLength={12} onChange={model.newPasswordInput} type="password" value={model.newPassword} /></label>
             <label className="block"><span className="mb-2 block text-xs font-bold">Confirm new password</span><input autoComplete="new-password" className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" minLength={12} onChange={model.confirmationInput} type="password" value={model.confirmation} /></label>
           </div>
+          {model.twoFactorEnabled ? (
+            <label className="mt-4 block">
+              <span className="mb-2 block text-xs font-bold">
+                Authenticator or backup code
+              </span>
+              <input autoComplete="one-time-code" className="h-12 w-full rounded-2xl border border-slate-200 px-4 font-mono text-sm uppercase outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" onChange={model.accountOtpCodeInput} required value={model.accountOtpCode} />
+            </label>
+          ) : null}
           {model.error ? <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700" role="alert">{model.error}</p> : null}
           {model.success ? <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700" role="status">{model.success}</p> : null}
           <button className="mt-5 flex h-11 items-center gap-2 rounded-xl bg-[#2f3274] px-4 text-sm font-bold text-white disabled:opacity-60" disabled={model.isSaving} type="submit">{model.isSaving ? <LoaderCircle aria-hidden className="animate-spin" size={16} /> : <Save aria-hidden size={16} />}{model.isSaving ? "Saving…" : "Update credentials"}</button>
         </form>
       )}
     </div>
+    {!model.isLoading ? <AdminTwoFactorView {...model} /> : null}
   </section>
 );

@@ -37,6 +37,7 @@ Set the generated token and deployment-specific production values in `.env`:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
+VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
@@ -75,6 +76,7 @@ Do not expose the container directly to the internet over HTTP.
 
 ```text
 VEDA_MAIL_SETUP_TOKEN=<openssl rand -hex 32>
+VEDA_MAIL_ADMIN_RECOVERY_TOKEN=<a separate openssl rand -hex 32 value>
 VEDA_MAIL_DATA_DIR=/data
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
@@ -87,6 +89,8 @@ VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 8. Deploy and wait until the health check is healthy.
 9. Open `https://webmail.example.com/setup`.
 10. Complete the [first-run wizard](INSTALLATION.md#the-setup-wizard).
+11. Enable administrator 2FA under `/admin` → **Security**, and store its
+    one-time backup codes safely.
 
 Do not expose SMTP, IMAP, Submission, or ManageSieve ports from Veda Mail.
 Those belong to the mail-server deployment, not this webmail container.
@@ -165,6 +169,7 @@ Verify:
 
 - `/setup` is locked after first-run completion.
 - `/admin` rejects member mailbox credentials.
+- Administrator 2FA and one backup code have been tested.
 - `/` accepts only allowed-domain mailbox users.
 - The provider endpoint is HTTPS and on the hostname allowlist.
 - A member can receive, send, archive, and delete.

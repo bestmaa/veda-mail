@@ -14,6 +14,7 @@ provider adapter boundary. Stalwart JMAP is included.
 
 - One-time `/setup` wizard protected by an installation token
 - Separate administrator account and member mailbox authentication
+- Administrator authenticator-app 2FA with one-time backup codes
 - Organization name, product name, logo, colors, and repository link
 - Allowed-domain controls and a protected provider configuration
 - Inbox, reader, search, compose, reply, star, archive, and delete flows
@@ -59,6 +60,7 @@ hostname, and the public Veda Mail URL:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
+VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 ```
@@ -124,6 +126,7 @@ Every deployment requires a setup token and data directory:
 
 ```text
 VEDA_MAIL_SETUP_TOKEN=<at least 24 random characters>
+VEDA_MAIL_ADMIN_RECOVERY_TOKEN=<at least 32 separate random characters>
 VEDA_MAIL_DATA_DIR=/data  # containers; use ./data for local Node.js
 ```
 
@@ -145,15 +148,21 @@ Keep proxy trust disabled unless the deployment meets the requirements in the
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 ```
 
-The setup token is not an administrator password. It is only proof that the
+The setup token is not an administrator password or recovery token. It is only proof that the
 person claiming a fresh installation can read its deployment secrets. Keep it
 secret even after setup; the installation lock remains authoritative.
+
+Keep `VEDA_MAIL_ADMIN_RECOVERY_TOKEN` separate from the setup token and admin
+password. It enables only the interactive container recovery command described
+in the [recovery guide](docs/BACKUP-AND-RECOVERY.md#administrator-recovery);
+it is never accepted by a public HTTP endpoint.
 
 ## Data and sessions
 
 The `/data` volume contains installation state, the scrypt administrator
 password hash, a random session-signing secret, organization branding, and
-provider configuration. It does not contain mailbox messages or member
+provider configuration. Enabled admin authenticator secrets are encrypted and
+backup codes are stored only as salted digests. `/data` does not contain mailbox messages or member
 passwords.
 
 Member provider credentials are process-memory only. A restart signs members

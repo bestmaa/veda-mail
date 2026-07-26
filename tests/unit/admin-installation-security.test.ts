@@ -9,7 +9,11 @@ import {
   verifyAdminCredentials,
   verifyAdminToken,
 } from "@/server/auth/admin-session";
-import { adminUsernameSchema } from "@/server/installation/installation.schema";
+import {
+  adminUsernameSchema,
+  installationRecordSchema,
+  setupInputSchema,
+} from "@/server/installation/installation.schema";
 import { installationStore } from "@/server/installation/installation.store";
 import {
   hashAdminPassword,
@@ -81,12 +85,25 @@ describe("installation security", () => {
 
   it("normalizes usernames and timing-safely checks the setup token", () => {
     expect(adminUsernameSchema.parse("  Main.Admin ")).toBe("main.admin");
+    expect(
+      setupInputSchema.parse({
+        accentColor: "#ff6b57",
+        adminPassword: "correct-password-123",
+        adminUsername: "owner",
+        organizationName: "Example Org",
+        primaryColor: "#27276f",
+        productName: "Example Mail",
+        publicRepositoryUrl: "",
+        setupToken: "one-time-token-1234567890",
+      }).publicRepositoryUrl,
+    ).toBeNull();
     expect(() => assertSetupToken("one-time-token-1234567890")).not.toThrow();
     expect(() => assertSetupToken("wrong-token")).toThrow("incorrect");
   });
 
   it("binds sessions to authVersion and invalidates them on account change", async () => {
     const installation = await install();
+    expect(installation.owner.twoFactor).toBeNull();
     const token = await issueAdminToken(installation);
     await expect(verifyAdminToken(token)).resolves.toBe(true);
     await expect(
@@ -100,9 +117,21 @@ describe("installation security", () => {
     const password = await hashAdminPassword("new-password-123");
     await installationStore.updateOwner(1, {
       password,
+      twoFactor: null,
       username: "new-owner",
     });
     await expect(verifyAdminToken(token)).resolves.toBe(false);
+  });
+
+  it("loads installation records created before administrator 2FA", async () => {
+    const installation = await install();
+    const legacy = structuredClone(installation) as unknown as {
+      owner: { twoFactor?: unknown };
+    };
+    delete legacy.owner.twoFactor;
+    const migrated = installationRecordSchema.parse(legacy);
+
+    expect(migrated.owner.twoFactor).toBeNull();
   });
 
   it("rejects cross-origin mutations", () => {

@@ -21,6 +21,8 @@ export const useAdminLoginModel = (
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [isTwoFactorStep, setIsTwoFactorStep] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,6 +34,15 @@ export const useAdminLoginModel = (
     (event) => setUsername(event.target.value),
     [],
   );
+  const onOtpCodeInput: ChangeEventHandler<HTMLInputElement> = useCallback(
+    (event) => setOtpCode(event.target.value),
+    [],
+  );
+  const onBack = useCallback(() => {
+    setIsTwoFactorStep(false);
+    setOtpCode("");
+    setError(null);
+  }, []);
 
   const onSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     async (event) => {
@@ -40,7 +51,11 @@ export const useAdminLoginModel = (
       setIsSubmitting(true);
       try {
         const response = await fetch("/api/v1/admin/auth", {
-          body: JSON.stringify({ password, username: username.trim() }),
+          body: JSON.stringify({
+            ...(isTwoFactorStep ? { otpCode } : {}),
+            password,
+            username: username.trim(),
+          }),
           headers: { "Content-Type": "application/json" },
           method: "POST",
         });
@@ -51,6 +66,14 @@ export const useAdminLoginModel = (
           throw new Error(
             failure.error?.message ?? "Administrator credentials are invalid.",
           );
+        }
+        const success = (await response.json()) as {
+          readonly data?: { readonly mfaRequired?: boolean };
+        };
+        if (success.data?.mfaRequired) {
+          setIsTwoFactorStep(true);
+          setIsSubmitting(false);
+          return;
         }
         router.replace(successPath);
         router.refresh();
@@ -63,18 +86,26 @@ export const useAdminLoginModel = (
         setIsSubmitting(false);
       }
     },
-    [password, router, successPath, username],
+    [isTwoFactorStep, otpCode, password, router, successPath, username],
   );
 
   return {
     branding: createBrandingViewModel(brandingInput),
     error,
     isSubmitting,
+    isTwoFactorStep,
+    onBack,
+    onOtpCodeInput,
     onPasswordInput,
     onSubmit,
     onUsernameInput,
+    otpCode,
     password,
-    submitLabel: isSubmitting ? "Checking access…" : "Open administration",
+    submitLabel: isSubmitting
+      ? "Checking access…"
+      : isTwoFactorStep
+        ? "Verify and continue"
+        : "Open administration",
     username,
   };
 };

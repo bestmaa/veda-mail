@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import {
   DEFAULT_PUBLIC_REPOSITORY_URL,
   type BrandingSnapshot,
+  type AdminTwoFactor,
   type InstallationRecord,
   type OrganizationBranding,
   type PasswordDigest,
@@ -99,6 +100,7 @@ export const installationStore = {
           owner: {
             authVersion: 1,
             password: draft.owner.password,
+            twoFactor: null,
             updatedAt: now,
             username: draft.owner.username,
           },
@@ -176,7 +178,11 @@ export const installationStore = {
 
   async updateOwner(
     expectedAuthVersion: number,
-    owner: { password: PasswordDigest; username: string },
+    owner: {
+      password: PasswordDigest;
+      twoFactor: AdminTwoFactor | null;
+      username: string;
+    },
   ): Promise<InstallationRecord> {
     return serializeWrite(async () => {
       const current = await readInstallation();
@@ -196,6 +202,7 @@ export const installationStore = {
         owner: {
           authVersion: current.owner.authVersion + 1,
           password: owner.password,
+          twoFactor: owner.twoFactor,
           updatedAt: now,
           username: owner.username,
         },

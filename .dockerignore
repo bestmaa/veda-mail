@@ -13,4 +13,5 @@ compose*.yaml
 README.md
 docs
 tests
-scripts
+scripts/*
+!scripts/admin-recovery.mjs

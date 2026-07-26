@@ -37,13 +37,26 @@ Passwords:
 - Contain at least one letter and one number
 - Are stored only as a scrypt salt and digest
 
-Changing the username or password requires the current password. A successful
+Changing the username or password requires the current password and, when 2FA
+is enabled, a current authenticator or unused backup code. A successful
 change increments the authentication version, invalidates all older
 administrator sessions, and signs the current administrator in with a
 replacement session.
 
-There is no self-service password reset. Protect the credentials and follow
-[backup and recovery](BACKUP-AND-RECOVERY.md).
+### Administrator two-factor authentication
+
+Open **Security** in `/admin` and choose **Set up authenticator**. Scan the QR
+code using Google Authenticator, Microsoft Authenticator, or any standards-based
+TOTP app, then confirm with the current password and displayed 6-digit code.
+
+Veda Mail displays ten one-time backup codes exactly once. Store them outside
+the server in a password manager or protected offline copy. The authenticator
+secret is AES-256-GCM encrypted in `/data`; backup codes are stored only as
+salted digests. Changing the admin password does not disable 2FA.
+
+2FA can be enabled only when the terminal recovery secret is configured. If
+the phone and every backup code are lost, follow
+[administrator recovery](BACKUP-AND-RECOVERY.md#administrator-recovery).
 
 ## Provider and domains
 

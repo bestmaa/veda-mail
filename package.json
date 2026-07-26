@@ -31,6 +31,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "admin:recover": "node scripts/admin-recovery.mjs",
     "setup:token": "node scripts/generate-setup-token.mjs",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
