@@ -76,8 +76,16 @@ describe("Stalwart writer", () => {
   it("updates the submitted email using the submission creation reference", async () => {
     const { client, getCalls } = createClient(false);
     await new StalwartMailWriter(client, reader).sendMessage(input);
+    const created = Object.values(
+      (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
+    )[0];
     const submission = getCalls()[1]?.[1];
 
+    expect(created).toMatchObject({
+      "header:Message-ID:asMessageIds": [
+        expect.stringMatching(/^[0-9a-f-]{36}@example\.com$/),
+      ],
+    });
     expect(submission).toMatchObject({
       onSuccessUpdateEmail: {
         "#submit": {

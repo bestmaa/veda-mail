@@ -6,6 +6,7 @@ import type {
   SendReceipt,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
+import { createMessageId } from "@/infrastructure/providers/message-id";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import {
@@ -90,6 +91,9 @@ export class StalwartMailWriter {
                     email: identity.email,
                     name: identity.name ?? account.name,
                   },
+                ],
+                "header:Message-ID:asMessageIds": [
+                  createMessageId(identity.email),
                 ],
                 keywords: { $draft: true, $seen: true },
                 mailboxIds: { [draftMailboxId]: true },

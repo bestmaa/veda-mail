@@ -17,6 +17,7 @@ import {
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { createMessageId } from "@/infrastructure/providers/message-id";
 import { assertSafeProviderHost } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
 const address = (
@@ -76,6 +77,7 @@ export class ImapMailWriter {
       bcc: input.bcc.map(address),
       cc: input.cc.map(address),
       from: address({ email: this.config.username, name: null }),
+      messageId: `<${createMessageId(this.config.username)}>`,
       subject: input.subject || "(No subject)",
       text: input.body,
       to: input.to.map(address),
