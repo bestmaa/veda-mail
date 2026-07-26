@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { MockProviderModule } from "@/infrastructure/providers/mock/mock-provider.module";
+import { ImapSmtpProviderModule } from "@/infrastructure/providers/imap-smtp/imap-smtp-provider.module";
 import { StalwartProviderModule } from "@/infrastructure/providers/stalwart-jmap/stalwart-provider.module";
 
 describe("member authentication provider contract", () => {
@@ -68,5 +69,35 @@ describe("member authentication provider contract", () => {
         password: "ignored-by-demo",
       }),
     ).toEqual({ username: "member@example.com" });
+  });
+
+  it("keeps generic IMAP/SMTP service settings free of member secrets", () => {
+    const provider = new ImapSmtpProviderModule();
+    const service = provider.parseServiceConfig({
+      imapHost: "imap.example.com",
+      imapPort: "993",
+      imapSecurity: "tls",
+      smtpHost: "smtp.example.com",
+      smtpPort: "587",
+      smtpSecurity: "starttls",
+    });
+    expect(service).not.toHaveProperty("secret");
+    expect(
+      provider.createMemberConfig(service, {
+        email: "member@example.com",
+        password: "app-password",
+      }),
+    ).toMatchObject({
+      imapHost: "imap.example.com",
+      secret: "app-password",
+      smtpHost: "smtp.example.com",
+      username: "member@example.com",
+    });
+    expect(
+      provider.manifest.fields.filter((field) => field.scope === "member"),
+    ).toMatchObject([
+      { name: "email", secret: false },
+      { name: "password", secret: true },
+    ]);
   });
 });

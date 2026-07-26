@@ -38,7 +38,7 @@ export const useMemberLoginModel = (
     [],
   );
   const onOtpCodeInput: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6)),
+    (event) => setOtpCode(event.target.value.toUpperCase().slice(0, 64)),
     [],
   );
 

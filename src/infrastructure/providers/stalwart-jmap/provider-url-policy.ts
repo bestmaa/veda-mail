@@ -169,6 +169,37 @@ const configuredHosts = (): ReadonlySet<string> =>
       .filter(Boolean),
   );
 
+export const assertSafeProviderHost = async (
+  value: string,
+): Promise<string> => {
+  const hostname = value.trim().replace(/^\[|\]$/g, "").toLowerCase();
+  const isLocal =
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1";
+  const allowlist = configuredHosts();
+  if (process.env.NODE_ENV === "production" && allowlist.size === 0) {
+    throw new Error(
+      "Configure VEDA_MAIL_ALLOWED_PROVIDER_HOSTS before connecting a provider.",
+    );
+  }
+  if (allowlist.size > 0 && !allowlist.has(hostname)) {
+    throw new Error("This mail provider host is not allowed by the server.");
+  }
+  if (isLocal && process.env.NODE_ENV !== "production") return hostname;
+  if (isIP(hostname) !== 0 && isBlockedProviderAddress(hostname)) {
+    throw new Error("Mail provider endpoints cannot use private network addresses.");
+  }
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
+  if (
+    addresses.length === 0 ||
+    addresses.some(({ address }) => isBlockedProviderAddress(address))
+  ) {
+    throw new Error("Mail provider endpoints cannot use private network addresses.");
+  }
+  return hostname;
+};
+
 export const assertSafeProviderOrigin = async (value: string): Promise<URL> => {
   const url = new URL(value);
   const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
@@ -183,28 +214,6 @@ export const assertSafeProviderOrigin = async (value: string): Promise<URL> => {
     throw new Error("Provider credentials must not be included in the URL.");
   }
 
-  const allowlist = configuredHosts();
-  if (process.env.NODE_ENV === "production" && allowlist.size === 0) {
-    throw new Error(
-      "Configure VEDA_MAIL_ALLOWED_PROVIDER_HOSTS before connecting a provider.",
-    );
-  }
-  if (allowlist.size > 0 && !allowlist.has(hostname)) {
-    throw new Error("This mail provider host is not allowed by the server.");
-  }
-  if (isLocal && process.env.NODE_ENV !== "production") {
-    return url;
-  }
-  if (isIP(hostname) !== 0 && isBlockedProviderAddress(hostname)) {
-    throw new Error("Mail provider endpoints cannot use private network addresses.");
-  }
-
-  const addresses = await lookup(hostname, { all: true, verbatim: true });
-  if (
-    addresses.length === 0 ||
-    addresses.some(({ address }) => isBlockedProviderAddress(address))
-  ) {
-    throw new Error("Mail provider endpoints cannot use private network addresses.");
-  }
+  await assertSafeProviderHost(hostname);
   return url;
 };

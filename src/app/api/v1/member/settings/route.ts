@@ -5,6 +5,7 @@ import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import { assertSessionRateLimit } from "@/server/security/rate-limit";
+import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import {
@@ -30,8 +31,7 @@ const context = async () => {
     capabilities: {
       passwordChange: provider.manifest.capabilities.supportsPasswordChange,
       profileSettings: provider.manifest.capabilities.supportsProfileSettings,
-      twoFactorAuthentication:
-        provider.manifest.capabilities.supportsTwoFactorAuthentication,
+      twoFactorAuthentication: true,
     },
     connection,
     gateway,
@@ -47,9 +47,9 @@ export const GET = async () => {
       capabilities,
       profile: await gateway.getMemberProfile(),
       security: {
-        twoFactorEnabled: capabilities.twoFactorAuthentication
-          ? await gateway.getTwoFactorEnabled()
-          : false,
+        twoFactorEnabled: await memberTwoFactorSecurity.isEnabled(
+          (await gateway.getAccount()).email,
+        ),
       },
     });
   } catch (error) {

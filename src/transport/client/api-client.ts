@@ -182,6 +182,7 @@ export const memberTwoFactorApi = {
   confirm(currentPassword: string, otpCode: string) {
     return fetchData<{
       readonly enabled: true;
+      readonly recoveryCodes: readonly string[];
       readonly sessionActive: boolean;
     }>(
       "/api/v1/member/two-factor",

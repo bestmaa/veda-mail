@@ -57,7 +57,7 @@ export const memberCredentialsSchema = z
       const domain = normalizeDomain(value.slice(separator + 1));
       return `${localPart}@${domain}`;
     }),
-    otpCode: z.string().trim().regex(/^\d{6}$/).optional(),
+    otpCode: z.string().trim().min(1).max(64).optional(),
     password: z.string().min(1).max(1024),
   })
   .strict();

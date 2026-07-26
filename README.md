@@ -5,7 +5,7 @@ instance, complete a protected first-run wizard, connect the organization's
 mail server, and let members sign in with their existing mailbox credentials.
 
 Veda Mail is built with Next.js, React, strict TypeScript, and a server-side
-provider adapter boundary. Stalwart JMAP is included.
+provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 
 > Veda Mail is a webmail client, not an SMTP/IMAP server. Create domains and
 > mailboxes in Stalwart (or another supported provider) before users sign in.
@@ -15,6 +15,7 @@ provider adapter boundary. Stalwart JMAP is included.
 - One-time `/setup` wizard protected by an installation token
 - Separate administrator account and member mailbox authentication
 - Administrator authenticator-app 2FA with one-time backup codes
+- Provider-independent member authenticator 2FA with backup codes
 - Organization name, product name, logo, colors, and repository link
 - Allowed-domain controls and a protected provider configuration
 - Inbox, reader, search, compose, reply, star, archive, and delete flows
@@ -38,8 +39,8 @@ docker pull ghcr.io/bestmaa/veda-mail:latest
 
 ## Quick start with Docker Compose
 
-Requirements: Docker Engine with Compose v2 and an HTTPS-accessible Stalwart
-JMAP server.
+Requirements: Docker Engine with Compose v2 and a supported JMAP or secure
+IMAP/SMTP mail server.
 
 ```bash
 git clone https://github.com/bestmaa/veda-mail.git
@@ -55,8 +56,8 @@ docker run --rm node:24-alpine node -e \
   "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-In `.env`, set the generated `VEDA_MAIL_SETUP_TOKEN`, the exact Stalwart/JMAP
-hostname, and the public Veda Mail URL:
+In `.env`, set the generated `VEDA_MAIL_SETUP_TOKEN`, every provider hostname,
+and the public Veda Mail URL:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
@@ -88,7 +89,7 @@ Enter:
 3. Organization and product names.
 4. Primary/accent colors and, optionally, a logo.
 5. Optionally, the public repository URL shown in the branded UI.
-6. The mail provider and its public HTTPS endpoint.
+6. Stalwart JMAP or Standard IMAP + SMTP and its public endpoints.
 7. Every email domain whose members may sign in.
 
 After completion, `/setup` is permanently locked for that data volume. Open
@@ -161,9 +162,9 @@ it is never accepted by a public HTTP endpoint.
 
 The `/data` volume contains installation state, the scrypt administrator
 password hash, a random session-signing secret, organization branding, and
-provider configuration. Enabled admin authenticator secrets are encrypted and
-backup codes are stored only as salted digests. `/data` does not contain mailbox messages or member
-passwords.
+provider configuration. Enabled administrator and member authenticator secrets
+are encrypted and backup codes are stored only as salted digests. `/data` does
+not contain mailbox messages or member passwords.
 
 Member provider credentials are process-memory only. A restart signs members
 out. Run one replica unless you add a shared encrypted session repository and
@@ -178,6 +179,8 @@ Back up `/data` before every upgrade. See the
 - [Organization administration](docs/ADMINISTRATION.md)
 - [Docker, Dockploy, and reverse proxies](docs/DEPLOYMENT.md)
 - [Mail server and DNS prerequisites](docs/MAIL-SERVER-SETUP.md)
+- [Mail providers and compatibility](docs/PROVIDERS.md)
+- [Member authenticator 2FA](docs/MEMBER-2FA.md)
 - [Backup, restore, and recovery](docs/BACKUP-AND-RECOVERY.md)
 - [Upgrading](docs/UPGRADING.md)
 - [Architecture](docs/ARCHITECTURE.md)

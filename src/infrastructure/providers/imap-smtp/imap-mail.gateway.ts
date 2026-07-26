@@ -1,0 +1,85 @@
+import "server-only";
+
+import type { MailGateway } from "@/application/ports/mail-provider.port";
+import type {
+  ComposeInput,
+  MessageListQuery,
+  MessageMutation,
+} from "@/domain/mail/mail";
+import type {
+  MemberPasswordChange,
+  MemberProfileUpdate,
+  MemberTwoFactorUpdate,
+} from "@/domain/member/member-settings";
+import type { MessageId } from "@/domain/shared/brand";
+import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
+import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
+import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+
+const unsupported = (feature: string): never => {
+  throw new Error(`${feature} is not available through standard IMAP/SMTP.`);
+};
+
+export class ImapSmtpMailGateway implements MailGateway {
+  private readonly reader: ImapMailReader;
+  private readonly writer: ImapMailWriter;
+
+  public constructor(config: ImapSmtpMemberConfig) {
+    this.reader = new ImapMailReader(config);
+    this.writer = new ImapMailWriter(config);
+  }
+
+  public async changePassword(_input: MemberPasswordChange): Promise<void> {
+    void _input;
+    unsupported("Password changes");
+  }
+
+  public getAccount() {
+    return this.reader.getAccount();
+  }
+
+  public async getMemberProfile() {
+    const account = await this.reader.getAccount();
+    return { displayName: account.name, email: account.email };
+  }
+
+  public async getTwoFactorEnabled() {
+    return false;
+  }
+
+  public getMessage(messageId: MessageId) {
+    return this.reader.getMessage(messageId);
+  }
+
+  public listMailboxes() {
+    return this.reader.listMailboxes();
+  }
+
+  public listMessages(query: MessageListQuery) {
+    return this.reader.listMessages(query);
+  }
+
+  public mutateMessage(mutation: MessageMutation) {
+    return this.writer.mutateMessage(mutation);
+  }
+
+  public sendMessage(input: ComposeInput) {
+    return this.writer.sendMessage(input);
+  }
+
+  public async testConnection(): Promise<void> {
+    await this.reader.listMailboxes();
+  }
+
+  public async updateMemberProfile(
+    _input: MemberProfileUpdate,
+  ): Promise<never> {
+    void _input;
+    return unsupported("Profile changes");
+  }
+
+  public async updateTwoFactor(_input: MemberTwoFactorUpdate): Promise<void> {
+    void _input;
+    unsupported("Provider-managed two-factor authentication");
+  }
+}

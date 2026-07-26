@@ -38,15 +38,17 @@ const ProofFields = ({ settings }: { settings: TwoFactorViewModel }) => (
       />
     </label>
     <label className="block text-xs font-bold text-slate-600">
-      Current 6-digit code
+      {settings.enrollment
+        ? "Current 6-digit code"
+        : "Authenticator or backup code"}
       <input
         autoComplete="one-time-code"
         className={`${inputClass} text-center font-mono text-lg font-bold tracking-[0.25em]`}
-        inputMode="numeric"
-        maxLength={6}
+        inputMode={settings.enrollment ? "numeric" : "text"}
+        maxLength={settings.enrollment ? 6 : 64}
         onChange={settings.otpCodeInput}
-        pattern="[0-9]{6}"
-        placeholder="000000"
+        pattern={settings.enrollment ? "[0-9]{6}" : undefined}
+        placeholder={settings.enrollment ? "000000" : "Code or backup code"}
         required
         value={settings.otpCode}
       />
@@ -115,6 +117,34 @@ const EnrollmentView = ({ settings }: { settings: TwoFactorViewModel }) => {
 
 const EnabledView = ({ settings }: { settings: TwoFactorViewModel }) => (
   <form className="space-y-4" onSubmit={settings.onDisable}>
+    {settings.recoveryCodes.length > 0 ? (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-bold text-amber-900">
+          Save these one-time backup codes now
+        </p>
+        <p className="mt-1 text-xs leading-5 text-amber-800">
+          They will not be shown again. Each code works once if your phone is
+          unavailable.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {settings.recoveryCodes.map((code) => (
+            <code
+              className="rounded-lg bg-white px-3 py-2 text-center text-xs font-bold"
+              key={code}
+            >
+              {code}
+            </code>
+          ))}
+        </div>
+        <button
+          className="mt-3 h-9 rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-amber-900"
+          onClick={settings.copyRecoveryCodes}
+          type="button"
+        >
+          Copy backup codes
+        </button>
+      </div>
+    ) : null}
     <div className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
       <ShieldCheck
         aria-hidden

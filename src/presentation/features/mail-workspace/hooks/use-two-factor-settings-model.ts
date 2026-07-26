@@ -12,6 +12,7 @@ export const useTwoFactorSettingsModel = () => {
     useState<MemberTwoFactorEnrollment | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -21,6 +22,7 @@ export const useTwoFactorSettingsModel = () => {
     setEnrollment(null);
     setCurrentPassword("");
     setOtpCode("");
+    setRecoveryCodes([]);
     setError(null);
     setSuccess(null);
   }, []);
@@ -54,7 +56,7 @@ export const useTwoFactorSettingsModel = () => {
       setSuccess(null);
       void memberTwoFactorApi
         .confirm(currentPassword, otpCode)
-        .then(({ sessionActive }) => {
+        .then(({ recoveryCodes: nextCodes, sessionActive }) => {
           if (!sessionActive) {
             window.location.assign("/");
             return;
@@ -63,6 +65,7 @@ export const useTwoFactorSettingsModel = () => {
           setEnrollment(null);
           setCurrentPassword("");
           setOtpCode("");
+          setRecoveryCodes(nextCodes);
           setSuccess(
             "Authenticator verification is now enabled for your account.",
           );
@@ -93,6 +96,7 @@ export const useTwoFactorSettingsModel = () => {
             return;
           }
           setEnabled(false);
+          setRecoveryCodes([]);
           setCurrentPassword("");
           setOtpCode("");
           setSuccess("Authenticator verification has been disabled.");
@@ -119,6 +123,8 @@ export const useTwoFactorSettingsModel = () => {
     canManage: false,
     currentPassword,
     currentPasswordInput: (event) => setCurrentPassword(event.target.value),
+    copyRecoveryCodes: () =>
+      void navigator.clipboard.writeText(recoveryCodes.join("\n")),
     enabled,
     enrollment,
     error,
@@ -127,7 +133,12 @@ export const useTwoFactorSettingsModel = () => {
     onEnable,
     otpCode,
     otpCodeInput: (event) =>
-      setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6)),
+      setOtpCode(
+        enrollment
+          ? event.target.value.replace(/\D/g, "").slice(0, 6)
+          : event.target.value.toUpperCase().slice(0, 64),
+      ),
+    recoveryCodes,
     startEnrollment,
     success,
   } satisfies AccountSettingsViewModel["twoFactor"];

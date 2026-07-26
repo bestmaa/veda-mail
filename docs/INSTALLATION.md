@@ -13,6 +13,7 @@ You need:
 - A public HTTPS hostname for production, such as `webmail.example.com`
 - A supported mail server with existing users
 - For Stalwart, a public JMAP HTTPS URL such as `mail.example.com`
+- For standard hosting, public secure IMAP and SMTP hostnames
 - A durable directory or Docker volume for `/data`
 
 Review [mail-server prerequisites](MAIL-SERVER-SETUP.md) before inviting users.
@@ -133,6 +134,8 @@ trademarks.
 
 ### Step 4: connect the mail service
 
+Choose either **Stalwart JMAP** or **Standard IMAP + SMTP**.
+
 For Stalwart JMAP, enter:
 
 - A recognizable connection name
@@ -151,6 +154,12 @@ The server hostname must be included in
 `VEDA_MAIL_ALLOWED_PROVIDER_HOSTS`. This allowlist is required in production;
 private, loopback, and insecure provider URLs are rejected.
 
+For Standard IMAP + SMTP, enter the secure incoming and outgoing host, port,
+and TLS mode published by the provider. Add both hostnames to
+`VEDA_MAIL_ALLOWED_PROVIDER_HOSTS`. See the
+[provider compatibility guide](PROVIDERS.md) for Hostinger, cPanel, Zoho,
+Google, and Microsoft guidance.
+
 ### Step 5: finish and verify
 
 Review the summary and finish setup. The application writes installation,
@@ -165,6 +174,8 @@ Then:
 4. Open `/`.
 5. Sign in with an existing mailbox's full email address and password.
 6. Send a message to an external address and reply to it.
+7. Open account settings, enroll member authenticator 2FA, save all backup
+   codes, sign out, and verify the two-step login.
 
 ## What setup does not do
 
