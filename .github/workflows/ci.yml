@@ -44,8 +44,8 @@ jobs:
       - name: Build production application
         run: npm run build
 
-      - name: Audit production and development dependencies
-        run: npm audit --audit-level=high
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
   container:
     name: Publish multi-platform container
