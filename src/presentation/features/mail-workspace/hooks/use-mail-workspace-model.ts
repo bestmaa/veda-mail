@@ -7,6 +7,7 @@ import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/u
 import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/use-mail-data-model";
 import { useMemberSessionModel } from "@/presentation/features/mail-workspace/hooks/use-member-session-model";
 import { useMobileNavigationModel } from "@/presentation/features/mail-workspace/hooks/use-mobile-navigation-model";
+import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
 import {
   formatFileSize,
   formatFullDate,
@@ -36,6 +37,14 @@ export const useMailWorkspaceModel = ({
   const composer = useComposerModel(mail.refresh);
   const navigation = useMobileNavigationModel();
   const session = useMemberSessionModel(canSignOut, signOutPath);
+  const brandingView = createBrandingViewModel(branding);
+  const workspaceAccountName =
+    mail.workspace?.account.name ?? brandingView.productName;
+  const accountEmail = mail.workspace?.account.email ?? "";
+  const settings = useAccountSettingsModel(
+    accountEmail,
+    workspaceAccountName,
+  );
 
   const folders = useMemo(
     () =>
@@ -131,10 +140,8 @@ export const useMailWorkspaceModel = ({
     mail.workspace?.mailboxes.find(
       (mailbox) => mailbox.id === mail.activeMailboxId,
     )?.name ?? "Inbox";
-  const brandingView = createBrandingViewModel(branding);
   const accountName =
-    mail.workspace?.account.name ?? brandingView.productName;
-  const accountEmail = mail.workspace?.account.email ?? "";
+    settings.profileName ?? workspaceAccountName;
   const onReply = useCallback(
     () => composer.openReply(mail.selectedMessage),
     [composer, mail.selectedMessage],
@@ -189,6 +196,7 @@ export const useMailWorkspaceModel = ({
       isSigningOut: session.isSigningOut,
       onSignOut: session.onSignOut,
     },
+    settings,
     total: mail.workspace?.messages.total ?? 0,
   };
 };

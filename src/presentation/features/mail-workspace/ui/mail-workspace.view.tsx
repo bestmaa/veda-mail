@@ -1,6 +1,7 @@
 import { PenLine } from "lucide-react";
 
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import { AccountSettingsView } from "@/presentation/features/mail-workspace/ui/account-settings.view";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
 import { EmptyReaderView } from "@/presentation/features/mail-workspace/ui/empty-reader.view";
 import { MailHeaderView } from "@/presentation/features/mail-workspace/ui/mail-header.view";
@@ -19,6 +20,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
       onSearchSubmit={props.onSearchSubmit}
       searchInput={props.searchInput}
       searchValue={props.searchValue}
+      settings={props.settings}
     />
     {props.navigation.isOpen ? (
       <button
@@ -37,6 +39,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
         onCloseNavigation={props.navigation.onClose}
         onCompose={props.onCompose}
         session={props.session}
+        settings={props.settings}
       />
       <div
         className={`min-h-0 ${props.reader ? "hidden lg:block" : "block"}`}
@@ -77,5 +80,6 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
       <PenLine aria-hidden size={21} />
     </button>
     <ComposerView composer={props.composer} />
+    <AccountSettingsView settings={props.settings} />
   </main>
 );

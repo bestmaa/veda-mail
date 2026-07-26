@@ -10,6 +10,8 @@ export class MockProviderModule implements ProviderModule {
     capabilities: {
       maxAttachmentBytes: 25_000_000,
       supportsDrafts: true,
+      supportsPasswordChange: true,
+      supportsProfileSettings: true,
       supportsPush: false,
       supportsServerSearch: true,
       supportsThreads: true,
@@ -40,5 +42,13 @@ export class MockProviderModule implements ProviderModule {
 
   public async createGateway() {
     return new MockMailGateway();
+  }
+
+  public rotateMemberSecret(
+    config: Readonly<Record<string, string>>,
+    newPassword: string,
+  ) {
+    void newPassword;
+    return config;
   }
 }

@@ -1,4 +1,4 @@
-import { Menu, RefreshCw, Search, X } from "lucide-react";
+import { Menu, RefreshCw, Search, Settings, X } from "lucide-react";
 
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { BrandMarkView } from "@/presentation/shared/branding/ui/brand-mark.view";
@@ -13,6 +13,7 @@ type MailHeaderViewProps = Pick<
   | "onSearchSubmit"
   | "searchInput"
   | "searchValue"
+  | "settings"
 >;
 
 export const MailHeaderView = ({
@@ -24,6 +25,7 @@ export const MailHeaderView = ({
   onSearchSubmit,
   searchInput,
   searchValue,
+  settings,
 }: MailHeaderViewProps) => (
   <header className="flex h-[72px] items-center gap-4 border-b border-slate-200/80 bg-white px-4 md:px-5">
     <div className="flex w-auto items-center gap-3 md:w-[216px]">
@@ -80,14 +82,16 @@ export const MailHeaderView = ({
       >
         <RefreshCw aria-hidden size={18} />
       </button>
-      <span
-        aria-label={`Account: ${account.email}`}
-        className="ml-1 grid size-9 place-items-center rounded-xl bg-[#e8e8ff] text-xs font-extrabold text-[#4f46a5]"
-        role="img"
+      <button
+        aria-label={`Open profile settings for ${account.email}`}
+        className="group ml-1 grid size-10 place-items-center rounded-xl bg-[#e8e8ff] text-xs font-extrabold text-[#4f46a5] transition hover:bg-indigo-200"
+        onClick={settings.open}
+        type="button"
         title={`${account.name} · ${account.provider}`}
       >
-        {account.avatar}
-      </span>
+        <span className="group-hover:hidden">{account.avatar}</span>
+        <Settings aria-hidden className="hidden group-hover:block" size={17} />
+      </button>
     </div>
   </header>
 );

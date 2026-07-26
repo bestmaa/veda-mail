@@ -10,6 +10,10 @@ import type {
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
+import type {
+  MemberPasswordChange,
+  MemberProfileUpdate,
+} from "@/domain/member/member-settings";
 import {
   createMockMessages,
   mockMailboxIds,
@@ -26,6 +30,14 @@ const mailboxDefinitions = [
 
 export class MockMailGateway implements MailGateway {
   private messages = createMockMessages();
+  private profile = {
+    displayName: "Sample Member",
+    email: "member@example.com",
+  };
+
+  public async changePassword(input: MemberPasswordChange): Promise<void> {
+    void input;
+  }
 
   public async getAccount() {
     return {
@@ -34,6 +46,10 @@ export class MockMailGateway implements MailGateway {
       name: "Sample Member",
       providerId: id.provider("mock"),
     };
+  }
+
+  public async getMemberProfile() {
+    return this.profile;
   }
 
   public async getMessage(messageId: MessageId): Promise<MessageDetail> {
@@ -136,4 +152,9 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async testConnection(): Promise<void> {}
+
+  public async updateMemberProfile(input: MemberProfileUpdate) {
+    this.profile = { ...this.profile, displayName: input.displayName };
+    return this.profile;
+  }
 }

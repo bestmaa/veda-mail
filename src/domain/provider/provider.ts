@@ -6,6 +6,8 @@ import type {
 export interface ProviderCapabilities {
   readonly maxAttachmentBytes: number;
   readonly supportsDrafts: boolean;
+  readonly supportsPasswordChange: boolean;
+  readonly supportsProfileSettings: boolean;
   readonly supportsPush: boolean;
   readonly supportsServerSearch: boolean;
   readonly supportsThreads: boolean;

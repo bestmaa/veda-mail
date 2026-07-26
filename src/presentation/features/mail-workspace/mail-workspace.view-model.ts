@@ -4,6 +4,7 @@ import type {
   MouseEventHandler,
 } from "react";
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
+import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 
 export type MailboxIconName =
   | "archive"
@@ -114,5 +115,6 @@ export interface MailWorkspaceViewProps {
   readonly searchInput: ChangeEventHandler<HTMLInputElement>;
   readonly searchValue: string;
   readonly session: MemberSessionViewModel;
+  readonly settings: AccountSettingsViewModel;
   readonly total: number;
 }

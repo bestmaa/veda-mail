@@ -1,6 +1,7 @@
 export const JMAP_CORE = "urn:ietf:params:jmap:core";
 export const JMAP_MAIL = "urn:ietf:params:jmap:mail";
 export const JMAP_SUBMISSION = "urn:ietf:params:jmap:submission";
+export const STALWART_JMAP = "urn:stalwart:jmap";
 
 export interface StalwartConfig {
   readonly authType: "basic" | "bearer";

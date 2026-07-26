@@ -6,6 +6,7 @@ import type {
   SendReceipt,
 } from "@/domain/mail/mail";
 import type { ProviderManifest } from "@/domain/provider/provider";
+import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 
 interface ApiEnvelope<TData> {
@@ -19,6 +20,21 @@ interface ApiErrorEnvelope {
 export interface MemberSignInInput {
   readonly email: string;
   readonly password: string;
+}
+
+export interface MemberSettingsSnapshot {
+  readonly capabilities: {
+    readonly passwordChange: boolean;
+    readonly profileSettings: boolean;
+  };
+  readonly profile: MemberProfile;
+}
+
+export interface MemberPasswordInput {
+  readonly confirmPassword: string;
+  readonly currentPassword: string;
+  readonly newPassword: string;
+  readonly otpCode?: string;
 }
 
 export interface SessionResult {
@@ -125,6 +141,29 @@ export const memberSessionApi = {
     return deleteResource(
       "/api/v1/member/session",
       "Unable to sign out of this mailbox.",
+    );
+  },
+};
+
+export const memberSettingsApi = {
+  changePassword(input: MemberPasswordInput) {
+    return fetchData<{ readonly changed: boolean }>("/api/v1/member/settings", {
+      body: JSON.stringify(input),
+      method: "PUT",
+    });
+  },
+
+  get() {
+    return fetchData<MemberSettingsSnapshot>("/api/v1/member/settings");
+  },
+
+  updateProfile(displayName: string) {
+    return fetchData<{ readonly profile: MemberProfile }>(
+      "/api/v1/member/settings",
+      {
+        body: JSON.stringify({ displayName }),
+        method: "PATCH",
+      },
     );
   },
 };

@@ -64,6 +64,20 @@ export const connectionStore = {
     clearGateway(connectionId);
   },
 
+  updateConfig(
+    connectionId: ConnectionId,
+    config: Readonly<Record<string, string>>,
+  ): ProviderConnection {
+    const stored = state.connections.get(connectionId);
+    if (!stored) {
+      throw new Error("Mail connection was not found.");
+    }
+    const connection = { ...stored.connection, config };
+    state.connections.set(connectionId, { ...stored, connection });
+    clearGateway(connectionId);
+    return connection;
+  },
+
   clearAll(): void {
     for (const connectionId of state.connections.keys()) {
       clearGateway(connectionId);

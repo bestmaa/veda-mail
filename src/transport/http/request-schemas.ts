@@ -37,3 +37,27 @@ export const messageMutationSchema = z.discriminatedUnion("type", [
     type: z.literal("move"),
   }),
 ]);
+
+export const memberProfileUpdateSchema = z
+  .object({
+    displayName: z.string().trim().min(2).max(80),
+  })
+  .strict();
+
+export const memberPasswordChangeSchema = z
+  .object({
+    confirmPassword: z.string(),
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8).max(128),
+    otpCode: z.string().trim().regex(/^\d{6,8}$/).optional(),
+  })
+  .strict()
+  .refine((input) => input.newPassword === input.confirmPassword, {
+    message: "New passwords do not match.",
+    path: ["confirmPassword"],
+  })
+  .transform(({ currentPassword, newPassword, otpCode }) => ({
+    currentPassword,
+    newPassword,
+    ...(otpCode ? { otpCode } : {}),
+  }));

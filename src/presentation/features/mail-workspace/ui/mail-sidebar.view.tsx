@@ -1,4 +1,4 @@
-import { LogOut, PenLine, X } from "lucide-react";
+import { LogOut, PenLine, Settings, X } from "lucide-react";
 
 import type {
   FolderViewModel,
@@ -14,6 +14,7 @@ interface MailSidebarViewProps {
   readonly onCloseNavigation: () => void;
   readonly onCompose: () => void;
   readonly session: MailWorkspaceViewProps["session"];
+  readonly settings: MailWorkspaceViewProps["settings"];
 }
 
 export const MailSidebarView = ({
@@ -24,6 +25,7 @@ export const MailSidebarView = ({
   onCloseNavigation,
   onCompose,
   session,
+  settings,
 }: MailSidebarViewProps) => (
   <aside
     className={`mail-sidebar fixed inset-y-0 left-0 z-50 flex w-[252px] min-h-0 flex-col border-r border-white/8 transition-transform duration-200 md:static md:z-auto md:w-auto md:translate-x-0 ${
@@ -98,6 +100,14 @@ export const MailSidebarView = ({
     </nav>
 
     <div className="m-4">
+      <button
+        className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/65 transition hover:bg-white/7 hover:text-white"
+        onClick={settings.open}
+        type="button"
+      >
+        <Settings aria-hidden size={18} />
+        Profile &amp; security
+      </button>
       {session.canSignOut ? (
         <button
           aria-busy={session.isSigningOut}

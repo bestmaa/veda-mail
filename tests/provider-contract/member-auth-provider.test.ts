@@ -46,6 +46,17 @@ describe("member authentication provider contract", () => {
         secret: "must-not-live-in-the-service-profile",
       }),
     ).toThrow();
+    expect(
+      provider.rotateMemberSecret(
+        {
+          authType: "basic",
+          baseUrl: "https://mail.example.com",
+          secret: "old-password",
+          username: "member@example.com",
+        },
+        "new-password",
+      ),
+    ).toMatchObject({ secret: "new-password" });
   });
 
   it("lets alternate providers translate the same member credentials", () => {

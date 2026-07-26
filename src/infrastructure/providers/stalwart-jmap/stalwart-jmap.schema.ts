@@ -119,16 +119,16 @@ export const jmapSetResultSchema = z
   })
   .passthrough();
 
+export const jmapIdentitySchema = z
+  .object({
+    email: z.string().min(1),
+    id: z.string().min(1),
+    name: z.string().optional(),
+  })
+  .passthrough();
+
 export const jmapIdentityResultSchema = z
   .object({
-    list: z.array(
-      z
-        .object({
-          email: z.string().min(1),
-          id: z.string().min(1),
-          name: z.string().optional(),
-        })
-        .passthrough(),
-    ),
+    list: z.array(jmapIdentitySchema),
   })
   .passthrough();

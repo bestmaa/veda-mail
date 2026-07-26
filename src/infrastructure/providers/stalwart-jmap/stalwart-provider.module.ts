@@ -43,6 +43,8 @@ export class StalwartProviderModule implements ProviderModule {
     capabilities: {
       maxAttachmentBytes: 50_000_000,
       supportsDrafts: true,
+      supportsPasswordChange: true,
+      supportsProfileSettings: true,
       supportsPush: true,
       supportsServerSearch: true,
       supportsThreads: true,
@@ -107,6 +109,13 @@ export class StalwartProviderModule implements ProviderModule {
       secret: credentials.password,
       username: credentials.email,
     }) satisfies StalwartConfig;
+  }
+
+  public rotateMemberSecret(
+    config: Readonly<Record<string, string>>,
+    newPassword: string,
+  ) {
+    return memberConfigSchema.parse({ ...config, secret: newPassword });
   }
 
   public async createGateway(connection: ProviderConnection) {

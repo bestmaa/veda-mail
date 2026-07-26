@@ -7,12 +7,18 @@ import type {
   MessageMutation,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
+import type {
+  MemberPasswordChange,
+  MemberProfileUpdate,
+} from "@/domain/member/member-settings";
+import { StalwartAccountManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-account-manager";
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { StalwartMailWriter } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.writer";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export class StalwartMailGateway implements MailGateway {
+  private readonly accountManager: StalwartAccountManager;
   private readonly reader: StalwartMailReader;
   private readonly writer: StalwartMailWriter;
 
@@ -20,10 +26,19 @@ export class StalwartMailGateway implements MailGateway {
     const client = new StalwartJmapClient(config);
     this.reader = new StalwartMailReader(client, config);
     this.writer = new StalwartMailWriter(client, this.reader);
+    this.accountManager = new StalwartAccountManager(client, this.reader);
+  }
+
+  public changePassword(input: MemberPasswordChange) {
+    return this.accountManager.changePassword(input);
   }
 
   public getAccount() {
     return this.reader.getAccount();
+  }
+
+  public getMemberProfile() {
+    return this.accountManager.getProfile();
   }
 
   public getMessage(messageId: MessageId) {
@@ -48,5 +63,9 @@ export class StalwartMailGateway implements MailGateway {
 
   public async testConnection(): Promise<void> {
     await this.reader.listMailboxes();
+  }
+
+  public updateMemberProfile(input: MemberProfileUpdate) {
+    return this.accountManager.updateProfile(input);
   }
 }
