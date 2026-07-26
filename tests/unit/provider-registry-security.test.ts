@@ -9,6 +9,7 @@ describe("provider registry security", () => {
       .map((provider) => provider.id);
 
     expect(providerIds).toContain("stalwart-jmap");
+    expect(providerIds).toContain("imap-smtp");
     expect(providerIds).not.toContain("mock");
   });
 

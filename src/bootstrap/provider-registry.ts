@@ -1,6 +1,7 @@
 import "server-only";
 
 import { MockProviderModule } from "@/infrastructure/providers/mock/mock-provider.module";
+import { ImapSmtpProviderModule } from "@/infrastructure/providers/imap-smtp/imap-smtp-provider.module";
 import { ProviderRegistry } from "@/infrastructure/providers/provider-registry";
 import { StalwartProviderModule } from "@/infrastructure/providers/stalwart-jmap/stalwart-provider.module";
 
@@ -11,6 +12,7 @@ export const createProviderRegistry = (
 ): ProviderRegistry => {
   const nextRegistry = new ProviderRegistry();
   nextRegistry.register(new StalwartProviderModule());
+  nextRegistry.register(new ImapSmtpProviderModule());
   if (environment !== "production") {
     nextRegistry.register(new MockProviderModule());
   }

@@ -9,6 +9,8 @@ the supplied Compose deployment.
 - Administrator username and scrypt password hash
 - Random 48-byte administrator session-signing secret and auth version
 - Encrypted administrator TOTP secret and salted backup-code digests, if enabled
+- Encrypted member TOTP secrets and salted backup-code digests in
+  `member-security.json`, if members enabled Veda 2FA
 - Organization and product branding
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
@@ -17,6 +19,10 @@ the supplied Compose deployment.
 It does not contain mailbox messages or durable copies of member passwords.
 Messages remain on the configured mail server. Active member sessions are
 process-memory only and disappear on restart.
+
+Always back up the entire volume as one unit. `installation.json` contains the
+key material required to decrypt `member-security.json`; mismatched copies can
+make member TOTP records unrecoverable.
 
 ## Compose volume backup
 

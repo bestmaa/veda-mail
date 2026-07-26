@@ -70,4 +70,9 @@ const memberTwoFactorProofSchema = z
   .strict();
 
 export const memberTwoFactorConfirmSchema = memberTwoFactorProofSchema;
-export const memberTwoFactorDisableSchema = memberTwoFactorProofSchema;
+export const memberTwoFactorDisableSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(1024),
+    otpCode: z.string().trim().min(1).max(64),
+  })
+  .strict();

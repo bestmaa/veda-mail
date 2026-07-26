@@ -50,7 +50,7 @@ export const MemberLoginView = ({
       </h1>
       <p className="mt-2 text-sm leading-6 text-slate-500">
         {isTwoFactorStep
-          ? `Enter the 6-digit code from your authenticator app for ${email}.`
+          ? `Enter the authenticator code or an unused backup code for ${email}.`
           : "Use the complete email address and password issued by your organization."}
       </p>
       <p className="mt-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
@@ -96,7 +96,7 @@ export const MemberLoginView = ({
         </label> : (
           <label className="block">
             <span className="mb-2 block text-xs font-bold text-slate-700">
-              Authenticator code
+              Authenticator or backup code
             </span>
             <span className="flex h-14 items-center gap-3 rounded-2xl border border-slate-200 px-4 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-100">
               <ShieldCheck aria-hidden className="text-indigo-500" size={19} />
@@ -104,11 +104,10 @@ export const MemberLoginView = ({
                 autoComplete="one-time-code"
                 autoFocus
                 className="min-w-0 flex-1 bg-transparent text-center font-mono text-xl font-bold tracking-[0.35em] outline-none"
-                inputMode="numeric"
-                maxLength={6}
+                inputMode="text"
+                maxLength={64}
                 onChange={onOtpCodeInput}
-                pattern="[0-9]{6}"
-                placeholder="000000"
+                placeholder="000000 or backup code"
                 required
                 value={otpCode}
               />

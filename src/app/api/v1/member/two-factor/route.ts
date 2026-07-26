@@ -1,11 +1,15 @@
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
-import { CONNECTION_COOKIE, getCurrentConnection } from "@/server/connections/connection-session";
+import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
+import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
+import {
+  CONNECTION_COOKIE,
+  getCurrentConnection,
+} from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import { assertSessionRateLimit } from "@/server/security/rate-limit";
-import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import {
@@ -18,7 +22,6 @@ export const runtime = "nodejs";
 const context = async () => {
   const connection = await getCurrentConnection();
   const gateway = await resolveGateway(connection);
-  const provider = getProviderRegistry().get(connection.providerId);
   const profile = await mailServiceProfileStore.get();
   if (!profile) {
     throw new ApiError(
@@ -27,14 +30,34 @@ const context = async () => {
       503,
     );
   }
-  if (!provider.manifest.capabilities.supportsTwoFactorAuthentication) {
+  return {
+    account: await gateway.getAccount(),
+    connection,
+    profile,
+    provider: getProviderRegistry().get(connection.providerId),
+  };
+};
+
+const authenticatePassword = async (
+  input: { readonly currentPassword: string; readonly otpCode?: string },
+  current: Awaited<ReturnType<typeof context>>,
+) => {
+  const authentication = await current.provider.authenticateMember(
+    current.profile.config,
+    {
+      email: current.account.email,
+      password: input.currentPassword,
+      ...(input.otpCode ? { otpCode: input.otpCode } : {}),
+    },
+  );
+  if (authentication.status !== "authenticated") {
     throw new ApiError(
-      "Two-factor authentication is not supported by this mail service.",
-      "TWO_FACTOR_NOT_SUPPORTED",
+      "Current mailbox password is incorrect.",
+      "TWO_FACTOR_PASSWORD_REJECTED",
       400,
     );
   }
-  return { connection, gateway, profile, provider };
+  return authentication.config;
 };
 
 export const POST = async (request: Request) => {
@@ -47,19 +70,18 @@ export const POST = async (request: Request) => {
       3,
       60 * 60 * 1_000,
     );
-    const { connection, gateway, profile } = await context();
-    if (await gateway.getTwoFactorEnabled()) {
+    const current = await context();
+    if (await memberTwoFactorSecurity.isEnabled(current.account.email)) {
       throw new ApiError(
         "Two-factor authentication is already enabled.",
         "TWO_FACTOR_ALREADY_ENABLED",
         409,
       );
     }
-    const account = await gateway.getAccount();
     const enrollment = await twoFactorEnrollmentStore.create(
-      connection.id,
-      account.email,
-      profile.displayName,
+      current.connection.id,
+      current.account.email,
+      current.profile.displayName,
     );
     return apiSuccess({ enrollment }, { status: 201 });
   } catch (error) {
@@ -78,44 +100,30 @@ export const PUT = async (request: Request) => {
       15 * 60 * 1_000,
     );
     const input = memberTwoFactorConfirmSchema.parse(await request.json());
-    const { connection, gateway, profile, provider } = await context();
-    const account = await gateway.getAccount();
+    const current = await context();
     const enrollment = twoFactorEnrollmentStore.verify(
-      connection.id,
+      current.connection.id,
       input.otpCode,
     );
     if (!enrollment) {
       throw new ApiError(
-        "That verification code is incorrect or the setup expired.",
+        "That verification code is incorrect or setup expired.",
         "TWO_FACTOR_CODE_REJECTED",
         400,
       );
     }
-    try {
-      await gateway.updateTwoFactor({
-        currentPassword: input.currentPassword,
-        otpCode: input.otpCode,
-        otpUrl: enrollment.otpUrl,
-      });
-    } catch {
-      throw new ApiError(
-        "Current password is incorrect.",
-        "TWO_FACTOR_ENABLE_REJECTED",
-        400,
-      );
-    }
-    twoFactorEnrollmentStore.remove(connection.id);
-    const authentication = await provider.authenticateMember(profile.config, {
-      email: account.email,
-      otpCode: input.otpCode,
-      password: input.currentPassword,
+    const config = await authenticatePassword(input, current);
+    const recoveryCodes = await memberTwoFactorSecurity.enable(
+      current.account.email,
+      enrollment.otpUrl,
+    );
+    twoFactorEnrollmentStore.remove(current.connection.id);
+    connectionStore.updateConfig(current.connection.id, config);
+    return apiSuccess({
+      enabled: true,
+      recoveryCodes,
+      sessionActive: true,
     });
-    if (authentication.status === "authenticated") {
-      connectionStore.updateConfig(connection.id, authentication.config);
-      return apiSuccess({ enabled: true, sessionActive: true });
-    }
-    connectionStore.remove(connection.id);
-    return apiSuccess({ enabled: true, sessionActive: false });
   } catch (error) {
     return apiFailure(error, "Unable to enable two-factor authentication.");
   }
@@ -132,32 +140,24 @@ export const DELETE = async (request: Request) => {
       15 * 60 * 1_000,
     );
     const input = memberTwoFactorDisableSchema.parse(await request.json());
-    const { connection, gateway, profile, provider } = await context();
-    const account = await gateway.getAccount();
-    try {
-      await gateway.updateTwoFactor({
-        currentPassword: input.currentPassword,
-        otpCode: input.otpCode,
-        otpUrl: null,
-      });
-    } catch {
+    const current = await context();
+    const config = await authenticatePassword(input, current);
+    if (
+      !(await memberTwoFactorSecurity.verify(
+        current.account.email,
+        input.otpCode,
+      ))
+    ) {
       throw new ApiError(
         "Current password or verification code is incorrect.",
         "TWO_FACTOR_DISABLE_REJECTED",
         400,
       );
     }
-    twoFactorEnrollmentStore.remove(connection.id);
-    const authentication = await provider.authenticateMember(profile.config, {
-      email: account.email,
-      password: input.currentPassword,
-    });
-    if (authentication.status === "authenticated") {
-      connectionStore.updateConfig(connection.id, authentication.config);
-      return apiSuccess({ enabled: false, sessionActive: true });
-    }
-    connectionStore.remove(connection.id);
-    return apiSuccess({ enabled: false, sessionActive: false });
+    await memberTwoFactorSecurity.disable(current.account.email);
+    twoFactorEnrollmentStore.remove(current.connection.id);
+    connectionStore.updateConfig(current.connection.id, config);
+    return apiSuccess({ enabled: false, sessionActive: true });
   } catch (error) {
     return apiFailure(error, "Unable to disable two-factor authentication.");
   }

@@ -9,7 +9,7 @@ Dependencies point inward and provider details stop at the gateway.
 | --- | --- | --- |
 | `domain` | Branded IDs and normalized mail/provider models | Domain only |
 | `application` | Mail use cases and provider contracts | Domain |
-| `infrastructure` | Mock and Stalwart provider adapters | Application, domain |
+| `infrastructure` | Stalwart, IMAP/SMTP, and mock adapters | Application, domain |
 | `server` | Admin auth, profiles, member sessions, gateways | Inner layers |
 | `transport` | HTTP envelopes, schemas, browser client | Domain |
 | `presentation/hooks` | Browser state, effects, commands | Transport |
@@ -56,6 +56,12 @@ those credentials with the service profile, tests the connection, and creates
 an opaque process-local session. Passwords are never written to the profile
 file or returned to the browser.
 
+After upstream provider authentication, the member security service checks the
+provider-independent Veda TOTP overlay. Encrypted TOTP URIs and salted
+one-time backup-code digests are stored atomically in
+`${VEDA_MAIL_DATA_DIR}/member-security.json`. This layer protects Veda sessions
+without requiring a mailbox-management API.
+
 An admin cookie cannot read mail. A member cookie cannot change organization
 or provider settings. Neither browser receives the administrator hash, signing
 secret, provider credentials, or another member's mailbox credentials.
@@ -77,6 +83,9 @@ free of Stalwart-specific field names.
 
 The deterministic demo provider is registered only in development and test.
 Production registries contain deployable providers only.
+The included Standard IMAP + SMTP adapter covers providers that expose secure
+password/app-password protocol access. OAuth-only vendors use the same
+contracts through a vendor adapter.
 
 ## Enforced invariants
 
@@ -96,7 +105,8 @@ npm run check:lines
 
 ## Runtime model
 
-- Installation, branding, and the service profile are durable on `/data`.
+- Installation, branding, service profile, and member 2FA are durable on
+  `/data`.
 - Member connections and gateway credentials are memory-only for 12 hours.
 - Restarting the process intentionally signs every member out.
 - A multi-replica deployment needs a shared encrypted session repository and

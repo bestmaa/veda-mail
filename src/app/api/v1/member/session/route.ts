@@ -27,6 +27,7 @@ import {
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
+import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 
 export const runtime = "nodejs";
 
@@ -135,6 +136,26 @@ export const POST = async (request: Request) => {
         "INVALID_MEMBER_CREDENTIALS",
         401,
       );
+    }
+    if (await memberTwoFactorSecurity.isEnabled(credentials.email)) {
+      if (!credentials.otpCode) {
+        return apiSuccess(
+          { authenticated: false, mfaRequired: true },
+          { status: 202 },
+        );
+      }
+      if (
+        !(await memberTwoFactorSecurity.verify(
+          credentials.email,
+          credentials.otpCode,
+        ))
+      ) {
+        throw new ApiError(
+          "Incorrect email address, password or verification code.",
+          "INVALID_MEMBER_CREDENTIALS",
+          401,
+        );
+      }
     }
     const { config } = authentication;
     const candidate: ProviderConnection = {

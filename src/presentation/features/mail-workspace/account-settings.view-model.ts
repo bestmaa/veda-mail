@@ -37,6 +37,7 @@ export interface AccountSettingsViewModel {
     readonly canManage: boolean;
     readonly currentPassword: string;
     readonly currentPasswordInput: ChangeEventHandler<HTMLInputElement>;
+    readonly copyRecoveryCodes: () => void;
     readonly enabled: boolean;
     readonly enrollment: MemberTwoFactorEnrollment | null;
     readonly error: string | null;
@@ -45,6 +46,7 @@ export interface AccountSettingsViewModel {
     readonly onEnable: FormEventHandler<HTMLFormElement>;
     readonly otpCode: string;
     readonly otpCodeInput: ChangeEventHandler<HTMLInputElement>;
+    readonly recoveryCodes: readonly string[];
     readonly startEnrollment: () => void;
     readonly success: string | null;
   };

@@ -75,6 +75,10 @@ Use an exact HTTPS provider endpoint. In production,
 `VEDA_MAIL_ALLOWED_PROVIDER_HOSTS` is required and the endpoint hostname must
 match that list.
 
+For Standard IMAP + SMTP, allowlist both incoming and outgoing hostnames and
+use only TLS or STARTTLS. Provider password resets and profile changes are not
+available through these protocols. See [mail providers](PROVIDERS.md).
+
 ## Member lifecycle
 
 Veda Mail does not create, suspend, delete, or reset provider mailboxes.
@@ -88,6 +92,17 @@ Perform those actions in Stalwart or the configured provider:
 To revoke access, disable/reset the provider mailbox or remove its domain from
 the allowed list. Restarting Veda Mail signs out all members because member
 sessions are process-local.
+
+## Member two-factor authentication
+
+Every provider receives the Veda-managed authenticator overlay. Members enroll
+from their account settings and receive ten one-time backup codes. The TOTP
+secret is encrypted under `/data`; it is not sent to Stalwart, Hostinger,
+Zoho, or another provider.
+
+This second factor protects only Veda Mail. It does not protect direct IMAP,
+the provider's own webmail, or other mail clients. Provider-native MFA remains
+recommended. See [member authenticator 2FA](MEMBER-2FA.md).
 
 ## Routine checks
 
