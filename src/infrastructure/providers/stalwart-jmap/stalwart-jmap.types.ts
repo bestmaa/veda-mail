@@ -7,6 +7,7 @@ export interface StalwartConfig {
   readonly authType: "basic" | "bearer";
   readonly baseUrl: string;
   readonly expiresAt?: string;
+  readonly oauthClientId?: string;
   readonly refreshToken?: string;
   readonly secret: string;
   readonly username: string;
@@ -66,8 +67,7 @@ export interface JmapEmail {
   readonly attachments?: readonly JmapBodyPart[] | undefined;
   readonly bcc?: readonly JmapAddress[] | null | undefined;
   readonly bodyValues?:
-    | Readonly<Record<string, { readonly value: string }>>
-    | undefined;
+    Readonly<Record<string, { readonly value: string }>> | undefined;
   readonly cc?: readonly JmapAddress[] | null | undefined;
   readonly from?: readonly JmapAddress[] | null | undefined;
   readonly hasAttachment: boolean;

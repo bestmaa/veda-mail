@@ -17,17 +17,14 @@ const serviceConfigSchema = z
     baseUrl: z
       .string()
       .url()
-      .refine(
-        (value) => {
-          const url = new URL(value);
-          const isDevelopmentLoopback =
-            process.env.NODE_ENV !== "production" &&
-            url.protocol === "http:" &&
-            ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-          return url.protocol === "https:" || isDevelopmentLoopback;
-        },
-        "Use an HTTPS Stalwart URL.",
-      ),
+      .refine((value) => {
+        const url = new URL(value);
+        const isDevelopmentLoopback =
+          process.env.NODE_ENV !== "production" &&
+          url.protocol === "http:" &&
+          ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+        return url.protocol === "https:" || isDevelopmentLoopback;
+      }, "Use an HTTPS Stalwart URL."),
   })
   .strict();
 
@@ -43,6 +40,7 @@ const bearerMemberConfigSchema = serviceConfigSchema
   .extend({
     authType: z.literal("bearer"),
     expiresAt: z.string().datetime(),
+    oauthClientId: z.string().min(1),
     refreshToken: z.string().min(1),
     secret: z.string().min(1),
     username: z.string().email(),
@@ -108,9 +106,7 @@ export class StalwartProviderModule implements ProviderModule {
     return serviceConfigSchema.parse(input);
   }
 
-  public async validateServiceConfig(
-    input: Readonly<Record<string, string>>,
-  ) {
+  public async validateServiceConfig(input: Readonly<Record<string, string>>) {
     const parsed = serviceConfigSchema.parse(input);
     await assertSafeProviderOrigin(parsed.baseUrl);
     return parsed;

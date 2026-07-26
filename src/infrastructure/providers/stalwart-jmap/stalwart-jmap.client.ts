@@ -201,6 +201,7 @@ export class StalwartJmapClient {
     this.refreshPromise ??= StalwartOAuthClient.refresh(
       this.config.baseUrl,
       this.refreshToken,
+      this.config.oauthClientId,
     )
       .then((tokens) => {
         this.accessToken = tokens.accessToken;
@@ -217,6 +218,8 @@ export class StalwartJmapClient {
   private async toHttpError(response: Response): Promise<Error> {
     const retryAfter = response.headers.get("retry-after");
     const suffix = retryAfter ? ` Retry after ${retryAfter}s.` : "";
-    return new Error(`Mail provider returned ${response.status}.${suffix}`.trim());
+    return new Error(
+      `Mail provider returned ${response.status}.${suffix}`.trim(),
+    );
   }
 }
