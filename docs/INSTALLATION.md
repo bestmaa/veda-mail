@@ -41,6 +41,7 @@ Put the value in `.env`:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
+VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_DATA_DIR=/data
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
@@ -177,5 +178,7 @@ Once completed, `/setup` cannot be claimed again merely by knowing the setup
 token. Do not edit or delete `/data/installation.json` manually. Back up
 `/data` immediately after setup and before every upgrade.
 
-There is currently no self-service administrator password reset. See
-[backup and recovery](BACKUP-AND-RECOVERY.md) before going live.
+After setup, sign in to `/admin`, open **Security**, and enable authenticator
+2FA. Save all one-time backup codes. If credentials or second factors are
+lost, use the terminal-only procedure in
+[backup and recovery](BACKUP-AND-RECOVERY.md#administrator-recovery).

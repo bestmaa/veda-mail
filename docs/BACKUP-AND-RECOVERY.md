@@ -8,6 +8,7 @@ the supplied Compose deployment.
 - Completed-installation state
 - Administrator username and scrypt password hash
 - Random 48-byte administrator session-signing secret and auth version
+- Encrypted administrator TOTP secret and salted backup-code digests, if enabled
 - Organization and product branding
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
@@ -96,18 +97,33 @@ restored.
 
 ## Administrator recovery
 
-There is currently no self-service password reset or supported command that
-rewrites the administrator password. The supported recovery path is restoring
-a known-good `/data` backup and using the credentials valid at that backup.
+Before enabling admin 2FA, set a separate random deployment secret:
 
-Do not manually edit or delete `installation.json`; doing so can invalidate
-the installation state or create an unsafe takeover opportunity.
+```bash
+openssl rand -hex 32
+```
 
-If no backup and no administrator credential exist, create a separate fresh
-instance with a new empty volume and repeat setup. This loses Veda Mail
-branding/provider configuration, not the messages held by the external mail
-server. Verify provider ownership and DNS before directing users to the new
-instance.
+Store its output as `VEDA_MAIL_ADMIN_RECOVERY_TOKEN` in the deployment secret
+manager. Do not reuse the setup token, admin password, or an authenticator
+backup code.
+
+If the admin password is forgotten, or both the authenticator device and all
+backup codes are lost, open an interactive terminal inside the running Veda
+Mail container and run:
+
+```bash
+node /app/scripts/admin-recovery.mjs
+```
+
+Enter the recovery token and new password at the hidden prompts, then type
+`RESET`. The command atomically resets the password, removes administrator 2FA
+and its backup codes, increments the authentication version, and invalidates
+every existing administrator session. It preserves branding and mail-provider
+configuration. Enable 2FA again after signing in.
+
+The recovery token is never accepted by a web API. Rotate the deployment
+secret after using it and redeploy. Do not manually edit or delete
+`installation.json`.
 
 ## Recovery rehearsal
 

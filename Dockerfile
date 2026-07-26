@@ -33,6 +33,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs \
+  /app/scripts/admin-recovery.mjs ./scripts/admin-recovery.mjs
+COPY --from=builder --chown=nextjs:nodejs \
   /app/LICENSE /app/NOTICE /app/TRADEMARKS.md ./
 
 USER nextjs

@@ -5,6 +5,11 @@ import {
   assertAdminAccess,
   issueAdminToken,
 } from "@/server/auth/admin-session";
+import { isAdminRecoveryConfigured } from "@/server/auth/admin-recovery";
+import {
+  verifyAdminSecondFactor,
+  withoutRecoveryCode,
+} from "@/server/auth/admin-two-factor";
 import {
   adminAccountUpdateSchema,
 } from "@/server/installation/installation.schema";
@@ -30,7 +35,15 @@ export const GET = async () => {
     if (!installation) {
       throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
     }
-    return apiSuccess({ username: installation.owner.username });
+    return apiSuccess({
+      security: {
+        recoveryCodesRemaining:
+          installation.owner.twoFactor?.recoveryCodes.length ?? 0,
+        recoveryConfigured: isAdminRecoveryConfigured(),
+        twoFactorEnabled: installation.owner.twoFactor !== null,
+      },
+      username: installation.owner.username,
+    });
   } catch (error) {
     return apiFailure(error, "Unable to load administrator account.");
   }
@@ -74,11 +87,47 @@ export const PUT = async (request: Request) => {
     const password = input.newPassword
       ? await hashAdminPassword(input.newPassword)
       : installation.owner.password;
+    let twoFactor = installation.owner.twoFactor;
+    if (twoFactor) {
+      if (!input.otpCode) {
+        throw new ApiError(
+          "Enter an authenticator or backup code.",
+          "ADMIN_SECOND_FACTOR_REQUIRED",
+          401,
+        );
+      }
+      const secondFactor = verifyAdminSecondFactor(
+        input.otpCode,
+        twoFactor,
+        installation.sessionSecret,
+      );
+      if (!secondFactor.valid) {
+        throw new ApiError(
+          "Authenticator or backup code is incorrect.",
+          "ADMIN_SECOND_FACTOR_REJECTED",
+          401,
+        );
+      }
+      if (secondFactor.recoveryCodeIndex !== null) {
+        twoFactor = withoutRecoveryCode(
+          twoFactor,
+          secondFactor.recoveryCodeIndex,
+        );
+      }
+    }
     const updated = await installationStore.updateOwner(
       installation.owner.authVersion,
-      { password, username: input.username },
+      { password, twoFactor, username: input.username },
     );
-    const response = apiSuccess({ username: updated.owner.username });
+    const response = apiSuccess({
+      security: {
+        recoveryCodesRemaining:
+          updated.owner.twoFactor?.recoveryCodes.length ?? 0,
+        recoveryConfigured: isAdminRecoveryConfigured(),
+        twoFactorEnabled: updated.owner.twoFactor !== null,
+      },
+      username: updated.owner.username,
+    });
     response.cookies.set(
       ADMIN_COOKIE,
       await issueAdminToken(updated),

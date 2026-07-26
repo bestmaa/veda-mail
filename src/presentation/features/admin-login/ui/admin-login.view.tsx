@@ -13,9 +13,13 @@ export const AdminLoginView = ({
   branding,
   error,
   isSubmitting,
+  isTwoFactorStep,
+  onBack,
+  onOtpCodeInput,
   onPasswordInput,
   onSubmit,
   onUsernameInput,
+  otpCode,
   password,
   submitLabel,
   username,
@@ -45,11 +49,13 @@ export const AdminLoginView = ({
         Administrator access
       </h1>
       <p className="mt-2 text-sm leading-6 text-slate-500">
-        Sign in to configure the organization mail service and allowed domains.
+        {isTwoFactorStep
+          ? "Enter the code from your authenticator app or an unused backup code."
+          : "Sign in to configure the organization mail service and allowed domains."}
       </p>
 
       <form aria-busy={isSubmitting} className="mt-7 space-y-4" onSubmit={onSubmit}>
-        <label className="block">
+        {!isTwoFactorStep ? <><label className="block">
           <span className="mb-2 block text-xs font-bold text-slate-700">
             Administrator username
           </span>
@@ -79,7 +85,22 @@ export const AdminLoginView = ({
               value={password}
             />
           </span>
-        </label>
+        </label></> : (
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold text-slate-700">
+              Authenticator or backup code
+            </span>
+            <input
+              autoComplete="one-time-code"
+              autoFocus
+              className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-center font-mono text-base uppercase tracking-[0.12em] outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+              onChange={onOtpCodeInput}
+              placeholder="123456"
+              required
+              value={otpCode}
+            />
+          </label>
+        )}
         {error ? (
           <p
             className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700"
@@ -100,6 +121,16 @@ export const AdminLoginView = ({
           )}
           <span aria-live="polite">{submitLabel}</span>
         </button>
+        {isTwoFactorStep ? (
+          <button
+            className="h-10 w-full text-xs font-bold text-slate-500 hover:text-slate-900"
+            disabled={isSubmitting}
+            onClick={onBack}
+            type="button"
+          >
+            Back to administrator credentials
+          </button>
+        ) : null}
       </form>
 
       <p className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-slate-400">

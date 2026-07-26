@@ -16,9 +16,29 @@ export interface PasswordDigest {
   readonly salt: string;
 }
 
+export interface AdminEncryptedSecret {
+  readonly algorithm: "aes-256-gcm";
+  readonly ciphertext: string;
+  readonly iv: string;
+  readonly tag: string;
+}
+
+export interface AdminRecoveryCodeDigest {
+  readonly algorithm: "sha256";
+  readonly digest: string;
+  readonly salt: string;
+}
+
+export interface AdminTwoFactor {
+  readonly enabledAt: string;
+  readonly otpUrl: AdminEncryptedSecret;
+  readonly recoveryCodes: readonly AdminRecoveryCodeDigest[];
+}
+
 export interface OwnerAdmin {
   readonly authVersion: number;
   readonly password: PasswordDigest;
+  readonly twoFactor: AdminTwoFactor | null;
   readonly updatedAt: string;
   readonly username: string;
 }

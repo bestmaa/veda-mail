@@ -8,6 +8,10 @@ import {
   issueAdminToken,
   verifyAdminCredentials,
 } from "@/server/auth/admin-session";
+import {
+  verifyAdminSecondFactor,
+  withoutRecoveryCode,
+} from "@/server/auth/admin-two-factor";
 import { installationStore } from "@/server/installation/installation.store";
 import { adminLoginSchema } from "@/server/installation/installation.schema";
 import { assertSameOrigin } from "@/server/installation/request-origin";
@@ -61,14 +65,52 @@ export const POST = async (request: Request) => {
         401,
       );
     }
+    if (installation.owner.twoFactor && !input.otpCode) {
+      return apiSuccess(
+        {
+          authenticated: false,
+          configured: true,
+          mfaRequired: true,
+        },
+        { status: 202 },
+      );
+    }
+    let activeInstallation = installation;
+    if (installation.owner.twoFactor) {
+      const secondFactor = verifyAdminSecondFactor(
+        input.otpCode ?? "",
+        installation.owner.twoFactor,
+        installation.sessionSecret,
+      );
+      if (!secondFactor.valid) {
+        throw new ApiError(
+          "Incorrect administrator credentials or verification code.",
+          "ADMIN_UNAUTHORIZED",
+          401,
+        );
+      }
+      if (secondFactor.recoveryCodeIndex !== null) {
+        activeInstallation = await installationStore.updateOwner(
+          installation.owner.authVersion,
+          {
+            password: installation.owner.password,
+            twoFactor: withoutRecoveryCode(
+              installation.owner.twoFactor,
+              secondFactor.recoveryCodeIndex,
+            ),
+            username: installation.owner.username,
+          },
+        );
+      }
+    }
     const response = apiSuccess({
       authenticated: true,
       configured: true,
-      username: installation.owner.username,
+      username: activeInstallation.owner.username,
     });
     response.cookies.set(
       ADMIN_COOKIE,
-      await issueAdminToken(installation),
+      await issueAdminToken(activeInstallation),
       {
         ...adminCookieOptions,
         maxAge: ADMIN_SESSION_TTL_SECONDS,
