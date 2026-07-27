@@ -101,6 +101,99 @@ describe("Stalwart JMAP mapper", () => {
     expect(detail.htmlBody).not.toContain("<img");
   });
 
+  it("routes a plain-text htmlBody fallback to textBody", () => {
+    const plainFallback: JmapEmail = {
+      ...email,
+      bodyValues: {
+        plain: {
+          value: "<strong>This is plain text</strong>\nSecond line",
+        },
+      },
+      htmlBody: [{ partId: "plain", type: "text/plain" }],
+      textBody: [{ partId: "plain", type: "text/plain" }],
+    };
+
+    const detail = mapMessageDetail(plainFallback);
+
+    expect(detail.htmlBody).toBeNull();
+    expect(detail.textBody).toBe(
+      "<strong>This is plain text</strong>\nSecond line",
+    );
+  });
+
+  it("preserves sequential text parts and ignores duplicate part IDs", () => {
+    const multipartText: JmapEmail = {
+      ...email,
+      bodyValues: {
+        body: { value: "Body" },
+        footer: { value: "Footer" },
+        header: { value: "Header" },
+      },
+      htmlBody: undefined,
+      textBody: [
+        { partId: "missing", type: "text/plain" },
+        { partId: "header", type: "text/plain" },
+        { partId: "body", type: "text/plain" },
+        { partId: "body", type: "text/plain" },
+        { partId: "footer", type: "text/plain" },
+      ],
+    };
+
+    expect(mapMessageDetail(multipartText).textBody).toBe(
+      "Header\nBody\nFooter",
+    );
+  });
+
+  it("escapes plain segments in a mixed HTML body", () => {
+    const mixedBody: JmapEmail = {
+      ...email,
+      bodyValues: {
+        footer: {
+          value: "<em>literal footer</em>\nSecond line",
+        },
+        main: {
+          value:
+            "<p>Main <strong>message</strong></p><script>attack()</script>",
+        },
+        tail: { value: "<p>Tail</p>" },
+      },
+      htmlBody: [
+        { partId: "main", type: "text/html" },
+        { partId: "footer", type: "text/plain" },
+        { partId: "tail", type: "text/html" },
+      ],
+      textBody: undefined,
+    };
+
+    const detail = mapMessageDetail(mixedBody);
+    const html = detail.htmlBody ?? "";
+
+    expect(html).not.toContain("<script");
+    expect(html).toContain(
+      "<pre>&lt;em&gt;literal footer&lt;/em&gt;\nSecond line</pre>",
+    );
+    expect(html.indexOf("Main")).toBeLessThan(html.indexOf("literal footer"));
+    expect(html.indexOf("literal footer")).toBeLessThan(html.indexOf("Tail"));
+  });
+
+  it("creates readable text for an HTML-only message", () => {
+    const htmlOnly: JmapEmail = {
+      ...email,
+      bodyValues: {
+        html: {
+          value:
+            "<h1>Welcome</h1><p>First &amp; second<br>Next</p><script>attack()</script>",
+        },
+      },
+      htmlBody: [{ partId: "html", type: "text/html" }],
+      textBody: undefined,
+    };
+
+    expect(mapMessageDetail(htmlOnly).textBody).toBe(
+      "Welcome\nFirst & second\nNext",
+    );
+  });
+
   it("maps the standard JMAP junk role to spam", () => {
     const mailbox = mapMailbox({
       id: "junk",
