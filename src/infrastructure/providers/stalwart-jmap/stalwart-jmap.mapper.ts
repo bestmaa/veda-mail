@@ -53,12 +53,136 @@ const addresses = (
     name: address.name ?? null,
   }));
 
-const bodyValue = (
+interface BodyValue {
+  readonly type: string;
+  readonly value: string;
+}
+
+const bodyValues = (
   parts: readonly JmapBodyPart[] | undefined,
   email: JmapEmail,
-): string => {
-  const partId = parts?.[0]?.partId;
-  return partId ? (email.bodyValues?.[partId]?.value ?? "") : "";
+): readonly BodyValue[] => {
+  const seenPartIds = new Set<string>();
+  const values: BodyValue[] = [];
+  for (const part of parts ?? []) {
+    const partId = part.partId;
+    if (!partId || seenPartIds.has(partId)) {
+      continue;
+    }
+    const value = email.bodyValues?.[partId]?.value;
+    if (value === undefined) {
+      continue;
+    }
+    seenPartIds.add(partId);
+    values.push({
+      type: part.type.split(";", 1)[0]?.trim().toLowerCase() ?? "",
+      value,
+    });
+  }
+  return values;
+};
+
+const sanitizeBodyHtml = (value: string): string =>
+  sanitizeHtml(value, {
+    allowedAttributes: {
+      a: ["href", "title"],
+      blockquote: ["cite"],
+      td: ["colspan", "rowspan"],
+      th: ["colspan", "rowspan"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+    disallowedTagsMode: "discard",
+  });
+
+const escapeHtml = (value: string): string =>
+  value.replace(/[&<>"']/g, (character) => {
+    const replacements: Readonly<Record<string, string>> = {
+      '"': "&quot;",
+      "&": "&amp;",
+      "'": "&#39;",
+      "<": "&lt;",
+      ">": "&gt;",
+    };
+    return replacements[character] ?? character;
+  });
+
+const decodeHtmlEntities = (value: string): string => {
+  const namedEntities: Readonly<Record<string, string>> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    nbsp: " ",
+    quot: '"',
+  };
+  return value.replace(
+    /&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi,
+    (entity, decimal: string, hexadecimal: string, named: string) => {
+      const numericValue = decimal
+        ? Number.parseInt(decimal, 10)
+        : Number.parseInt(hexadecimal, 16);
+      if (decimal || hexadecimal) {
+        return Number.isSafeInteger(numericValue) &&
+          numericValue >= 0 &&
+          numericValue <= 0x10ffff
+          ? String.fromCodePoint(numericValue)
+          : entity;
+      }
+      return namedEntities[named.toLowerCase()] ?? entity;
+    },
+  );
+};
+
+const htmlToText = (value: string): string => {
+  const safeHtml = sanitizeBodyHtml(value);
+  return decodeHtmlEntities(
+    safeHtml
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<li(?:\s[^>]*)?>/gi, "- ")
+      .replace(/<\/(?:td|th)>/gi, "\t")
+      .replace(
+        /<\/(?:address|article|aside|blockquote|div|footer|h[1-6]|header|li|main|nav|ol|p|pre|section|table|tr|ul)>/gi,
+        "\n",
+      )
+      .replace(/<[^>]+>/g, ""),
+  )
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+const textBodyValue = (email: JmapEmail): string => {
+  const render = (values: readonly BodyValue[]) =>
+    values
+      .map(({ type, value }) => {
+        if (type === "text/plain") {
+          return value;
+        }
+        return type === "text/html" ? htmlToText(value) : "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  return (
+    render(bodyValues(email.textBody, email)) ||
+    render(bodyValues(email.htmlBody, email)) ||
+    email.preview
+  );
+};
+
+const htmlBodyValue = (email: JmapEmail): string | null => {
+  const values = bodyValues(email.htmlBody, email);
+  if (!values.some(({ type, value }) => type === "text/html" && value)) {
+    return null;
+  }
+  const html = values
+    .map(({ type, value }) => {
+      if (type === "text/html") {
+        return sanitizeBodyHtml(value);
+      }
+      return type === "text/plain" ? `<pre>${escapeHtml(value)}</pre>` : "";
+    })
+    .join("");
+  return html || null;
 };
 
 export const mapMailbox = (mailbox: JmapMailbox): Mailbox => {
@@ -89,7 +213,6 @@ export const mapMessageSummary = (email: JmapEmail): MessageSummary => ({
 });
 
 export const mapMessageDetail = (email: JmapEmail): MessageDetail => {
-  const rawHtml = bodyValue(email.htmlBody, email);
   return {
     ...mapMessageSummary(email),
     attachments: (email.attachments ?? []).map((attachment, index) => ({
@@ -99,18 +222,7 @@ export const mapMessageDetail = (email: JmapEmail): MessageDetail => {
       size: attachment.size ?? 0,
     })),
     cc: addresses(email.cc),
-    htmlBody: rawHtml
-      ? sanitizeHtml(rawHtml, {
-          allowedAttributes: {
-            a: ["href", "title"],
-            blockquote: ["cite"],
-            td: ["colspan", "rowspan"],
-            th: ["colspan", "rowspan"],
-          },
-          allowedSchemes: ["http", "https", "mailto"],
-          disallowedTagsMode: "discard",
-        })
-      : null,
-    textBody: bodyValue(email.textBody, email) || email.preview,
+    htmlBody: htmlBodyValue(email),
+    textBody: textBodyValue(email),
   };
 };

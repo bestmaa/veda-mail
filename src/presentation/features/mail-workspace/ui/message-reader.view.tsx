@@ -13,6 +13,7 @@ import {
 import type {
   ReaderViewModel,
 } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import { MessageFrameConnector } from "@/presentation/features/mail-workspace/connectors/message-frame.connector";
 import { AttachmentCardView } from "@/presentation/features/mail-workspace/ui/attachment-card.view";
 import { ReaderActionView } from "@/presentation/features/mail-workspace/ui/reader-action.view";
 
@@ -121,14 +122,11 @@ export const MessageReaderView = ({
 
           <div className="mail-body py-7 text-[15px] leading-7 text-slate-700">
             {reader.htmlBody ? (
-              <iframe
-                className="min-h-80 w-full border-0"
-                sandbox=""
-                srcDoc={reader.htmlBody}
-                title="Email content"
-              />
+              <MessageFrameConnector sanitizedHtml={reader.htmlBody} />
             ) : (
-              <p className="whitespace-pre-wrap">{reader.body}</p>
+              <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                {reader.body}
+              </div>
             )}
           </div>
 
