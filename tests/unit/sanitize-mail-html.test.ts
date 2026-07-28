@@ -96,6 +96,9 @@ describe("mail HTML plain-text conversion", () => {
       mailHtmlToPlainText(
         "<script>SECRET_SCRIPT()</script>" +
           "<style>.SECRET_STYLE{display:none}</style>" +
+          "<iframe>SECRET_FRAME</iframe>" +
+          "<template>SECRET_TEMPLATE</template>" +
+          "<head><title>SECRET_TITLE</title></head>" +
           "<p>Visible &amp; safe<br>Next line</p>",
       ),
     ).toBe("Visible & safe\nNext line");

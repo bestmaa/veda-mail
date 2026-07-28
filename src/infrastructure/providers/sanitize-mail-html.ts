@@ -156,6 +156,16 @@ export const sanitizeMailHtml = (value: string): string =>
     allowedSchemes: ["http", "https", "mailto"],
     allowedTags: [...allowedTags],
     disallowedTagsMode: "discard",
+    nonTextTags: [
+      "head",
+      "iframe",
+      "option",
+      "script",
+      "style",
+      "template",
+      "textarea",
+      "title",
+    ],
     transformTags: {
       a: (tagName, attributes) => {
         const href = safeLinkHref(attributes["href"]);
