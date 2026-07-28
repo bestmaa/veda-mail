@@ -32,6 +32,11 @@ export interface AccountSettingsViewModel {
     readonly success: string | null;
   };
   readonly profileName: string | null;
+  readonly providerFeatures: readonly {
+    readonly detail: string;
+    readonly label: string;
+    readonly supported: boolean;
+  }[];
   readonly twoFactor: {
     readonly cancelEnrollment: () => void;
     readonly canManage: boolean;

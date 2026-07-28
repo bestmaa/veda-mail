@@ -1,10 +1,43 @@
+import { hasHeaderControlCharacter } from "@/domain/mail/header-safety";
 import { id } from "@/domain/shared/brand";
 import { z } from "zod";
 
-const addressSchema = z.object({
-  email: z.string().email(),
-  name: z.string().nullable(),
-});
+const addressSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .max(254, "Email addresses cannot exceed 254 characters.")
+      .email("Enter a valid email address."),
+    name: z
+      .string()
+      .trim()
+      .max(200, "Recipient names cannot exceed 200 characters.")
+      .refine(
+        (name) => !hasHeaderControlCharacter(name),
+        "Recipient names cannot contain control characters.",
+      )
+      .transform((name) => name || null)
+      .nullable(),
+  })
+  .strict();
+
+const recipientListSchema = z
+  .array(addressSchema)
+  .max(100, "Each recipient field can contain at most 100 addresses.");
+
+const uniqueAddresses = (
+  addresses: readonly z.infer<typeof addressSchema>[],
+  seen: Set<string>,
+): z.infer<typeof addressSchema>[] =>
+  addresses.filter((address) => {
+    const key = address.email.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 
 export const connectionRequestSchema = z.object({
   config: z.record(z.string(), z.string()),
@@ -12,14 +45,66 @@ export const connectionRequestSchema = z.object({
   providerId: z.string().trim().min(1).transform(id.provider),
 });
 
-export const sendMessageSchema = z.object({
-  bcc: z.array(addressSchema).default([]),
-  body: z.string().trim().min(1).max(1_000_000),
-  cc: z.array(addressSchema).default([]),
-  inReplyTo: z.string().transform(id.message).optional(),
-  subject: z.string().trim().max(998),
-  to: z.array(addressSchema).min(1),
-});
+export const sendMessageSchema = z
+  .object({
+    bcc: recipientListSchema.default([]),
+    body: z
+      .string()
+      .trim()
+      .min(1, "Message body cannot be blank.")
+      .max(1_000_000, "Message body cannot exceed 1,000,000 characters."),
+    cc: recipientListSchema.default([]),
+    inReplyTo: z
+      .string()
+      .trim()
+      .min(1)
+      .max(2_048, "Reply message identifiers cannot exceed 2,048 characters.")
+      .refine(
+        (value) => !hasHeaderControlCharacter(value),
+        "Reply message identifiers cannot contain control characters.",
+      )
+      .transform(id.message)
+      .optional(),
+    subject: z
+      .string()
+      .trim()
+      .max(998, "Subject cannot exceed 998 characters.")
+      .refine(
+        (subject) => !hasHeaderControlCharacter(subject),
+        "Subject cannot contain control characters.",
+      ),
+    to: recipientListSchema,
+  })
+  .strict()
+  .superRefine((message, context) => {
+    const recipientCount =
+      message.to.length + message.cc.length + message.bcc.length;
+    if (recipientCount > 100) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "A message can have at most 100 recipients across To, CC, and BCC.",
+        path: ["to"],
+      });
+    }
+  })
+  .transform((message) => {
+    const seen = new Set<string>();
+    return {
+      ...message,
+      to: uniqueAddresses(message.to, seen),
+      cc: uniqueAddresses(message.cc, seen),
+      bcc: uniqueAddresses(message.bcc, seen),
+    };
+  })
+  .refine(
+    (message) =>
+      message.to.length + message.cc.length + message.bcc.length > 0,
+    {
+      message: "At least one recipient is required.",
+      path: ["to"],
+    },
+  );
 
 export const messageMutationSchema = z.discriminatedUnion("type", [
   z.object({

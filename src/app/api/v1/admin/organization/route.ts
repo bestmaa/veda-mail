@@ -1,7 +1,4 @@
-import {
-  ADMIN_COOKIE,
-  assertAdminAccess,
-} from "@/server/auth/admin-session";
+import { assertAdminAccess } from "@/server/auth/admin-session";
 import {
   removeBrandLogo,
   writeBrandLogo,
@@ -12,7 +9,7 @@ import { installationStore } from "@/server/installation/installation.store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   assertRequestRateLimit,
-  assertSessionRateLimit,
+  assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
@@ -39,10 +36,9 @@ export const PUT = async (request: Request) => {
       100,
       10 * 60 * 1000,
     );
-    assertSessionRateLimit(
-      request,
+    assertSubjectRateLimit(
       "admin-organization",
-      ADMIN_COOKIE,
+      "administrator",
       20,
       10 * 60 * 1000,
     );

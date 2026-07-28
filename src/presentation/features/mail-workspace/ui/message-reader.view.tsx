@@ -3,7 +3,9 @@ import {
   Mail,
   MailOpen,
   Paperclip,
+  Forward,
   Reply,
+  ReplyAll,
   ShieldCheck,
   Star,
   Trash2,
@@ -21,7 +23,9 @@ interface MessageReaderViewProps {
   readonly onArchive: () => void;
   readonly onClose: () => void;
   readonly onDelete: () => void;
+  readonly onForward: () => void;
   readonly onReply: () => void;
+  readonly onReplyAll: () => void;
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly reader: ReaderViewModel;
@@ -31,7 +35,9 @@ export const MessageReaderView = ({
   onArchive,
   onClose,
   onDelete,
+  onForward,
   onReply,
+  onReplyAll,
   onToggleRead,
   onToggleStar,
   reader,
@@ -95,7 +101,7 @@ export const MessageReaderView = ({
               {reader.error}
             </div>
           ) : null}
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-600">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
             <ShieldCheck aria-hidden size={14} />
             Sanitized message content
           </p>
@@ -109,13 +115,18 @@ export const MessageReaderView = ({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-extrabold text-slate-800">
                 {reader.from}
-                <span className="ml-2 font-normal text-slate-400">
+                <span className="ml-2 font-normal text-slate-600">
                   &lt;{reader.fromEmail}&gt;
                 </span>
               </p>
-              <p className="mt-0.5 text-xs text-slate-400">to {reader.to}</p>
+              <p className="mt-0.5 text-xs text-slate-600">to {reader.to}</p>
+              {reader.cc ? (
+                <p className="mt-0.5 truncate text-xs text-slate-600">
+                  cc {reader.cc}
+                </p>
+              ) : null}
             </div>
-            <time className="hidden text-xs font-medium text-slate-400 sm:block">
+            <time className="hidden text-xs font-medium text-slate-600 sm:block">
               {reader.date}
             </time>
           </div>
@@ -132,7 +143,7 @@ export const MessageReaderView = ({
 
           {reader.attachments.length > 0 ? (
             <div className="border-t border-slate-100 pt-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
                 <Paperclip aria-hidden size={14} />
                 Attachments
               </p>
@@ -147,14 +158,32 @@ export const MessageReaderView = ({
             </div>
           ) : null}
 
-          <button
-            className="mt-8 flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-            onClick={onReply}
-            type="button"
-          >
-            <Reply aria-hidden size={17} />
-            Reply
-          </button>
+          <div className="mt-8 flex flex-wrap gap-2">
+            <button
+              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              onClick={onReply}
+              type="button"
+            >
+              <Reply aria-hidden size={17} />
+              Reply
+            </button>
+            <button
+              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              onClick={onReplyAll}
+              type="button"
+            >
+              <ReplyAll aria-hidden size={17} />
+              Reply all
+            </button>
+            <button
+              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              onClick={onForward}
+              type="button"
+            >
+              <Forward aria-hidden size={17} />
+              Forward
+            </button>
+          </div>
         </div>
       ) : null}
     </article>

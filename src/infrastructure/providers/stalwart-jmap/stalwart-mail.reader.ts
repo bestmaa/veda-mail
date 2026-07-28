@@ -6,6 +6,7 @@ import type {
   MessageDetail,
   MessageListQuery,
   MessagePage,
+  ReplyContext,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
@@ -20,6 +21,7 @@ import {
   jmapListResultSchema,
   jmapMailboxSchema,
   jmapQueryResultSchema,
+  jmapReplyContextSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
 import {
   JMAP_MAIL,
@@ -44,6 +46,7 @@ const detailProperties = [
   ...summaryProperties,
   "cc",
   "bcc",
+  "replyTo",
   "textBody",
   "htmlBody",
   "attachments",
@@ -172,6 +175,36 @@ export class StalwartMailReader {
 
   public async getAccountId(): Promise<string> {
     return (await this.getAccountContext()).accountId;
+  }
+
+  public async getReplyContext(messageId: MessageId): Promise<ReplyContext> {
+    const { accountId } = await this.getAccountContext();
+    const response = await this.client.request(
+      [
+        [
+          "Email/get",
+          {
+            accountId,
+            ids: [messageId],
+            properties: ["id", "messageId", "references"],
+          },
+          "reply-context",
+        ],
+      ],
+      [JMAP_MAIL],
+    );
+    const result = this.client.result(
+      response,
+      "reply-context",
+      "Email/get",
+      jmapListResultSchema(jmapReplyContextSchema),
+    );
+    const email = result.list[0];
+    if (!email) throw new Error("The message being replied to was not found.");
+    return {
+      messageId: email.messageId?.[0] ?? null,
+      references: email.references ?? [],
+    };
   }
 
   private async getAccountContext() {

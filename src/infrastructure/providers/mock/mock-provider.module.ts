@@ -8,13 +8,13 @@ import { MockMailGateway } from "@/infrastructure/providers/mock/mock-mail.gatew
 export class MockProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
-      maxAttachmentBytes: 25_000_000,
-      supportsDrafts: true,
+      maxAttachmentBytes: 0,
+      supportsDrafts: false,
       supportsPasswordChange: true,
       supportsProfileSettings: true,
       supportsPush: false,
       supportsServerSearch: true,
-      supportsThreads: true,
+      supportsThreads: false,
       supportsTwoFactorAuthentication: false,
     },
     description: "Explore every workflow with safe, deterministic demo mail.",

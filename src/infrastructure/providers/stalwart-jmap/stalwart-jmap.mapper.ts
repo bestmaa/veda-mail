@@ -1,7 +1,5 @@
 import "server-only";
 
-import sanitizeHtml from "sanitize-html";
-
 import type {
   MailAddress,
   Mailbox,
@@ -10,6 +8,7 @@ import type {
   MessageSummary,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
+import { sanitizeMailHtml } from "@/infrastructure/providers/sanitize-mail-html";
 import type {
   JmapAddress,
   JmapBodyPart,
@@ -82,18 +81,6 @@ const bodyValues = (
   return values;
 };
 
-const sanitizeBodyHtml = (value: string): string =>
-  sanitizeHtml(value, {
-    allowedAttributes: {
-      a: ["href", "title"],
-      blockquote: ["cite"],
-      td: ["colspan", "rowspan"],
-      th: ["colspan", "rowspan"],
-    },
-    allowedSchemes: ["http", "https", "mailto"],
-    disallowedTagsMode: "discard",
-  });
-
 const escapeHtml = (value: string): string =>
   value.replace(/[&<>"']/g, (character) => {
     const replacements: Readonly<Record<string, string>> = {
@@ -134,7 +121,7 @@ const decodeHtmlEntities = (value: string): string => {
 };
 
 const htmlToText = (value: string): string => {
-  const safeHtml = sanitizeBodyHtml(value);
+  const safeHtml = sanitizeMailHtml(value);
   return decodeHtmlEntities(
     safeHtml
       .replace(/<br\s*\/?>/gi, "\n")
@@ -177,7 +164,7 @@ const htmlBodyValue = (email: JmapEmail): string | null => {
   const html = values
     .map(({ type, value }) => {
       if (type === "text/html") {
-        return sanitizeBodyHtml(value);
+        return sanitizeMailHtml(value);
       }
       return type === "text/plain" ? `<pre>${escapeHtml(value)}</pre>` : "";
     })
@@ -223,6 +210,7 @@ export const mapMessageDetail = (email: JmapEmail): MessageDetail => {
     })),
     cc: addresses(email.cc),
     htmlBody: htmlBodyValue(email),
+    replyTo: addresses(email.replyTo),
     textBody: textBodyValue(email),
   };
 };

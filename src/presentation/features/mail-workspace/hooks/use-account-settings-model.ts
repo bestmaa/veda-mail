@@ -4,12 +4,23 @@ import { type FormEvent, useCallback, useState } from "react";
 
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
+import { formatFileSize } from "@/presentation/shared/formatters/mail-formatters";
 import {
   memberSettingsApi,
   type MemberSettingsSnapshot,
 } from "@/transport/client/api-client";
 
 const defaultCapabilities = {
+  mail: {
+    maxAttachmentBytes: 0,
+    supportsDrafts: false,
+    supportsPasswordChange: false,
+    supportsProfileSettings: false,
+    supportsPush: false,
+    supportsServerSearch: false,
+    supportsThreads: false,
+    supportsTwoFactorAuthentication: false,
+  },
   passwordChange: false,
   profileSettings: false,
   twoFactorAuthentication: false,
@@ -150,6 +161,44 @@ export const useAccountSettingsModel = (
       success: profileSuccess,
     },
     profileName: snapshot?.profile.displayName ?? null,
+    providerFeatures: [
+      {
+        detail: capabilities.mail.supportsServerSearch
+          ? "Available"
+          : "Not available",
+        label: "Server-side search",
+        supported: capabilities.mail.supportsServerSearch,
+      },
+      {
+        detail: capabilities.mail.supportsDrafts
+          ? "Available"
+          : "Not available",
+        label: "Provider draft sync",
+        supported: capabilities.mail.supportsDrafts,
+      },
+      {
+        detail: capabilities.mail.supportsThreads
+          ? "Available"
+          : "Not available",
+        label: "Conversation threads",
+        supported: capabilities.mail.supportsThreads,
+      },
+      {
+        detail: capabilities.mail.supportsPush
+          ? "Available"
+          : "Manual refresh",
+        label: "Live mailbox updates",
+        supported: capabilities.mail.supportsPush,
+      },
+      {
+        detail:
+          capabilities.mail.maxAttachmentBytes > 0
+            ? `Up to ${formatFileSize(capabilities.mail.maxAttachmentBytes)}`
+            : "Not available",
+        label: "Attachments",
+        supported: capabilities.mail.maxAttachmentBytes > 0,
+      },
+    ],
     twoFactor: {
       ...twoFactorView,
       canManage: capabilities.twoFactorAuthentication,

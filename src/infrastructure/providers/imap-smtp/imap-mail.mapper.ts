@@ -7,7 +7,6 @@ import type {
   MessageStructureObject,
 } from "imapflow";
 import type { AddressObject, ParsedMail } from "mailparser";
-import sanitizeHtml from "sanitize-html";
 
 import type {
   MailAddress,
@@ -21,6 +20,7 @@ import {
   encodeMailboxId,
   encodeMessageId,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
+import { sanitizeMailHtml } from "@/infrastructure/providers/sanitize-mail-html";
 
 const colors: Record<MailboxRole, string> = {
   archive: "#10b981",
@@ -126,16 +126,8 @@ export const mapParsedMessage = (
   cc: parsedAddresses(parsed.cc),
   htmlBody:
     typeof parsed.html === "string"
-      ? sanitizeHtml(parsed.html, {
-          allowedAttributes: {
-            a: ["href", "title"],
-            blockquote: ["cite"],
-            td: ["colspan", "rowspan"],
-            th: ["colspan", "rowspan"],
-          },
-          allowedSchemes: ["http", "https", "mailto"],
-          disallowedTagsMode: "discard",
-        })
+      ? sanitizeMailHtml(parsed.html)
       : null,
+  replyTo: parsedAddresses(parsed.replyTo),
   textBody: parsed.text ?? parsed.textAsHtml?.replace(/<[^>]+>/g, "") ?? "",
 });

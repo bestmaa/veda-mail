@@ -25,7 +25,7 @@ export const MessageRowView = ({
         className={`grid size-9 shrink-0 place-items-center rounded-xl text-[11px] font-extrabold ${
           message.isUnread
             ? "bg-[#2f3274] text-white"
-            : "bg-slate-100 text-slate-500"
+            : "bg-slate-100 text-slate-600"
         }`}
       >
         {message.avatar}
@@ -41,7 +41,7 @@ export const MessageRowView = ({
           >
             {message.sender}
           </p>
-          <span className="text-[11px] font-medium text-slate-400">
+          <span className="text-[11px] font-medium text-slate-600">
             {message.date}
           </span>
         </div>
@@ -56,7 +56,7 @@ export const MessageRowView = ({
             {message.subject}
           </p>
           {message.hasAttachment ? (
-            <Paperclip aria-hidden className="text-slate-400" size={13} />
+            <Paperclip aria-hidden className="text-slate-600" size={13} />
           ) : null}
           {message.isStarred ? (
             <Star
@@ -66,7 +66,7 @@ export const MessageRowView = ({
             />
           ) : null}
         </div>
-        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
+        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
           {message.preview}
         </p>
       </div>

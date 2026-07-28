@@ -44,11 +44,15 @@ Operators must:
 - Generate a strong setup token and protect the `/data` volume.
 - Restrict provider hostnames.
 - Keep proxy trust disabled unless forwarding headers are controlled.
+- Run a single application replica until shared sessions and rate limits are
+  implemented.
 - Back up before upgrading.
 - Keep the mail server, Docker host, reverse proxy, and dependencies patched.
 
 See [deployment](docs/DEPLOYMENT.md) and
-[backup and recovery](docs/BACKUP-AND-RECOVERY.md).
+[backup and recovery](docs/BACKUP-AND-RECOVERY.md). The maintained
+[threat model](docs/THREAT-MODEL.md) records trust boundaries, current
+controls, residual risks, and security gates for planned features.
 
 ## Out of scope
 

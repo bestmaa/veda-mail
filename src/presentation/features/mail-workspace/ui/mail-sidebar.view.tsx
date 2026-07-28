@@ -48,17 +48,17 @@ export const MailSidebarView = ({
         <span className="block truncate text-sm font-semibold text-white">
           {account.name}
         </span>
-        <span className="block truncate text-xs text-indigo-200/70">
+        <span className="block truncate text-xs text-indigo-100/90">
           {account.email}
         </span>
-        <span className="mt-0.5 block truncate text-[10px] uppercase tracking-[0.08em] text-indigo-200/40">
+        <span className="mt-0.5 block truncate text-[10px] uppercase tracking-[0.08em] text-indigo-100/80">
           {account.provider}
         </span>
       </span>
     </div>
 
     <button
-      className="mx-4 mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-accent)] px-4 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5"
+      className="mx-4 mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-accent)] px-4 text-sm font-bold text-[var(--brand-accent-foreground)] shadow-lg transition hover:-translate-y-0.5"
       onClick={onCompose}
       type="button"
     >
@@ -67,7 +67,7 @@ export const MailSidebarView = ({
     </button>
 
     <nav aria-label="Mail folders" className="mt-6 min-h-0 flex-1 overflow-y-auto px-3">
-      <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-200/40">
+      <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-100/80">
         Mailboxes
       </p>
       <div className="space-y-1">
@@ -76,7 +76,7 @@ export const MailSidebarView = ({
             className={`group flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm transition ${
               folder.isActive
                 ? "bg-white/12 font-semibold text-white"
-                : "text-indigo-100/65 hover:bg-white/6 hover:text-white"
+                : "text-indigo-100/90 hover:bg-white/6 hover:text-white"
             }`}
             key={folder.id}
             onClick={folder.onSelect}
@@ -90,7 +90,7 @@ export const MailSidebarView = ({
             </span>
             <span className="flex-1 text-left">{folder.label}</span>
             {folder.count > 0 ? (
-              <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] tabular-nums text-indigo-100/65">
+              <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] tabular-nums text-indigo-100/90">
                 {folder.count}
               </span>
             ) : null}
@@ -101,7 +101,7 @@ export const MailSidebarView = ({
 
     <div className="m-4">
       <button
-        className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/65 transition hover:bg-white/7 hover:text-white"
+        className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/90 transition hover:bg-white/7 hover:text-white"
         onClick={settings.open}
         type="button"
       >
@@ -111,7 +111,7 @@ export const MailSidebarView = ({
       {session.canSignOut ? (
         <button
           aria-busy={session.isSigningOut}
-          className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/50 transition hover:bg-white/7 hover:text-white"
+          className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/90 transition hover:bg-white/7 hover:text-white"
           disabled={session.isSigningOut}
           onClick={session.onSignOut}
           type="button"
@@ -121,7 +121,7 @@ export const MailSidebarView = ({
         </button>
       ) : null}
       {branding.publicRepositoryUrl ? (
-        <a className="mt-2 block px-3 text-[10px] font-semibold text-indigo-100/35 hover:text-white" href={branding.publicRepositoryUrl} rel="noreferrer" target="_blank">
+        <a className="mt-2 block px-3 text-[10px] font-semibold text-indigo-100/80 hover:text-white" href={branding.publicRepositoryUrl} rel="noreferrer" target="_blank">
           Open-source code
         </a>
       ) : null}

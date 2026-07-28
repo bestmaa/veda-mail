@@ -42,7 +42,7 @@ export const MailHeaderView = ({
         <p className="text-[17px] font-extrabold tracking-[-0.03em] text-[#1e214d]">
           {branding.productName}
         </p>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
           private workspace
         </p>
       </div>
@@ -52,10 +52,10 @@ export const MailHeaderView = ({
       className="mx-auto flex h-11 w-full max-w-xl items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:shadow-sm"
       onSubmit={onSearchSubmit}
     >
-      <Search aria-hidden className="shrink-0 text-slate-400" size={18} />
+      <Search aria-hidden className="shrink-0 text-slate-500" size={18} />
       <input
         aria-label="Search mail"
-        className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+        className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
         onChange={searchInput}
         placeholder="Search mail, people, or attachments"
         type="search"
@@ -64,7 +64,7 @@ export const MailHeaderView = ({
       {searchValue ? (
         <button
           aria-label="Clear search"
-          className="grid size-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+          className="grid size-7 place-items-center rounded-lg text-slate-600 hover:bg-slate-200 hover:text-slate-800"
           onClick={onSearchClear}
           type="button"
         >

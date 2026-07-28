@@ -40,13 +40,24 @@ export const jmapEmailSchema = z
     id: z.string().min(1),
     keywords: booleanRecord,
     mailboxIds: booleanRecord,
+    messageId: z.array(z.string()).nullable().optional(),
     preview: z.string().default(""),
     receivedAt: z.string().min(1),
+    references: z.array(z.string()).nullable().optional(),
+    replyTo: z.array(addressSchema).nullable().optional(),
     size: z.number().nonnegative(),
     subject: z.string().nullable(),
     textBody: z.array(bodyPartSchema).optional(),
     threadId: z.string().min(1),
     to: z.array(addressSchema).nullable().optional(),
+  })
+  .passthrough();
+
+export const jmapReplyContextSchema = z
+  .object({
+    id: z.string().min(1),
+    messageId: z.array(z.string()).nullable().optional(),
+    references: z.array(z.string()).nullable().optional(),
   })
   .passthrough();
 

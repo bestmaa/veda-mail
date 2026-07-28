@@ -50,6 +50,7 @@ export interface ReaderViewModel {
   readonly avatar: string;
   readonly body: string;
   readonly canArchive: boolean;
+  readonly cc: string;
   readonly date: string;
   readonly error: string | null;
   readonly from: string;
@@ -63,17 +64,27 @@ export interface ReaderViewModel {
 }
 
 export interface ComposerViewModel {
+  readonly bcc: string;
+  readonly bccInput: ChangeEventHandler<HTMLInputElement>;
   readonly body: string;
   readonly bodyInput: ChangeEventHandler<HTMLTextAreaElement>;
+  readonly cc: string;
+  readonly ccInput: ChangeEventHandler<HTMLInputElement>;
   readonly error: string | null;
+  readonly focusBody: boolean;
   readonly isOpen: boolean;
   readonly isSending: boolean;
   readonly onClose: () => void;
+  readonly onToggleBcc: () => void;
+  readonly onToggleCc: () => void;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
+  readonly showBcc: boolean;
+  readonly showCc: boolean;
   readonly subject: string;
   readonly subjectInput: ChangeEventHandler<HTMLInputElement>;
   readonly to: string;
   readonly toInput: ChangeEventHandler<HTMLInputElement>;
+  readonly title: string;
 }
 
 export interface MemberSessionViewModel {
@@ -106,7 +117,9 @@ export interface MailWorkspaceViewProps {
   readonly onCompose: () => void;
   readonly onDelete: () => void;
   readonly onRefresh: MouseEventHandler<HTMLButtonElement>;
+  readonly onForward: () => void;
   readonly onReply: () => void;
+  readonly onReplyAll: () => void;
   readonly onSearchClear: () => void;
   readonly onSearchSubmit: FormEventHandler<HTMLFormElement>;
   readonly onToggleRead: () => void;

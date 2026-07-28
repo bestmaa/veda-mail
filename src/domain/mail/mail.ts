@@ -55,6 +55,7 @@ export interface MessageDetail extends MessageSummary {
   readonly attachments: readonly Attachment[];
   readonly cc: readonly MailAddress[];
   readonly htmlBody: string | null;
+  readonly replyTo: readonly MailAddress[];
   readonly textBody: string;
 }
 
@@ -99,6 +100,11 @@ export interface ComposeInput {
 export interface SendReceipt {
   readonly id: MessageId;
   readonly submittedAt: string;
+}
+
+export interface ReplyContext {
+  readonly messageId: string | null;
+  readonly references: readonly string[];
 }
 
 export interface MailAccount {

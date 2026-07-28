@@ -7,6 +7,7 @@ import {
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 import { sendMessageSchema } from "@/transport/http/request-schemas";
 
 export const runtime = "nodejs";
@@ -17,7 +18,7 @@ export const POST = async (request: Request) => {
     assertRequestRateLimit(request, "mail-send", 5_000, 300, 60 * 1000);
     const connection = await getCurrentConnection();
     assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
-    const parsed = sendMessageSchema.parse(await request.json());
+    const parsed = sendMessageSchema.parse(await readJsonBody(request));
     const input: ComposeInput = {
       bcc: parsed.bcc,
       body: parsed.body,
@@ -26,7 +27,7 @@ export const POST = async (request: Request) => {
       subject: parsed.subject,
       to: parsed.to,
     };
-    const receipt = await (await getMailService()).sendMessage(input);
+    const receipt = await (await getMailService(connection)).sendMessage(input);
     return apiSuccess(receipt, { status: 201 });
   } catch (error) {
     return apiFailure(error, "Unable to send this message.");

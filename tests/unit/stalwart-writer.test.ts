@@ -23,6 +23,10 @@ const reader = {
     providerId: id.provider("stalwart-jmap"),
   }),
   getAccountId: async () => "account",
+  getReplyContext: async () => ({
+    messageId: "source@example.com",
+    references: ["parent@example.com"],
+  }),
   listMailboxes: async () => [
     {
       color: "#000",
@@ -102,5 +106,64 @@ describe("Stalwart writer", () => {
     await expect(
       new StalwartMailWriter(client, reader).sendMessage(input),
     ).rejects.toThrow("did not create");
+  });
+
+  it("derives reply headers from the provider-owned source message", async () => {
+    const { client, getCalls } = createClient(false);
+    await new StalwartMailWriter(client, reader).sendMessage({
+      ...input,
+      inReplyTo: id.message("source-email"),
+    });
+    const created = Object.values(
+      (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
+    )[0];
+
+    expect(created).toMatchObject({
+      "header:In-Reply-To:asMessageIds": ["source@example.com"],
+      "header:References:asMessageIds": [
+        "parent@example.com",
+        "source@example.com",
+      ],
+    });
+  });
+
+  it("drops unsafe provider-owned reply identifiers", async () => {
+    const unsafeReader = {
+      ...reader,
+      getReplyContext: async () => ({
+        messageId: "source@example.com\r\nBcc: victim@example.com",
+        references: ["parent@example.com"],
+      }),
+    } as unknown as StalwartMailReader;
+    const { client, getCalls } = createClient(false);
+    await new StalwartMailWriter(client, unsafeReader).sendMessage({
+      ...input,
+      inReplyTo: id.message("source-email"),
+    });
+    const created = Object.values(
+      (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
+    )[0];
+
+    expect(created).not.toHaveProperty("header:In-Reply-To:asMessageIds");
+    expect(created).not.toHaveProperty("header:References:asMessageIds");
+  });
+
+  it("creates structured CC and BCC recipients without To", async () => {
+    const { client, getCalls } = createClient(false);
+    await new StalwartMailWriter(client, reader).sendMessage({
+      ...input,
+      bcc: [{ email: "hidden@example.com", name: null }],
+      cc: [{ email: "copy@example.com", name: "Copy" }],
+      to: [],
+    });
+    const created = Object.values(
+      (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
+    )[0];
+
+    expect(created).toMatchObject({
+      bcc: [{ email: "hidden@example.com" }],
+      cc: [{ email: "copy@example.com", name: "Copy" }],
+      to: [],
+    });
   });
 });

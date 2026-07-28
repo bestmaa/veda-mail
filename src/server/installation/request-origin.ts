@@ -50,7 +50,7 @@ export const assertSameOrigin = (request: Request): void => {
     }
     return;
   }
-  let suppliedOrigin = "";
+  let suppliedOrigin: string;
   try {
     suppliedOrigin = new URL(origin).origin;
   } catch {

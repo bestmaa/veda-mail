@@ -21,12 +21,15 @@ import {
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   assertRequestRateLimit,
-  assertSessionRateLimit,
+  assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 
 export const runtime = "nodejs";
+
+const MAX_ADMIN_ACCOUNT_BODY_BYTES = 16 * 1024;
 
 export const GET = async () => {
   try {
@@ -60,14 +63,15 @@ export const PUT = async (request: Request) => {
       50,
       30 * 60 * 1000,
     );
-    assertSessionRateLimit(
-      request,
+    assertSubjectRateLimit(
       "admin-account",
-      ADMIN_COOKIE,
+      "administrator",
       8,
       30 * 60 * 1000,
     );
-    const input = adminAccountUpdateSchema.parse(await request.json());
+    const input = adminAccountUpdateSchema.parse(
+      await readJsonBody(request, MAX_ADMIN_ACCOUNT_BODY_BYTES),
+    );
     const installation = await installationStore.get();
     if (!installation) {
       throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);

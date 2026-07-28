@@ -4,6 +4,9 @@
 coverage
 data
 node_modules
+playwright-report
+test-results
+*.tsbuildinfo
 npm-debug.log*
 .env
 .env.*

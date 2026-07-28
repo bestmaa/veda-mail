@@ -17,11 +17,14 @@ import {
 } from "@/server/installation/installation.schema";
 import { verifyAdminPasswordDigest } from "@/server/installation/password-hash";
 import { assertSameOrigin } from "@/server/installation/request-origin";
-import { assertSessionRateLimit } from "@/server/security/rate-limit";
+import { assertSubjectRateLimit } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 
 export const runtime = "nodejs";
+
+const MAX_TWO_FACTOR_BODY_BYTES = 16 * 1024;
 
 const currentInstallation = async () => {
   await assertAdminAccess();
@@ -46,14 +49,13 @@ const setSession = async (
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const installation = await currentInstallation();
+    assertSubjectRateLimit(
       "admin-two-factor-start",
-      ADMIN_COOKIE,
+      String(installation.owner.authVersion),
       3,
       60 * 60 * 1_000,
     );
-    const installation = await currentInstallation();
     if (!isAdminRecoveryConfigured()) {
       throw new ApiError(
         "Configure VEDA_MAIL_ADMIN_RECOVERY_TOKEN before enabling 2FA.",
@@ -82,15 +84,16 @@ export const POST = async (request: Request) => {
 export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const installation = await currentInstallation();
+    assertSubjectRateLimit(
       "admin-two-factor-confirm",
-      ADMIN_COOKIE,
+      String(installation.owner.authVersion),
       8,
       15 * 60 * 1_000,
     );
-    const input = adminTwoFactorConfirmSchema.parse(await request.json());
-    const installation = await currentInstallation();
+    const input = adminTwoFactorConfirmSchema.parse(
+      await readJsonBody(request, MAX_TWO_FACTOR_BODY_BYTES),
+    );
     if (!isAdminRecoveryConfigured()) {
       throw new ApiError(
         "Configure VEDA_MAIL_ADMIN_RECOVERY_TOKEN before enabling 2FA.",
@@ -146,15 +149,16 @@ export const PUT = async (request: Request) => {
 export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const installation = await currentInstallation();
+    assertSubjectRateLimit(
       "admin-two-factor-disable",
-      ADMIN_COOKIE,
+      String(installation.owner.authVersion),
       5,
       15 * 60 * 1_000,
     );
-    const input = adminTwoFactorDisableSchema.parse(await request.json());
-    const installation = await currentInstallation();
+    const input = adminTwoFactorDisableSchema.parse(
+      await readJsonBody(request, MAX_TWO_FACTOR_BODY_BYTES),
+    );
     if (
       !installation.owner.twoFactor ||
       !(await verifyAdminPasswordDigest(

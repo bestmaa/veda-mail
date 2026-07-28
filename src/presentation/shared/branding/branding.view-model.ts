@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { accessibleForeground } from "@/domain/shared/color-contrast";
+
 export interface BrandingViewModel {
   readonly accentColor: string;
   readonly brandStyle: CSSProperties;
@@ -28,6 +30,7 @@ export const createBrandingViewModel = (
     accentColor,
     brandStyle: {
       "--brand-accent": accentColor,
+      "--brand-accent-foreground": accessibleForeground(accentColor),
       "--brand-primary": primaryColor,
     } as CSSProperties,
     logoUrl: input.logoUrl ?? null,

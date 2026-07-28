@@ -55,13 +55,13 @@ const memberConfigSchema = z.discriminatedUnion("authType", [
 export class StalwartProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
-      maxAttachmentBytes: 50_000_000,
-      supportsDrafts: true,
+      maxAttachmentBytes: 0,
+      supportsDrafts: false,
       supportsPasswordChange: true,
       supportsProfileSettings: true,
-      supportsPush: true,
+      supportsPush: false,
       supportsServerSearch: true,
-      supportsThreads: true,
+      supportsThreads: false,
       supportsTwoFactorAuthentication: true,
     },
     description: "Connect directly to a Stalwart JMAP mail server.",

@@ -1,10 +1,69 @@
+import js from "@eslint/js";
+import nextPlugin from "@next/eslint-plugin-next";
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import reactA11y from "eslint-plugin-react-a11y";
+import reactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
+  globalIgnores([
+    ".next/**",
+    "coverage/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+  js.configs.recommended,
+  {
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+  },
+  ...tseslint.configs.recommended,
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ...nextPlugin.configs["core-web-vitals"],
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ...reactHooks.configs.flat["recommended-latest"],
+  },
+  {
+    files: ["src/**/*.tsx"],
+    plugins: {
+      "react-a11y": reactA11y,
+    },
+    rules: {
+      "react-a11y/alt-text": "error",
+      "react-a11y/anchor-has-content": "error",
+      "react-a11y/anchor-is-valid": "error",
+      "react-a11y/aria-activedescendant-has-tabindex": "error",
+      "react-a11y/aria-props": "error",
+      "react-a11y/aria-role": "error",
+      "react-a11y/aria-unsupported-elements": "error",
+      "react-a11y/autocomplete-valid": "error",
+      "react-a11y/heading-has-content": "error",
+      "react-a11y/html-has-lang": "error",
+      "react-a11y/iframe-has-title": "error",
+      "react-a11y/img-redundant-alt": "error",
+      "react-a11y/lang": "error",
+      "react-a11y/media-has-caption": "error",
+      "react-a11y/mouse-events-have-key-events": "error",
+      "react-a11y/no-access-key": "error",
+      "react-a11y/no-aria-hidden-on-focusable": "error",
+      "react-a11y/no-distracting-elements": "error",
+      "react-a11y/no-keyboard-inaccessible-elements": "error",
+      "react-a11y/no-redundant-roles": "error",
+      "react-a11y/role-has-required-aria-props": "error",
+      "react-a11y/role-supports-aria-props": "error",
+      "react-a11y/scope": "error",
+      "react-a11y/tabindex-no-positive": "error",
+    },
+  },
   {
     files: ["src/**/*.{ts,tsx}", "tests/**/*.ts"],
     rules: {
@@ -47,13 +106,6 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
-  globalIgnores([
-    ".next/**",
-    "coverage/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
 ]);
 
 export default eslintConfig;

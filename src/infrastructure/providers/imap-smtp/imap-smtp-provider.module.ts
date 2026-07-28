@@ -51,7 +51,7 @@ const securityOptions = [
 export class ImapSmtpProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
-      maxAttachmentBytes: 25_000_000,
+      maxAttachmentBytes: 0,
       supportsDrafts: false,
       supportsPasswordChange: false,
       supportsProfileSettings: false,

@@ -1,10 +1,7 @@
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
 import type { ProviderModule } from "@/application/ports/mail-provider.port";
 import type { ProviderId } from "@/domain/shared/brand";
-import {
-  ADMIN_COOKIE,
-  assertAdminAccess,
-} from "@/server/auth/admin-session";
+import { assertAdminAccess } from "@/server/auth/admin-session";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
@@ -13,12 +10,15 @@ import {
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import {
   assertRequestRateLimit,
-  assertSessionRateLimit,
+  assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 
 export const runtime = "nodejs";
+
+const MAX_MAIL_SERVICE_PROFILE_BODY_BYTES = 64 * 1024;
 
 const findProvider = (providerId: ProviderId): ProviderModule => {
   try {
@@ -51,14 +51,15 @@ export const PUT = async (request: Request) => {
       100,
       10 * 60 * 1000,
     );
-    assertSessionRateLimit(
-      request,
+    assertSubjectRateLimit(
       "admin-mail-service",
-      ADMIN_COOKIE,
+      "administrator",
       20,
       10 * 60 * 1000,
     );
-    const input = mailServiceProfileInputSchema.parse(await request.json());
+    const input = mailServiceProfileInputSchema.parse(
+      await readJsonBody(request, MAX_MAIL_SERVICE_PROFILE_BODY_BYTES),
+    );
     const provider = findProvider(input.providerId);
     const config = await provider.validateServiceConfig(input.config);
     const configuration = await mailServiceProfileStore.put({

@@ -6,10 +6,25 @@ profile.
 
 ## Included adapters
 
-| Adapter | Use it for | Authentication | Provider-only features |
-| --- | --- | --- | --- |
-| Stalwart JMAP | Self-hosted Stalwart | Stalwart OAuth flow | Password, profile, and provider-native 2FA management |
-| Standard IMAP + SMTP | Hostinger, cPanel, Zoho, Fastmail, and compatible hosting | Full email address plus mailbox/app password | Reading, search, send, folders, flags, archive, move, and trash |
+The capability values below describe features callable through Veda Mail
+today, not every feature the upstream server protocol could eventually supply.
+
+| Capability | Stalwart JMAP | Standard IMAP + SMTP |
+| --- | --- | --- |
+| Mailbox/message read | Yes | Yes |
+| Server-side text search | Yes | Yes |
+| Plain-text send, To/CC/BCC | Yes | Yes |
+| Read/star/archive/move/trash | Yes | Yes |
+| Profile/password/provider 2FA management | Yes | No |
+| Provider-backed drafts/autosave | Not implemented | Not implemented |
+| Attachment upload/download | Not implemented | Not implemented |
+| Conversation/thread API | Not implemented | Not implemented |
+| Push/new-mail subscription | Not implemented | Not implemented |
+
+| Adapter | Use it for | Authentication |
+| --- | --- | --- |
+| Stalwart JMAP | Self-hosted Stalwart | Stalwart OAuth flow |
+| Standard IMAP + SMTP | Hostinger, cPanel, Zoho, Fastmail, and compatible hosting | Full email address plus mailbox/app password |
 
 Member authenticator 2FA is supplied by Veda Mail for both adapters. It does
 not require a mailbox-management API.

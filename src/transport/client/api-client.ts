@@ -5,7 +5,10 @@ import type {
   MessageMutation,
   SendReceipt,
 } from "@/domain/mail/mail";
-import type { ProviderManifest } from "@/domain/provider/provider";
+import type {
+  ProviderCapabilities,
+  ProviderManifest,
+} from "@/domain/provider/provider";
 import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
@@ -26,6 +29,7 @@ export interface MemberSignInInput {
 
 export interface MemberSettingsSnapshot {
   readonly capabilities: {
+    readonly mail: ProviderCapabilities;
     readonly passwordChange: boolean;
     readonly profileSettings: boolean;
     readonly twoFactorAuthentication: boolean;
