@@ -7,9 +7,9 @@ import {
 } from "html-to-text";
 import sanitizeHtml from "sanitize-html";
 
-const MAX_MAIL_HTML_CHILD_NODES = 2_000;
-const MAX_MAIL_HTML_DEPTH = 64;
-const MAX_MAIL_HTML_TO_TEXT_CHARACTERS = 1_000_000;
+const MAX_MAIL_HTML_CHILD_NODES = 1_000;
+const MAX_MAIL_HTML_DEPTH = 32;
+const MAX_MAIL_HTML_TO_TEXT_CHARACTERS = 256_000;
 
 const allowedTags = [
   "a",
@@ -78,8 +78,10 @@ const blockSelectors = [
   "div",
   "footer",
   "header",
+  "li",
   "main",
   "nav",
+  "ol",
   "section",
   "table",
   "tbody",
@@ -88,6 +90,7 @@ const blockSelectors = [
   "th",
   "thead",
   "tr",
+  "ul",
 ].map(
   (selector): SelectorDefinition => ({
     format: "block",
@@ -131,14 +134,8 @@ const mailHtmlToTextOptions: HtmlToTextOptions = {
       selector: "pre",
     },
     {
-      format: "orderedList",
-      options: singleLineBlock,
-      selector: "ol",
-    },
-    {
-      format: "unorderedList",
-      options: { ...singleLineBlock, itemPrefix: "- " },
-      selector: "ul",
+      format: "lineBreak",
+      selector: "hr",
     },
     ...["head", "iframe", "script", "style", "template", "title"].map(
       (selector): SelectorDefinition => ({
@@ -204,5 +201,7 @@ export const mailHtmlToPlainText = (value: string): string => {
     0,
     MAX_MAIL_HTML_TO_TEXT_CHARACTERS,
   );
-  return convertMailHtmlToPlainText(boundedSanitizedHtml).trim();
+  return convertMailHtmlToPlainText(boundedSanitizedHtml)
+    .slice(0, MAX_MAIL_HTML_TO_TEXT_CHARACTERS)
+    .trim();
 };

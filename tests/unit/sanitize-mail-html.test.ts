@@ -88,7 +88,7 @@ describe("mail HTML plain-text conversion", () => {
           "<p>First &amp; second<br>Next&nbsp;line</p>" +
           "<ul><li>One</li><li>Two</li></ul>",
       ),
-    ).toBe("Welcome\nFirst & second\nNext line\n- One\n- Two");
+    ).toBe("Welcome\nFirst & second\nNext line\nOne\nTwo");
   });
 
   it("drops script and style contents before parser-backed conversion", () => {
@@ -147,6 +147,20 @@ describe("mail HTML plain-text conversion", () => {
     );
 
     expect(output).not.toContain("UNREACHABLE_TAIL");
-    expect(output.length).toBeLessThanOrEqual(1_000_000);
+    expect(output.length).toBeLessThanOrEqual(256_000);
+  });
+
+  it("prevents formatter output amplification near the input limit", () => {
+    const denseRules = Array.from(
+      { length: 64 },
+      () => `<div>${"<hr>".repeat(1_000)}</div>`,
+    ).join("");
+    const nestedLists =
+      "<ul><li>".repeat(10_000) + "Item" + "</li></ul>".repeat(10_000);
+    const output = mailHtmlToPlainText(nestedLists + denseRules);
+
+    expect(output).toContain("Item");
+    expect(output.length).toBeLessThanOrEqual(256_000);
+    expect(output.length).toBeLessThan(denseRules.length + nestedLists.length);
   });
 });
