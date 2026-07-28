@@ -125,4 +125,28 @@ describe("mail HTML plain-text conversion", () => {
     expect(output).not.toMatch(/(?:TRACKER_LEAK|<script|<style)/i);
     expect(output).toContain("Readable & safe\nSecond line");
   });
+
+  it("bounds hostile table spans and deeply nested allowed tags", () => {
+    const deeplyNested =
+      "<div>".repeat(5_000) + "Deep content" + "</div>".repeat(5_000);
+    const output = mailHtmlToPlainText(
+      '<table><tr><td colspan="10000" rowspan="10000">Cell</td></tr></table>' +
+        deeplyNested,
+    );
+
+    expect(output).toContain("Cell");
+    expect(output).toContain("Deep content");
+    expect(output.length).toBeLessThan(100);
+  });
+
+  it("bounds parser input and child-node expansion", () => {
+    const manyChildren = "<span>x</span>".repeat(2_500);
+    const oversized = "y".repeat(1_100_000);
+    const output = mailHtmlToPlainText(
+      `<div>${manyChildren}</div><p>${oversized}</p>UNREACHABLE_TAIL`,
+    );
+
+    expect(output).not.toContain("UNREACHABLE_TAIL");
+    expect(output.length).toBeLessThanOrEqual(1_000_000);
+  });
 });

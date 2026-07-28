@@ -7,6 +7,10 @@ import {
 } from "html-to-text";
 import sanitizeHtml from "sanitize-html";
 
+const MAX_MAIL_HTML_CHILD_NODES = 2_000;
+const MAX_MAIL_HTML_DEPTH = 64;
+const MAX_MAIL_HTML_TO_TEXT_CHARACTERS = 1_000_000;
+
 const allowedTags = [
   "a",
   "address",
@@ -77,6 +81,13 @@ const blockSelectors = [
   "main",
   "nav",
   "section",
+  "table",
+  "tbody",
+  "td",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
 ].map(
   (selector): SelectorDefinition => ({
     format: "block",
@@ -95,6 +106,12 @@ const headingSelectors = ["h1", "h2", "h3", "h4", "h5", "h6"].map(
 
 const mailHtmlToTextOptions: HtmlToTextOptions = {
   decodeEntities: true,
+  limits: {
+    ellipsis: "…",
+    maxChildNodes: MAX_MAIL_HTML_CHILD_NODES,
+    maxDepth: MAX_MAIL_HTML_DEPTH,
+    maxInputLength: MAX_MAIL_HTML_TO_TEXT_CHARACTERS,
+  },
   preserveNewlines: false,
   selectors: [
     ...blockSelectors,
@@ -123,14 +140,6 @@ const mailHtmlToTextOptions: HtmlToTextOptions = {
       options: { ...singleLineBlock, itemPrefix: "- " },
       selector: "ul",
     },
-    {
-      format: "dataTable",
-      options: {
-        ...singleLineBlock,
-        uppercaseHeaderCells: false,
-      },
-      selector: "table",
-    },
     ...["head", "iframe", "script", "style", "template", "title"].map(
       (selector): SelectorDefinition => ({
         format: "skip",
@@ -156,6 +165,7 @@ export const sanitizeMailHtml = (value: string): string =>
     allowedSchemes: ["http", "https", "mailto"],
     allowedTags: [...allowedTags],
     disallowedTagsMode: "discard",
+    nestingLimit: MAX_MAIL_HTML_DEPTH,
     nonTextTags: [
       "head",
       "iframe",
@@ -188,5 +198,11 @@ export const sanitizeMailHtml = (value: string): string =>
     },
   });
 
-export const mailHtmlToPlainText = (value: string): string =>
-  convertMailHtmlToPlainText(sanitizeMailHtml(value)).trim();
+export const mailHtmlToPlainText = (value: string): string => {
+  const boundedInput = value.slice(0, MAX_MAIL_HTML_TO_TEXT_CHARACTERS);
+  const boundedSanitizedHtml = sanitizeMailHtml(boundedInput).slice(
+    0,
+    MAX_MAIL_HTML_TO_TEXT_CHARACTERS,
+  );
+  return convertMailHtmlToPlainText(boundedSanitizedHtml).trim();
+};
