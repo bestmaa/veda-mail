@@ -39,4 +39,21 @@ describe("IMAP MIME mapping", () => {
     );
     expect(detail.htmlBody).not.toMatch(/script|img|style=/i);
   });
+
+  it("uses parser-backed plain text for the generated HTML fallback", () => {
+    const detail = mapParsedMessage(summary, {
+      attachments: [],
+      cc: undefined,
+      html: false,
+      replyTo: undefined,
+      text: undefined,
+      textAsHtml:
+        "<script>SECRET_SCRIPT()</script>" +
+        "<style>.SECRET_STYLE{display:none}</style>" +
+        "<h2>Update &amp; status</h2><p>First<br>Second</p>",
+    } as unknown as ParsedMail);
+
+    expect(detail.textBody).toBe("Update & status\nFirst\nSecond");
+    expect(detail.textBody).not.toMatch(/SECRET_SCRIPT|SECRET_STYLE|<[^>]+>/i);
+  });
 });

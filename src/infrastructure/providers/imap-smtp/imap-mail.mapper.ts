@@ -20,7 +20,10 @@ import {
   encodeMailboxId,
   encodeMessageId,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
-import { sanitizeMailHtml } from "@/infrastructure/providers/sanitize-mail-html";
+import {
+  mailHtmlToPlainText,
+  sanitizeMailHtml,
+} from "@/infrastructure/providers/sanitize-mail-html";
 
 const colors: Record<MailboxRole, string> = {
   archive: "#10b981",
@@ -129,5 +132,7 @@ export const mapParsedMessage = (
       ? sanitizeMailHtml(parsed.html)
       : null,
   replyTo: parsedAddresses(parsed.replyTo),
-  textBody: parsed.text ?? parsed.textAsHtml?.replace(/<[^>]+>/g, "") ?? "",
+  textBody:
+    parsed.text ??
+    (parsed.textAsHtml ? mailHtmlToPlainText(parsed.textAsHtml) : ""),
 });

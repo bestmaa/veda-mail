@@ -8,7 +8,10 @@ import type {
   MessageSummary,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
-import { sanitizeMailHtml } from "@/infrastructure/providers/sanitize-mail-html";
+import {
+  mailHtmlToPlainText,
+  sanitizeMailHtml,
+} from "@/infrastructure/providers/sanitize-mail-html";
 import type {
   JmapAddress,
   JmapBodyPart,
@@ -93,51 +96,6 @@ const escapeHtml = (value: string): string =>
     return replacements[character] ?? character;
   });
 
-const decodeHtmlEntities = (value: string): string => {
-  const namedEntities: Readonly<Record<string, string>> = {
-    amp: "&",
-    apos: "'",
-    gt: ">",
-    lt: "<",
-    nbsp: " ",
-    quot: '"',
-  };
-  return value.replace(
-    /&(?:#(\d+)|#x([\da-f]+)|([a-z]+));/gi,
-    (entity, decimal: string, hexadecimal: string, named: string) => {
-      const numericValue = decimal
-        ? Number.parseInt(decimal, 10)
-        : Number.parseInt(hexadecimal, 16);
-      if (decimal || hexadecimal) {
-        return Number.isSafeInteger(numericValue) &&
-          numericValue >= 0 &&
-          numericValue <= 0x10ffff
-          ? String.fromCodePoint(numericValue)
-          : entity;
-      }
-      return namedEntities[named.toLowerCase()] ?? entity;
-    },
-  );
-};
-
-const htmlToText = (value: string): string => {
-  const safeHtml = sanitizeMailHtml(value);
-  return decodeHtmlEntities(
-    safeHtml
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<li(?:\s[^>]*)?>/gi, "- ")
-      .replace(/<\/(?:td|th)>/gi, "\t")
-      .replace(
-        /<\/(?:address|article|aside|blockquote|div|footer|h[1-6]|header|li|main|nav|ol|p|pre|section|table|tr|ul)>/gi,
-        "\n",
-      )
-      .replace(/<[^>]+>/g, ""),
-  )
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-};
-
 const textBodyValue = (email: JmapEmail): string => {
   const render = (values: readonly BodyValue[]) =>
     values
@@ -145,7 +103,7 @@ const textBodyValue = (email: JmapEmail): string => {
         if (type === "text/plain") {
           return value;
         }
-        return type === "text/html" ? htmlToText(value) : "";
+        return type === "text/html" ? mailHtmlToPlainText(value) : "";
       })
       .filter(Boolean)
       .join("\n");

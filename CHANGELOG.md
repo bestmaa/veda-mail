@@ -49,6 +49,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
   promoting release tags
 - Require an explicit, version-pinned npm install-script allowlist
 - Migrate the lint toolchain to an audit-clean ESLint 10 configuration
+- Replace regex-based mail HTML-to-text fallbacks with a parser-backed,
+  sanitizer-first conversion path
 
 ## [0.1.0] - 2026-07-23
 

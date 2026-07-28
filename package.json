@@ -50,6 +50,7 @@
     "check": "npm run lint && npm run typecheck && npm run check:lines && npm run check:architecture && npm run test"
   },
   "dependencies": {
+    "html-to-text": "10.0.0",
     "imapflow": "^1.5.0",
     "lucide-react": "^1.26.0",
     "mailparser": "^3.9.14",
@@ -66,6 +67,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@types/html-to-text": "9.0.4",
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^16.2.12",
     "@playwright/test": "^1.61.1",
