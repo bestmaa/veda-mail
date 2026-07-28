@@ -60,7 +60,9 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
             onArchive={props.onArchive}
             onClose={props.onCloseReader}
             onDelete={props.onDelete}
+            onForward={props.onForward}
             onReply={props.onReply}
+            onReplyAll={props.onReplyAll}
             onToggleRead={props.onToggleRead}
             onToggleStar={props.onToggleStar}
             reader={props.reader}
@@ -73,7 +75,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
 
     <button
       aria-label="Compose a new message"
-      className="fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-2xl bg-[var(--brand-accent)] text-white shadow-xl md:hidden"
+      className="fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-2xl bg-[var(--brand-accent)] text-[var(--brand-accent-foreground)] shadow-xl md:hidden"
       onClick={props.onCompose}
       type="button"
     >

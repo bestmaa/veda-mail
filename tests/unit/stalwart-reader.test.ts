@@ -64,4 +64,49 @@ describe("Stalwart reader", () => {
       maxBodyValueBytes: 2_000_000,
     });
   });
+
+  it("loads provider message identifiers for reply headers", async () => {
+    let calls: readonly JmapMethodCall[] = [];
+    let replyList = [
+      {
+        id: "message",
+        messageId: ["source@example.com"],
+        references: ["parent@example.com"],
+      },
+    ];
+    const client = {
+      getSession: async () => session,
+      request: async (nextCalls: readonly JmapMethodCall[]) => {
+        calls = nextCalls;
+        return { methodResponses: [], sessionState: "state" };
+      },
+      result: () => ({
+        accountId: "account",
+        list: replyList,
+        state: "state",
+      }),
+    } as unknown as StalwartJmapClient;
+    const reader = new StalwartMailReader(client, {
+      authType: "basic",
+      baseUrl: "https://mail.example.com",
+      secret: "secret",
+      username: "test@example.com",
+    });
+
+    await expect(reader.getReplyContext(id.message("message"))).resolves.toEqual(
+      {
+        messageId: "source@example.com",
+        references: ["parent@example.com"],
+      },
+    );
+    expect(calls[0]?.[1]).toMatchObject({
+      ids: ["message"],
+      properties: ["id", "messageId", "references"],
+    });
+
+    replyList = [];
+    await expect(
+      reader.getReplyContext(id.message("message")),
+    ).rejects.toThrow("The message being replied to was not found.");
+  });
 });

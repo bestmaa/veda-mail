@@ -1,7 +1,13 @@
 import { id } from "@/domain/shared/brand";
+import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
+import {
+  assertRequestRateLimit,
+  assertSubjectRateLimit,
+} from "@/server/security/rate-limit";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 import { messageMutationSchema } from "@/transport/http/request-schemas";
 
 export const runtime = "nodejs";
@@ -10,11 +16,14 @@ interface RouteContext {
   readonly params: Promise<{ readonly messageId: string }>;
 }
 
-export const GET = async (_request: Request, context: RouteContext) => {
+export const GET = async (request: Request, context: RouteContext) => {
   try {
+    assertRequestRateLimit(request, "mail-read", 20_000, 1_000, 60 * 1000);
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit("mail-read", connection.id, 300, 60 * 1000);
     const { messageId } = await context.params;
     const message = await (
-      await getMailService()
+      await getMailService(connection)
     ).getMessage(id.message(messageId));
     return apiSuccess(message);
   } catch (error) {
@@ -25,13 +34,16 @@ export const GET = async (_request: Request, context: RouteContext) => {
 export const PATCH = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
+    assertRequestRateLimit(request, "mail-mutation", 5_000, 300, 60 * 1000);
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit("mail-mutation", connection.id, 120, 60 * 1000);
     const { messageId } = await context.params;
-    const payload = (await request.json()) as unknown;
+    const payload = await readJsonBody(request, 32 * 1024);
     const mutation = messageMutationSchema.parse({
       ...(typeof payload === "object" && payload ? payload : {}),
       messageId,
     });
-    await (await getMailService()).mutateMessage(mutation);
+    await (await getMailService(connection)).mutateMessage(mutation);
     return apiSuccess({ updated: true });
   } catch (error) {
     return apiFailure(error, "Unable to update this message.");

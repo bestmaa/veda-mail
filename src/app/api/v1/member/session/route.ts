@@ -26,12 +26,14 @@ import {
 } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
 import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 
 export const runtime = "nodejs";
 
 const MEMBER_SESSION_TTL_SECONDS = 60 * 60 * 12;
+const MAX_MEMBER_LOGIN_BODY_BYTES = 16 * 1024;
 
 const anonymousSession = {
   account: null,
@@ -99,7 +101,9 @@ export const POST = async (request: Request) => {
       100,
       15 * 60 * 1000,
     );
-    const credentials = memberCredentialsSchema.parse(await request.json());
+    const credentials = memberCredentialsSchema.parse(
+      await readJsonBody(request, MAX_MEMBER_LOGIN_BODY_BYTES),
+    );
     assertSubjectRateLimit(
       "member-login",
       credentials.email.toLowerCase(),

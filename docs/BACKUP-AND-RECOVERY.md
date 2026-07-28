@@ -61,7 +61,7 @@ atomic volume snapshots, use that feature instead.
 Encrypt backup archives at rest and restrict access. Treat them like
 administrator credentials.
 
-Dockploy users should schedule backups for the volume mounted at `/data` and
+Dokploy users should schedule backups for the volume mounted at `/data` and
 periodically test restoration to a separate non-production service.
 
 ## Bind-mount backup

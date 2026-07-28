@@ -15,7 +15,7 @@ export const AttachmentCardView = ({
       <span className="block truncate text-sm font-bold text-slate-700">
         {attachment.name}
       </span>
-      <span className="block truncate text-xs text-slate-400">
+      <span className="block truncate text-xs text-slate-600">
         {attachment.meta}
       </span>
     </span>

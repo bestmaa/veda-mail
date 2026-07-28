@@ -1,4 +1,4 @@
-# Docker, Dockploy, and reverse-proxy deployment
+# Docker, Dokploy, and reverse-proxy deployment
 
 Complete [installation prerequisites](INSTALLATION.md) first. All production
 deployments require HTTPS, one durable `/data` volume, a strong setup token,
@@ -22,7 +22,9 @@ VEDA_MAIL_IMAGE=ghcr.io/bestmaa/veda-mail:latest
 ```
 
 Published images include an SBOM, OCI provenance, and a GitHub artifact
-attestation. Anonymous pulls work once the GHCR package is public.
+attestation. Both platform variants are scanned at their exact candidate
+digest before release tags are promoted. Anonymous pulls work once the GHCR
+package is public.
 
 ## Docker Compose
 

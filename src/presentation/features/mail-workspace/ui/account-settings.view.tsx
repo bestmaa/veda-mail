@@ -1,6 +1,7 @@
 import {
   KeyRound,
   LoaderCircle,
+  ServerCog,
   ShieldCheck,
   UserRound,
   X,
@@ -17,7 +18,7 @@ const status = (error: string | null, success: string | null) =>
   ) : null;
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100";
+  "h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100";
 
 export const AccountSettingsView = ({
   settings,
@@ -65,6 +66,41 @@ export const AccountSettingsView = ({
             </div>
           ) : (
             <>
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center gap-3">
+                  <ServerCog aria-hidden className="text-indigo-600" size={20} />
+                  <div>
+                    <h3 className="font-bold text-slate-900">
+                      Provider capabilities
+                    </h3>
+                    <p className="text-xs text-slate-600">
+                      Unsupported features stay visibly unavailable.
+                    </p>
+                  </div>
+                </div>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {settings.providerFeatures.map((feature) => (
+                    <li
+                      className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2"
+                      key={feature.label}
+                    >
+                      <span className="text-xs font-semibold text-slate-700">
+                        {feature.label}
+                      </span>
+                      <span
+                        className={
+                          feature.supported
+                            ? "text-xs font-bold text-emerald-700"
+                            : "text-xs font-bold text-slate-600"
+                        }
+                      >
+                        {feature.detail}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
               <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" onSubmit={settings.profile.onSubmit}>
                 <div className="mb-4 flex items-center gap-3">
                   <UserRound aria-hidden className="text-indigo-600" size={20} />
@@ -90,7 +126,7 @@ export const AccountSettingsView = ({
                   Email address
                   <input className={`${inputClass} mt-1.5 bg-slate-50 text-slate-500`} disabled value={settings.email} />
                 </label>
-                <p className="mt-2 text-[11px] text-slate-400">Email address can only be changed by the mail administrator.</p>
+                <p className="mt-2 text-[11px] text-slate-600">Email address can only be changed by the mail administrator.</p>
                 <div className="mt-4 flex items-center justify-between gap-3">
                   {status(settings.profile.error, settings.profile.success)}
                   <button
@@ -127,7 +163,7 @@ export const AccountSettingsView = ({
                     <input autoComplete="new-password" className={`${inputClass} mt-1.5`} disabled={!settings.canChangePassword} minLength={8} onChange={settings.password.confirmInput} required type="password" value={settings.password.confirm} />
                   </label>
                   <label className="block text-xs font-bold text-slate-600 sm:col-span-2">
-                    Verification code <span className="font-normal text-slate-400">(only if 2FA is enabled)</span>
+                    Verification code <span className="font-normal text-slate-600">(only if 2FA is enabled)</span>
                     <input autoComplete="one-time-code" className={`${inputClass} mt-1.5`} disabled={!settings.canChangePassword} inputMode="numeric" onChange={settings.password.otpCodeInput} pattern="[0-9]{6,8}" placeholder="6-digit code" value={settings.password.otpCode} />
                   </label>
                 </div>

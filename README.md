@@ -18,11 +18,15 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Provider-independent member authenticator 2FA with backup codes
 - Organization name, product name, logo, colors, and repository link
 - Allowed-domain controls and a protected provider configuration
-- Inbox, reader, search, compose, reply, star, archive, and delete flows
+- Inbox, reader, search, To/CC/BCC compose, Reply, Reply All, Forward, star,
+  archive, and delete flows
+- Member-visible provider capabilities for drafts, threads, push, search, and
+  attachments; unavailable features are stated rather than guessed
 - Sanitized HTML mail; scripts and remote images are removed
 - Opaque HttpOnly cookies; mailbox passwords never enter browser storage
 - Pure prop-driven views, connectors, hooks, and ports/adapters
-- Strict TypeScript, architecture checks, and a 250-line source limit
+- Strict TypeScript, architecture checks, a 250-line source limit, Playwright
+  WCAG regression checks, CodeQL, and Trivy release gates
 - Docker, Compose, reverse-proxy, and Dockploy support
 
 ## Published container image
@@ -185,6 +189,8 @@ Back up `/data` before every upgrade. See the
 - [Upgrading](docs/UPGRADING.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Adding a provider](docs/ADDING-A-PROVIDER.md)
+- [Product roadmap and definition of done](docs/ROADMAP.md)
+- [Threat model and supported security boundaries](docs/THREAT-MODEL.md)
 - [Open-source compliance](docs/OPEN-SOURCE-COMPLIANCE.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
@@ -193,6 +199,9 @@ Back up `/data` before every upgrade. See the
 
 ```bash
 npm run check
+npm run test:coverage
+npx playwright install --with-deps chromium
+npm run test:e2e
 npm run build
 npm audit --audit-level=high
 docker compose config

@@ -6,7 +6,11 @@ import type {
   SendReceipt,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
-import { createMessageId } from "@/infrastructure/providers/message-id";
+import {
+  createMessageId,
+  safeMessageId,
+  safeReplyReferences,
+} from "@/infrastructure/providers/message-id";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import {
@@ -69,11 +73,18 @@ export class StalwartMailWriter {
   public async sendMessage(input: ComposeInput): Promise<SendReceipt> {
     const accountId = await this.reader.getAccountId();
     const account = await this.reader.getAccount();
-    const [identity, draftMailboxId, sentMailboxId] = await Promise.all([
+    const [identity, draftMailboxId, sentMailboxId, replyContext] = await Promise.all([
       this.getIdentity(accountId, account.email),
       this.getMailboxId("drafts"),
       this.getMailboxId("sent"),
+      input.inReplyTo
+        ? this.reader.getReplyContext(input.inReplyTo)
+        : Promise.resolve(null),
     ]);
+    const replyMessageId = safeMessageId(replyContext?.messageId);
+    const references = replyMessageId
+      ? safeReplyReferences(replyContext?.references ?? [], replyMessageId)
+      : [];
     const createId = `draft-${crypto.randomUUID()}`;
     const response = await this.client.request(
       [
@@ -95,6 +106,12 @@ export class StalwartMailWriter {
                 "header:Message-ID:asMessageIds": [
                   createMessageId(identity.email),
                 ],
+                ...(replyMessageId
+                  ? {
+                      "header:In-Reply-To:asMessageIds": [replyMessageId],
+                      "header:References:asMessageIds": references,
+                    }
+                  : {}),
                 keywords: { $draft: true, $seen: true },
                 mailboxIds: { [draftMailboxId]: true },
                 subject: input.subject || "(No subject)",

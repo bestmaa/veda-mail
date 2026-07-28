@@ -1,13 +1,15 @@
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
-import { CONNECTION_COOKIE, getCurrentConnection } from "@/server/connections/connection-session";
+import type { ProviderConnection } from "@/domain/provider/provider";
+import { getCurrentConnection } from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
-import { assertSessionRateLimit } from "@/server/security/rate-limit";
+import { assertSubjectRateLimit } from "@/server/security/rate-limit";
 import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 import {
   memberPasswordChangeSchema,
   memberProfileUpdateSchema,
@@ -15,8 +17,9 @@ import {
 
 export const runtime = "nodejs";
 
-const context = async () => {
-  const connection = await getCurrentConnection();
+const MAX_MEMBER_SETTINGS_BODY_BYTES = 16 * 1024;
+
+const context = async (connection: ProviderConnection) => {
   const gateway = await resolveGateway(connection);
   const provider = getProviderRegistry().get(connection.providerId);
   const profile = await mailServiceProfileStore.get();
@@ -29,6 +32,7 @@ const context = async () => {
   }
   return {
     capabilities: {
+      mail: provider.manifest.capabilities,
       passwordChange: provider.manifest.capabilities.supportsPasswordChange,
       profileSettings: provider.manifest.capabilities.supportsProfileSettings,
       twoFactorAuthentication: true,
@@ -42,7 +46,14 @@ const context = async () => {
 
 export const GET = async () => {
   try {
-    const { capabilities, gateway } = await context();
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit(
+      "member-settings-read",
+      connection.id,
+      120,
+      60 * 1000,
+    );
+    const { capabilities, gateway } = await context(connection);
     return apiSuccess({
       capabilities,
       profile: await gateway.getMemberProfile(),
@@ -60,17 +71,21 @@ export const GET = async () => {
 export const PATCH = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit(
       "member-profile",
-      CONNECTION_COOKIE,
+      connection.id,
       20,
       15 * 60 * 1000,
     );
-    const input = memberProfileUpdateSchema.parse(await request.json());
-    const { gateway } = await context();
+    const input = memberProfileUpdateSchema.parse(
+      await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
+    );
+    const current = await context(connection);
     try {
-      return apiSuccess({ profile: await gateway.updateMemberProfile(input) });
+      return apiSuccess({
+        profile: await current.gateway.updateMemberProfile(input),
+      });
     } catch {
       throw new ApiError(
         "The profile name could not be updated.",
@@ -86,15 +101,18 @@ export const PATCH = async (request: Request) => {
 export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const verifiedConnection = await getCurrentConnection();
+    assertSubjectRateLimit(
       "member-password",
-      CONNECTION_COOKIE,
+      verifiedConnection.id,
       5,
       15 * 60 * 1000,
     );
-    const input = memberPasswordChangeSchema.parse(await request.json());
-    const { connection, gateway, profile, provider } = await context();
+    const input = memberPasswordChangeSchema.parse(
+      await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
+    );
+    const current = await context(verifiedConnection);
+    const { connection, gateway, profile, provider } = current;
     const account = await gateway.getAccount();
     try {
       await gateway.changePassword(input);

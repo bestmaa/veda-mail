@@ -95,6 +95,7 @@ export const useMailWorkspaceModel = ({
         avatar: "",
         body: "",
         canArchive: false,
+        cc: "",
         date: "",
         error: mail.readerError,
         from: "",
@@ -118,6 +119,7 @@ export const useMailWorkspaceModel = ({
       canArchive: Boolean(
         mail.workspace?.mailboxes.some((mailbox) => mailbox.role === "archive"),
       ),
+      cc: message.cc.map((address) => address.email).join(", "),
       date: formatFullDate(message.receivedAt),
       error: mail.readerError,
       from: formatSender(message.from),
@@ -146,6 +148,14 @@ export const useMailWorkspaceModel = ({
     () => composer.openReply(mail.selectedMessage),
     [composer, mail.selectedMessage],
   );
+  const onReplyAll = useCallback(
+    () => composer.openReplyAll(mail.selectedMessage, accountEmail),
+    [accountEmail, composer, mail.selectedMessage],
+  );
+  const onForward = useCallback(
+    () => composer.openForward(mail.selectedMessage),
+    [composer, mail.selectedMessage],
+  );
 
   return {
     account: {
@@ -157,17 +167,27 @@ export const useMailWorkspaceModel = ({
     branding: brandingView,
     activeFolder,
     composer: {
+      bcc: composer.bcc,
+      bccInput: composer.onBccInput,
       body: composer.body,
       bodyInput: composer.onBodyInput,
+      cc: composer.cc,
+      ccInput: composer.onCcInput,
       error: composer.error,
+      focusBody: Boolean(composer.to),
       isOpen: composer.isOpen,
       isSending: composer.isSending,
       onClose: composer.close,
+      onToggleBcc: composer.onToggleBcc,
+      onToggleCc: composer.onToggleCc,
       onSubmit: composer.onSubmit,
+      showBcc: composer.showBcc,
+      showCc: composer.showCc,
       subject: composer.subject,
       subjectInput: composer.onSubjectInput,
       to: composer.to,
       toInput: composer.onToInput,
+      title: composer.title,
     },
     error: mail.error ?? session.error,
     folders,
@@ -182,8 +202,10 @@ export const useMailWorkspaceModel = ({
     onCloseReader: mail.closeReader,
     onCompose: composer.open,
     onDelete: mail.remove,
+    onForward,
     onRefresh: mail.onRefresh,
     onReply,
+    onReplyAll,
     onSearchClear: mail.onSearchClear,
     onSearchSubmit: mail.onSearchSubmit,
     onToggleRead: mail.toggleRead,

@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
+import { accessibleForeground } from "@/domain/shared/color-contrast";
 import { installationStore } from "@/server/installation/installation.store";
 
 import "./globals.css";
@@ -48,6 +49,7 @@ export default async function RootLayout({
   const branding = await installationStore.getBranding();
   const brandStyle = {
     "--brand-accent": branding.accentColor,
+    "--brand-accent-foreground": accessibleForeground(branding.accentColor),
     "--brand-primary": branding.primaryColor,
   } as CSSProperties;
 

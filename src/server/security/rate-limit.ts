@@ -121,35 +121,3 @@ export const assertSubjectRateLimit = (
     Date.now(),
   );
 };
-
-const cookieValue = (request: Request, name: string): string | null => {
-  const prefix = `${name}=`;
-  const item = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((value) => value.trim())
-    .find((value) => value.startsWith(prefix));
-  if (!item) {
-    return null;
-  }
-  try {
-    return decodeURIComponent(item.slice(prefix.length));
-  } catch {
-    return item.slice(prefix.length);
-  }
-};
-
-export const assertSessionRateLimit = (
-  request: Request,
-  scope: string,
-  cookieName: string,
-  limit: number,
-  durationMs: number,
-): void => {
-  assertSubjectRateLimit(
-    scope,
-    cookieValue(request, cookieName) ?? "missing-session",
-    limit,
-    durationMs,
-  );
-};

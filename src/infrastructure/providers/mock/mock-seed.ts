@@ -28,6 +28,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [inbox],
     preview: "Your private mail stack is ready. Here are the next security checks.",
     receivedAt: "2026-07-23T05:42:00.000Z",
+    replyTo: [],
     size: 18420,
     subject: "Your Stalwart workspace is ready",
     textBody:
@@ -54,6 +55,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [inbox],
     preview: "I added the revised delivery milestones and ownership notes.",
     receivedAt: "2026-07-23T04:18:00.000Z",
+    replyTo: [],
     size: 2_455_000,
     subject: "Revised product roadmap · Q3",
     textBody:
@@ -73,6 +75,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [inbox],
     preview: "The DNS changes for example.com have propagated globally.",
     receivedAt: "2026-07-22T18:04:00.000Z",
+    replyTo: [],
     size: 21950,
     subject: "DNS records are now active",
     textBody:
@@ -92,6 +95,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [inbox],
     preview: "Tuesday at 3 PM works for our product and engineering leads.",
     receivedAt: "2026-07-22T12:22:00.000Z",
+    replyTo: [],
     size: 14310,
     subject: "Project kickoff — Tuesday confirmed",
     textBody:
@@ -111,6 +115,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [archive],
     preview: "Your Cloud VPS 6 invoice is available in the customer panel.",
     receivedAt: "2026-07-21T08:35:00.000Z",
+    replyTo: [],
     size: 34890,
     subject: "Invoice available for Cloud VPS 6",
     textBody:
@@ -130,6 +135,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [sent],
     preview: "Thank you for the discovery session. Here is the proposed architecture.",
     receivedAt: "2026-07-20T11:14:00.000Z",
+    replyTo: [],
     size: 19220,
     subject: "Architecture proposal and next steps",
     textBody:
@@ -149,6 +155,7 @@ export const createMockMessages = (): MessageDetail[] => [
     mailboxIds: [drafts],
     preview: "Sharing the initial delivery plan for your review.",
     receivedAt: "2026-07-19T09:05:00.000Z",
+    replyTo: [],
     size: 8040,
     subject: "Draft: delivery plan",
     textBody: "Hi Maya,\n\nSharing the initial delivery plan for your review.",

@@ -64,7 +64,8 @@ export const MessageFrameConnector = ({
     <iframe
       className="block w-full border-0"
       ref={frameRef}
-      sandbox="allow-scripts"
+      referrerPolicy="no-referrer"
+      sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts"
       scrolling="no"
       srcDoc={srcDoc}
       style={{ height: `${height}px` }}

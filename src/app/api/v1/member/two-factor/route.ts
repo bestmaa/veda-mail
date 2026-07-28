@@ -1,17 +1,16 @@
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
 import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
-import {
-  CONNECTION_COOKIE,
-  getCurrentConnection,
-} from "@/server/connections/connection-session";
+import type { ProviderConnection } from "@/domain/provider/provider";
+import { getCurrentConnection } from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
-import { assertSessionRateLimit } from "@/server/security/rate-limit";
+import { assertSubjectRateLimit } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 import {
   memberTwoFactorConfirmSchema,
   memberTwoFactorDisableSchema,
@@ -19,8 +18,9 @@ import {
 
 export const runtime = "nodejs";
 
-const context = async () => {
-  const connection = await getCurrentConnection();
+const MAX_TWO_FACTOR_BODY_BYTES = 16 * 1024;
+
+const context = async (connection: ProviderConnection) => {
   const gateway = await resolveGateway(connection);
   const profile = await mailServiceProfileStore.get();
   if (!profile) {
@@ -63,14 +63,14 @@ const authenticatePassword = async (
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit(
       "member-two-factor-start",
-      CONNECTION_COOKIE,
+      connection.id,
       3,
       60 * 60 * 1_000,
     );
-    const current = await context();
+    const current = await context(connection);
     if (await memberTwoFactorSecurity.isEnabled(current.account.email)) {
       throw new ApiError(
         "Two-factor authentication is already enabled.",
@@ -92,15 +92,17 @@ export const POST = async (request: Request) => {
 export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit(
       "member-two-factor-confirm",
-      CONNECTION_COOKIE,
+      connection.id,
       5,
       15 * 60 * 1_000,
     );
-    const input = memberTwoFactorConfirmSchema.parse(await request.json());
-    const current = await context();
+    const input = memberTwoFactorConfirmSchema.parse(
+      await readJsonBody(request, MAX_TWO_FACTOR_BODY_BYTES),
+    );
+    const current = await context(connection);
     const enrollment = twoFactorEnrollmentStore.verify(
       current.connection.id,
       input.otpCode,
@@ -132,15 +134,17 @@ export const PUT = async (request: Request) => {
 export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertSessionRateLimit(
-      request,
+    const connection = await getCurrentConnection();
+    assertSubjectRateLimit(
       "member-two-factor-disable",
-      CONNECTION_COOKIE,
+      connection.id,
       5,
       15 * 60 * 1_000,
     );
-    const input = memberTwoFactorDisableSchema.parse(await request.json());
-    const current = await context();
+    const input = memberTwoFactorDisableSchema.parse(
+      await readJsonBody(request, MAX_TWO_FACTOR_BODY_BYTES),
+    );
+    const current = await context(connection);
     const config = await authenticatePassword(input, current);
     if (
       !(await memberTwoFactorSecurity.verify(

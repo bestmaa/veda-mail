@@ -75,8 +75,11 @@ export interface JmapEmail {
   readonly id: string;
   readonly keywords: Readonly<Record<string, boolean>>;
   readonly mailboxIds: Readonly<Record<string, boolean>>;
+  readonly messageId?: readonly string[] | null | undefined;
   readonly preview: string;
   readonly receivedAt: string;
+  readonly references?: readonly string[] | null | undefined;
+  readonly replyTo?: readonly JmapAddress[] | null | undefined;
   readonly size: number;
   readonly subject: string | null;
   readonly textBody?: readonly JmapBodyPart[] | undefined;

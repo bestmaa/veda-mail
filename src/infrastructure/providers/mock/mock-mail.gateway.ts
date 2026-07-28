@@ -147,6 +147,7 @@ export class MockMailGateway implements MailGateway {
       mailboxIds: [mockMailboxIds.sent],
       preview: input.body.slice(0, 140),
       receivedAt: now,
+      replyTo: [],
       size: new TextEncoder().encode(input.body).byteLength,
       subject: input.subject || "(No subject)",
       textBody: input.body,

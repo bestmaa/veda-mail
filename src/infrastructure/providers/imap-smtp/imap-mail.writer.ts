@@ -7,6 +7,7 @@ import nodemailer from "nodemailer";
 import type {
   ComposeInput,
   MessageMutation,
+  ReplyContext,
   SendReceipt,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
@@ -17,7 +18,12 @@ import {
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
-import { createMessageId } from "@/infrastructure/providers/message-id";
+import {
+  createMessageId,
+  safeMessageId,
+  safeMessageIds,
+  safeReplyReferences,
+} from "@/infrastructure/providers/message-id";
 import { assertSafeProviderHost } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
 const address = (
@@ -26,6 +32,11 @@ const address = (
   address: value.email,
   name: value.name ?? "",
 });
+
+const referencesFrom = (headers?: Buffer): readonly string[] => {
+  const values = headers?.toString("utf8").match(/<[^<>\r\n]{1,996}>/g) ?? [];
+  return safeMessageIds(values);
+};
 
 const rolePath = (
   mailboxes: readonly ListResponse[],
@@ -73,10 +84,20 @@ export class ImapMailWriter {
 
   public async sendMessage(input: ComposeInput): Promise<SendReceipt> {
     await assertSafeProviderHost(this.config.smtpHost);
+    const replyContext = input.inReplyTo
+      ? await this.getReplyContext(input.inReplyTo)
+      : null;
+    const replyMessageId = safeMessageId(replyContext?.messageId);
+    const references = replyMessageId
+      ? safeReplyReferences(replyContext?.references ?? [], replyMessageId)
+      : [];
     const mail = {
       bcc: input.bcc.map(address),
       cc: input.cc.map(address),
       from: address({ email: this.config.username, name: null }),
+      ...(replyMessageId
+        ? { inReplyTo: replyMessageId, references: [...references] }
+        : {}),
       messageId: `<${createMessageId(this.config.username)}>`,
       subject: input.subject || "(No subject)",
       text: input.body,
@@ -115,5 +136,24 @@ export class ImapMailWriter {
       id: id.message(sentReference || String(receipt.messageId)),
       submittedAt: new Date().toISOString(),
     };
+  }
+
+  private getReplyContext(messageId: string): Promise<ReplyContext> {
+    return withImapClient(this.config, async (client) => {
+      const reference = decodeMessageId(id.message(messageId));
+      await client.mailboxOpen(reference.mailbox);
+      const source = await client.fetchOne(
+        reference.uid,
+        { envelope: true, headers: ["references"] },
+        { uid: true },
+      );
+      if (!source) {
+        throw new Error("The message being replied to was not found.");
+      }
+      return {
+        messageId: safeMessageId(source.envelope?.messageId),
+        references: referencesFrom(source.headers),
+      };
+    });
   }
 }

@@ -1,0 +1,81 @@
+import { expect, test } from "@playwright/test";
+import {
+  expectNoSeriousAccessibilityViolations,
+  useInstalledMailbox,
+} from "./support/mail-fixture";
+
+useInstalledMailbox();
+
+test("traps focus, locks a pending send, and retains a failed draft", async ({
+  page,
+}) => {
+  const composeTrigger = page.getByRole("button", { name: "New message" });
+  await composeTrigger.click();
+  const dialog = page.getByRole("dialog", { name: "Compose message" });
+  const toInput = dialog.getByRole("textbox", { exact: true, name: "To" });
+  const bodyInput = dialog.getByRole("textbox", {
+    exact: true,
+    name: "Message body",
+  });
+  const close = dialog.getByRole("button", { name: "Close composer" });
+  const discard = dialog.getByRole("button", { name: "Discard draft" });
+
+  await expect(toInput).toBeFocused();
+  await close.focus();
+  await close.press("Shift+Tab");
+  await expect(discard).toBeFocused();
+  await discard.press("Tab");
+  await expect(close).toBeFocused();
+
+  await bodyInput.fill("Keep this draft after every recoverable error.");
+  await dialog.getByRole("button", { name: /^Send$/ }).click();
+  await expect(dialog.getByRole("alert")).toHaveText(
+    "Add at least one recipient.",
+  );
+  await expect(bodyInput).toHaveValue(
+    "Keep this draft after every recoverable error.",
+  );
+
+  await toInput.fill("recipient@example.com");
+  await dialog
+    .getByRole("textbox", { exact: true, name: "Subject" })
+    .fill("Recoverable provider error");
+
+  let releaseSend: () => void = () => undefined;
+  const pendingSend = new Promise<void>((resolve) => {
+    releaseSend = resolve;
+  });
+  await page.route("**/api/v1/mail/send", async (route) => {
+    await pendingSend;
+    await route.fulfill({
+      body: JSON.stringify({
+        error: {
+          code: "PROVIDER_UNAVAILABLE",
+          message: "Mail provider is temporarily unavailable.",
+        },
+      }),
+      contentType: "application/json",
+      status: 502,
+    });
+  });
+
+  const sendRequest = page.waitForRequest("**/api/v1/mail/send");
+  await dialog.getByRole("button", { name: /^Send$/ }).click();
+  await sendRequest;
+  await expect(dialog.getByRole("button", { name: /^Sending/ })).toBeDisabled();
+  await expect(toInput).toBeDisabled();
+  await expect(bodyInput).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+
+  releaseSend();
+  await expect(dialog.getByRole("alert")).toHaveText(
+    "Mail provider is temporarily unavailable.",
+  );
+  await expect(toInput).toHaveValue("recipient@example.com");
+  await expect(bodyInput).toHaveValue(
+    "Keep this draft after every recoverable error.",
+  );
+  await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeEnabled();
+  await expectNoSeriousAccessibilityViolations(page);
+});

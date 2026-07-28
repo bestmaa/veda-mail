@@ -13,7 +13,7 @@ export const EmptyReaderView = ({
       <h2 className="mt-6 text-xl font-extrabold tracking-[-0.03em] text-slate-800">
         Your inbox, without the noise
       </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-400">
+      <p className="mt-2 text-sm leading-6 text-slate-600">
         Select a message to read it here, or start a focused new conversation.
       </p>
       <button

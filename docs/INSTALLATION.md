@@ -9,7 +9,7 @@ active mail-provider profile.
 You need:
 
 - A Linux server or development machine
-- Docker Engine 26+ with Docker Compose v2, or Node.js 24+ and npm 11+
+- Docker Engine 26+ with Docker Compose v2, or Node.js 24+ and npm 11.16+
 - A public HTTPS hostname for production, such as `webmail.example.com`
 - A supported mail server with existing users
 - For Stalwart, a public JMAP HTTPS URL such as `mail.example.com`

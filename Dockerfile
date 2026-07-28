@@ -1,16 +1,16 @@
-FROM node:24-alpine AS dependencies
+FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:24-alpine AS builder
+FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:24-alpine AS runner
+FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS runner
 WORKDIR /app
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
@@ -23,7 +23,11 @@ LABEL org.opencontainers.image.title="Veda Mail" \
   org.opencontainers.image.licenses="AGPL-3.0-or-later" \
   org.opencontainers.image.source="https://github.com/bestmaa/veda-mail"
 
-RUN apk add --no-cache dumb-init \
+RUN apk add --no-cache dumb-init=1.2.5-r4 \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx \
+    /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+  && rm -rf /usr/local/lib/node_modules/npm \
+    /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
   && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs \
   && mkdir -p /data \

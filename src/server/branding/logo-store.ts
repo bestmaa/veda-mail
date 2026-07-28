@@ -18,7 +18,11 @@ const logoPath = (fileName: string): string => {
   if (!LOGO_NAME_PATTERN.test(fileName)) {
     throw new ApiError("Invalid logo reference.", "INVALID_LOGO", 500);
   }
-  return path.join(/*turbopackIgnore: true*/ dataDirectory(), fileName);
+  return path.join(
+    /* turbopackIgnore: true */
+    dataDirectory(),
+    fileName,
+  );
 };
 
 export const brandLogoFileName = (contents: Buffer): string =>
@@ -68,10 +72,19 @@ export const writeBrandLogo = async (contents: Buffer): Promise<string> => {
   const destination = logoPath(fileName);
   const directory = path.dirname(destination);
   const temporary = path.join(directory, `.logo.${crypto.randomUUID()}.webp`);
-  await mkdir(directory, { mode: 0o700, recursive: true });
+  await mkdir(/* turbopackIgnore: true */ directory, {
+    mode: 0o700,
+    recursive: true,
+  });
   try {
-    await writeFile(temporary, contents, { flag: "wx", mode: 0o600 });
-    await rename(temporary, destination).catch(
+    await writeFile(/* turbopackIgnore: true */ temporary, contents, {
+      flag: "wx",
+      mode: 0o600,
+    });
+    await rename(
+      /* turbopackIgnore: true */ temporary,
+      /* turbopackIgnore: true */ destination,
+    ).catch(
       async (error: NodeJS.ErrnoException) => {
         if (error.code !== "EEXIST") {
           throw error;
@@ -79,18 +92,19 @@ export const writeBrandLogo = async (contents: Buffer): Promise<string> => {
       },
     );
   } catch (error) {
-    await unlink(temporary).catch(() => undefined);
+    await unlink(/* turbopackIgnore: true */ temporary).catch(() => undefined);
     throw error;
   }
-  await unlink(temporary).catch(() => undefined);
+  await unlink(/* turbopackIgnore: true */ temporary).catch(() => undefined);
   return fileName;
 };
 
 export const readBrandLogo = async (
   fileName: string,
 ): Promise<Buffer | null> => {
+  const source = logoPath(fileName);
   try {
-    return await readFile(logoPath(fileName));
+    return await readFile(/* turbopackIgnore: true */ source);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
@@ -100,7 +114,10 @@ export const readBrandLogo = async (
 };
 
 export const removeBrandLogo = async (fileName: string): Promise<void> => {
-  await unlink(logoPath(fileName)).catch((error: NodeJS.ErrnoException) => {
+  const source = logoPath(fileName);
+  await unlink(
+    /* turbopackIgnore: true */ source,
+  ).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "ENOENT") {
       throw error;
     }

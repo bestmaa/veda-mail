@@ -21,8 +21,11 @@ import {
 } from "@/server/security/rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import { readJsonBody } from "@/transport/http/read-json-body";
 
 export const runtime = "nodejs";
+
+const MAX_ADMIN_LOGIN_BODY_BYTES = 16 * 1024;
 
 const status = async () => ({
   authenticated: await hasAdminAccess(),
@@ -45,7 +48,9 @@ export const POST = async (request: Request) => {
     if (!installation) {
       throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
     }
-    const input = adminLoginSchema.parse(await request.json());
+    const input = adminLoginSchema.parse(
+      await readJsonBody(request, MAX_ADMIN_LOGIN_BODY_BYTES),
+    );
     assertSubjectRateLimit(
       "admin-login",
       input.username.toLowerCase(),
