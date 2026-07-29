@@ -103,7 +103,7 @@ receiving-side interoperability remains the release verification gate.
 
 ## M2 — Secure attachments
 
-- [ ] Upload attachments with per-file/count/total limits, safe filenames,
+- [x] Upload attachments with per-file/count/total limits, safe filenames,
   truthful content types, cancel/remove controls, and provider capability checks
 - [ ] Download attachments through an authenticated, non-cacheable endpoint
   using safe `Content-Disposition`, `nosniff`, and streaming limits
