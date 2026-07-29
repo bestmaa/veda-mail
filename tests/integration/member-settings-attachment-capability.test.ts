@@ -29,6 +29,8 @@ vi.mock("@/bootstrap/provider-registry", () => ({
       manifest: {
         capabilities: {
           maxAttachmentBytes: 18 * 1024 * 1024,
+          maxAttachmentDownloadBytes: 50 * 1024 * 1024,
+          supportsAttachmentDownload: true,
           supportsDrafts: false,
           supportsPasswordChange: false,
           supportsProfileSettings: false,
@@ -68,7 +70,13 @@ const settings = async () => {
   return (await response.json()) as {
     data: {
       attachmentCapability: { status: string };
-      capabilities: { mail: { maxAttachmentBytes: number } };
+      capabilities: {
+        mail: {
+          maxAttachmentBytes: number;
+          maxAttachmentDownloadBytes: number;
+          supportsAttachmentDownload: boolean;
+        };
+      };
     };
   };
 };
@@ -78,7 +86,13 @@ describe("member settings attachment capability", () => {
     await expect(settings()).resolves.toMatchObject({
       data: {
         attachmentCapability: { status: "available" },
-        capabilities: { mail: { maxAttachmentBytes: 1_024 } },
+        capabilities: {
+          mail: {
+            maxAttachmentBytes: 1_024,
+            maxAttachmentDownloadBytes: 50 * 1024 * 1024,
+            supportsAttachmentDownload: true,
+          },
+        },
       },
     });
   });

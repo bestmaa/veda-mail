@@ -12,7 +12,7 @@ import {
   jmapAuthorization,
   requestJmapAttachment,
 } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-request";
-import { readJmapResponseBytes } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-response";
+import { createJmapResponseStream } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-response";
 import { throwIfAttachmentAborted } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-stream";
 import type {
   JmapAttachmentHandle,
@@ -53,6 +53,7 @@ export const downloadJmapAttachment = async (
   config: JmapAttachmentTransportConfig,
   input: JmapDownloadAttachmentInput,
   owner: object,
+  onFinalize?: () => Promise<void> | void,
 ): Promise<JmapDownloadedAttachment> => {
   throwIfAttachmentAborted(input.signal);
   const secret = readJmapAttachmentSecret(input.attachment, owner);
@@ -105,14 +106,15 @@ export const downloadJmapAttachment = async (
     },
     input.signal,
   );
-  const bytes = await readJmapResponseBytes(response, {
+  const body = createJmapResponseStream(response, {
     expectedBytes: input.attachment.size,
     maxBytes,
+    ...(onFinalize ? { onFinalize } : {}),
     requireContentLength: true,
     ...(input.signal ? { signal: input.signal } : {}),
   });
   return Object.freeze({
     ...input.attachment.toJSON(),
-    bytes,
+    body,
   });
 };

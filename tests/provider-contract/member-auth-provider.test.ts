@@ -104,4 +104,19 @@ describe("member authentication provider contract", () => {
       18 * 1024 * 1024,
     );
   });
+
+  it("advertises received downloads separately from outbound attachment limits", () => {
+    const providers = [
+      new MockProviderModule(),
+      new StalwartProviderModule(),
+      new ImapSmtpProviderModule(),
+    ];
+    for (const provider of providers) {
+      expect(provider.manifest.capabilities).toMatchObject({
+        maxAttachmentBytes: 18 * 1024 * 1024,
+        maxAttachmentDownloadBytes: 50 * 1024 * 1024,
+        supportsAttachmentDownload: true,
+      });
+    }
+  });
 });

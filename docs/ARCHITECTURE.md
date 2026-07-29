@@ -122,6 +122,30 @@ Provider or pre-provider failure releases the claim for a safe retry;
 successful send destroys the quarantine copy and every path releases the
 memory lease.
 
+## Attachment download boundary
+
+Received attachments cross a separate, read-only boundary. The browser opens
+the authenticated same-origin route
+`/api/v1/mail/messages/{messageId}/attachments/{attachmentId}`. Both IDs are
+opaque, and the attachment ID is cryptographically scoped to the message;
+provider blob IDs and IMAP MIME-part locators never enter a URL or browser
+payload.
+
+The route streams through `MailGateway` under a 50 MiB decoded-byte ceiling and
+bounded concurrent-download budget. Every successful response is forced to
+`application/octet-stream` plus an attachment-only, sanitized
+`Content-Disposition`. It is private and non-cacheable and carries `nosniff`,
+a sandbox CSP, and same-origin resource policy. Byte-range requests are
+rejected because partial-response semantics are not implemented.
+
+The JMAP adapter resolves the authenticated account download URL, requires
+identity transfer encoding and an exact provider `Content-Length`, then checks
+the streamed byte count. The IMAP adapter opens the source mailbox read-only,
+revalidates `UIDVALIDITY` and `BODYSTRUCTURE`, resolves the server-held MIME
+part, and keeps the IMAP connection alive only for that bounded stream. IMAP
+decoded length is not reliably known before transfer, so the HTTP response
+does not claim a `Content-Length`.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

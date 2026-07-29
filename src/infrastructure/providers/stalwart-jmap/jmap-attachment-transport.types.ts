@@ -74,7 +74,7 @@ export interface JmapDownloadAttachmentInput {
 }
 
 export interface JmapDownloadedAttachment extends JmapPublicAttachment {
-  readonly bytes: Uint8Array;
+  readonly body: ReadableStream<Uint8Array>;
 }
 
 export interface JmapProviderUploadReference {

@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import type { ProviderModule } from "@/application/ports/mail-provider.port";
+import { MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES } from "@/domain/mail/received-attachment";
 import type {
   MemberCredentials,
   ProviderConnection,
@@ -57,6 +58,8 @@ export class ImapSmtpProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
       maxAttachmentBytes: 18 * 1024 * 1024,
+      maxAttachmentDownloadBytes: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
+      supportsAttachmentDownload: true,
       supportsDrafts: false,
       supportsPasswordChange: false,
       supportsProfileSettings: false,

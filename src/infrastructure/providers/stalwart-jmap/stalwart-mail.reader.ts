@@ -1,6 +1,8 @@
 import "server-only";
 
 import type {
+  AttachmentDownload,
+  AttachmentDownloadInput,
   MailAccount,
   Mailbox,
   MessageDetail,
@@ -11,6 +13,7 @@ import type {
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
+import { downloadStalwartMessageAttachment } from "@/infrastructure/providers/stalwart-jmap/stalwart-attachment.reader";
 import {
   mapMailbox,
   mapMessageDetail,
@@ -170,7 +173,14 @@ export class StalwartMailReader {
     if (!email) {
       throw new Error("Message not found.");
     }
-    return mapMessageDetail(email);
+    return mapMessageDetail(email, accountId);
+  }
+
+  public async downloadAttachment(
+    input: AttachmentDownloadInput,
+  ): Promise<AttachmentDownload> {
+    const { accountId } = await this.getAccountContext();
+    return downloadStalwartMessageAttachment(this.client, accountId, input);
   }
 
   public async getAccountId(): Promise<string> {

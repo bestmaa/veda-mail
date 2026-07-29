@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createHmac, randomBytes } from "node:crypto";
-
 import type {
   MailAddress,
   Mailbox,
@@ -14,32 +12,13 @@ import {
   mailHtmlToPlainText,
   sanitizeMailHtml,
 } from "@/infrastructure/providers/sanitize-mail-html";
+import { bindJmapReceivedAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
 import type {
   JmapAddress,
   JmapBodyPart,
   JmapEmail,
   JmapMailbox,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
-
-const mapperSecrets = globalThis as typeof globalThis & {
-  __vedaMailJmapAttachmentMapperKey?: Buffer;
-};
-
-const opaqueAttachmentId = (
-  email: JmapEmail,
-  index: number,
-  providerBlobId: string | null | undefined,
-) => {
-  mapperSecrets.__vedaMailJmapAttachmentMapperKey ??= randomBytes(32);
-  return id.attachment(
-    `message-attachment-${createHmac(
-      "sha256",
-      mapperSecrets.__vedaMailJmapAttachmentMapperKey,
-    )
-      .update(JSON.stringify([email.id, index, providerBlobId ?? ""]))
-      .digest("base64url")}`,
-  );
-};
 
 const mailboxColors: Record<MailboxRole, string> = {
   archive: "#10b981",
@@ -179,15 +158,15 @@ export const mapMessageSummary = (email: JmapEmail): MessageSummary => ({
   to: addresses(email.to),
 });
 
-export const mapMessageDetail = (email: JmapEmail): MessageDetail => {
+export const mapMessageDetail = (
+  email: JmapEmail,
+  accountId = "",
+): MessageDetail => {
   return {
     ...mapMessageSummary(email),
-    attachments: (email.attachments ?? []).map((attachment, index) => ({
-      id: opaqueAttachmentId(email, index, attachment.blobId),
-      mimeType: attachment.type,
-      name: attachment.name ?? `Attachment ${index + 1}`,
-      size: attachment.size ?? 0,
-    })),
+    attachments: bindJmapReceivedAttachments(accountId, email).map(
+      ({ metadata }) => metadata,
+    ),
     cc: addresses(email.cc),
     htmlBody: htmlBodyValue(email),
     replyTo: addresses(email.replyTo),

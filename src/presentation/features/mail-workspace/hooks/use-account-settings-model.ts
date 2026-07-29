@@ -13,6 +13,8 @@ import {
 const defaultCapabilities = {
   mail: {
     maxAttachmentBytes: 0,
+    maxAttachmentDownloadBytes: 0,
+    supportsAttachmentDownload: false,
     supportsDrafts: false,
     supportsPasswordChange: false,
     supportsProfileSettings: false,
@@ -197,8 +199,21 @@ export const useAccountSettingsModel = (
             : capabilities.mail.maxAttachmentBytes > 0
             ? `Up to ${formatFileSize(capabilities.mail.maxAttachmentBytes)}`
             : "Not available",
-        label: "Attachments",
+        label: "Attachment upload & send",
         supported: capabilities.mail.maxAttachmentBytes > 0,
+      },
+      {
+        detail:
+          capabilities.mail.supportsAttachmentDownload &&
+          capabilities.mail.maxAttachmentDownloadBytes > 0
+            ? `Up to ${formatFileSize(
+                capabilities.mail.maxAttachmentDownloadBytes,
+              )}`
+            : "Not available",
+        label: "Received attachment downloads",
+        supported:
+          capabilities.mail.supportsAttachmentDownload &&
+          capabilities.mail.maxAttachmentDownloadBytes > 0,
       },
     ],
     twoFactor: {

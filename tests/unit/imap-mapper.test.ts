@@ -56,4 +56,34 @@ describe("IMAP MIME mapping", () => {
     expect(detail.textBody).toBe("Update & status\nFirst\nSecond");
     expect(detail.textBody).not.toMatch(/SECRET_SCRIPT|SECRET_STYLE|<[^>]+>/i);
   });
+
+  it("uses only provider-verified attachment metadata", () => {
+    const verified = {
+      id: id.attachment("opaque-verified-id"),
+      mimeType: "application/pdf",
+      name: "verified.pdf",
+      size: 42,
+    };
+    const detail = mapParsedMessage(
+      summary,
+      {
+        attachments: [
+          {
+            cid: "attacker-controlled-cid",
+            contentType: "text/html",
+            filename: "untrusted.html",
+            size: 999,
+          },
+        ],
+        html: false,
+        text: "",
+      } as unknown as ParsedMail,
+      [verified],
+    );
+
+    expect(detail.attachments).toEqual([verified]);
+    expect(JSON.stringify(detail.attachments)).not.toContain(
+      "attacker-controlled-cid",
+    );
+  });
 });

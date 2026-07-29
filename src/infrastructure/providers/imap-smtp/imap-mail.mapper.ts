@@ -9,6 +9,7 @@ import type {
 import type { AddressObject, ParsedMail } from "mailparser";
 
 import type {
+  Attachment,
   MailAddress,
   Mailbox,
   MailboxRole,
@@ -118,14 +119,10 @@ export const mapImapSummary = (
 export const mapParsedMessage = (
   summary: MessageSummary,
   parsed: ParsedMail,
+  attachments: readonly Attachment[] = [],
 ): MessageDetail => ({
   ...summary,
-  attachments: parsed.attachments.map((attachment, index) => ({
-    id: id.attachment(attachment.cid || `attachment-${index + 1}`),
-    mimeType: attachment.contentType,
-    name: attachment.filename || `Attachment ${index + 1}`,
-    size: attachment.size,
-  })),
+  attachments,
   cc: parsedAddresses(parsed.cc),
   htmlBody:
     typeof parsed.html === "string" ? sanitizeMailHtml(parsed.html) : null,

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createBoundedAttachmentDownloadStream } from "@/infrastructure/providers/attachment-download-stream";
 import { readJmapStreamWithAbort } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-stream";
 import { JmapAttachmentTransportError } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-transport.types";
 
@@ -44,15 +45,27 @@ const declaredLength = (
   return length;
 };
 
-export const readJmapResponseBytes = async (
+const assertIdentityEncoding = (response: Response): void => {
+  const encoding = response.headers.get("content-encoding")?.trim().toLowerCase();
+  if (encoding && encoding !== "identity") {
+    cancelResponseBody(response);
+    throw new JmapAttachmentTransportError(
+      "invalid_provider_response",
+      "Mail provider returned an unsupported attachment encoding.",
+    );
+  }
+};
+
+const validateResponseLength = (
   response: Response,
   options: {
     readonly expectedBytes?: number;
     readonly maxBytes: number;
     readonly requireContentLength: boolean;
-    readonly signal?: AbortSignal;
+    readonly requireIdentityEncoding?: boolean;
   },
-): Promise<Uint8Array> => {
+): number | undefined => {
+  if (options.requireIdentityEncoding) assertIdentityEncoding(response);
   const declared = declaredLength(response, options.requireContentLength);
   if (
     (declared !== undefined && declared > options.maxBytes) ||
@@ -76,6 +89,83 @@ export const readJmapResponseBytes = async (
       "Mail provider attachment content length did not match metadata.",
     );
   }
+  return declared;
+};
+
+const jmapStreamErrors = (signal?: AbortSignal) => ({
+  aborted: () =>
+    signal?.reason instanceof JmapAttachmentTransportError
+      ? signal.reason
+      : new JmapAttachmentTransportError(
+          "aborted",
+          "The attachment operation was cancelled.",
+        ),
+  providerFailure: () =>
+    new JmapAttachmentTransportError(
+      "content_length_mismatch",
+      "Mail provider attachment content length did not match metadata.",
+    ),
+  sizeLimit: () =>
+    new JmapAttachmentTransportError(
+      "size_limit_exceeded",
+      "The attachment exceeds the configured size limit.",
+    ),
+  timeout: () =>
+    new JmapAttachmentTransportError(
+      "timeout",
+      "The mail provider attachment operation timed out.",
+    ),
+});
+
+export const createJmapResponseStream = (
+  response: Response,
+  options: {
+    readonly expectedBytes?: number;
+    readonly maxBytes: number;
+    readonly onFinalize?: () => Promise<void> | void;
+    readonly requireContentLength: boolean;
+    readonly signal?: AbortSignal;
+  },
+): ReadableStream<Uint8Array> => {
+  const declared = validateResponseLength(response, {
+    ...options,
+    requireIdentityEncoding: true,
+  });
+  const expectedBytes = options.expectedBytes ?? declared;
+  if (!response.body) {
+    if ((declared ?? options.expectedBytes ?? 0) === 0) {
+      void options.onFinalize?.();
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close();
+        },
+      });
+    }
+    throw new JmapAttachmentTransportError(
+      "content_length_mismatch",
+      "Mail provider attachment body was missing.",
+    );
+  }
+  return createBoundedAttachmentDownloadStream({
+    errors: jmapStreamErrors(options.signal),
+    ...(expectedBytes !== undefined ? { expectedBytes } : {}),
+    maxBytes: options.maxBytes,
+    ...(options.onFinalize ? { onFinalize: options.onFinalize } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+    source: response.body,
+  });
+};
+
+export const readJmapResponseBytes = async (
+  response: Response,
+  options: {
+    readonly expectedBytes?: number;
+    readonly maxBytes: number;
+    readonly requireContentLength: boolean;
+    readonly signal?: AbortSignal;
+  },
+): Promise<Uint8Array> => {
+  const declared = validateResponseLength(response, options);
 
   const reader = response.body?.getReader();
   if (!reader) {

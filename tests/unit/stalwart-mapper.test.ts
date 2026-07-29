@@ -63,7 +63,7 @@ describe("Stalwart JMAP mapper", () => {
     });
   });
 
-  it("accepts nullable multipart body identifiers from Stalwart", () => {
+  it("omits multipart entries that have no downloadable blob metadata", () => {
     const multipartEmail = jmapEmailSchema.parse({
       attachments: [
         {
@@ -84,14 +84,7 @@ describe("Stalwart JMAP mapper", () => {
       threadId: "thread-multipart",
     });
 
-    expect(mapMessageDetail(multipartEmail).attachments).toEqual([
-      expect.objectContaining({
-        id: expect.stringMatching(/^message-attachment-[A-Za-z0-9_-]{43}$/),
-        mimeType: "multipart/mixed",
-        name: "Attachment 1",
-        size: 0,
-      }),
-    ]);
+    expect(mapMessageDetail(multipartEmail).attachments).toEqual([]);
   });
 
   it("never exposes a provider blob identifier as a public attachment ID", () => {
@@ -112,6 +105,28 @@ describe("Stalwart JMAP mapper", () => {
     expect(JSON.stringify(detail.attachments)).not.toContain(
       "provider-secret-blob-id",
     );
+  });
+
+  it("sanitizes spoofing controls and unsafe paths in received filenames", () => {
+    const detail = mapMessageDetail({
+      ...email,
+      attachments: [
+        {
+          blobId: "safe-provider-blob",
+          name: "../CON\u202Efdp.exe",
+          size: 12,
+          type: "text/html; charset=utf-8",
+        },
+      ],
+      hasAttachment: true,
+    });
+
+    expect(detail.attachments[0]).toMatchObject({
+      mimeType: "text/html",
+      name: "_CON_fdp.exe",
+      size: 12,
+    });
+    expect(detail.attachments[0]?.name).not.toMatch(/[\\/\u202E]/u);
   });
 
   it("sanitizes active and tracking HTML", () => {

@@ -34,6 +34,7 @@ export interface MessageItemViewModel {
 }
 
 export interface AttachmentViewModel {
+  readonly href: string;
   readonly id: string;
   readonly meta: string;
   readonly name: string;

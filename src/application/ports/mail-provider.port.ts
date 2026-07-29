@@ -1,4 +1,6 @@
 import type {
+  AttachmentDownload,
+  AttachmentDownloadInput,
   MailAccount,
   Mailbox,
   MessageDetail,
@@ -24,6 +26,9 @@ import type { MessageId } from "@/domain/shared/brand";
 
 export interface MailGateway {
   changePassword(input: MemberPasswordChange): Promise<void>;
+  downloadAttachment(
+    input: AttachmentDownloadInput,
+  ): Promise<AttachmentDownload>;
   getMaxAttachmentBytes(): Promise<number>;
   getAccount(): Promise<MailAccount>;
   getMemberProfile(): Promise<MemberProfile>;

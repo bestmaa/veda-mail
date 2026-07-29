@@ -144,6 +144,9 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
 - Permit raw attachment `PUT` requests up to 18 MiB plus HTTP overhead; keep
   request streaming enabled and allow at least five minutes for steadily
   progressing mobile uploads. Organization-logo JSON remains much smaller.
+- Stream attachment `GET` responses without proxy buffering or transformation;
+  the application enforces a 50 MiB decoded-byte ceiling. Do not add range
+  handling: Veda Mail intentionally rejects partial attachment requests.
 - Do not cache `/api/*`, `/setup`, or `/admin`.
 - Add HSTS only after confirming HTTPS works for the complete domain.
 - Do not rewrite application cookie attributes.
@@ -176,15 +179,21 @@ Inbound:
 Outbound:
 
 - DNS resolution
-- HTTPS TCP `443` to the configured mail provider
+- HTTPS TCP `443` to explicitly allowlisted JMAP provider hosts
+- TLS/STARTTLS IMAP and SMTP ports only to explicitly allowlisted provider
+  hosts
 - HTTPS/DNS access from ClamAV `freshclam` for signature updates
 
 Internal only:
 
 - Veda Mail to ClamAV TCP `3310`; never publish this port on the host
 
-The Stalwart JMAP adapter rejects insecure production URLs, private/loopback
-targets, disallowed hostnames, and unsafe DNS resolutions.
+Both provider adapters reapply hostname allowlisting and public-address
+resolution checks at their network boundaries to reduce DNS-rebinding risk.
+Production egress policy must independently deny cloud metadata, loopback,
+private management networks, and unapproved destinations. Received attachment
+downloads use the existing provider connection; no inbound provider port or
+Stalwart server change is required.
 
 ## Security defaults
 
@@ -224,6 +233,8 @@ Verify:
 - The provider endpoint is HTTPS and on the hostname allowlist.
 - A member can receive, send, archive, and delete.
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
+- The received attachment downloads byte-identically, is not cached by the
+  proxy, and is served with attachment disposition and `nosniff`.
 - An EICAR test file is rejected in a dedicated non-production mailbox test.
 - A container restart signs members out but preserves configuration.
 

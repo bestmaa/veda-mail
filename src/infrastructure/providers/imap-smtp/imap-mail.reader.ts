@@ -3,6 +3,8 @@ import "server-only";
 import { simpleParser } from "mailparser";
 
 import type {
+  AttachmentDownload,
+  AttachmentDownloadInput,
   MailAccount,
   Mailbox,
   MessageDetail,
@@ -15,12 +17,17 @@ import {
   decodeMailboxId,
   decodeMessageId,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
+import { downloadImapAttachment } from "@/infrastructure/providers/imap-smtp/imap-attachment-download";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import {
   mapImapMailbox,
   mapImapSummary,
   mapParsedMessage,
 } from "@/infrastructure/providers/imap-smtp/imap-mail.mapper";
+import {
+  bindImapReceivedAttachments,
+  imapAttachmentAccountScope,
+} from "@/infrastructure/providers/imap-smtp/imap-received-attachment";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 
 const summaryQuery = {
@@ -87,21 +94,44 @@ export class ImapMailReader {
   public getMessage(messageId: MessageId): Promise<MessageDetail> {
     return withImapClient(this.config, async (client) => {
       const reference = decodeMessageId(messageId);
-      await client.mailboxOpen(reference.mailbox);
+      const opened = await client.mailboxOpen(reference.mailbox, {
+        readOnly: true,
+      });
       const message = await client.fetchOne(
         reference.uid,
         { ...summaryQuery, source: { maxLength: 5_000_000 } },
         { uid: true },
       );
-      if (!message || !message.source) throw new Error("Message not found.");
+      if (
+        !message ||
+        message.uid !== reference.uid ||
+        !message.source
+      ) {
+        throw new Error("Message not found.");
+      }
       const parsed = await simpleParser(message.source, {
         skipHtmlToText: true,
         skipTextToHtml: true,
       });
+      const attachments = message.bodyStructure
+        ? bindImapReceivedAttachments({
+            accountScope: imapAttachmentAccountScope(this.config.username),
+            messageId,
+            structure: message.bodyStructure,
+            uidValidity: opened.uidValidity,
+          }).map((attachment) => attachment.metadata)
+        : [];
       return mapParsedMessage(
         mapImapSummary(reference.mailbox, message),
         parsed,
+        attachments,
       );
     });
+  }
+
+  public downloadAttachment(
+    input: AttachmentDownloadInput,
+  ): Promise<AttachmentDownload> {
+    return downloadImapAttachment(this.config, input);
   }
 }

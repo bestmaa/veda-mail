@@ -86,9 +86,42 @@ export class JmapAttachmentTransport {
   public async download(
     input: JmapDownloadAttachmentInput,
   ): Promise<JmapDownloadedAttachment> {
-    return this.run(input.signal, (signal) =>
-      downloadJmapAttachment(this.config, { ...input, signal }, this.owner),
+    if (input.signal?.aborted) throw cancelled();
+    const controller = new AbortController();
+    let finished = false;
+    const onCallerAbort = (): void => controller.abort(cancelled());
+    const finish = (): void => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      input.signal?.removeEventListener("abort", onCallerAbort);
+    };
+    input.signal?.addEventListener("abort", onCallerAbort, { once: true });
+    if (input.signal?.aborted) onCallerAbort();
+    const timer = setTimeout(
+      () =>
+        controller.abort(
+          new JmapAttachmentTransportError(
+            "timeout",
+            "The mail provider attachment operation timed out.",
+          ),
+        ),
+      this.operationTimeoutMs,
     );
+    try {
+      return await downloadJmapAttachment(
+        this.config,
+        { ...input, signal: controller.signal },
+        this.owner,
+        finish,
+      );
+    } catch (error) {
+      finish();
+      if (controller.signal.reason instanceof JmapAttachmentTransportError) {
+        throw controller.signal.reason;
+      }
+      throw error;
+    }
   }
 
   private async run<T>(

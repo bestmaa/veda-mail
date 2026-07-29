@@ -2,14 +2,26 @@ import "server-only";
 
 import type { ZodType } from "zod";
 
-import type { OutgoingAttachment } from "@/domain/mail/mail";
+import type {
+  AttachmentDownload,
+  AttachmentDownloadInput,
+  OutgoingAttachment,
+} from "@/domain/mail/mail";
 import {
   jmapResponseSchema,
   jmapSessionSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
 import { StalwartOAuthClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-oauth.client";
 import type { JmapProviderUploadReference } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-transport";
+import { downloadJmapReceivedAttachment } from "@/infrastructure/providers/stalwart-jmap/jmap-incoming-attachment";
 import { uploadJmapOutgoingAttachment } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
+import type { JmapReceivedAttachment } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
+import {
+  fetchSameOriginJmap,
+  invalidJmapResponse,
+  readJmapResponseJson,
+  sameOriginJmapUrl,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-http";
 import {
   JMAP_CORE,
   type JmapMethodCall,
@@ -20,56 +32,12 @@ import {
 import { assertSafeProviderOrigin } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
 const REQUEST_TIMEOUT_MS = 20_000;
-const invalidResponse = (subject: string): Error =>
-  new Error(`Mail provider returned invalid ${subject}.`);
-
-const responseJson = async (response: Response): Promise<unknown> => {
-  try {
-    return await response.json();
-  } catch {
-    throw invalidResponse("JSON");
-  }
-};
 
 const basicAuthorizationHeader = (config: StalwartConfig): string => {
   const encoded = Buffer.from(`${config.username}:${config.secret}`).toString(
     "base64",
   );
   return `Basic ${encoded}`;
-};
-
-const sameOriginUrl = (value: string, expectedOrigin: string): URL => {
-  const parsed = new URL(value, expectedOrigin);
-  if (
-    parsed.origin !== expectedOrigin ||
-    parsed.username.length > 0 ||
-    parsed.password.length > 0
-  ) {
-    throw new Error("Mail provider returned a cross-origin JMAP endpoint.");
-  }
-  return parsed;
-};
-
-const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-
-const fetchSameOrigin = async (
-  initialUrl: URL,
-  expectedOrigin: string,
-  init: RequestInit,
-): Promise<Response> => {
-  let requestUrl = initialUrl;
-  for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
-    const response = await fetch(requestUrl, { ...init, redirect: "manual" });
-    if (!REDIRECT_STATUSES.has(response.status)) {
-      return response;
-    }
-    const location = response.headers.get("location");
-    if (!location || redirectCount === 3) {
-      throw new Error("Mail provider returned an invalid redirect.");
-    }
-    requestUrl = sameOriginUrl(location, expectedOrigin);
-  }
-  throw new Error("Mail provider returned too many redirects.");
 };
 
 export class StalwartJmapClient {
@@ -104,7 +72,7 @@ export class StalwartJmapClient {
     const session = await this.getSession();
     const authHeader = await this.authorizationHeader();
     const origin = (await assertSafeProviderOrigin(this.config.baseUrl)).origin;
-    const apiUrl = sameOriginUrl(session.apiUrl, origin);
+    const apiUrl = sameOriginJmapUrl(session.apiUrl, origin);
     const response = await fetch(apiUrl, {
       body: JSON.stringify({ methodCalls, using: [JMAP_CORE, ...using] }),
       cache: "no-store",
@@ -120,9 +88,11 @@ export class StalwartJmapClient {
     if (!response.ok) {
       throw await this.toHttpError(response);
     }
-    const parsed = jmapResponseSchema.safeParse(await responseJson(response));
+    const parsed = jmapResponseSchema.safeParse(
+      await readJmapResponseJson(response),
+    );
     if (!parsed.success) {
-      throw invalidResponse("JMAP response");
+      throw invalidJmapResponse("JMAP response");
     }
     return parsed.data;
   }
@@ -138,6 +108,28 @@ export class StalwartJmapClient {
       authorizationHeader: () => this.authorizationHeader(),
       baseUrl: this.config.baseUrl,
       session,
+    });
+  }
+
+  public async downloadAttachment(
+    input: Pick<
+      AttachmentDownloadInput,
+      "maxBytes" | "messageId" | "signal"
+    > & {
+      readonly accountId: string;
+      readonly attachment: JmapReceivedAttachment;
+    },
+  ): Promise<AttachmentDownload> {
+    const session = await this.getSession();
+    return downloadJmapReceivedAttachment({
+      accountId: input.accountId,
+      attachment: input.attachment,
+      authorizationHeader: () => this.authorizationHeader(),
+      baseUrl: this.config.baseUrl,
+      maxBytes: input.maxBytes,
+      messageId: input.messageId,
+      session,
+      ...(input.signal ? { signal: input.signal } : {}),
     });
   }
 
@@ -166,7 +158,7 @@ export class StalwartJmapClient {
     }
     const parsed = schema.safeParse(payload);
     if (!parsed.success) {
-      throw invalidResponse(`${expectedMethod} payload`);
+      throw invalidJmapResponse(`${expectedMethod} payload`);
     }
     return parsed.data;
   }
@@ -175,7 +167,7 @@ export class StalwartJmapClient {
     const origin = (await assertSafeProviderOrigin(this.config.baseUrl)).origin;
     const discoveryUrl = new URL("/.well-known/jmap", origin);
     const authHeader = await this.authorizationHeader(false);
-    const response = await fetchSameOrigin(discoveryUrl, origin, {
+    const response = await fetchSameOriginJmap(discoveryUrl, origin, {
       cache: "no-store",
       headers: { Authorization: authHeader },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -183,14 +175,16 @@ export class StalwartJmapClient {
     if (!response.ok) {
       throw await this.toHttpError(response);
     }
-    const parsed = jmapSessionSchema.safeParse(await responseJson(response));
+    const parsed = jmapSessionSchema.safeParse(
+      await readJmapResponseJson(response),
+    );
     if (!parsed.success) {
-      throw invalidResponse("JMAP session");
+      throw invalidJmapResponse("JMAP session");
     }
     const session: JmapSession = parsed.data;
-    sameOriginUrl(session.apiUrl, origin);
-    sameOriginUrl(session.uploadUrl, origin);
-    sameOriginUrl(session.downloadUrl, origin);
+    sameOriginJmapUrl(session.apiUrl, origin);
+    sameOriginJmapUrl(session.uploadUrl, origin);
+    sameOriginJmapUrl(session.downloadUrl, origin);
     return session;
   }
 

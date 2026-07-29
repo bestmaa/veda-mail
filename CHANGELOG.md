@@ -13,6 +13,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
   byte quotas plus global capacity ceilings, magic-number MIME detection,
   ClamAV scanning, idle/absolute/verdict deadlines, scheduled expiry,
   cancel/remove, and byte-identical JMAP or IMAP/SMTP sending
+- Authenticated received-attachment downloads for JMAP and IMAP, with
+  message-scoped opaque identifiers, bounded streaming, and truthful provider
+  capability metadata
 - Official ClamAV sidecar pinned to a zero-HIGH/CRITICAL `linux/amd64` digest
   with a persistent signature database and fail-closed platform preflight
 - CC and BCC composing, including CC-only and BCC-only delivery
@@ -45,6 +48,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Keep provider attachment identifiers server-only; require opaque upload IDs,
   AES-256-GCM integrity, SHA-256 verification, dynamic provider limits, and
   strict fail-closed scan verdicts
+- Force received attachments to download as non-cacheable octet streams with
+  sanitized `Content-Disposition`, `nosniff`, sandbox CSP, same-origin resource
+  policy, range rejection, and a 50 MiB decoded-byte ceiling
 - Reject control characters in outbound header fields
 - Sanitize provider-derived Message-IDs, bound reply reference chains, and
   always preserve the direct parent for standards-compliant threading

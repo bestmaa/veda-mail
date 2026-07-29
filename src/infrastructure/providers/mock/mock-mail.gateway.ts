@@ -2,12 +2,15 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
+  AttachmentDownload,
+  AttachmentDownloadInput,
   Mailbox,
   MessageDetail,
   MessageListQuery,
   MessageMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
+import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 import type {
@@ -16,6 +19,12 @@ import type {
   MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
 import {
+  assertMockAttachmentDownloadInput,
+  createMockAttachmentStream,
+  throwIfMockAttachmentAborted,
+} from "@/infrastructure/providers/mock/mock-attachment-download";
+import {
+  createMockAttachmentContents,
   createMockMessages,
   mockMailboxIds,
 } from "@/infrastructure/providers/mock/mock-seed";
@@ -40,14 +49,53 @@ const mailboxDefinitions = [
 ] as const;
 
 export class MockMailGateway implements MailGateway {
+  private readonly attachmentContents = createMockAttachmentContents();
   private messages = createMockMessages();
   private profile = {
     displayName: "Sample Member",
     email: "member@example.com",
   };
-
   public async changePassword(input: MemberPasswordChange): Promise<void> {
     void input;
+  }
+
+  public async downloadAttachment(
+    input: AttachmentDownloadInput,
+  ): Promise<AttachmentDownload> {
+    assertMockAttachmentDownloadInput(input.maxBytes, input.signal);
+
+    const message = this.messages.find((item) => item.id === input.messageId);
+    const attachment = message?.attachments.find(
+      (item) => item.id === input.attachmentId,
+    );
+    if (!message || !attachment) {
+      throw new AttachmentDownloadError("not_found", "Attachment not found.");
+    }
+    if (attachment.size > input.maxBytes) {
+      throw new AttachmentDownloadError(
+        "size_limit_exceeded",
+        "Attachment exceeds the download byte limit.",
+      );
+    }
+    const content = this.attachmentContents
+      .get(message.id)
+      ?.get(attachment.id);
+    if (!content || content.byteLength !== attachment.size) {
+      throw new AttachmentDownloadError(
+        "provider_failure",
+        "Attachment content is unavailable.",
+      );
+    }
+    throwIfMockAttachmentAborted(input.signal);
+    return {
+      body: createMockAttachmentStream(
+        content.slice(),
+        input.maxBytes,
+        input.signal,
+      ),
+      name: attachment.name,
+      size: content.byteLength,
+    };
   }
 
   public async getAccount() {
@@ -155,6 +203,15 @@ export class MockMailGateway implements MailGateway {
       name: attachment.name,
       size: attachment.size,
     }));
+    this.attachmentContents.set(
+      messageId,
+      new Map(
+        attachments.map((attachment, index) => [
+          attachment.id,
+          input.attachments?.[index]?.content.slice() ?? new Uint8Array(),
+        ]),
+      ),
+    );
     this.messages.unshift({
       attachments,
       cc: input.cc,

@@ -22,24 +22,37 @@ const jmapCapabilitiesSchema = unknownRecord.and(
 
 const addressSchema = z
   .object({
-    email: z.string().min(1),
-    name: z.string().nullable().optional(),
+    email: z.string().min(1).max(998),
+    name: z.string().max(4_096).nullable().optional(),
   })
   .passthrough();
 
 const bodyPartSchema = z
   .object({
-    blobId: z.string().nullable().optional(),
-    name: z.string().nullable().optional(),
-    partId: z.string().nullable().optional(),
-    size: z.number().nonnegative().nullable().optional(),
-    type: z.string().min(1),
+    blobId: z.string().min(1).max(1_024).nullable().optional(),
+    name: z.string().max(4_096).nullable().optional(),
+    partId: z.string().max(1_024).nullable().optional(),
+    size: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .nullable()
+      .optional(),
+    type: z.string().min(1).max(256),
+  })
+  .passthrough();
+
+export const jmapAttachmentEmailSchema = z
+  .object({
+    attachments: z.array(bodyPartSchema).max(256).optional(),
+    id: z.string().min(1).max(1_024),
   })
   .passthrough();
 
 export const jmapEmailSchema = z
   .object({
-    attachments: z.array(bodyPartSchema).optional(),
+    attachments: z.array(bodyPartSchema).max(256).optional(),
     bcc: z.array(addressSchema).nullable().optional(),
     bodyValues: z
       .record(z.string(), z.object({ value: z.string() }).passthrough())
@@ -47,7 +60,7 @@ export const jmapEmailSchema = z
     cc: z.array(addressSchema).nullable().optional(),
     from: z.array(addressSchema).nullable().optional(),
     hasAttachment: z.boolean(),
-    htmlBody: z.array(bodyPartSchema).optional(),
+    htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
     id: z.string().min(1),
     keywords: booleanRecord,
     mailboxIds: booleanRecord,
@@ -56,9 +69,9 @@ export const jmapEmailSchema = z
     receivedAt: z.string().min(1),
     references: z.array(z.string()).nullable().optional(),
     replyTo: z.array(addressSchema).nullable().optional(),
-    size: z.number().nonnegative(),
+    size: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     subject: z.string().nullable(),
-    textBody: z.array(bodyPartSchema).optional(),
+    textBody: z.array(bodyPartSchema).max(1_024).optional(),
     threadId: z.string().min(1),
     to: z.array(addressSchema).nullable().optional(),
   })

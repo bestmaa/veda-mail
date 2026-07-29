@@ -27,8 +27,15 @@ test("shows provider-supported and unavailable mail features", async ({
     dialog.getByRole("listitem").filter({ hasText: "Live mailbox updates" }),
   ).toContainText("Manual refresh");
   await expect(
-    dialog.getByRole("listitem").filter({ hasText: "Attachments" }),
+    dialog
+      .getByRole("listitem")
+      .filter({ hasText: "Attachment upload & send" }),
   ).toContainText("Up to 18.0 MB");
+  await expect(
+    dialog
+      .getByRole("listitem")
+      .filter({ hasText: "Received attachment downloads" }),
+  ).toContainText("Up to 50.0 MB");
 
   await expectNoSeriousAccessibilityViolations(page);
 });

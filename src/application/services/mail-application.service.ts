@@ -1,5 +1,6 @@
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
+  AttachmentDownloadInput,
   Mailbox,
   MailWorkspace,
   MessageMutation,
@@ -30,6 +31,10 @@ export class MailApplicationService {
 
   public getMessage(messageId: MessageId) {
     return this.gateway.getMessage(messageId);
+  }
+
+  public downloadAttachment(input: AttachmentDownloadInput) {
+    return this.gateway.downloadAttachment(input);
   }
 
   public getMaxAttachmentBytes() {
