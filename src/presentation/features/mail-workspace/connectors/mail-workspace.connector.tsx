@@ -7,17 +7,20 @@ import type { BrandingInput } from "@/presentation/shared/branding/branding.view
 export const MailWorkspaceConnector = ({
   branding = {},
   canSignOut = true,
+  maxAttachmentBytes = 0,
   providerLabel = "Organization mail",
   signOutPath = "/login",
 }: {
   readonly branding?: BrandingInput;
   readonly canSignOut?: boolean;
+  readonly maxAttachmentBytes?: number | null;
   readonly providerLabel?: string;
   readonly signOutPath?: string;
 }) => {
   const viewProps = useMailWorkspaceModel({
     branding,
     canSignOut,
+    maxAttachmentBytes,
     providerLabel,
     signOutPath,
   });

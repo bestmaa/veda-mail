@@ -2,9 +2,9 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
-  ComposeInput,
   MessageListQuery,
   MessageMutation,
+  SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
 import type {
@@ -14,20 +14,22 @@ import type {
 } from "@/domain/member/member-settings";
 import { StalwartAccountManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-account-manager";
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
+import { maximumJmapUploadBytes } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { StalwartMailWriter } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.writer";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
+  private readonly client: StalwartJmapClient;
   private readonly reader: StalwartMailReader;
   private readonly writer: StalwartMailWriter;
 
   public constructor(config: StalwartConfig) {
-    const client = new StalwartJmapClient(config);
-    this.reader = new StalwartMailReader(client, config);
-    this.writer = new StalwartMailWriter(client, this.reader);
-    this.accountManager = new StalwartAccountManager(client, this.reader);
+    this.client = new StalwartJmapClient(config);
+    this.reader = new StalwartMailReader(this.client, config);
+    this.writer = new StalwartMailWriter(this.client, this.reader);
+    this.accountManager = new StalwartAccountManager(this.client, this.reader);
   }
 
   public changePassword(input: MemberPasswordChange) {
@@ -36,6 +38,10 @@ export class StalwartMailGateway implements MailGateway {
 
   public getAccount() {
     return this.reader.getAccount();
+  }
+
+  public async getMaxAttachmentBytes() {
+    return maximumJmapUploadBytes(await this.client.getSession());
   }
 
   public getMemberProfile() {
@@ -62,7 +68,7 @@ export class StalwartMailGateway implements MailGateway {
     return this.writer.mutateMessage(mutation);
   }
 
-  public sendMessage(input: ComposeInput) {
+  public sendMessage(input: SendMessageInput) {
     return this.writer.sendMessage(input);
   }
 

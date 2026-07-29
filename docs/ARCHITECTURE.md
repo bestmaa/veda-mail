@@ -5,17 +5,17 @@ Dependencies point inward and provider details stop at the gateway.
 
 ## Layers
 
-| Layer | Responsibility | May depend on |
-| --- | --- | --- |
-| `domain` | Branded IDs and normalized mail/provider models | Domain only |
-| `application` | Mail use cases and provider contracts | Domain |
-| `infrastructure` | Stalwart, IMAP/SMTP, and mock adapters | Application, domain |
-| `server` | Admin auth, profiles, member sessions, gateways | Inner layers |
-| `transport` | HTTP envelopes, schemas, browser client | Domain |
-| `presentation/hooks` | Browser state, effects, commands | Transport |
-| `presentation/connectors` | Hooks translated into view props | Hooks, UI types |
-| `presentation/ui` | Pure rendering and event forwarding | View props only |
-| `app` | Next pages and route-handler composition | Server adapters |
+| Layer                     | Responsibility                                  | May depend on       |
+| ------------------------- | ----------------------------------------------- | ------------------- |
+| `domain`                  | Branded IDs and normalized mail/provider models | Domain only         |
+| `application`             | Mail use cases and provider contracts           | Domain              |
+| `infrastructure`          | Stalwart, IMAP/SMTP, and mock adapters          | Application, domain |
+| `server`                  | Admin auth, profiles, member sessions, gateways | Inner layers        |
+| `transport`               | HTTP envelopes, schemas, browser client         | Domain              |
+| `presentation/hooks`      | Browser state, effects, commands                | Transport           |
+| `presentation/connectors` | Hooks translated into view props                | Hooks, UI types     |
+| `presentation/ui`         | Pure rendering and event forwarding             | View props only     |
+| `app`                     | Next pages and route-handler composition        | Server adapters     |
 
 ## Presentation flow
 
@@ -87,6 +87,41 @@ The included Standard IMAP + SMTP adapter covers providers that expose secure
 password/app-password protocol access. OAuth-only vendors use the same
 contracts through a vendor adapter.
 
+## Attachment upload boundary
+
+Attachment bytes never pass through JSON and provider blob identifiers never
+reach the browser. The browser first reserves an opaque, 192-bit upload ID
+bound to the authenticated mailbox identity, connection, session, and compose
+draft. It then sends the file as one bounded raw `PUT`.
+
+While the request streams in, the server enforces the exact declared length,
+per-file/count/aggregate/session quotas plus process-wide 512 MiB/1,000-record
+ceilings, hashes the plaintext, encrypts it with AES-256-GCM into a mode-0600
+temporary file, and sends the same complete stream to ClamAV. A magic-number
+detector replaces the browser MIME claim. Uploads have a 30-second idle and
+five-minute absolute deadline; the ClamAV verdict has its own 30-second
+deadline. Scanner, detector, storage, timeout, or integrity failure fails
+closed.
+
+Only a clean upload may move atomically through:
+
+```text
+reserved -> uploading -> quarantined -> clean -> claimed -> consumed
+```
+
+The send route verifies the provider capability before claiming IDs, acquires
+a bounded process-wide plaintext-memory lease, atomically claims all selected
+IDs, verifies the encrypted content and SHA-256 digest, and passes normalized
+bytes to `MailGateway`.
+Stalwart uploads those bytes through the account-scoped JMAP `uploadUrl` and
+uses the resulting provider-only blob reference in `Email/set`. The IMAP/SMTP
+adapter discovers the authenticated SMTP EHLO `SIZE`, applies the lower
+administrator ceiling, accounts for base64/MIME overhead, builds a
+standards-compliant MIME attachment, and checks the exact final message.
+Provider or pre-provider failure releases the claim for a safe retry;
+successful send destroys the quarantine copy and every path releases the
+memory lease.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.
@@ -107,6 +142,10 @@ npm run check:lines
 
 - Installation, branding, service profile, and member 2FA are durable on
   `/data`.
+- Pending attachment uploads are encrypted, process-local quarantine data with
+  a 30-minute TTL; a one-minute background sweep expires them without another
+  request, and production startup removes bounded orphan quarantine
+  directories. They are not mailbox storage or backup content.
 - Member connections and gateway credentials are memory-only for 12 hours.
 - Restarting the process intentionally signs every member out.
 - A multi-replica deployment needs a shared encrypted session repository and

@@ -10,9 +10,7 @@ import type {
 import { id } from "@/domain/shared/brand";
 import { ImapSmtpMailGateway } from "@/infrastructure/providers/imap-smtp/imap-mail.gateway";
 import { verifyImapCredentials } from "@/infrastructure/providers/imap-smtp/imap-client";
-import type {
-  ImapSmtpMemberConfig,
-} from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { assertSafeProviderHost } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
 const port = z.coerce.number().int().min(1).max(65_535).transform(String);
@@ -24,6 +22,12 @@ const hostname = z
   .regex(/^[a-z0-9.-]+$/i, "Enter a valid mail-server hostname.")
   .transform((value) => value.toLowerCase());
 const security = z.enum(["tls", "starttls"]);
+const smtpMaxMessageBytes = z
+  .preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.coerce.number().int().min(0).max(1_000_000_000).default(0),
+  )
+  .transform(String);
 
 const serviceSchema = z
   .object({
@@ -31,6 +35,7 @@ const serviceSchema = z
     imapPort: port,
     imapSecurity: security,
     smtpHost: hostname,
+    smtpMaxMessageBytes,
     smtpPort: port,
     smtpSecurity: security,
   })
@@ -51,7 +56,7 @@ const securityOptions = [
 export class ImapSmtpProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
-      maxAttachmentBytes: 0,
+      maxAttachmentBytes: 18 * 1024 * 1024,
       supportsDrafts: false,
       supportsPasswordChange: false,
       supportsProfileSettings: false,
@@ -110,6 +115,20 @@ export class ImapSmtpProviderModule implements ProviderModule {
         label: "SMTP port",
         name: "smtpPort",
         required: true,
+        scope: "service",
+        secret: false,
+      },
+      {
+        defaultValue: "0",
+        help:
+          "Optional message-size ceiling in bytes. Use 0 to require the " +
+          "server's SMTP SIZE limit; attachments stay disabled if neither " +
+          "source supplies a verifiable limit.",
+        kind: "text",
+        label: "SMTP maximum message bytes",
+        name: "smtpMaxMessageBytes",
+        placeholder: "0",
+        required: false,
         scope: "service",
         secret: false,
       },
@@ -188,7 +207,10 @@ export class ImapSmtpProviderModule implements ProviderModule {
     config: Readonly<Record<string, string>>,
     newPassword: string,
   ) {
-    return memberSchema.parse({ ...memberSchema.parse(config), secret: newPassword });
+    return memberSchema.parse({
+      ...memberSchema.parse(config),
+      secret: newPassword,
+    });
   }
 
   public async createGateway(connection: ProviderConnection) {

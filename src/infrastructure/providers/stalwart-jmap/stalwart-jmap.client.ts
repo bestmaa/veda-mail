@@ -2,11 +2,14 @@ import "server-only";
 
 import type { ZodType } from "zod";
 
+import type { OutgoingAttachment } from "@/domain/mail/mail";
 import {
   jmapResponseSchema,
   jmapSessionSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
 import { StalwartOAuthClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-oauth.client";
+import type { JmapProviderUploadReference } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-transport";
+import { uploadJmapOutgoingAttachment } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
 import {
   JMAP_CORE,
   type JmapMethodCall,
@@ -124,6 +127,20 @@ export class StalwartJmapClient {
     return parsed.data;
   }
 
+  public async uploadAttachment(
+    accountId: string,
+    attachment: OutgoingAttachment,
+  ): Promise<JmapProviderUploadReference> {
+    const session = await this.getSession();
+    return uploadJmapOutgoingAttachment({
+      accountId,
+      attachment,
+      authorizationHeader: () => this.authorizationHeader(),
+      baseUrl: this.config.baseUrl,
+      session,
+    });
+  }
+
   public result<T>(
     response: JmapResponse,
     callId: string,
@@ -157,7 +174,7 @@ export class StalwartJmapClient {
   private async discover(): Promise<JmapSession> {
     const origin = (await assertSafeProviderOrigin(this.config.baseUrl)).origin;
     const discoveryUrl = new URL("/.well-known/jmap", origin);
-    const authHeader = await this.authorizationHeader();
+    const authHeader = await this.authorizationHeader(false);
     const response = await fetchSameOrigin(discoveryUrl, origin, {
       cache: "no-store",
       headers: { Authorization: authHeader },
@@ -177,7 +194,7 @@ export class StalwartJmapClient {
     return session;
   }
 
-  private async authorizationHeader(): Promise<string> {
+  private async authorizationHeader(invalidateSession = true): Promise<string> {
     if (this.config.authType === "basic") {
       return basicAuthorizationHeader(this.config);
     }
@@ -186,7 +203,7 @@ export class StalwartJmapClient {
       this.accessTokenExpiresAt !== null &&
       this.accessTokenExpiresAt <= refreshBefore
     ) {
-      await this.refreshAccessToken();
+      await this.refreshAccessToken(invalidateSession);
     }
     if (!this.accessToken) {
       throw new Error("The Stalwart OAuth access token is missing.");
@@ -194,7 +211,7 @@ export class StalwartJmapClient {
     return `Bearer ${this.accessToken}`;
   }
 
-  private async refreshAccessToken(): Promise<void> {
+  private async refreshAccessToken(invalidateSession: boolean): Promise<void> {
     if (!this.refreshToken) {
       throw new Error("The Stalwart OAuth refresh token is missing.");
     }
@@ -207,7 +224,9 @@ export class StalwartJmapClient {
         this.accessToken = tokens.accessToken;
         this.accessTokenExpiresAt = Date.parse(tokens.expiresAt);
         this.refreshToken = tokens.refreshToken;
-        this.sessionPromise = null;
+        if (invalidateSession) {
+          this.sessionPromise = null;
+        }
       })
       .finally(() => {
         this.refreshPromise = null;

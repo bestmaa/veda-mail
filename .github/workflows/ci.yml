@@ -19,6 +19,8 @@ env:
     moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
   BUILDX_COMMIT: a319e5b15052cf6557ceb666eb8ff6e32380b782
   BUILDX_VERSION: v0.35.0
+  CLAMAV_IMAGE: >-
+    clamav/clamav:1.5.3@sha256:7f5389ccaa2368c383fa80e167ccfe44348d71e685f926fce4755eed1757673a
   SBOM_SCANNER_DIGEST: 79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
   SBOM_SCANNER_IMAGE: >-
     docker/buildkit-syft-scanner@sha256:79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
@@ -64,6 +66,106 @@ jobs:
 
       - name: Audit complete dependency tree
         run: npm audit --audit-level=high
+
+  clamav_integration:
+    name: ClamAV live attachment scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: veda-mail-clamav-${{ github.run_id }}-${{ github.run_attempt }}
+      VEDA_MAIL_ALLOWED_PROVIDER_HOSTS: mail.example.com
+      VEDA_MAIL_PUBLIC_URL: https://webmail.example.com
+      VEDA_MAIL_SETUP_TOKEN: ci-only-token-not-used-in-production
+      VEDA_MAIL_TEST_CLAMAV_PORT: "3310"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate Compose and run pinned ClamAV integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/check-clamav-platform.sh
+          container_id=""
+          cleanup() {
+            set +e
+            docker compose down --volumes --remove-orphans || true
+            if [[ -n "$container_id" ]]; then
+              docker rm --force "$container_id" >/dev/null 2>&1 || true
+            fi
+          }
+          trap cleanup EXIT
+
+          docker compose config --quiet
+          configured_image="$(
+            docker compose config --format json \
+              | jq -er '.services.clamav.image'
+          )"
+          if [[ "$configured_image" != "$CLAMAV_IMAGE" ]]; then
+            echo "Compose ClamAV image is not the approved immutable digest." >&2
+            exit 1
+          fi
+
+          container_id="$(
+            docker compose run \
+              --detach \
+              --no-deps \
+              --pull always \
+              --publish "127.0.0.1:${VEDA_MAIL_TEST_CLAMAV_PORT}:3310" \
+              clamav
+          )"
+          if [[ ! "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Compose returned an invalid ClamAV container ID." >&2
+            exit 1
+          fi
+          running_image="$(
+            docker inspect --format '{{.Config.Image}}' "$container_id"
+          )"
+          if [[ "$running_image" != "$CLAMAV_IMAGE" ]]; then
+            echo "Running ClamAV container does not use the pinned image." >&2
+            exit 1
+          fi
+
+          health=""
+          for ((attempt = 1; attempt <= 144; attempt += 1)); do
+            running="$(
+              docker inspect --format '{{.State.Running}}' "$container_id"
+            )"
+            if [[ "$running" != "true" ]]; then
+              docker logs "$container_id" >&2
+              echo "ClamAV stopped before becoming healthy." >&2
+              exit 1
+            fi
+            health="$(
+              docker inspect \
+                --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+                "$container_id"
+            )"
+            if [[ "$health" == "healthy" ]]; then
+              break
+            fi
+            sleep 5
+          done
+          if [[ "$health" != "healthy" ]]; then
+            docker inspect --format '{{json .State.Health}}' "$container_id" >&2
+            docker logs "$container_id" >&2
+            echo "ClamAV did not become healthy within 12 minutes." >&2
+            exit 1
+          fi
+
+          npm exec -- vitest run tests/integration/clamav-live.test.ts
 
   codeql:
     name: CodeQL
@@ -129,10 +231,23 @@ jobs:
           skip-setup-trivy: "true"
           vuln-type: os,library
 
+      - name: Scan pinned ClamAV sidecar
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          exit-code: "1"
+          hide-progress: true
+          ignore-unfixed: "false"
+          image-ref: ${{ env.CLAMAV_IMAGE }}
+          scan-type: image
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          skip-setup-trivy: "true"
+          vuln-type: os,library
+
   container_build:
     name: Build container (${{ matrix.arch }})
     if: github.event_name != 'pull_request'
-    needs: [quality, codeql, security]
+    needs: [quality, clamav_integration, codeql, security]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     permissions:

@@ -2,9 +2,23 @@ import "server-only";
 
 import { z } from "zod";
 
+import { JMAP_CORE } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+
 const stringRecord = z.record(z.string(), z.string());
 const booleanRecord = z.record(z.string(), z.boolean());
 const unknownRecord = z.record(z.string(), z.unknown());
+const jmapCoreCapabilitySchema = z
+  .object({
+    maxSizeUpload: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  })
+  .passthrough();
+const jmapCapabilitiesSchema = unknownRecord.and(
+  z
+    .object({
+      [JMAP_CORE]: jmapCoreCapabilitySchema,
+    })
+    .passthrough(),
+);
 
 const addressSchema = z
   .object({
@@ -28,10 +42,7 @@ export const jmapEmailSchema = z
     attachments: z.array(bodyPartSchema).optional(),
     bcc: z.array(addressSchema).nullable().optional(),
     bodyValues: z
-      .record(
-        z.string(),
-        z.object({ value: z.string() }).passthrough(),
-      )
+      .record(z.string(), z.object({ value: z.string() }).passthrough())
       .optional(),
     cc: z.array(addressSchema).nullable().optional(),
     from: z.array(addressSchema).nullable().optional(),
@@ -83,7 +94,7 @@ export const jmapSessionSchema = z
         .passthrough(),
     ),
     apiUrl: z.string().min(1),
-    capabilities: unknownRecord,
+    capabilities: jmapCapabilitiesSchema,
     downloadUrl: z.string().min(1),
     primaryAccounts: stringRecord,
     uploadUrl: z.string().min(1),
@@ -93,16 +104,12 @@ export const jmapSessionSchema = z
 
 export const jmapResponseSchema = z
   .object({
-    methodResponses: z.array(
-      z.tuple([z.string(), z.unknown(), z.string()]),
-    ),
+    methodResponses: z.array(z.tuple([z.string(), z.unknown(), z.string()])),
     sessionState: z.string(),
   })
   .passthrough();
 
-export const jmapListResultSchema = <T extends z.ZodType>(
-  itemSchema: T,
-) =>
+export const jmapListResultSchema = <T extends z.ZodType>(itemSchema: T) =>
   z
     .object({
       accountId: z.string().min(1),

@@ -9,21 +9,29 @@ profile.
 The capability values below describe features callable through Veda Mail
 today, not every feature the upstream server protocol could eventually supply.
 
-| Capability | Stalwart JMAP | Standard IMAP + SMTP |
-| --- | --- | --- |
-| Mailbox/message read | Yes | Yes |
-| Server-side text search | Yes | Yes |
-| Plain-text send, To/CC/BCC | Yes | Yes |
-| Read/star/archive/move/trash | Yes | Yes |
-| Profile/password/provider 2FA management | Yes | No |
-| Provider-backed drafts/autosave | Not implemented | Not implemented |
-| Attachment upload/download | Not implemented | Not implemented |
-| Conversation/thread API | Not implemented | Not implemented |
-| Push/new-mail subscription | Not implemented | Not implemented |
+| Capability                                    | Stalwart JMAP   | Standard IMAP + SMTP |
+| --------------------------------------------- | --------------- | -------------------- |
+| Mailbox/message read                          | Yes             | Yes                  |
+| Server-side text search                       | Yes             | Yes                  |
+| Plain-text send, To/CC/BCC                    | Yes             | Yes                  |
+| Read/star/archive/move/trash                  | Yes             | Yes                  |
+| Profile/password/provider 2FA management      | Yes             | No                   |
+| Provider-backed drafts/autosave               | Not implemented | Not implemented      |
+| Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
+| Authenticated attachment download             | Not implemented | Not implemented      |
+| Conversation/thread API                       | Not implemented | Not implemented      |
+| Push/new-mail subscription                    | Not implemented | Not implemented      |
 
-| Adapter | Use it for | Authentication |
-| --- | --- | --- |
-| Stalwart JMAP | Self-hosted Stalwart | Stalwart OAuth flow |
+Scanned attachments require the Compose-managed ClamAV sidecar independently
+of the selected provider. The approved zero-HIGH/CRITICAL ClamAV digest is
+currently published for `linux/amd64` only, so run
+`./scripts/check-clamav-platform.sh` before starting either provider topology.
+The preflight rejects unsupported architectures; there is no unscanned
+fallback.
+
+| Adapter              | Use it for                                                | Authentication                               |
+| -------------------- | --------------------------------------------------------- | -------------------------------------------- |
+| Stalwart JMAP        | Self-hosted Stalwart                                      | Stalwart OAuth flow                          |
 | Standard IMAP + SMTP | Hostinger, cPanel, Zoho, Fastmail, and compatible hosting | Full email address plus mailbox/app password |
 
 Member authenticator 2FA is supplied by Veda Mail for both adapters. It does
@@ -45,11 +53,21 @@ service settings and choose **Standard IMAP + SMTP**. Enter:
 - IMAP security: `TLS` for port 993, or `STARTTLS` when explicitly documented
 - SMTP host and port from the outgoing-mail instructions
 - SMTP security: `TLS` for port 465, or `STARTTLS` for port 587
+- SMTP maximum message bytes: leave `0` to require the server's authenticated
+  EHLO `SIZE` value, or enter the smaller documented provider/plan ceiling
+  when the server omits a numeric `SIZE` limit
 - Every organization domain whose members may sign in
 
 Plaintext IMAP and SMTP are intentionally unsupported. The server must have a
 publicly trusted TLS certificate. Private-network targets are blocked unless a
 deployment explicitly extends the network policy in source code.
+
+The adapter caches the verified SMTP limit for five minutes, subtracts
+base64 line expansion plus a conservative MIME/header reserve from the picker
+limit, and checks the exact composed message again before SMTP submission.
+The lower of the advertised and administrator-configured limits always wins.
+Attachments stay disabled when neither source supplies a numeric ceiling;
+ordinary messages remain available.
 
 After saving, test with a dedicated mailbox:
 
@@ -59,7 +77,12 @@ After saving, test with a dedicated mailbox:
 4. Send to an external address.
 5. Reply externally and confirm it arrives.
 6. Confirm the sent copy appears in the Sent folder.
-7. Archive, star, move, and trash a test message.
+7. Send a small known-clean attachment and verify its received SHA-256 digest.
+8. For JMAP, lower `maxSizeUpload` in a test session and confirm the UI and
+   reservation endpoint enforce the advertised provider limit before upload.
+9. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
+   the picker and exact final MIME message fail before provider submission.
+10. Archive, star, move, and trash a test message.
 
 ## Common provider examples
 

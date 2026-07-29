@@ -85,13 +85,33 @@ describe("Stalwart JMAP mapper", () => {
     });
 
     expect(mapMessageDetail(multipartEmail).attachments).toEqual([
-      {
-        id: "attachment-0",
+      expect.objectContaining({
+        id: expect.stringMatching(/^message-attachment-[A-Za-z0-9_-]{43}$/),
         mimeType: "multipart/mixed",
         name: "Attachment 1",
         size: 0,
-      },
+      }),
     ]);
+  });
+
+  it("never exposes a provider blob identifier as a public attachment ID", () => {
+    const detail = mapMessageDetail({
+      ...email,
+      attachments: [
+        {
+          blobId: "provider-secret-blob-id",
+          name: "report.pdf",
+          size: 12,
+          type: "application/pdf",
+        },
+      ],
+      hasAttachment: true,
+    });
+
+    expect(detail.attachments[0]?.id).not.toContain("provider-secret-blob-id");
+    expect(JSON.stringify(detail.attachments)).not.toContain(
+      "provider-secret-blob-id",
+    );
   });
 
   it("sanitizes active and tracking HTML", () => {

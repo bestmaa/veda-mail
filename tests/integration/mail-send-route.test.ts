@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => {
     };
   });
   return {
-    getCurrentConnection: vi.fn(async () => ({ id: "connection-1" })),
+    getCurrentConnection: vi.fn(async () => ({
+      id: "connection-1",
+      providerId: "mock",
+    })),
     getMailService: vi.fn(async () => ({ sendMessage })),
     sendMessage,
   };
@@ -57,7 +60,10 @@ const request = (
 
 beforeEach(() => {
   mocks.getCurrentConnection.mockReset();
-  mocks.getCurrentConnection.mockResolvedValue({ id: "connection-1" });
+  mocks.getCurrentConnection.mockResolvedValue({
+    id: "connection-1",
+    providerId: "mock",
+  });
   mocks.getMailService.mockClear();
   mocks.sendMessage.mockClear();
 });
@@ -79,6 +85,7 @@ describe("POST /api/v1/mail/send", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
     expect(mocks.sendMessage).toHaveBeenCalledWith({
+      attachments: [],
       bcc: "bcc" in lists ? lists.bcc : [],
       body: "Hello from the route test",
       cc: "cc" in lists ? lists.cc : [],
@@ -95,6 +102,7 @@ describe("POST /api/v1/mail/send", () => {
     expect(response.status).toBe(201);
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
     expect(mocks.sendMessage).toHaveBeenCalledWith({
+      attachments: [],
       bcc: [],
       body: "Hello from the route test",
       cc: [],
@@ -106,7 +114,10 @@ describe("POST /api/v1/mail/send", () => {
 
   it("rejects the 31st message for one authenticated connection", async () => {
     const connectionId = `mail-send-rate-limit-${crypto.randomUUID()}`;
-    mocks.getCurrentConnection.mockResolvedValue({ id: connectionId });
+    mocks.getCurrentConnection.mockResolvedValue({
+      id: connectionId,
+      providerId: "mock",
+    });
 
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       const response = await POST(request(payload()));
@@ -149,10 +160,7 @@ describe("POST /api/v1/mail/send", () => {
   });
 
   it.each([
-    [
-      "an Origin mismatch",
-      { origin: "https://attacker.example" },
-    ],
+    ["an Origin mismatch", { origin: "https://attacker.example" }],
     [
       "cross-site fetch metadata without Origin",
       { origin: "", "sec-fetch-site": "cross-site" },

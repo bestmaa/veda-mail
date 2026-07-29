@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import type { ComposeInput } from "@/domain/mail/mail";
@@ -50,19 +51,21 @@ const reader = {
 const createClient = (submissionFails: boolean) => {
   let calls: readonly JmapMethodCall[] = [];
   let createKey = "";
+  const uploads: unknown[] = [];
   const client = {
     request: async (nextCalls: readonly JmapMethodCall[]) => {
       calls = nextCalls;
       const create = nextCalls[0]?.[1]["create"] as
-        | Readonly<Record<string, unknown>>
-        | undefined;
+        Readonly<Record<string, unknown>> | undefined;
       createKey = Object.keys(create ?? {})[0] ?? "";
       return { methodResponses: [], sessionState: "state" };
     },
     result: (_response: unknown, callId: string) => {
       if (callId === "identities") {
         return {
-          list: [{ email: "sender@example.com", id: "identity", name: "Sender" }],
+          list: [
+            { email: "sender@example.com", id: "identity", name: "Sender" },
+          ],
         };
       }
       if (callId === "create") {
@@ -72,8 +75,16 @@ const createClient = (submissionFails: boolean) => {
         ? { notCreated: { submit: { type: "forbiddenFrom" } } }
         : { created: { submit: { id: "submission" } } };
     },
+    uploadAttachment: async (accountId: string, attachment: unknown) => {
+      uploads.push({ accountId, attachment });
+      return {
+        blobId: "provider-blob",
+        size: 4,
+        type: "application/octet-stream",
+      };
+    },
   } as unknown as StalwartJmapClient;
-  return { client, getCalls: () => calls };
+  return { client, getCalls: () => calls, getUploads: () => uploads };
 };
 
 describe("Stalwart writer", () => {
@@ -165,5 +176,43 @@ describe("Stalwart writer", () => {
       cc: [{ email: "copy@example.com", name: "Copy" }],
       to: [],
     });
+  });
+
+  it("uploads verified bytes and references the provider blob in MIME structure", async () => {
+    const content = Buffer.from([0, 1, 2, 3]);
+    const { client, getCalls, getUploads } = createClient(false);
+    await new StalwartMailWriter(client, reader).sendMessage({
+      ...input,
+      attachments: [
+        {
+          content,
+          id: id.attachmentUpload("upload-id"),
+          mimeType: "application/octet-stream",
+          name: "evidence.bin",
+          sha256: createHash("sha256").update(content).digest("hex"),
+          size: content.byteLength,
+        },
+      ],
+    });
+    const created = Object.values(
+      (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
+    )[0];
+
+    expect(getUploads()).toHaveLength(1);
+    expect(created).toMatchObject({
+      bodyStructure: {
+        subParts: [
+          { partId: "body", type: "text/plain" },
+          {
+            blobId: "provider-blob",
+            disposition: "attachment",
+            name: "evidence.bin",
+            type: "application/octet-stream",
+          },
+        ],
+        type: "multipart/mixed",
+      },
+    });
+    expect(created).not.toHaveProperty("textBody");
   });
 });

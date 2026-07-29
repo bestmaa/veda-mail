@@ -39,6 +39,18 @@ const uniqueAddresses = (
     return true;
   });
 
+export const attachmentReservationSchema = z
+  .object({
+    declaredMimeType: z.string().trim().min(1).max(127),
+    draftId: z
+      .string()
+      .uuid("The attachment draft identifier is invalid.")
+      .transform(id.draft),
+    fileName: z.string().trim().min(1).max(255),
+    size: z.number().int().positive(),
+  })
+  .strict();
+
 export const connectionRequestSchema = z.object({
   config: z.record(z.string(), z.string()),
   displayName: z.string().trim().min(2).max(80),
@@ -47,6 +59,10 @@ export const connectionRequestSchema = z.object({
 
 export const sendMessageSchema = z
   .object({
+    attachmentIds: z
+      .array(z.string().trim().min(16).max(200).transform(id.attachmentUpload))
+      .max(10, "A message can contain at most 10 attachments.")
+      .default([]),
     bcc: recipientListSchema.default([]),
     body: z
       .string()
@@ -54,6 +70,11 @@ export const sendMessageSchema = z
       .min(1, "Message body cannot be blank.")
       .max(1_000_000, "Message body cannot exceed 1,000,000 characters."),
     cc: recipientListSchema.default([]),
+    draftId: z
+      .string()
+      .uuid("The attachment draft identifier is invalid.")
+      .transform(id.draft)
+      .optional(),
     inReplyTo: z
       .string()
       .trim()
@@ -77,6 +98,20 @@ export const sendMessageSchema = z
   })
   .strict()
   .superRefine((message, context) => {
+    if (message.attachmentIds.length > 0 && !message.draftId) {
+      context.addIssue({
+        code: "custom",
+        message: "An attachment draft identifier is required.",
+        path: ["draftId"],
+      });
+    }
+    if (new Set(message.attachmentIds).size !== message.attachmentIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Attachment identifiers must be unique.",
+        path: ["attachmentIds"],
+      });
+    }
     const recipientCount =
       message.to.length + message.cc.length + message.bcc.length;
     if (recipientCount > 100) {
@@ -98,8 +133,7 @@ export const sendMessageSchema = z
     };
   })
   .refine(
-    (message) =>
-      message.to.length + message.cc.length + message.bcc.length > 0,
+    (message) => message.to.length + message.cc.length + message.bcc.length > 0,
     {
       message: "At least one recipient is required.",
       path: ["to"],
@@ -134,7 +168,11 @@ export const memberPasswordChangeSchema = z
     confirmPassword: z.string(),
     currentPassword: z.string().min(1),
     newPassword: z.string().min(8).max(128),
-    otpCode: z.string().trim().regex(/^\d{6,8}$/).optional(),
+    otpCode: z
+      .string()
+      .trim()
+      .regex(/^\d{6,8}$/)
+      .optional(),
   })
   .strict()
   .refine((input) => input.newPassword === input.confirmPassword, {
@@ -150,7 +188,10 @@ export const memberPasswordChangeSchema = z
 const memberTwoFactorProofSchema = z
   .object({
     currentPassword: z.string().min(1).max(1024),
-    otpCode: z.string().trim().regex(/^\d{6}$/),
+    otpCode: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/),
   })
   .strict();
 

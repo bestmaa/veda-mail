@@ -12,6 +12,8 @@ services:
       VEDA_MAIL_TRUST_PROXY_HEADERS: ${VEDA_MAIL_TRUST_PROXY_HEADERS:-false}
       VEDA_MAIL_PUBLIC_URL: ${VEDA_MAIL_PUBLIC_URL:-http://localhost:3000}
       VEDA_MAIL_DATA_DIR: /data
+      VEDA_MAIL_CLAMAV_HOST: ${VEDA_MAIL_CLAMAV_HOST:-clamav}
+      VEDA_MAIL_CLAMAV_PORT: ${VEDA_MAIL_CLAMAV_PORT:-3310}
     ports:
       - "${VEDA_MAIL_BIND_ADDRESS:-127.0.0.1}:${VEDA_MAIL_PORT:-3000}:3000"
     expose:
@@ -37,5 +39,18 @@ services:
     volumes:
       - veda-mail-data:/data
 
+  clamav:
+    image: clamav/clamav:1.5.3@sha256:7f5389ccaa2368c383fa80e167ccfe44348d71e685f926fce4755eed1757673a
+    expose:
+      - "3310"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 60s
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+
 volumes:
+  clamav-signatures:
   veda-mail-data:

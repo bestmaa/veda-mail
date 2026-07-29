@@ -1,5 +1,8 @@
 import type {
   AccountId,
+  AttachmentId,
+  AttachmentUploadId,
+  DraftId,
   MailboxId,
   MessageId,
   ProviderId,
@@ -7,13 +10,7 @@ import type {
 } from "@/domain/shared/brand";
 
 export type MailboxRole =
-  | "archive"
-  | "drafts"
-  | "inbox"
-  | "sent"
-  | "spam"
-  | "trash"
-  | "custom";
+  "archive" | "drafts" | "inbox" | "sent" | "spam" | "trash" | "custom";
 
 export interface MailAddress {
   readonly email: string;
@@ -30,7 +27,7 @@ export interface Mailbox {
 }
 
 export interface Attachment {
-  readonly id: string;
+  readonly id: AttachmentId;
   readonly mimeType: string;
   readonly name: string;
   readonly size: number;
@@ -89,12 +86,41 @@ export type MessageMutation =
     };
 
 export interface ComposeInput {
+  readonly attachmentIds?: readonly AttachmentUploadId[];
+  readonly bcc: readonly MailAddress[];
+  readonly body: string;
+  readonly cc: readonly MailAddress[];
+  readonly draftId?: DraftId;
+  readonly inReplyTo?: MessageId;
+  readonly subject: string;
+  readonly to: readonly MailAddress[];
+}
+
+export interface OutgoingAttachment {
+  readonly content: Uint8Array;
+  readonly id: AttachmentUploadId;
+  readonly mimeType: string;
+  readonly name: string;
+  readonly sha256: string;
+  readonly size: number;
+}
+
+export interface SendMessageInput {
+  readonly attachments?: readonly OutgoingAttachment[];
   readonly bcc: readonly MailAddress[];
   readonly body: string;
   readonly cc: readonly MailAddress[];
   readonly inReplyTo?: MessageId;
   readonly subject: string;
   readonly to: readonly MailAddress[];
+}
+
+export interface UploadedAttachment {
+  readonly expiresAt: string;
+  readonly id: AttachmentUploadId;
+  readonly mimeType: string;
+  readonly name: string;
+  readonly size: number;
 }
 
 export interface SendReceipt {

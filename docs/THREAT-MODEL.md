@@ -130,15 +130,42 @@ limiter and encrypted shared session repository.
 
 ### Attachments
 
-Before enabling upload or download:
+- Upload reservations use random opaque IDs HMAC-bound to the authenticated
+  mailbox identity, connection, session, and compose draft. Wrong-scope
+  removal is enumeration-safe and cannot mutate the owner record.
+- Raw uploads require exact `Content-Length` and enforce 10-file, 18 MiB
+  per-file/aggregate, 36 MiB per-session, and process-wide 512 MiB/1,000-record
+  quarantine limits while streaming. Empty files are rejected.
+- Filenames are Unicode-normalized, traversal/control characters are removed,
+  and browser MIME claims are replaced by bounded magic-number inspection.
+  Unverified JSON, XML, calendar, CSV, and other textual claims downgrade to
+  `text/plain`; arbitrary UTF-8 cannot retain a structured browser MIME claim.
+- Plaintext is hashed while streaming and stored only as AES-256-GCM
+  ciphertext in a private temporary directory. Send re-verifies the
+  authentication tag, byte length, and SHA-256 digest.
+- The complete stream is scanned through ClamAV `INSTREAM`. Infection,
+  unavailable scanner, incomplete consumption, MIME-detector failure, and
+  storage failure all fail closed before a provider receives bytes. A
+  30-second no-progress budget, five-minute upload ceiling, and separate
+  30-second scanner-verdict deadline prevent both slow-drip and stalled-peer
+  resource retention without rejecting steadily progressing mobile uploads.
+- A background sweep enforces the 30-minute TTL without user traffic, and
+  bounded production-startup cleanup removes ciphertext orphaned by a prior
+  process.
+- Browser requests carry only quarantine IDs; JMAP blob IDs and IMAP part
+  locators remain inside their provider adapter.
+- Provider limits fail closed: JMAP requires the RFC-mandated nonnegative
+  `maxSizeUpload`; SMTP uses authenticated EHLO `SIZE` and an optional lower
+  administrator ceiling. SMTP picker limits reserve base64/MIME overhead and
+  the exact composed message is checked before submission.
+- Concurrent sends share an 18 MiB FIFO plaintext-memory budget with bounded
+  waiters and timeout. Capacity is acquired before decrypting and released
+  after provider submission or any failure.
 
-- Enforce per-file, count, aggregate, decoded, and streamed byte limits.
-- Normalize filenames and generate safe `Content-Disposition`; never trust a
-  browser-provided MIME type or provider blob identifier.
-- Require authenticated ownership checks, `nosniff`, non-cacheable private
-  responses, and an explicit inline-preview allowlist.
-- Defend against archive expansion, parser timeouts, polyglots, and malware.
-  Scanner failure must fail closed or produce a visible quarantine state.
+Residual risk: authenticated download, safe `Content-Disposition`, preview,
+inline CID, download-all, forwarding original attachments, and explicit
+archive-expansion policy are later M2 slices and remain unavailable. ClamAV
+must have enough memory for signature reloads; operator monitoring is required.
 
 ### Rules and forwarding
 

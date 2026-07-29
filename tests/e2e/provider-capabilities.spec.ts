@@ -9,9 +9,7 @@ useInstalledMailbox();
 test("shows provider-supported and unavailable mail features", async ({
   page,
 }) => {
-  await page
-    .getByRole("button", { name: /Open profile settings/ })
-    .click();
+  await page.getByRole("button", { name: /Open profile settings/ }).click();
 
   const dialog = page.getByRole("dialog", {
     name: "Profile & security",
@@ -30,7 +28,7 @@ test("shows provider-supported and unavailable mail features", async ({
   ).toContainText("Manual refresh");
   await expect(
     dialog.getByRole("listitem").filter({ hasText: "Attachments" }),
-  ).toContainText("Not available");
+  ).toContainText("Up to 18.0 MB");
 
   await expectNoSeriousAccessibilityViolations(page);
 });

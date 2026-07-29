@@ -23,6 +23,7 @@ import {
 interface MailWorkspaceModelOptions {
   readonly branding: BrandingInput;
   readonly canSignOut: boolean;
+  readonly maxAttachmentBytes: number | null;
   readonly providerLabel: string;
   readonly signOutPath: string;
 }
@@ -30,21 +31,19 @@ interface MailWorkspaceModelOptions {
 export const useMailWorkspaceModel = ({
   branding,
   canSignOut,
+  maxAttachmentBytes,
   providerLabel,
   signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
   const mail = useMailDataModel();
-  const composer = useComposerModel(mail.refresh);
+  const composer = useComposerModel(mail.refresh, maxAttachmentBytes);
   const navigation = useMobileNavigationModel();
   const session = useMemberSessionModel(canSignOut, signOutPath);
   const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName =
     mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
-  const settings = useAccountSettingsModel(
-    accountEmail,
-    workspaceAccountName,
-  );
+  const settings = useAccountSettingsModel(accountEmail, workspaceAccountName);
 
   const folders = useMemo(
     () =>
@@ -142,8 +141,7 @@ export const useMailWorkspaceModel = ({
     mail.workspace?.mailboxes.find(
       (mailbox) => mailbox.id === mail.activeMailboxId,
     )?.name ?? "Inbox";
-  const accountName =
-    settings.profileName ?? workspaceAccountName;
+  const accountName = settings.profileName ?? workspaceAccountName;
   const onReply = useCallback(
     () => composer.openReply(mail.selectedMessage),
     [composer, mail.selectedMessage],
@@ -167,6 +165,22 @@ export const useMailWorkspaceModel = ({
     branding: brandingView,
     activeFolder,
     composer: {
+      attachments: composer.attachments.map((attachment) => ({
+        error: attachment.error,
+        id: attachment.key,
+        meta: `${formatFileSize(attachment.size)} · ${
+          attachment.state === "ready"
+            ? attachment.upload?.mimeType
+            : attachment.state === "uploading"
+              ? "Scanning…"
+              : "Upload failed"
+        }`,
+        name: attachment.name,
+        onRemove: () => composer.removeAttachment(attachment.key),
+        state: attachment.state,
+      })),
+      attachmentInput: composer.onAttachmentInput,
+      attachmentCapabilityUnavailable: composer.attachmentCapabilityUnavailable,
       bcc: composer.bcc,
       bccInput: composer.onBccInput,
       body: composer.body,
@@ -175,9 +189,14 @@ export const useMailWorkspaceModel = ({
       ccInput: composer.onCcInput,
       error: composer.error,
       focusBody: Boolean(composer.to),
+      isAttachmentCapabilityRefreshing:
+        composer.isAttachmentCapabilityRefreshing,
       isOpen: composer.isOpen,
       isSending: composer.isSending,
+      isUploading: composer.isUploading,
+      maxAttachmentBytes: composer.maxAttachmentBytes,
       onClose: composer.close,
+      onRetryAttachmentCapability: composer.onRetryAttachmentCapability,
       onToggleBcc: composer.onToggleBcc,
       onToggleCc: composer.onToggleCc,
       onSubmit: composer.onSubmit,

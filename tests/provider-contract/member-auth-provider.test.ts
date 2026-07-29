@@ -19,9 +19,9 @@ describe("member authentication provider contract", () => {
       "email",
       "password",
     ]);
-    expect(memberFields.find((field) => field.name === "password")?.secret).toBe(
-      true,
-    );
+    expect(
+      memberFields.find((field) => field.name === "password")?.secret,
+    ).toBe(true);
   });
 
   it("builds a Stalwart connection only after credentials are supplied", () => {
@@ -82,6 +82,7 @@ describe("member authentication provider contract", () => {
       smtpSecurity: "starttls",
     });
     expect(service).not.toHaveProperty("secret");
+    expect(service).toMatchObject({ smtpMaxMessageBytes: "0" });
     expect(
       provider.createMemberConfig(service, {
         email: "member@example.com",
@@ -99,5 +100,8 @@ describe("member authentication provider contract", () => {
       { name: "email", secret: false },
       { name: "password", secret: true },
     ]);
+    expect(provider.manifest.capabilities.maxAttachmentBytes).toBe(
+      18 * 1024 * 1024,
+    );
   });
 });

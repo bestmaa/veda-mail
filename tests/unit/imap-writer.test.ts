@@ -1,17 +1,21 @@
+import { createHash } from "node:crypto";
 import { simpleParser } from "mailparser";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  sendMail: vi.fn(async (message: {
-    readonly envelope: {
-      readonly from: string;
-      readonly to: readonly string[];
-    };
-    readonly raw: Buffer;
-  }) => {
-    void message;
-    return { messageId: "provider-message" };
-  }),
+  assertMessageBytes: vi.fn(async () => undefined),
+  sendMail: vi.fn(
+    async (message: {
+      readonly envelope: {
+        readonly from: string;
+        readonly to: readonly string[];
+      };
+      readonly raw: Buffer;
+    }) => {
+      void message;
+      return { messageId: "provider-message" };
+    },
+  ),
 }));
 
 vi.mock("nodemailer", () => ({
@@ -29,9 +33,7 @@ vi.mock("@/infrastructure/providers/imap-smtp/imap-client", () => ({
         envelope: { messageId: string };
         headers: Buffer;
       }>;
-      list: () => Promise<
-        readonly { path: string; specialUse: string }[]
-      >;
+      list: () => Promise<readonly { path: string; specialUse: string }[]>;
       mailboxOpen: () => Promise<void>;
     }) => Promise<unknown>,
   ) =>
@@ -51,6 +53,7 @@ vi.mock("@/infrastructure/providers/stalwart-jmap/provider-url-policy", () => ({
 }));
 
 import type { ComposeInput } from "@/domain/mail/mail";
+import { OutgoingMessageSizeError } from "@/domain/mail/mail-errors";
 import { id } from "@/domain/shared/brand";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
 import { encodeMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
@@ -62,10 +65,16 @@ const config: ImapSmtpMemberConfig = {
   imapSecurity: "tls",
   secret: "secret",
   smtpHost: "smtp.example.com",
+  smtpMaxMessageBytes: "0",
   smtpPort: "465",
   smtpSecurity: "tls",
   username: "Sender@Example.COM",
 };
+const writer = () =>
+  new ImapMailWriter(config, {
+    assertMessageBytes: mocks.assertMessageBytes,
+    getMaxAttachmentBytes: async () => 1_024,
+  });
 
 const input: ComposeInput = {
   bcc: [],
@@ -77,23 +86,22 @@ const input: ComposeInput = {
 
 describe("IMAP/SMTP writer", () => {
   beforeEach(() => {
+    mocks.assertMessageBytes.mockClear();
     mocks.sendMail.mockClear();
   });
 
   it("uses the authenticated sender domain in the Message-ID", async () => {
-    await new ImapMailWriter(config).sendMessage(input);
+    await writer().sendMessage(input);
 
     const submitted = mocks.sendMail.mock.calls[0]?.[0];
     if (!submitted) throw new Error("No message was submitted.");
     const parsed = await simpleParser(submitted.raw);
 
-    expect(parsed.messageId).toMatch(
-      /^<[0-9a-f-]{36}@example\.com>$/,
-    );
+    expect(parsed.messageId).toMatch(/^<[0-9a-f-]{36}@example\.com>$/);
   });
 
   it("sets provider-derived reply headers on the MIME message", async () => {
-    await new ImapMailWriter(config).sendMessage({
+    await writer().sendMessage({
       ...input,
       inReplyTo: id.message(encodeMessageId({ mailbox: "INBOX", uid: 1 })),
     });
@@ -109,7 +117,7 @@ describe("IMAP/SMTP writer", () => {
   });
 
   it("keeps BCC recipients in the SMTP envelope but out of MIME headers", async () => {
-    await new ImapMailWriter(config).sendMessage({
+    await writer().sendMessage({
       ...input,
       bcc: [{ email: "hidden@example.net", name: null }],
       cc: [{ email: "copy@example.net", name: null }],
@@ -132,7 +140,7 @@ describe("IMAP/SMTP writer", () => {
   });
 
   it("supports a BCC-only SMTP envelope without leaking MIME headers", async () => {
-    await new ImapMailWriter(config).sendMessage({
+    await writer().sendMessage({
       ...input,
       bcc: [{ email: "hidden@example.net", name: null }],
       to: [],
@@ -144,5 +152,57 @@ describe("IMAP/SMTP writer", () => {
     expect(submitted.envelope.to).toEqual(["hidden@example.net"]);
     expect(parsed.to).toBeUndefined();
     expect(parsed.bcc).toBeUndefined();
+  });
+
+  it("preserves verified attachment bytes in the outgoing MIME message", async () => {
+    const content = Buffer.from([0, 1, 2, 3, 254, 255]);
+    await writer().sendMessage({
+      ...input,
+      attachments: [
+        {
+          content,
+          id: id.attachmentUpload("attachment-upload"),
+          mimeType: "application/octet-stream",
+          name: "../unsafe.bin",
+          sha256: createHash("sha256").update(content).digest("hex"),
+          size: content.byteLength,
+        },
+      ],
+    });
+    const submitted = mocks.sendMail.mock.calls[0]?.[0];
+    if (!submitted) throw new Error("No message was submitted.");
+    const parsed = await simpleParser(submitted.raw);
+
+    expect(parsed.attachments).toHaveLength(1);
+    expect(parsed.attachments[0]?.filename).toBe(".._unsafe.bin");
+    expect(parsed.attachments[0]?.contentType).toBe("application/octet-stream");
+    expect(parsed.attachments[0]?.content).toEqual(content);
+    expect(mocks.assertMessageBytes).toHaveBeenCalledWith(
+      submitted.raw.byteLength,
+    );
+  });
+
+  it("stops before SMTP when the exact MIME message exceeds SIZE", async () => {
+    const content = Buffer.from("provider-size-limit");
+    mocks.assertMessageBytes.mockRejectedValueOnce(
+      new OutgoingMessageSizeError(),
+    );
+
+    await expect(
+      writer().sendMessage({
+        ...input,
+        attachments: [
+          {
+            content,
+            id: id.attachmentUpload("oversized-upload"),
+            mimeType: "text/plain",
+            name: "oversized.txt",
+            sha256: createHash("sha256").update(content).digest("hex"),
+            size: content.byteLength,
+          },
+        ],
+      }),
+    ).rejects.toThrow("Reduce the message body or attachments");
+    expect(mocks.sendMail).not.toHaveBeenCalled();
   });
 });

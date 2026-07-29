@@ -4,6 +4,7 @@ import { getCurrentConnection } from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
+import { loadAttachmentCapability } from "@/server/mail/attachment-service";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import { assertSubjectRateLimit } from "@/server/security/rate-limit";
 import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
@@ -54,8 +55,18 @@ export const GET = async () => {
       60 * 1000,
     );
     const { capabilities, gateway } = await context(connection);
+    const attachmentCapability = await loadAttachmentCapability(connection);
     return apiSuccess({
-      capabilities,
+      attachmentCapability: {
+        status: attachmentCapability.status,
+      },
+      capabilities: {
+        ...capabilities,
+        mail: {
+          ...capabilities.mail,
+          maxAttachmentBytes: attachmentCapability.maxAttachmentBytes ?? 0,
+        },
+      },
       profile: await gateway.getMemberProfile(),
       security: {
         twoFactorEnabled: await memberTwoFactorSecurity.isEnabled(
@@ -72,12 +83,7 @@ export const PATCH = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
-    assertSubjectRateLimit(
-      "member-profile",
-      connection.id,
-      20,
-      15 * 60 * 1000,
-    );
+    assertSubjectRateLimit("member-profile", connection.id, 20, 15 * 60 * 1000);
     const input = memberProfileUpdateSchema.parse(
       await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
     );
@@ -123,14 +129,11 @@ export const PUT = async (request: Request) => {
         400,
       );
     }
-    const authentication = await provider.authenticateMember(
-      profile.config,
-      {
-        email: account.email,
-        password: input.newPassword,
-        ...(input.otpCode ? { otpCode: input.otpCode } : {}),
-      },
-    );
+    const authentication = await provider.authenticateMember(profile.config, {
+      email: account.email,
+      password: input.newPassword,
+      ...(input.otpCode ? { otpCode: input.otpCode } : {}),
+    });
     if (authentication.status === "authenticated") {
       connectionStore.updateConfig(connection.id, authentication.config);
       return apiSuccess({ changed: true, sessionActive: true });
