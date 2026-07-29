@@ -4,17 +4,26 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
   pull_request:
   workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
+
+env:
+  BUILDKIT_IMAGE: >-
+    moby/buildkit@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec
+  BUILDX_COMMIT: a319e5b15052cf6557ceb666eb8ff6e32380b782
+  BUILDX_VERSION: v0.35.0
+  SBOM_SCANNER_DIGEST: 79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
+  SBOM_SCANNER_IMAGE: >-
+    docker/buildkit-syft-scanner@sha256:79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
+  SBOM_SCANNER_URI: >-
+    pkg:docker/docker/buildkit-syft-scanner?digest=sha256:79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
 
 jobs:
   quality:
@@ -120,12 +129,311 @@ jobs:
           skip-setup-trivy: "true"
           vuln-type: os,library
 
+  container_build:
+    name: Build container (${{ matrix.arch }})
+    if: github.event_name != 'pull_request'
+    needs: [quality, codeql, security]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    env:
+      IMAGE_NAME: ${{ github.repository }}
+      REGISTRY: ghcr.io
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve immutable build metadata
+        id: build_metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          created="$(git show -s --format=%cI "$GITHUB_SHA")"
+          if [[ -z "$created" || "$created" == *$'\n'* ]]; then
+            echo "Invalid commit timestamp." >&2
+            exit 1
+          fi
+          echo "created=$created" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          version: ${{ env.BUILDX_VERSION }}
+          driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+
+      - name: Verify Buildx binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          read -r module version commit extra <<< "$(docker buildx version)"
+          if [[
+            "$module" != "github.com/docker/buildx"
+            || "$version" != "$BUILDX_VERSION"
+            || "$commit" != "$BUILDX_COMMIT"
+            || -n "${extra:-}"
+          ]]; then
+            echo "Unexpected Docker Buildx binary." >&2
+            exit 1
+          fi
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push platform image by digest
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            org.opencontainers.image.created=${{ steps.build_metadata.outputs.created }}
+            org.opencontainers.image.description=White-label self-hosted webmail
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=Veda Mail
+          cache-from: |
+            type=gha,scope=veda-mail-${{ matrix.arch }}
+            type=gha,scope=veda-mail
+          cache-to: type=gha,mode=max,scope=veda-mail-${{ matrix.arch }}
+          provenance: mode=max
+          sbom: generator=${{ env.SBOM_SCANNER_IMAGE }}
+
+      - name: Validate platform image
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+          PUBLISHED_DIGEST: ${{ steps.push.outputs.digest }}
+          PUBLISHED_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$PUBLISHED_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Unexpected platform image digest: $PUBLISHED_DIGEST" >&2
+            exit 1
+          fi
+
+          manifest_json="$(
+            docker buildx imagetools inspect \
+              "$PUBLISHED_IMAGE@$PUBLISHED_DIGEST" \
+              --format '{{json .Manifest}}'
+          )"
+          jq -e \
+            --arg arch "$EXPECTED_ARCH" \
+            --arg digest "$PUBLISHED_DIGEST" \
+            '
+              (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "linux"
+                      and .platform.architecture == $arch
+                    )
+                ][0]
+              ) as $runtime
+              | .mediaType == "application/vnd.oci.image.index.v1+json"
+              and .digest == $digest
+              and (.digest | test("^sha256:[0-9a-f]{64}$"))
+              and ((.size | type) == "number" and .size > 0)
+              and (
+                $runtime.mediaType
+                == "application/vnd.oci.image.manifest.v1+json"
+                or $runtime.mediaType
+                == "application/vnd.docker.distribution.manifest.v2+json"
+              )
+              and ($runtime.digest | test("^sha256:[0-9a-f]{64}$"))
+              and (
+                ($runtime.size | type) == "number"
+                and $runtime.size > 0
+              )
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "linux"
+                      and .platform.architecture == $arch
+                    )
+                ]
+                | length
+              ) == 1
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "unknown"
+                      and .platform.architecture == "unknown"
+                      and (
+                        .annotations["vnd.docker.reference.type"]
+                        == "attestation-manifest"
+                      )
+                      and (
+                        .annotations["vnd.docker.reference.digest"]
+                        == $runtime.digest
+                      )
+                      and (
+                        .mediaType
+                        == "application/vnd.oci.image.manifest.v1+json"
+                      )
+                      and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                      and ((.size | type) == "number" and .size > 0)
+                    )
+                ]
+                | length
+              ) >= 1
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      (
+                        .platform.os == "linux"
+                        and .platform.architecture == $arch
+                        and (
+                          .mediaType
+                          == "application/vnd.oci.image.manifest.v1+json"
+                          or .mediaType
+                          == "application/vnd.docker.distribution.manifest.v2+json"
+                        )
+                        and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                        and ((.size | type) == "number" and .size > 0)
+                      )
+                      or (
+                        .platform.os == "unknown"
+                        and .platform.architecture == "unknown"
+                        and (
+                          .annotations["vnd.docker.reference.type"]
+                          == "attestation-manifest"
+                        )
+                        and (
+                          .annotations["vnd.docker.reference.digest"]
+                          == $runtime.digest
+                        )
+                        and (
+                          .mediaType
+                          == "application/vnd.oci.image.manifest.v1+json"
+                        )
+                        and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                        and ((.size | type) == "number" and .size > 0)
+                      )
+                    )
+                ]
+                | length
+              ) == (.manifests | length)
+            ' <<< "$manifest_json"
+
+          image_json="$(
+            docker buildx imagetools inspect \
+              "$PUBLISHED_IMAGE@$PUBLISHED_DIGEST" \
+              --format '{{json .Image}}'
+          )"
+          jq -e \
+            --arg arch "$EXPECTED_ARCH" \
+            --arg revision "$GITHUB_SHA" \
+            '
+              .os == "linux"
+              and .architecture == $arch
+              and (
+                .config.Labels["org.opencontainers.image.revision"]
+                == $revision
+              )
+            ' <<< "$image_json"
+
+          provenance_json="$(
+            docker buildx imagetools inspect \
+              "$PUBLISHED_IMAGE@$PUBLISHED_DIGEST" \
+              --format '{{json .Provenance}}'
+          )"
+          jq -e \
+            --arg platform "linux/$EXPECTED_ARCH" \
+            --arg revision "$GITHUB_SHA" \
+            --arg scanner_digest "$SBOM_SCANNER_DIGEST" \
+            --arg scanner_uri "$SBOM_SCANNER_URI" \
+            '
+              (.SLSA.buildDefinition | type) == "object"
+              and (.SLSA.runDetails | type) == "object"
+              and (
+                .SLSA.buildDefinition.buildType
+                == "https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md"
+              )
+              and (
+                .SLSA.buildDefinition.internalParameters.builderPlatform
+                == $platform
+              )
+              and (
+                .SLSA.buildDefinition.externalParameters.request.args[
+                  "label:org.opencontainers.image.revision"
+                ] == $revision
+              )
+              and (
+                .SLSA.buildDefinition.externalParameters.request.root.request.args[
+                  "vcs:revision"
+                ] == $revision
+              )
+              and (
+                .SLSA.runDetails.metadata.buildkit_metadata.vcs.revision
+                == $revision
+              )
+              and any(
+                .SLSA.buildDefinition.resolvedDependencies[]?;
+                (
+                  .uri == $scanner_uri
+                  and .digest.sha256 == $scanner_digest
+                )
+              )
+            ' <<< "$provenance_json"
+
+          sbom_json="$(
+            docker buildx imagetools inspect \
+              "$PUBLISHED_IMAGE@$PUBLISHED_DIGEST" \
+              --format '{{json .SBOM}}'
+          )"
+          jq -e \
+            '
+              (.SPDX | type) == "object"
+              and (.SPDX.spdxVersion | type) == "string"
+              and (.SPDX.SPDXID | type) == "string"
+            ' <<< "$sbom_json"
+
+          printf '%s\t%s\t%s\n' \
+            "$GITHUB_SHA" "$EXPECTED_ARCH" "$PUBLISHED_DIGEST" \
+            > "$RUNNER_TEMP/${EXPECTED_ARCH}.record"
+
+      - name: Upload platform digest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/${{ matrix.arch }}.record
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
   container:
     name: Publish multi-platform container
     if: github.event_name != 'pull_request'
-    needs: [quality, codeql, security]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    needs: [container_build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: veda-mail-container-publisher
+      cancel-in-progress: false
     permissions:
       attestations: write
       contents: read
@@ -136,14 +444,33 @@ jobs:
       REGISTRY: ghcr.io
 
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+      - name: Download platform digests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: container-digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          version: ${{ env.BUILDX_VERSION }}
+          driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+
+      - name: Verify Buildx binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          read -r module version commit extra <<< "$(docker buildx version)"
+          if [[
+            "$module" != "github.com/docker/buildx"
+            || "$version" != "$BUILDX_VERSION"
+            || "$commit" != "$BUILDX_COMMIT"
+            || -n "${extra:-}"
+          ]]; then
+            echo "Unexpected Docker Buildx binary." >&2
+            exit 1
+          fi
 
       - name: Sign in to GitHub Container Registry
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -152,30 +479,74 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate image metadata
+      - name: Generate release metadata
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: latest=false
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long,prefix=sha-,enable={{is_default_branch}}
+            type=raw,value=validation-${{ github.run_id }}-${{ github.run_attempt }},enable=${{ github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && github.ref_name != github.event.repository.default_branch }}
 
-      - name: Build and push image
-        id: push
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:candidate-${{ github.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=veda-mail
-          cache-to: type=gha,mode=max,scope=veda-mail
-          provenance: mode=max
-          sbom: true
+      - name: Resolve platform digests
+        id: digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest_dir="$RUNNER_TEMP/digests"
+          shopt -s nullglob
+          record_files=("$digest_dir"/*.record)
+          if (( ${#record_files[@]} != 2 )); then
+            echo "Expected exactly two platform digest records." >&2
+            exit 1
+          fi
+
+          declare -A platform_digests
+          for arch in amd64 arm64; do
+            record_file="$digest_dir/$arch.record"
+            if [[ ! -f "$record_file" || -L "$record_file" ]]; then
+              echo "Missing safe digest record for $arch." >&2
+              exit 1
+            fi
+
+            mapfile -t record_lines < "$record_file"
+            if (( ${#record_lines[@]} != 1 )); then
+              echo "Digest record for $arch must contain exactly one line." >&2
+              exit 1
+            fi
+
+            IFS=$'\t' read -r record_sha record_arch digest extra \
+              <<< "${record_lines[0]}"
+            if [[ -n "${extra:-}" ]]; then
+              echo "Digest record for $arch has unexpected fields." >&2
+              exit 1
+            fi
+            if [[ "$record_sha" != "$GITHUB_SHA" ]]; then
+              echo "Digest record for $arch targets another commit." >&2
+              exit 1
+            fi
+            if [[ "$record_arch" != "$arch" ]]; then
+              echo "Digest record architecture mismatch for $arch." >&2
+              exit 1
+            fi
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Unexpected $arch digest: $digest" >&2
+              exit 1
+            fi
+            platform_digests["$arch"]="$digest"
+          done
+
+          if [[ "${platform_digests[amd64]}" == "${platform_digests[arm64]}" ]]; then
+            echo "Platform image digests must be distinct." >&2
+            exit 1
+          fi
+
+          {
+            echo "amd64=${platform_digests[amd64]}"
+            echo "arm64=${platform_digests[arm64]}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Install pinned Trivy scanner
         uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
@@ -183,18 +554,506 @@ jobs:
           cache: true
           version: v0.72.0
 
-      - name: Scan published image variants
+      - name: Validate and scan platform images
+        id: children
         env:
-          PUBLISHED_DIGEST: ${{ steps.push.outputs.digest }}
+          AMD64_DIGEST: ${{ steps.digests.outputs.amd64 }}
+          ARM64_DIGEST: ${{ steps.digests.outputs.arm64 }}
           PUBLISHED_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! "$PUBLISHED_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "Unexpected published image digest: $PUBLISHED_DIGEST" >&2
+          validate_child() {
+            local arch="$1"
+            local root_digest="$2"
+            local image_json
+            local manifest_json
+            local provenance_json
+            local runtime_digest
+            local sbom_json
+
+            manifest_json="$(
+              docker buildx imagetools inspect \
+                "$PUBLISHED_IMAGE@$root_digest" \
+                --format '{{json .Manifest}}'
+            )"
+            jq -e \
+              --arg arch "$arch" \
+              --arg digest "$root_digest" \
+              '
+                (
+                  [
+                    .manifests[]
+                    | select(
+                        .platform.os == "linux"
+                        and .platform.architecture == $arch
+                      )
+                  ][0]
+                ) as $runtime
+                | .mediaType == "application/vnd.oci.image.index.v1+json"
+                and .digest == $digest
+                and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                and ((.size | type) == "number" and .size > 0)
+                and (
+                  $runtime.mediaType
+                  == "application/vnd.oci.image.manifest.v1+json"
+                  or $runtime.mediaType
+                  == "application/vnd.docker.distribution.manifest.v2+json"
+                )
+                and ($runtime.digest | test("^sha256:[0-9a-f]{64}$"))
+                and (
+                  ($runtime.size | type) == "number"
+                  and $runtime.size > 0
+                )
+                and (
+                  [
+                    .manifests[]
+                    | select(
+                        .platform.os == "linux"
+                        and .platform.architecture == $arch
+                      )
+                  ]
+                  | length
+                ) == 1
+                and (
+                  [
+                    .manifests[]
+                    | select(
+                        .platform.os == "unknown"
+                        and .platform.architecture == "unknown"
+                        and (
+                          .annotations["vnd.docker.reference.type"]
+                          == "attestation-manifest"
+                        )
+                        and (
+                          .annotations["vnd.docker.reference.digest"]
+                          == $runtime.digest
+                        )
+                        and (
+                          .mediaType
+                          == "application/vnd.oci.image.manifest.v1+json"
+                        )
+                        and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                        and ((.size | type) == "number" and .size > 0)
+                      )
+                  ]
+                  | length
+                ) >= 1
+                and (
+                  [
+                    .manifests[]
+                    | select(
+                        (
+                          .platform.os == "linux"
+                          and .platform.architecture == $arch
+                          and (
+                            .mediaType
+                            == "application/vnd.oci.image.manifest.v1+json"
+                            or .mediaType
+                            == "application/vnd.docker.distribution.manifest.v2+json"
+                          )
+                          and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                          and ((.size | type) == "number" and .size > 0)
+                        )
+                        or (
+                          .platform.os == "unknown"
+                          and .platform.architecture == "unknown"
+                          and (
+                            .annotations["vnd.docker.reference.type"]
+                            == "attestation-manifest"
+                          )
+                          and (
+                            .annotations["vnd.docker.reference.digest"]
+                            == $runtime.digest
+                          )
+                          and (
+                            .mediaType
+                            == "application/vnd.oci.image.manifest.v1+json"
+                          )
+                          and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                          and ((.size | type) == "number" and .size > 0)
+                        )
+                      )
+                  ]
+                  | length
+                ) == (.manifests | length)
+              ' <<< "$manifest_json"
+
+            image_json="$(
+              docker buildx imagetools inspect \
+                "$PUBLISHED_IMAGE@$root_digest" \
+                --format '{{json .Image}}'
+            )"
+            jq -e \
+              --arg arch "$arch" \
+              --arg revision "$GITHUB_SHA" \
+              '
+                .os == "linux"
+                and .architecture == $arch
+                and (
+                  .config.Labels["org.opencontainers.image.revision"]
+                  == $revision
+                )
+              ' <<< "$image_json"
+
+            provenance_json="$(
+              docker buildx imagetools inspect \
+                "$PUBLISHED_IMAGE@$root_digest" \
+                --format '{{json .Provenance}}'
+            )"
+            jq -e \
+              --arg platform "linux/$arch" \
+              --arg revision "$GITHUB_SHA" \
+              --arg scanner_digest "$SBOM_SCANNER_DIGEST" \
+              --arg scanner_uri "$SBOM_SCANNER_URI" \
+              '
+                (.SLSA.buildDefinition | type) == "object"
+                and (.SLSA.runDetails | type) == "object"
+                and (
+                  .SLSA.buildDefinition.buildType
+                  == "https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md"
+                )
+                and (
+                  .SLSA.buildDefinition.internalParameters.builderPlatform
+                  == $platform
+                )
+                and (
+                  .SLSA.buildDefinition.externalParameters.request.args[
+                    "label:org.opencontainers.image.revision"
+                  ] == $revision
+                )
+                and (
+                  .SLSA.buildDefinition.externalParameters.request.root.request.args[
+                    "vcs:revision"
+                  ] == $revision
+                )
+                and (
+                  .SLSA.runDetails.metadata.buildkit_metadata.vcs.revision
+                  == $revision
+                )
+                and any(
+                  .SLSA.buildDefinition.resolvedDependencies[]?;
+                  (
+                    .uri == $scanner_uri
+                    and .digest.sha256 == $scanner_digest
+                  )
+                )
+              ' <<< "$provenance_json"
+
+            sbom_json="$(
+              docker buildx imagetools inspect \
+                "$PUBLISHED_IMAGE@$root_digest" \
+                --format '{{json .SBOM}}'
+            )"
+            jq -e \
+              '
+                (.SPDX | type) == "object"
+                and (.SPDX.spdxVersion | type) == "string"
+                and (.SPDX.SPDXID | type) == "string"
+              ' <<< "$sbom_json"
+
+            runtime_digest="$(
+              jq -er \
+                --arg arch "$arch" \
+                '
+                  [
+                    .manifests[]
+                    | select(
+                        .platform.os == "linux"
+                        and .platform.architecture == $arch
+                      )
+                  ][0].digest
+                ' <<< "$manifest_json"
+            )"
+            if [[ ! "$runtime_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Unexpected $arch runtime digest: $runtime_digest" >&2
+              exit 1
+            fi
+
+            echo "${arch}_runtime=$runtime_digest" >> "$GITHUB_OUTPUT"
+            trivy image \
+              --exit-code 1 \
+              --ignore-unfixed=false \
+              --image-src remote \
+              --no-progress \
+              --pkg-types os,library \
+              --platform "linux/$arch" \
+              --scanners vuln,secret \
+              --severity HIGH,CRITICAL \
+              "$PUBLISHED_IMAGE@$root_digest"
+          }
+
+          validate_child amd64 "$AMD64_DIGEST"
+          validate_child arm64 "$ARM64_DIGEST"
+
+      - name: Assemble and validate candidate image
+        id: assemble
+        env:
+          AMD64_DIGEST: ${{ steps.digests.outputs.amd64 }}
+          AMD64_RUNTIME_DIGEST: ${{ steps.children.outputs.amd64_runtime }}
+          ARM64_DIGEST: ${{ steps.digests.outputs.arm64 }}
+          ARM64_RUNTIME_DIGEST: ${{ steps.children.outputs.arm64_runtime }}
+          PUBLISHED_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_tag="$PUBLISHED_IMAGE:candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$GITHUB_SHA"
+          metadata_file="$RUNNER_TEMP/candidate-image.json"
+          docker buildx imagetools create \
+            --tag "$candidate_tag" \
+            --metadata-file "$metadata_file" \
+            "$PUBLISHED_IMAGE@$AMD64_DIGEST" \
+            "$PUBLISHED_IMAGE@$ARM64_DIGEST"
+
+          candidate_digest="$(
+            jq -er '."containerimage.descriptor".digest' "$metadata_file"
+          )"
+          if [[ ! "$candidate_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Unexpected candidate digest: $candidate_digest" >&2
             exit 1
           fi
 
+          manifest_json="$(
+            docker buildx imagetools inspect \
+              "$PUBLISHED_IMAGE@$candidate_digest" \
+              --format '{{json .Manifest}}'
+          )"
+          jq -e \
+            --arg digest "$candidate_digest" \
+            --arg amd64 "$AMD64_RUNTIME_DIGEST" \
+            --arg arm64 "$ARM64_RUNTIME_DIGEST" \
+            '
+              (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "linux"
+                      and .platform.architecture == "amd64"
+                    )
+                ][0]
+              ) as $amd64_runtime
+              | (
+                  [
+                    .manifests[]
+                    | select(
+                        .platform.os == "linux"
+                        and .platform.architecture == "arm64"
+                      )
+                  ][0]
+                ) as $arm64_runtime
+              | .mediaType == "application/vnd.oci.image.index.v1+json"
+              and .digest == $digest
+              and (.digest | test("^sha256:[0-9a-f]{64}$"))
+              and ((.size | type) == "number" and .size > 0)
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "linux"
+                      and .platform.architecture == "amd64"
+                    )
+                ]
+                | length
+              ) == 1
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "linux"
+                      and .platform.architecture == "arm64"
+                    )
+                ]
+                | length
+              ) == 1
+              and (
+                $amd64_runtime.mediaType
+                == "application/vnd.oci.image.manifest.v1+json"
+                or $amd64_runtime.mediaType
+                == "application/vnd.docker.distribution.manifest.v2+json"
+              )
+              and (
+                $arm64_runtime.mediaType
+                == "application/vnd.oci.image.manifest.v1+json"
+                or $arm64_runtime.mediaType
+                == "application/vnd.docker.distribution.manifest.v2+json"
+              )
+              and ($amd64_runtime.digest | test("^sha256:[0-9a-f]{64}$"))
+              and ($arm64_runtime.digest | test("^sha256:[0-9a-f]{64}$"))
+              and (
+                ($amd64_runtime.size | type) == "number"
+                and $amd64_runtime.size > 0
+              )
+              and (
+                ($arm64_runtime.size | type) == "number"
+                and $arm64_runtime.size > 0
+              )
+              and $amd64_runtime.digest == $amd64
+              and $arm64_runtime.digest == $arm64
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "unknown"
+                      and .platform.architecture == "unknown"
+                      and (
+                        .annotations["vnd.docker.reference.type"]
+                        == "attestation-manifest"
+                      )
+                      and (
+                        .annotations["vnd.docker.reference.digest"]
+                        == $amd64
+                      )
+                    )
+                ]
+                | length
+              ) >= 1
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      .platform.os == "unknown"
+                      and .platform.architecture == "unknown"
+                      and (
+                        .annotations["vnd.docker.reference.type"]
+                        == "attestation-manifest"
+                      )
+                      and (
+                        .annotations["vnd.docker.reference.digest"]
+                        == $arm64
+                      )
+                    )
+                ]
+                | length
+              ) >= 1
+              and (
+                [
+                  .manifests[]
+                  | select(
+                      (
+                        .platform.os == "linux"
+                        and (
+                          .platform.architecture == "amd64"
+                          or .platform.architecture == "arm64"
+                        )
+                        and (
+                          .mediaType
+                          == "application/vnd.oci.image.manifest.v1+json"
+                          or .mediaType
+                          == "application/vnd.docker.distribution.manifest.v2+json"
+                        )
+                        and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                        and ((.size | type) == "number" and .size > 0)
+                      )
+                      or (
+                        .platform.os == "unknown"
+                        and .platform.architecture == "unknown"
+                        and (
+                          .annotations["vnd.docker.reference.type"]
+                          == "attestation-manifest"
+                        )
+                        and (
+                          .annotations["vnd.docker.reference.digest"]
+                          == $amd64
+                          or .annotations["vnd.docker.reference.digest"]
+                          == $arm64
+                        )
+                        and (
+                          .mediaType
+                          == "application/vnd.oci.image.manifest.v1+json"
+                        )
+                        and (.digest | test("^sha256:[0-9a-f]{64}$"))
+                        and ((.size | type) == "number" and .size > 0)
+                      )
+                    )
+                ]
+                | length
+              ) == (.manifests | length)
+            ' <<< "$manifest_json"
+
+          for platform in linux/amd64 linux/arm64; do
+            provenance_template="$(
+              printf '{{json (index .Provenance "%s")}}' "$platform"
+            )"
+            provenance_json="$(
+              docker buildx imagetools inspect \
+                "$PUBLISHED_IMAGE@$candidate_digest" \
+                --format "$provenance_template"
+            )"
+            jq -e \
+              --arg platform "$platform" \
+              --arg revision "$GITHUB_SHA" \
+              --arg scanner_digest "$SBOM_SCANNER_DIGEST" \
+              --arg scanner_uri "$SBOM_SCANNER_URI" \
+              '
+                (.SLSA.buildDefinition | type) == "object"
+                and (.SLSA.runDetails | type) == "object"
+                and (
+                  .SLSA.buildDefinition.buildType
+                  == "https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md"
+                )
+                and (
+                  .SLSA.buildDefinition.internalParameters.builderPlatform
+                  == $platform
+                )
+                and (
+                  .SLSA.buildDefinition.externalParameters.request.args[
+                    "label:org.opencontainers.image.revision"
+                  ] == $revision
+                )
+                and (
+                  .SLSA.buildDefinition.externalParameters.request.root.request.args[
+                    "vcs:revision"
+                  ] == $revision
+                )
+                and (
+                  .SLSA.runDetails.metadata.buildkit_metadata.vcs.revision
+                  == $revision
+                )
+                and any(
+                  .SLSA.buildDefinition.resolvedDependencies[]?;
+                  (
+                    .uri == $scanner_uri
+                    and .digest.sha256 == $scanner_digest
+                  )
+                )
+              ' <<< "$provenance_json"
+
+            sbom_template="$(
+              printf '{{json (index .SBOM "%s")}}' "$platform"
+            )"
+            sbom_json="$(
+              docker buildx imagetools inspect \
+                "$PUBLISHED_IMAGE@$candidate_digest" \
+                --format "$sbom_template"
+            )"
+            jq -e \
+              '
+                (.SPDX | type) == "object"
+                and (.SPDX.spdxVersion | type) == "string"
+                and (.SPDX.SPDXID | type) == "string"
+              ' <<< "$sbom_json"
+          done
+
+          tagged_digest="$(
+            docker buildx imagetools inspect \
+              "$candidate_tag" \
+              --format '{{json .Manifest}}' \
+              | jq -er '.digest'
+          )"
+          if [[ "$tagged_digest" != "$candidate_digest" ]]; then
+            echo "Candidate tag resolved to $tagged_digest." >&2
+            exit 1
+          fi
+
+          echo "digest=$candidate_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Scan assembled image variants
+        env:
+          PUBLISHED_DIGEST: ${{ steps.assemble.outputs.digest }}
+          PUBLISHED_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
           for platform in linux/amd64 linux/arm64; do
             trivy image \
               --exit-code 1 \
@@ -208,15 +1067,71 @@ jobs:
               "$PUBLISHED_IMAGE@$PUBLISHED_DIGEST"
           done
 
+      - name: Attest scanned image
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.assemble.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
       - name: Promote scanned image to release tags
         env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           FINAL_TAGS: ${{ steps.meta.outputs.tags }}
-          PUBLISHED_DIGEST: ${{ steps.push.outputs.digest }}
+          PUBLISHED_DIGEST: ${{ steps.assemble.outputs.digest }}
           PUBLISHED_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         shell: bash
         run: |
           set -euo pipefail
+          resolve_default_branch_head() {
+            local current_head
+            local current_ref
+            local extra
+            local remote_head
+            local -a remote_lines
+
+            remote_head="$(
+              git ls-remote \
+                --exit-code \
+                "https://github.com/${GITHUB_REPOSITORY}.git" \
+                "refs/heads/$DEFAULT_BRANCH"
+            )"
+            mapfile -t remote_lines <<< "$remote_head"
+            if (( ${#remote_lines[@]} != 1 )); then
+              echo "Could not resolve exactly one default-branch head." >&2
+              exit 1
+            fi
+
+            IFS=$'\t' read -r current_head current_ref extra \
+              <<< "${remote_lines[0]}"
+            if [[
+              -n "${extra:-}"
+              || ! "$current_head" =~ ^[0-9a-f]{40}$
+              || "$current_ref" != "refs/heads/$DEFAULT_BRANCH"
+            ]]; then
+              echo "Received an invalid default-branch head response." >&2
+              return 1
+            fi
+            printf '%s\n' "$current_head"
+          }
+
+          default_branch_release=false
+          if [[
+            "$GITHUB_REF_TYPE" == "branch"
+            && "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH"
+          ]]; then
+            default_branch_release=true
+            current_head="$(resolve_default_branch_head)"
+            if [[ "$current_head" != "$GITHUB_SHA" ]]; then
+              echo \
+                "::notice::Skipping stale release for $GITHUB_SHA; current head is $current_head."
+              exit 0
+            fi
+          fi
+
           promotion_args=()
+          release_tags=()
           while IFS= read -r tag; do
             if [[ -z "$tag" ]]; then
               continue
@@ -226,11 +1141,95 @@ jobs:
               exit 1
             fi
             promotion_args+=(--tag "$tag")
+            release_tags+=("$tag")
           done <<< "$FINAL_TAGS"
 
           if (( ${#promotion_args[@]} == 0 )); then
             echo "No release tags were generated." >&2
             exit 1
+          fi
+
+          expected_tags=()
+          if [[ "$default_branch_release" == true ]]; then
+            expected_tags=(
+              "$PUBLISHED_IMAGE:latest"
+              "$PUBLISHED_IMAGE:sha-$GITHUB_SHA"
+            )
+          elif [[
+            "$GITHUB_EVENT_NAME" == "workflow_dispatch"
+            && "$GITHUB_REF_TYPE" == "branch"
+          ]]; then
+            expected_tags=(
+              "$PUBLISHED_IMAGE:validation-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            )
+          else
+            echo "Refusing to promote tags for this event and ref." >&2
+            exit 1
+          fi
+
+          if (( ${#release_tags[@]} != ${#expected_tags[@]} )); then
+            echo "Release metadata generated an unexpected number of tags." >&2
+            exit 1
+          fi
+          for expected_tag in "${expected_tags[@]}"; do
+            found=false
+            for tag in "${release_tags[@]}"; do
+              if [[ "$tag" == "$expected_tag" ]]; then
+                found=true
+                break
+              fi
+            done
+            if [[ "$found" != true ]]; then
+              echo "Release metadata omitted expected tag $expected_tag." >&2
+              exit 1
+            fi
+          done
+
+          inspect_error="$RUNNER_TEMP/immutable-tag-inspect.err"
+          for tag in "${release_tags[@]}"; do
+            tag_name="${tag#"$PUBLISHED_IMAGE:"}"
+            immutable=false
+            if [[ "$tag_name" == "sha-$GITHUB_SHA" ]]; then
+              immutable=true
+            fi
+
+            if [[ "$immutable" != true ]]; then
+              continue
+            fi
+
+            : > "$inspect_error"
+            if existing_digest="$(
+              docker buildx imagetools inspect \
+                "$tag" \
+                --format '{{json .Manifest}}' \
+                2> "$inspect_error" \
+                | jq -er '.digest'
+            )"; then
+              if [[ "$existing_digest" != "$PUBLISHED_DIGEST" ]]; then
+                echo \
+                  "Immutable release tag $tag already points to $existing_digest." \
+                  >&2
+                exit 1
+              fi
+            else
+              inspect_message="$(
+                tr -d '\r' < "$inspect_error"
+              )"
+              if [[ "$inspect_message" != "ERROR: $tag: not found" ]]; then
+                echo "Could not safely inspect immutable release tag $tag." >&2
+                cat "$inspect_error" >&2
+                exit 1
+              fi
+            fi
+          done
+
+          if [[ "$default_branch_release" == true ]]; then
+            current_head="$(resolve_default_branch_head)"
+            if [[ "$current_head" != "$GITHUB_SHA" ]]; then
+              echo \
+                "::notice::Skipping stale release for $GITHUB_SHA; current head is $current_head."
+              exit 0
+            fi
           fi
 
           metadata_file="$RUNNER_TEMP/promoted-image.json"
@@ -247,10 +1246,15 @@ jobs:
             exit 1
           fi
 
-      - name: Attest published image
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
-          create-storage-record: false
+          for tag in "${release_tags[@]}"; do
+            tag_digest="$(
+              docker buildx imagetools inspect \
+                "$tag" \
+                --format '{{json .Manifest}}' \
+                | jq -er '.digest'
+            )"
+            if [[ "$tag_digest" != "$PUBLISHED_DIGEST" ]]; then
+              echo "Release tag $tag resolved to $tag_digest." >&2
+              exit 1
+            fi
+          done
