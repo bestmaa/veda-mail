@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Encrypted, session/draft-bound attachment quarantine with safe names, exact
+  byte quotas plus global capacity ceilings, magic-number MIME detection,
+  ClamAV scanning, idle/absolute/verdict deadlines, scheduled expiry,
+  cancel/remove, and byte-identical JMAP or IMAP/SMTP sending
+- Official ClamAV sidecar pinned to a zero-HIGH/CRITICAL `linux/amd64` digest
+  with a persistent signature database and fail-closed platform preflight
 - CC and BCC composing, including CC-only and BCC-only delivery
 - Reply All with identity exclusion, recipient deduplication, and
   provider-derived `In-Reply-To` and `References` headers
@@ -36,6 +42,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Keep provider attachment identifiers server-only; require opaque upload IDs,
+  AES-256-GCM integrity, SHA-256 verification, dynamic provider limits, and
+  strict fail-closed scan verdicts
 - Reject control characters in outbound header fields
 - Sanitize provider-derived Message-IDs, bound reply reference chains, and
   always preserve the direct parent for standards-compliant threading

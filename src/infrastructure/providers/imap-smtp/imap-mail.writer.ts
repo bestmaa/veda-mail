@@ -1,13 +1,14 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import type { ListResponse } from "imapflow";
 import MailComposer from "nodemailer/lib/mail-composer";
 import nodemailer from "nodemailer";
 
 import type {
-  ComposeInput,
   MessageMutation,
   ReplyContext,
+  SendMessageInput,
   SendReceipt,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
@@ -17,7 +18,15 @@ import {
   encodeMessageId,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
+import {
+  normalizeAttachmentFilename,
+  normalizeAttachmentMimeType,
+} from "@/infrastructure/providers/imap-smtp/mime-attachment-headers";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import {
+  SmtpAttachmentCapability,
+  type SmtpAttachmentCapabilityPort,
+} from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 import {
   createMessageId,
   safeMessageId,
@@ -27,7 +36,7 @@ import {
 import { assertSafeProviderHost } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
 const address = (
-  value: ComposeInput["to"][number],
+  value: SendMessageInput["to"][number],
 ): { address: string; name: string } => ({
   address: value.email,
   name: value.name ?? "",
@@ -37,6 +46,29 @@ const referencesFrom = (headers?: Buffer): readonly string[] => {
   const values = headers?.toString("utf8").match(/<[^<>\r\n]{1,996}>/g) ?? [];
   return safeMessageIds(values);
 };
+
+const outgoingAttachments = (
+  input: SendMessageInput,
+): {
+  readonly content: Buffer;
+  readonly contentType: string;
+  readonly filename: string;
+}[] =>
+  (input.attachments ?? []).map((attachment) => {
+    const content = Buffer.from(attachment.content);
+    const digest = createHash("sha256").update(content).digest("hex");
+    if (
+      content.byteLength !== attachment.size ||
+      digest !== attachment.sha256
+    ) {
+      throw new Error("Outgoing attachment integrity check failed.");
+    }
+    return {
+      content,
+      contentType: normalizeAttachmentMimeType(attachment.mimeType),
+      filename: normalizeAttachmentFilename(attachment.name),
+    };
+  });
 
 const rolePath = (
   mailboxes: readonly ListResponse[],
@@ -53,7 +85,12 @@ const rolePath = (
 };
 
 export class ImapMailWriter {
-  public constructor(private readonly config: ImapSmtpMemberConfig) {}
+  public constructor(
+    private readonly config: ImapSmtpMemberConfig,
+    private readonly attachmentCapability: SmtpAttachmentCapabilityPort = new SmtpAttachmentCapability(
+      config,
+    ),
+  ) {}
 
   public mutateMessage(mutation: MessageMutation): Promise<void> {
     return withImapClient(this.config, async (client) => {
@@ -82,7 +119,7 @@ export class ImapMailWriter {
     });
   }
 
-  public async sendMessage(input: ComposeInput): Promise<SendReceipt> {
+  public async sendMessage(input: SendMessageInput): Promise<SendReceipt> {
     await assertSafeProviderHost(this.config.smtpHost);
     const replyContext = input.inReplyTo
       ? await this.getReplyContext(input.inReplyTo)
@@ -92,6 +129,7 @@ export class ImapMailWriter {
       ? safeReplyReferences(replyContext?.references ?? [], replyMessageId)
       : [];
     const mail = {
+      attachments: outgoingAttachments(input),
       bcc: input.bcc.map(address),
       cc: input.cc.map(address),
       from: address({ email: this.config.username, name: null }),
@@ -104,6 +142,9 @@ export class ImapMailWriter {
       to: input.to.map(address),
     };
     const raw = await new MailComposer(mail).compile().build();
+    if ((input.attachments?.length ?? 0) > 0) {
+      await this.attachmentCapability.assertMessageBytes(raw.byteLength);
+    }
     const transport = nodemailer.createTransport({
       auth: { pass: this.config.secret, user: this.config.username },
       connectionTimeout: 15_000,

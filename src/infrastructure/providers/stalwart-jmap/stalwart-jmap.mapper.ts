@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHmac, randomBytes } from "node:crypto";
+
 import type {
   MailAddress,
   Mailbox,
@@ -18,6 +20,26 @@ import type {
   JmapEmail,
   JmapMailbox,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+
+const mapperSecrets = globalThis as typeof globalThis & {
+  __vedaMailJmapAttachmentMapperKey?: Buffer;
+};
+
+const opaqueAttachmentId = (
+  email: JmapEmail,
+  index: number,
+  providerBlobId: string | null | undefined,
+) => {
+  mapperSecrets.__vedaMailJmapAttachmentMapperKey ??= randomBytes(32);
+  return id.attachment(
+    `message-attachment-${createHmac(
+      "sha256",
+      mapperSecrets.__vedaMailJmapAttachmentMapperKey,
+    )
+      .update(JSON.stringify([email.id, index, providerBlobId ?? ""]))
+      .digest("base64url")}`,
+  );
+};
 
 const mailboxColors: Record<MailboxRole, string> = {
   archive: "#10b981",
@@ -161,7 +183,7 @@ export const mapMessageDetail = (email: JmapEmail): MessageDetail => {
   return {
     ...mapMessageSummary(email),
     attachments: (email.attachments ?? []).map((attachment, index) => ({
-      id: attachment.blobId ?? `attachment-${index}`,
+      id: opaqueAttachmentId(email, index, attachment.blobId),
       mimeType: attachment.type,
       name: attachment.name ?? `Attachment ${index + 1}`,
       size: attachment.size ?? 0,

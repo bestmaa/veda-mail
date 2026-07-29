@@ -52,10 +52,14 @@ const memberConfigSchema = z.discriminatedUnion("authType", [
   bearerMemberConfigSchema,
 ]);
 
+export const parseStalwartMemberConfig = (
+  input: Readonly<Record<string, string>>,
+): StalwartConfig => memberConfigSchema.parse(input);
+
 export class StalwartProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
-      maxAttachmentBytes: 0,
+      maxAttachmentBytes: 18 * 1024 * 1024,
       supportsDrafts: false,
       supportsPasswordChange: true,
       supportsProfileSettings: true,
@@ -145,7 +149,7 @@ export class StalwartProviderModule implements ProviderModule {
   }
 
   public async createGateway(connection: ProviderConnection) {
-    const config = memberConfigSchema.parse(connection.config);
+    const config = parseStalwartMemberConfig(connection.config);
     return new StalwartMailGateway(config);
   }
 }

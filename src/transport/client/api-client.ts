@@ -12,13 +12,14 @@ import type {
 import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
+import { attachmentApi } from "@/transport/client/attachment-api";
 
 interface ApiEnvelope<TData> {
   readonly data: TData;
 }
 
 interface ApiErrorEnvelope {
-  readonly error?: { readonly message?: string };
+  readonly error?: { readonly code?: string; readonly message?: string };
 }
 
 export interface MemberSignInInput {
@@ -28,6 +29,9 @@ export interface MemberSignInInput {
 }
 
 export interface MemberSettingsSnapshot {
+  readonly attachmentCapability: {
+    readonly status: "available" | "unavailable" | "unsupported";
+  };
   readonly capabilities: {
     readonly mail: ProviderCapabilities;
     readonly passwordChange: boolean;
@@ -69,6 +73,7 @@ export class ApiClientError extends Error {
   public constructor(
     message: string,
     public readonly status: number,
+    public readonly code = "UNKNOWN_ERROR",
   ) {
     super(message);
     this.name = "ApiClientError";
@@ -87,16 +92,23 @@ const fetchData = async <TData>(
     },
   });
   if (!response.ok) {
-    const failure = (await response.json().catch(() => ({}))) as ApiErrorEnvelope;
+    const failure = (await response
+      .json()
+      .catch(() => ({}))) as ApiErrorEnvelope;
     throw new ApiClientError(
-      failure.error?.message ?? `Request failed with status ${response.status}.`,
+      failure.error?.message ??
+        `Request failed with status ${response.status}.`,
       response.status,
+      failure.error?.code,
     );
   }
   return ((await response.json()) as ApiEnvelope<TData>).data;
 };
 
-const deleteResource = async (input: string, message: string): Promise<void> => {
+const deleteResource = async (
+  input: string,
+  message: string,
+): Promise<void> => {
   const response = await fetch(input, { method: "DELETE" });
   if (!response.ok) {
     throw new ApiClientError(message, response.status);
@@ -104,6 +116,8 @@ const deleteResource = async (input: string, message: string): Promise<void> => 
 };
 
 export const mailApi = {
+  ...attachmentApi,
+
   getMessage(messageId: MessageId) {
     return fetchData<MessageDetail>(
       `/api/v1/mail/messages/${encodeURIComponent(messageId)}`,
@@ -188,26 +202,20 @@ export const memberTwoFactorApi = {
       readonly enabled: true;
       readonly recoveryCodes: readonly string[];
       readonly sessionActive: boolean;
-    }>(
-      "/api/v1/member/two-factor",
-      {
-        body: JSON.stringify({ currentPassword, otpCode }),
-        method: "PUT",
-      },
-    );
+    }>("/api/v1/member/two-factor", {
+      body: JSON.stringify({ currentPassword, otpCode }),
+      method: "PUT",
+    });
   },
 
   disable(currentPassword: string, otpCode: string) {
     return fetchData<{
       readonly enabled: false;
       readonly sessionActive: boolean;
-    }>(
-      "/api/v1/member/two-factor",
-      {
-        body: JSON.stringify({ currentPassword, otpCode }),
-        method: "DELETE",
-      },
-    );
+    }>("/api/v1/member/two-factor", {
+      body: JSON.stringify({ currentPassword, otpCode }),
+      method: "DELETE",
+    });
   },
 
   start() {
@@ -220,18 +228,13 @@ export const memberTwoFactorApi = {
 
 export const adminMailServiceApi = {
   get() {
-    return fetchData<AdminMailServiceSnapshot>(
-      "/api/v1/admin/mail-service",
-    );
+    return fetchData<AdminMailServiceSnapshot>("/api/v1/admin/mail-service");
   },
 
   save(input: AdminMailServiceConfiguration) {
-    return fetchData<AdminMailServiceSnapshot>(
-      "/api/v1/admin/mail-service",
-      {
-        body: JSON.stringify(input),
-        method: "PUT",
-      },
-    );
+    return fetchData<AdminMailServiceSnapshot>("/api/v1/admin/mail-service", {
+      body: JSON.stringify(input),
+      method: "PUT",
+    });
   },
 };

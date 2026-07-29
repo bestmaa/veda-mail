@@ -1,11 +1,13 @@
 export type TransportSecurity = "starttls" | "tls";
 
-export interface ImapSmtpServiceConfig
-  extends Readonly<Record<string, string>> {
+export interface ImapSmtpServiceConfig extends Readonly<
+  Record<string, string>
+> {
   readonly imapHost: string;
   readonly imapPort: string;
   readonly imapSecurity: TransportSecurity;
   readonly smtpHost: string;
+  readonly smtpMaxMessageBytes: string;
   readonly smtpPort: string;
   readonly smtpSecurity: TransportSecurity;
 }

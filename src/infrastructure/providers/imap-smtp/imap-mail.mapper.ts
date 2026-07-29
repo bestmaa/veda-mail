@@ -47,7 +47,7 @@ const specialRoles: Record<string, MailboxRole> = {
 const roleFor = (mailbox: ListResponse): MailboxRole =>
   mailbox.path.toUpperCase() === "INBOX"
     ? "inbox"
-    : specialRoles[mailbox.specialUse?.toLowerCase() ?? ""] ?? "custom";
+    : (specialRoles[mailbox.specialUse?.toLowerCase() ?? ""] ?? "custom");
 
 const envelopeAddresses = (
   values?: readonly MessageAddressObject[],
@@ -72,8 +72,8 @@ const parsedAddresses = (
 const hasAttachment = (node?: MessageStructureObject): boolean =>
   Boolean(
     node &&
-      (node.disposition?.toLowerCase() === "attachment" ||
-        node.childNodes?.some(hasAttachment)),
+    (node.disposition?.toLowerCase() === "attachment" ||
+      node.childNodes?.some(hasAttachment)),
   );
 
 export const mapImapMailbox = (mailbox: ListResponse): Mailbox => {
@@ -121,16 +121,14 @@ export const mapParsedMessage = (
 ): MessageDetail => ({
   ...summary,
   attachments: parsed.attachments.map((attachment, index) => ({
-    id: attachment.cid || `attachment-${index + 1}`,
+    id: id.attachment(attachment.cid || `attachment-${index + 1}`),
     mimeType: attachment.contentType,
     name: attachment.filename || `Attachment ${index + 1}`,
     size: attachment.size,
   })),
   cc: parsedAddresses(parsed.cc),
   htmlBody:
-    typeof parsed.html === "string"
-      ? sanitizeMailHtml(parsed.html)
-      : null,
+    typeof parsed.html === "string" ? sanitizeMailHtml(parsed.html) : null,
   replyTo: parsedAddresses(parsed.replyTo),
   textBody:
     parsed.text ??

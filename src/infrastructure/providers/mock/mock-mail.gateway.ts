@@ -2,11 +2,11 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
-  ComposeInput,
   Mailbox,
   MessageDetail,
   MessageListQuery,
   MessageMutation,
+  SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
@@ -23,8 +23,18 @@ import {
 const mailboxDefinitions = [
   { color: "#4f46e5", id: mockMailboxIds.inbox, name: "Inbox", role: "inbox" },
   { color: "#0ea5e9", id: mockMailboxIds.sent, name: "Sent", role: "sent" },
-  { color: "#f59e0b", id: mockMailboxIds.drafts, name: "Drafts", role: "drafts" },
-  { color: "#10b981", id: mockMailboxIds.archive, name: "Archive", role: "archive" },
+  {
+    color: "#f59e0b",
+    id: mockMailboxIds.drafts,
+    name: "Drafts",
+    role: "drafts",
+  },
+  {
+    color: "#10b981",
+    id: mockMailboxIds.archive,
+    name: "Archive",
+    role: "archive",
+  },
   { color: "#f97316", id: mockMailboxIds.spam, name: "Spam", role: "spam" },
   { color: "#ef4444", id: mockMailboxIds.trash, name: "Trash", role: "trash" },
 ] as const;
@@ -47,6 +57,10 @@ export class MockMailGateway implements MailGateway {
       name: "Sample Member",
       providerId: id.provider("mock"),
     };
+  }
+
+  public async getMaxAttachmentBytes() {
+    return 18 * 1024 * 1024;
   }
 
   public async getMemberProfile() {
@@ -132,14 +146,20 @@ export class MockMailGateway implements MailGateway {
     this.messages[index] = { ...current, mailboxIds: [nextMailbox] };
   }
 
-  public async sendMessage(input: ComposeInput) {
+  public async sendMessage(input: SendMessageInput) {
     const now = new Date().toISOString();
     const messageId = id.message(`sent-${crypto.randomUUID()}`);
+    const attachments = (input.attachments ?? []).map((attachment) => ({
+      id: id.attachment(`mock-${crypto.randomUUID()}`),
+      mimeType: attachment.mimeType,
+      name: attachment.name,
+      size: attachment.size,
+    }));
     this.messages.unshift({
-      attachments: [],
+      attachments,
       cc: input.cc,
       from: [{ email: "member@example.com", name: "Sample Member" }],
-      hasAttachment: false,
+      hasAttachment: attachments.length > 0,
       htmlBody: null,
       id: messageId,
       isStarred: false,
@@ -148,7 +168,9 @@ export class MockMailGateway implements MailGateway {
       preview: input.body.slice(0, 140),
       receivedAt: now,
       replyTo: [],
-      size: new TextEncoder().encode(input.body).byteLength,
+      size:
+        new TextEncoder().encode(input.body).byteLength +
+        attachments.reduce((total, attachment) => total + attachment.size, 0),
       subject: input.subject || "(No subject)",
       textBody: input.body,
       threadId: id.thread(`thread-${messageId}`),

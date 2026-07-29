@@ -26,7 +26,8 @@ export const createMockMessages = (): MessageDetail[] => [
     isStarred: true,
     isUnread: true,
     mailboxIds: [inbox],
-    preview: "Your private mail stack is ready. Here are the next security checks.",
+    preview:
+      "Your private mail stack is ready. Here are the next security checks.",
     receivedAt: "2026-07-23T05:42:00.000Z",
     replyTo: [],
     size: 18420,
@@ -39,7 +40,7 @@ export const createMockMessages = (): MessageDetail[] => [
   {
     attachments: [
       {
-        id: "attachment-roadmap",
+        id: id.attachment("attachment-roadmap"),
         mimeType: "application/pdf",
         name: "Q3-roadmap.pdf",
         size: 2_430_000,
@@ -133,7 +134,8 @@ export const createMockMessages = (): MessageDetail[] => [
     isStarred: false,
     isUnread: false,
     mailboxIds: [sent],
-    preview: "Thank you for the discovery session. Here is the proposed architecture.",
+    preview:
+      "Thank you for the discovery session. Here is the proposed architecture.",
     receivedAt: "2026-07-20T11:14:00.000Z",
     replyTo: [],
     size: 19220,

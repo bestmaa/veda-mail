@@ -5,6 +5,7 @@ import { MemberLoginConnector } from "@/presentation/features/member-login/conne
 import { getCurrentConnection } from "@/server/connections/connection-session";
 import { installationStore } from "@/server/installation/installation.store";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
+import { loadAttachmentCapability } from "@/server/mail/attachment-service";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,11 @@ export default async function Home() {
       />
     );
   }
+  const { maxAttachmentBytes } = await loadAttachmentCapability(connection);
   return (
     <MailWorkspaceConnector
       branding={branding}
+      maxAttachmentBytes={maxAttachmentBytes}
       providerLabel={profile.displayName}
       signOutPath="/"
     />

@@ -1,5 +1,4 @@
 import type {
-  ComposeInput,
   MailAccount,
   Mailbox,
   MessageDetail,
@@ -7,6 +6,7 @@ import type {
   MessageMutation,
   MessagePage,
   SendReceipt,
+  SendMessageInput,
 } from "@/domain/mail/mail";
 import type {
   MemberAuthenticationResult,
@@ -24,6 +24,7 @@ import type { MessageId } from "@/domain/shared/brand";
 
 export interface MailGateway {
   changePassword(input: MemberPasswordChange): Promise<void>;
+  getMaxAttachmentBytes(): Promise<number>;
   getAccount(): Promise<MailAccount>;
   getMemberProfile(): Promise<MemberProfile>;
   getTwoFactorEnabled(): Promise<boolean>;
@@ -31,7 +32,7 @@ export interface MailGateway {
   listMailboxes(): Promise<readonly Mailbox[]>;
   listMessages(query: MessageListQuery): Promise<MessagePage>;
   mutateMessage(mutation: MessageMutation): Promise<void>;
-  sendMessage(input: ComposeInput): Promise<SendReceipt>;
+  sendMessage(input: SendMessageInput): Promise<SendReceipt>;
   testConnection(): Promise<void>;
   updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void>;
   updateMemberProfile(input: MemberProfileUpdate): Promise<MemberProfile>;

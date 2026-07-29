@@ -6,16 +6,21 @@ an explicit provider-host allowlist, and the correct public Veda Mail URL.
 
 ## Published GHCR image
 
-Veda Mail publishes a signed OCI image for both `linux/amd64` and
-`linux/arm64`:
+Veda Mail publishes a signed application image for both `linux/amd64` and
+`linux/arm64`. The secure-attachment Compose topology currently requires an
+`amd64` Docker server because the approved official ClamAV 1.5.3 image that
+passes the project's strict vulnerability gate is published for
+`linux/amd64` only.
+The deployment preflight fails closed on other architectures instead of
+silently disabling malware scanning.
 
 ```bash
 docker pull ghcr.io/bestmaa/veda-mail:latest
 ```
 
-The `latest` tag follows the default branch. Each build also publishes a
-`sha-<commit>` tag, and version tags such as `v1.2.3` publish `1.2.3` and
-`1.2`. Pin a version or digest in production:
+The `latest` tag follows protected `main`. Each release also publishes one
+immutable `sha-<full-commit>` tag. Pin the resulting OCI index digest in
+production:
 
 ```dotenv
 VEDA_MAIL_IMAGE=ghcr.io/bestmaa/veda-mail:latest
@@ -43,12 +48,15 @@ VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
+VEDA_MAIL_CLAMAV_HOST=clamav
+VEDA_MAIL_CLAMAV_PORT=3310
 ```
 
 The provider allowlist contains hostnames only. The public URL is the Veda Mail
 origin, uses HTTPS, and has no trailing slash. Then:
 
 ```bash
+./scripts/check-clamav-platform.sh
 docker compose pull
 docker compose up -d
 docker compose ps
@@ -56,8 +64,30 @@ docker compose logs --tail=100 veda-mail
 curl --fail http://127.0.0.1:3000/api/health
 ```
 
-The supplied Compose file uses the published GHCR image by default. To build
-the checked-out source instead, use `docker compose up --build -d`.
+The supplied Compose file uses the published GHCR image by default and starts
+the official Alpine-based ClamAV 1.5.3 `linux/amd64` image at an immutable
+digest. CI scans that exact digest with pinned Trivy settings and rejects any
+HIGH or CRITICAL vulnerability or detected secret. ClamAV is reachable only
+on the private Compose network; its signature database is kept in the
+`clamav-signatures` volume. To build the checked-out Veda Mail source instead,
+use `docker compose up --build -d`.
+
+ClamAV is fail-closed and may take several minutes to download/load signatures
+on its first start. Until it is healthy, normal mail remains available but
+attachment uploads return a recoverable scanner-unavailable error. Budget at
+least 4 GB RAM for ClamAV because signature reloads temporarily use additional
+memory. Check both services:
+
+```bash
+docker compose ps
+docker compose logs --tail=100 clamav
+```
+
+Pending upload ciphertext is process-local temporary data, capped at 512 MiB
+and 1,000 active records. It expires after 30 minutes through a background
+sweep and is intentionally excluded from backups. Run one Veda Mail process
+per container; multi-replica operation requires a shared encrypted quarantine,
+session store, and coordinated rate limiter.
 
 The default bind is `127.0.0.1:3000`. Keep it that way behind a local reverse
 proxy. To bind another host port:
@@ -69,11 +99,14 @@ VEDA_MAIL_PORT=3100
 
 Do not expose the container directly to the internet over HTTP.
 
-## Dockploy
+## Dokploy
 
 1. Create a project, then create a Compose service.
 2. Connect `https://github.com/bestmaa/veda-mail` or paste `compose.yaml`.
+   Select an `amd64` worker; the approved ClamAV sidecar is not currently
+   published for `arm64`.
 3. Add a persistent named volume mounted at `/data`.
+   Keep the Compose-managed `clamav-signatures` volume as well.
 4. Add these environment variables as secrets:
 
 ```text
@@ -83,6 +116,8 @@ VEDA_MAIL_DATA_DIR=/data
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
+VEDA_MAIL_CLAMAV_HOST=clamav
+VEDA_MAIL_CLAMAV_PORT=3310
 ```
 
 5. Set the application/container port to `3000`.
@@ -106,7 +141,9 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
 
 - Redirect HTTP to HTTPS.
 - Enable WebSocket/HTTP streaming support.
-- Set a reasonable upload limit for organization logos.
+- Permit raw attachment `PUT` requests up to 18 MiB plus HTTP overhead; keep
+  request streaming enabled and allow at least five minutes for steadily
+  progressing mobile uploads. Organization-logo JSON remains much smaller.
 - Do not cache `/api/*`, `/setup`, or `/admin`.
 - Add HSTS only after confirming HTTPS works for the complete domain.
 - Do not rewrite application cookie attributes.
@@ -140,6 +177,11 @@ Outbound:
 
 - DNS resolution
 - HTTPS TCP `443` to the configured mail provider
+- HTTPS/DNS access from ClamAV `freshclam` for signature updates
+
+Internal only:
+
+- Veda Mail to ClamAV TCP `3310`; never publish this port on the host
 
 The Stalwart JMAP adapter rejects insecure production URLs, private/loopback
 targets, disallowed hostnames, and unsafe DNS resolutions.
@@ -155,6 +197,12 @@ The supplied Compose service:
 - Publishes only to loopback by default
 - Stores durable state only under `/data`
 - Has an application health check
+
+The ClamAV sidecar has its own `clamd` health check, immutable image digest,
+private-only port, `no-new-privileges`, and a dedicated signatures volume. Its
+official init process currently starts as root before dropping to ClamAV
+service users, so the application container's unprivileged-user/capability
+claims do not apply to that sidecar.
 
 Keep one replica. Member sessions and rate limits are process-local. Scaling
 requires a shared encrypted session repository and distributed limiter.
@@ -175,6 +223,8 @@ Verify:
 - `/` accepts only allowed-domain mailbox users.
 - The provider endpoint is HTTPS and on the hostname allowlist.
 - A member can receive, send, archive, and delete.
+- A small known-clean attachment uploads, sends, and arrives byte-identically.
+- An EICAR test file is rejected in a dedicated non-production mailbox test.
 - A container restart signs members out but preserves configuration.
 
 ## Maintenance

@@ -25,6 +25,7 @@ describe("send message validation", () => {
         }),
       ),
     ).toEqual({
+      attachmentIds: [],
       bcc: [],
       body: "Hello",
       cc: [],
@@ -53,9 +54,7 @@ describe("send message validation", () => {
 
   it("validates email addresses and their maximum length", () => {
     expect(() =>
-      sendMessageSchema.parse(
-        message({ to: [recipient("not-an-email")] }),
-      ),
+      sendMessageSchema.parse(message({ to: [recipient("not-an-email")] })),
     ).toThrow("Enter a valid email address");
     expect(() =>
       sendMessageSchema.parse(
@@ -78,9 +77,9 @@ describe("send message validation", () => {
     const addresses = Array.from({ length: 101 }, (_, index) =>
       recipient(`person-${index}@example.com`),
     );
-    expect(() =>
-      sendMessageSchema.parse(message({ to: addresses })),
-    ).toThrow("Each recipient field can contain at most 100 addresses");
+    expect(() => sendMessageSchema.parse(message({ to: addresses }))).toThrow(
+      "Each recipient field can contain at most 100 addresses",
+    );
   });
 
   it("limits the combined input to 100 recipients", () => {
@@ -121,15 +120,9 @@ describe("send message validation", () => {
       }),
     );
 
-    expect(parsed.to).toEqual([
-      recipient("Person@Example.com", "First"),
-    ]);
-    expect(parsed.cc).toEqual([
-      recipient("second@example.com", "Second"),
-    ]);
-    expect(parsed.bcc).toEqual([
-      recipient("third@example.com", "Third"),
-    ]);
+    expect(parsed.to).toEqual([recipient("Person@Example.com", "First")]);
+    expect(parsed.cc).toEqual([recipient("second@example.com", "Second")]);
+    expect(parsed.bcc).toEqual([recipient("third@example.com", "Third")]);
   });
 
   it("accepts CC-only and BCC-only messages", () => {
@@ -163,6 +156,27 @@ describe("send message validation", () => {
     ).toThrow("At least one recipient is required");
   });
 
+  it("binds unique attachment identifiers to a draft", () => {
+    const attachmentId = "A".repeat(32);
+    const draftId = crypto.randomUUID();
+    expect(
+      sendMessageSchema.parse(
+        message({ attachmentIds: [attachmentId], draftId }),
+      ),
+    ).toMatchObject({ attachmentIds: [attachmentId], draftId });
+    expect(() =>
+      sendMessageSchema.parse(message({ attachmentIds: [attachmentId] })),
+    ).toThrow("attachment draft identifier is required");
+    expect(() =>
+      sendMessageSchema.parse(
+        message({
+          attachmentIds: [attachmentId, attachmentId],
+          draftId,
+        }),
+      ),
+    ).toThrow("Attachment identifiers must be unique");
+  });
+
   it("rejects control characters in outbound header fields", () => {
     expect(() =>
       sendMessageSchema.parse(
@@ -175,9 +189,7 @@ describe("send message validation", () => {
       sendMessageSchema.parse(message({ subject: "Hello\r\nBcc: victim" })),
     ).toThrow("Subject cannot contain control characters");
     expect(() =>
-      sendMessageSchema.parse(
-        message({ inReplyTo: "source\r\nBcc: victim" }),
-      ),
+      sendMessageSchema.parse(message({ inReplyTo: "source\r\nBcc: victim" })),
     ).toThrow("Reply message identifiers cannot contain control characters");
     expect(() =>
       sendMessageSchema.parse(message({ subject: "Hello\u0085Bcc: victim" })),
@@ -185,9 +197,9 @@ describe("send message validation", () => {
   });
 
   it("rejects blank or oversized bodies and oversized subjects", () => {
-    expect(() =>
-      sendMessageSchema.parse(message({ body: " \n " })),
-    ).toThrow("Message body cannot be blank");
+    expect(() => sendMessageSchema.parse(message({ body: " \n " }))).toThrow(
+      "Message body cannot be blank",
+    );
     expect(() =>
       sendMessageSchema.parse(message({ body: "a".repeat(1_000_001) })),
     ).toThrow("Message body cannot exceed 1,000,000 characters");

@@ -6,7 +6,10 @@ vi.mock("@/infrastructure/providers/stalwart-jmap/provider-url-policy", () => ({
 
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import { jmapSetResultSchema } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
-import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import {
+  JMAP_CORE,
+  JMAP_MAIL,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 const config = {
   authType: "basic" as const,
@@ -18,7 +21,7 @@ const config = {
 const session = {
   accounts: { account: { isReadOnly: false, name: "User" } },
   apiUrl: "https://mail.example.com/jmap",
-  capabilities: {},
+  capabilities: { [JMAP_CORE]: { maxSizeUpload: 50_000_000 } },
   downloadUrl: "https://mail.example.com/download",
   primaryAccounts: { [JMAP_MAIL]: "account" },
   uploadUrl: "https://mail.example.com/upload",
@@ -26,6 +29,7 @@ const session = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -107,6 +111,62 @@ describe("Stalwart JMAP client", () => {
     expect(fetchMock.mock.calls[1]?.[1]?.headers).toEqual({
       Authorization: "Bearer fresh-access-token",
     });
+  });
+
+  it("refreshes discovery after a later access-token rotation", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-29T00:00:00.000Z"));
+    const fetchMock = vi.fn(
+      async (
+        input: string | URL | Request,
+        init?: RequestInit,
+      ): Promise<Response> => {
+        const url = new URL(String(input));
+        if (url.pathname === "/auth/token") {
+          return Response.json({
+            access_token: "rotated-access",
+            expires_in: 3_600,
+            refresh_token: "rotated-refresh",
+            token_type: "Bearer",
+          });
+        }
+        if (url.pathname === "/.well-known/jmap") {
+          return Response.json(session);
+        }
+        expect(init?.headers).toMatchObject({
+          Authorization: "Bearer rotated-access",
+        });
+        return Response.json({
+          methodResponses: [],
+          sessionState: "state",
+        });
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new StalwartJmapClient({
+      authType: "bearer",
+      baseUrl: "https://mail.example.com",
+      expiresAt: "2026-07-29T00:01:00.000Z",
+      refreshToken: "single-use-refresh",
+      secret: "initial-access",
+      username: "user@example.com",
+    });
+
+    await client.getSession();
+    vi.setSystemTime(new Date("2026-07-29T00:00:31.000Z"));
+    await client.request([], [JMAP_MAIL]);
+    await client.request([], [JMAP_MAIL]);
+
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/.well-known/jmap"),
+      ),
+    ).toHaveLength(2);
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).endsWith("/auth/token"),
+      ),
+    ).toHaveLength(1);
   });
 
   it("rejects malformed JMAP response envelopes", async () => {

@@ -2,8 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
-  useRef,
   useState,
   type ChangeEventHandler,
   type FormEventHandler,
@@ -17,11 +15,24 @@ import {
   parseRecipientInputs,
 } from "@/domain/mail/compose";
 import type { ComposeInput, MessageDetail } from "@/domain/mail/mail";
+import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
+import {
+  attachmentRecoveryMessage,
+  composerSendErrorMessage,
+} from "@/presentation/features/mail-workspace/hooks/composer-send-error";
+import { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
+import {
+  useComposerFocusTrap,
+  useComposerReturnFocus,
+} from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
 import { mailApi } from "@/transport/client/api-client";
 
 type ComposerTitle = "Forward message" | "New message" | "Reply all" | "Reply";
 
-export const useComposerModel = (onSent: () => void) => {
+export const useComposerModel = (
+  onSent: () => void,
+  maxAttachmentBytes: number | null,
+) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [to, setTo] = useState("");
@@ -34,20 +45,10 @@ export const useComposerModel = (onSent: () => void) => {
   const [inReplyTo, setInReplyTo] = useState<ComposeInput["inReplyTo"]>();
   const [title, setTitle] = useState<ComposerTitle>("New message");
   const [error, setError] = useState<string | null>(null);
-  const returnFocus = useRef<HTMLElement | null>(null);
+  const attachments = useComposerAttachments(maxAttachmentBytes);
+  const returnFocus = useComposerReturnFocus();
 
-  const rememberFocus = useCallback(() => {
-    returnFocus.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-  }, []);
-
-  const restoreFocus = useCallback(() => {
-    window.requestAnimationFrame(() => returnFocus.current?.focus());
-  }, []);
-
-  const reset = useCallback(() => {
+  const resetFields = useCallback(() => {
     setTo("");
     setCc("");
     setBcc("");
@@ -61,28 +62,32 @@ export const useComposerModel = (onSent: () => void) => {
   }, []);
 
   const open = useCallback(() => {
-    rememberFocus();
-    reset();
+    returnFocus.remember();
+    resetFields();
+    attachments.discard(true);
+    void attachments.refreshCapability();
     setIsOpen(true);
-  }, [rememberFocus, reset]);
+  }, [attachments, resetFields, returnFocus]);
 
-  const openDraft = useCallback((
-    draft: ComposeInput,
-    nextTitle: ComposerTitle,
-  ) => {
-    rememberFocus();
-    setTo(formatAddressInput(draft.to));
-    setCc(formatAddressInput(draft.cc));
-    setBcc(formatAddressInput(draft.bcc));
-    setShowCc(draft.cc.length > 0);
-    setShowBcc(draft.bcc.length > 0);
-    setSubject(draft.subject);
-    setBody(draft.body);
-    setInReplyTo(draft.inReplyTo);
-    setTitle(nextTitle);
-    setError(null);
-    setIsOpen(true);
-  }, [rememberFocus]);
+  const openDraft = useCallback(
+    (draft: ComposeInput, nextTitle: ComposerTitle) => {
+      returnFocus.remember();
+      attachments.discard(true);
+      void attachments.refreshCapability();
+      setTo(formatAddressInput(draft.to));
+      setCc(formatAddressInput(draft.cc));
+      setBcc(formatAddressInput(draft.bcc));
+      setShowCc(draft.cc.length > 0);
+      setShowBcc(draft.bcc.length > 0);
+      setSubject(draft.subject);
+      setBody(draft.body);
+      setInReplyTo(draft.inReplyTo);
+      setTitle(nextTitle);
+      setError(null);
+      setIsOpen(true);
+    },
+    [attachments, returnFocus],
+  );
 
   const openReply = useCallback(
     (message: MessageDetail | null) => {
@@ -94,10 +99,7 @@ export const useComposerModel = (onSent: () => void) => {
   const openReplyAll = useCallback(
     (message: MessageDetail | null, signedInEmail: string) => {
       if (message) {
-        openDraft(
-          createReplyAllDraft(message, signedInEmail),
-          "Reply all",
-        );
+        openDraft(createReplyAllDraft(message, signedInEmail), "Reply all");
       }
     },
     [openDraft],
@@ -114,39 +116,11 @@ export const useComposerModel = (onSent: () => void) => {
     if (isSending) return;
     setIsOpen(false);
     setError(null);
-    restoreFocus();
-  }, [isSending, restoreFocus]);
+    attachments.discard(true);
+    returnFocus.restore();
+  }, [attachments, isSending, returnFocus]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleDialogKeys = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        close();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const dialog = document.querySelector<HTMLElement>(
-        '[role="dialog"][aria-label="Compose message"]',
-      );
-      const focusable = [
-        ...(dialog?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)',
-        ) ?? []),
-      ];
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", handleDialogKeys);
-    return () => window.removeEventListener("keydown", handleDialogKeys);
-  }, [close, isOpen]);
+  useComposerFocusTrap(isOpen, close);
 
   const onToInput: ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => setTo(event.target.value),
@@ -182,53 +156,83 @@ export const useComposerModel = (onSent: () => void) => {
       event.preventDefault();
       const recipients = parseRecipientInputs({ bcc, cc, to });
       if (
-        recipients.to.length +
-          recipients.cc.length +
-          recipients.bcc.length ===
+        recipients.to.length + recipients.cc.length + recipients.bcc.length ===
         0
       ) {
         setError("Add at least one recipient.");
         return;
       }
+      if (attachments.isUploading || attachments.hasError) {
+        setError(
+          attachments.isUploading
+            ? "Wait for attachment uploads to finish."
+            : "Remove failed attachments before sending.",
+        );
+        return;
+      }
+      if (attachments.expireReady())
+        return setError(EXPIRED_ATTACHMENT_MESSAGE);
       setIsSending(true);
       setError(null);
       try {
         await mailApi.sendMessage({
+          attachmentIds: attachments.attachmentIds,
           bcc: recipients.bcc,
           body,
           cc: recipients.cc,
+          draftId: attachments.draftId,
           ...(inReplyTo ? { inReplyTo } : {}),
           subject,
           to: recipients.to,
         });
         setIsOpen(false);
-        reset();
-        restoreFocus();
+        resetFields();
+        attachments.discard(false);
+        returnFocus.restore();
         onSent();
       } catch (nextError) {
-        setError(
-          nextError instanceof Error ? nextError.message : "Message not sent.",
-        );
+        const recovery = attachmentRecoveryMessage(nextError);
+        if (recovery) attachments.invalidateReady(recovery);
+        setError(recovery ?? composerSendErrorMessage(nextError));
       } finally {
         setIsSending(false);
       }
     },
-    [bcc, body, cc, inReplyTo, onSent, reset, restoreFocus, subject, to],
+    [
+      attachments,
+      bcc,
+      body,
+      cc,
+      inReplyTo,
+      onSent,
+      resetFields,
+      returnFocus,
+      subject,
+      to,
+    ],
   );
 
   return {
+    attachmentCapabilityUnavailable: attachments.capabilityUnavailable,
+    attachments: attachments.attachments,
     bcc,
     body,
     cc,
     close,
     error,
+    isAttachmentCapabilityRefreshing: attachments.isCapabilityRefreshing,
     isOpen,
     isSending,
+    isUploading: attachments.isUploading,
+    maxAttachmentBytes: attachments.maxFileBytes,
     onBccInput,
+    onAttachmentInput: attachments.onFiles,
     onBodyInput,
     onCcInput,
+    onRetryAttachmentCapability: attachments.refreshCapability,
     onToggleBcc,
     onToggleCc,
+    removeAttachment: attachments.remove,
     onSubjectInput,
     onSubmit,
     onToInput,

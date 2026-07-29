@@ -1,8 +1,8 @@
 import "server-only";
 
 import type {
-  ComposeInput,
   MessageMutation,
+  SendMessageInput,
   SendReceipt,
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
@@ -14,6 +14,10 @@ import {
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import {
+  jmapComposeBody,
+  uploadVerifiedJmapAttachments,
+} from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
+import {
   jmapIdentityResultSchema,
   jmapSetResultSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
@@ -23,7 +27,7 @@ import {
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 const addresses = (
-  values: ComposeInput["to"],
+  values: SendMessageInput["to"],
 ): readonly { readonly email: string; readonly name?: string }[] =>
   values.map((address) =>
     address.name
@@ -46,7 +50,8 @@ export class StalwartMailWriter {
           ? { "keywords/$flagged": mutation.value ? true : null }
           : {
               mailboxIds: {
-                [await this.resolveTargetMailbox(mutation.type, mutation)]: true,
+                [await this.resolveTargetMailbox(mutation.type, mutation)]:
+                  true,
               },
             };
     const response = await this.client.request(
@@ -70,21 +75,27 @@ export class StalwartMailWriter {
     }
   }
 
-  public async sendMessage(input: ComposeInput): Promise<SendReceipt> {
+  public async sendMessage(input: SendMessageInput): Promise<SendReceipt> {
     const accountId = await this.reader.getAccountId();
     const account = await this.reader.getAccount();
-    const [identity, draftMailboxId, sentMailboxId, replyContext] = await Promise.all([
-      this.getIdentity(accountId, account.email),
-      this.getMailboxId("drafts"),
-      this.getMailboxId("sent"),
-      input.inReplyTo
-        ? this.reader.getReplyContext(input.inReplyTo)
-        : Promise.resolve(null),
-    ]);
+    const [identity, draftMailboxId, sentMailboxId, replyContext] =
+      await Promise.all([
+        this.getIdentity(accountId, account.email),
+        this.getMailboxId("drafts"),
+        this.getMailboxId("sent"),
+        input.inReplyTo
+          ? this.reader.getReplyContext(input.inReplyTo)
+          : Promise.resolve(null),
+      ]);
     const replyMessageId = safeMessageId(replyContext?.messageId);
     const references = replyMessageId
       ? safeReplyReferences(replyContext?.references ?? [], replyMessageId)
       : [];
+    const uploadedAttachments = await uploadVerifiedJmapAttachments(
+      this.client,
+      accountId,
+      input,
+    );
     const createId = `draft-${crypto.randomUUID()}`;
     const response = await this.client.request(
       [
@@ -94,7 +105,7 @@ export class StalwartMailWriter {
             accountId,
             create: {
               [createId]: {
-                bodyValues: { body: { value: input.body } },
+                ...jmapComposeBody(input.body, uploadedAttachments),
                 cc: addresses(input.cc),
                 bcc: addresses(input.bcc),
                 from: [
@@ -115,7 +126,6 @@ export class StalwartMailWriter {
                 keywords: { $draft: true, $seen: true },
                 mailboxIds: { [draftMailboxId]: true },
                 subject: input.subject || "(No subject)",
-                textBody: [{ partId: "body", type: "text/plain" }],
                 to: addresses(input.to),
               },
             },
@@ -168,7 +178,10 @@ export class StalwartMailWriter {
     ) {
       throw new Error("Stalwart did not create the outgoing message.");
     }
-    return { id: id.message(created.id), submittedAt: new Date().toISOString() };
+    return {
+      id: id.message(created.id),
+      submittedAt: new Date().toISOString(),
+    };
   }
 
   private async getIdentity(accountId: string, fromEmail: string) {
@@ -209,7 +222,8 @@ export class StalwartMailWriter {
     if (type === "move" && mutation.type === "move") {
       return mutation.mailboxId;
     }
-    const role = type === "delete" ? "trash" : type === "restore" ? "inbox" : "archive";
+    const role =
+      type === "delete" ? "trash" : type === "restore" ? "inbox" : "archive";
     const mailbox = (await this.reader.listMailboxes()).find(
       (candidate) => candidate.role === role,
     );

@@ -7,13 +7,7 @@ import type { BrandingViewModel } from "@/presentation/shared/branding/branding.
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 
 export type MailboxIconName =
-  | "archive"
-  | "custom"
-  | "drafts"
-  | "inbox"
-  | "sent"
-  | "spam"
-  | "trash";
+  "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
 
 export interface FolderViewModel {
   readonly color: string;
@@ -64,6 +58,9 @@ export interface ReaderViewModel {
 }
 
 export interface ComposerViewModel {
+  readonly attachmentCapabilityUnavailable: boolean;
+  readonly attachments: readonly ComposerAttachmentViewModel[];
+  readonly attachmentInput: ChangeEventHandler<HTMLInputElement>;
   readonly bcc: string;
   readonly bccInput: ChangeEventHandler<HTMLInputElement>;
   readonly body: string;
@@ -72,9 +69,13 @@ export interface ComposerViewModel {
   readonly ccInput: ChangeEventHandler<HTMLInputElement>;
   readonly error: string | null;
   readonly focusBody: boolean;
+  readonly isAttachmentCapabilityRefreshing: boolean;
   readonly isOpen: boolean;
   readonly isSending: boolean;
+  readonly isUploading: boolean;
+  readonly maxAttachmentBytes: number;
   readonly onClose: () => void;
+  readonly onRetryAttachmentCapability: () => void;
   readonly onToggleBcc: () => void;
   readonly onToggleCc: () => void;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
@@ -85,6 +86,15 @@ export interface ComposerViewModel {
   readonly to: string;
   readonly toInput: ChangeEventHandler<HTMLInputElement>;
   readonly title: string;
+}
+
+export interface ComposerAttachmentViewModel {
+  readonly error: string | null;
+  readonly id: string;
+  readonly meta: string;
+  readonly name: string;
+  readonly onRemove: () => void;
+  readonly state: "error" | "ready" | "uploading";
 }
 
 export interface MemberSessionViewModel {

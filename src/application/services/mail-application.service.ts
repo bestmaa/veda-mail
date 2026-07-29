@@ -1,9 +1,9 @@
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
-  ComposeInput,
   Mailbox,
   MailWorkspace,
   MessageMutation,
+  SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 
@@ -32,11 +32,15 @@ export class MailApplicationService {
     return this.gateway.getMessage(messageId);
   }
 
+  public getMaxAttachmentBytes() {
+    return this.gateway.getMaxAttachmentBytes();
+  }
+
   public mutateMessage(mutation: MessageMutation) {
     return this.gateway.mutateMessage(mutation);
   }
 
-  public sendMessage(input: ComposeInput) {
+  public sendMessage(input: SendMessageInput) {
     return this.gateway.sendMessage(input);
   }
 

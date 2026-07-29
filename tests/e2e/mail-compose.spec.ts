@@ -115,3 +115,60 @@ test("keeps the expanded composer inside a mobile viewport", async ({
     ),
   ).toBe(true);
 });
+
+test("uploads, removes, scans, and sends an attachment", async ({ page }) => {
+  await page.getByRole("button", { name: "New message" }).click();
+  const dialog = page.getByRole("dialog", { name: "Compose message" });
+  await dialog
+    .getByRole("textbox", { exact: true, name: "To" })
+    .fill("recipient@example.com");
+  await dialog
+    .getByRole("textbox", { exact: true, name: "Subject" })
+    .fill("Attachment acceptance");
+  await dialog
+    .getByRole("textbox", { exact: true, name: "Message body" })
+    .fill("The scanned file is attached.");
+  const picker = dialog.locator('input[type="file"]');
+
+  await picker.setInputFiles({
+    buffer: Buffer.from("remove this copy"),
+    mimeType: "text/plain",
+    name: "first.txt",
+  });
+  await expect(dialog.getByText("first.txt", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/text\/plain/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Remove first.txt" }).click();
+  await expect(dialog.getByText("first.txt", { exact: true })).toBeHidden();
+
+  await picker.setInputFiles({
+    buffer: Buffer.from("byte-identical attachment"),
+    mimeType: "text/plain",
+    name: "evidence.txt",
+  });
+  await expect(dialog.getByText("evidence.txt", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/text\/plain/)).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+
+  const sendRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      request.url().endsWith("/api/v1/mail/send"),
+  );
+  await sendComposer(page);
+  const payload = (await sendRequest).postDataJSON() as {
+    attachmentIds: string[];
+    draftId: string;
+  };
+  expect(payload.attachmentIds).toHaveLength(1);
+  expect(payload.attachmentIds[0]).toMatch(/^[A-Za-z0-9_-]{32}$/);
+  expect(payload.draftId).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+
+  await page.getByRole("button", { name: /Sent/ }).click();
+  await page
+    .getByRole("button", { name: "Open Attachment acceptance" })
+    .click();
+  await expect(page.getByText("evidence.txt", { exact: true })).toBeVisible();
+  await expect(page.getByText(/text\/plain/)).toBeVisible();
+});

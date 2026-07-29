@@ -8,7 +8,7 @@ import { MockMailGateway } from "@/infrastructure/providers/mock/mock-mail.gatew
 export class MockProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
-      maxAttachmentBytes: 0,
+      maxAttachmentBytes: 18 * 1024 * 1024,
       supportsDrafts: false,
       supportsPasswordChange: true,
       supportsProfileSettings: true,
@@ -28,9 +28,7 @@ export class MockProviderModule implements ProviderModule {
     return {};
   }
 
-  public async validateServiceConfig(
-    input: Readonly<Record<string, string>>,
-  ) {
+  public async validateServiceConfig(input: Readonly<Record<string, string>>) {
     return this.parseServiceConfig(input);
   }
 

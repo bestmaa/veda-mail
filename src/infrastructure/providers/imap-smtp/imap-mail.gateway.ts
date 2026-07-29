@@ -2,9 +2,9 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
-  ComposeInput,
   MessageListQuery,
   MessageMutation,
+  SendMessageInput,
 } from "@/domain/mail/mail";
 import type {
   MemberPasswordChange,
@@ -15,18 +15,21 @@ import type { MessageId } from "@/domain/shared/brand";
 import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 
 const unsupported = (feature: string): never => {
   throw new Error(`${feature} is not available through standard IMAP/SMTP.`);
 };
 
 export class ImapSmtpMailGateway implements MailGateway {
+  private readonly attachmentCapability: SmtpAttachmentCapability;
   private readonly reader: ImapMailReader;
   private readonly writer: ImapMailWriter;
 
   public constructor(config: ImapSmtpMemberConfig) {
+    this.attachmentCapability = new SmtpAttachmentCapability(config);
     this.reader = new ImapMailReader(config);
-    this.writer = new ImapMailWriter(config);
+    this.writer = new ImapMailWriter(config, this.attachmentCapability);
   }
 
   public async changePassword(_input: MemberPasswordChange): Promise<void> {
@@ -36,6 +39,10 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public getAccount() {
     return this.reader.getAccount();
+  }
+
+  public getMaxAttachmentBytes() {
+    return this.attachmentCapability.getMaxAttachmentBytes();
   }
 
   public async getMemberProfile() {
@@ -63,7 +70,7 @@ export class ImapSmtpMailGateway implements MailGateway {
     return this.writer.mutateMessage(mutation);
   }
 
-  public sendMessage(input: ComposeInput) {
+  public sendMessage(input: SendMessageInput) {
     return this.writer.sendMessage(input);
   }
 

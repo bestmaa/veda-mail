@@ -48,3 +48,9 @@ official status. See [TRADEMARKS.md](../TRADEMARKS.md).
 Dependencies keep their own copyright and license terms. Review the production
 dependency tree and preserve notices required by those licenses when
 redistributing images or bundles.
+
+The default Compose topology references an official ClamAV image as a separate
+GPL-2.0 sidecar. Preserve its notices and provide the corresponding ClamAV
+source when distribution rules require it. Veda Mail's `file-type` dependency
+is MIT-licensed. Exact versions and integrity data remain locked in
+`package-lock.json` and `compose.yaml`.

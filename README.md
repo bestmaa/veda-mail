@@ -20,6 +20,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Allowed-domain controls and a protected provider configuration
 - Inbox, reader, search, To/CC/BCC compose, Reply, Reply All, Forward, star,
   archive, and delete flows
+- Encrypted, ClamAV-scanned attachment upload and byte-identical send through
+  JMAP or IMAP/SMTP, with safe names, MIME detection, quotas, and cancellation
 - Member-visible provider capabilities for drafts, threads, push, search, and
   attachments; unavailable features are stated rather than guessed
 - Sanitized HTML mail; scripts and remote images are removed
@@ -27,7 +29,7 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Pure prop-driven views, connectors, hooks, and ports/adapters
 - Strict TypeScript, architecture checks, a 250-line source limit, Playwright
   WCAG regression checks, CodeQL, and Trivy release gates
-- Docker, Compose, reverse-proxy, and Dockploy support
+- Docker, Compose, reverse-proxy, and Dokploy support
 
 ## Published container image
 
@@ -37,9 +39,8 @@ The signed multi-platform image supports `linux/amd64` and `linux/arm64`:
 docker pull ghcr.io/bestmaa/veda-mail:latest
 ```
 
-`latest` tracks the default branch. Every publication also receives a
-`sha-<commit>` tag. A `vX.Y.Z` Git tag additionally publishes `X.Y.Z` and
-`X.Y` image tags. Pin a release tag or digest for production.
+`latest` tracks protected `main`. Every publication also receives an immutable
+`sha-<full-commit>` tag. Pin the published OCI index digest in production.
 
 ## Quick start with Docker Compose
 
@@ -73,6 +74,7 @@ VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 Provider allowlist entries are hostnames only—no scheme, path, or port. Then:
 
 ```bash
+./scripts/check-clamav-platform.sh
 docker compose pull
 docker compose up -d
 docker compose ps
@@ -80,6 +82,10 @@ docker compose ps
 
 The Compose file uses `ghcr.io/bestmaa/veda-mail:latest` by default. To build
 the checked-out source instead, run `docker compose up --build -d`.
+It also starts an immutable official ClamAV sidecar and persists its signatures
+in a separate named volume. The approved zero-HIGH/CRITICAL sidecar digest is
+currently `linux/amd64`-only; run `./scripts/check-clamav-platform.sh` before
+deployment. Do not expose ClamAV TCP `3310` publicly.
 
 Open <http://127.0.0.1:3000/setup>. For any public deployment, configure HTTPS
 before completing the wizard.
@@ -140,6 +146,8 @@ Production additionally requires:
 ```text
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
+VEDA_MAIL_CLAMAV_HOST=clamav
+VEDA_MAIL_CLAMAV_PORT=3310
 ```
 
 `VEDA_MAIL_PUBLIC_URL` is the browser-facing Veda Mail origin, not the mail
@@ -181,7 +189,7 @@ Back up `/data` before every upgrade. See the
 
 - [Installation and first-run setup](docs/INSTALLATION.md)
 - [Organization administration](docs/ADMINISTRATION.md)
-- [Docker, Dockploy, and reverse proxies](docs/DEPLOYMENT.md)
+- [Docker, Dokploy, and reverse proxies](docs/DEPLOYMENT.md)
 - [Mail server and DNS prerequisites](docs/MAIL-SERVER-SETUP.md)
 - [Mail providers and compatibility](docs/PROVIDERS.md)
 - [Member authenticator 2FA](docs/MEMBER-2FA.md)
@@ -204,6 +212,7 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 npm run build
 npm audit --audit-level=high
+./scripts/check-clamav-platform.sh
 docker compose config
 ```
 

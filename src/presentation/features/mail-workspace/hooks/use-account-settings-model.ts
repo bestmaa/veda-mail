@@ -192,7 +192,9 @@ export const useAccountSettingsModel = (
       },
       {
         detail:
-          capabilities.mail.maxAttachmentBytes > 0
+          snapshot?.attachmentCapability.status === "unavailable"
+            ? "Temporarily unavailable"
+            : capabilities.mail.maxAttachmentBytes > 0
             ? `Up to ${formatFileSize(capabilities.mail.maxAttachmentBytes)}`
             : "Not available",
         label: "Attachments",

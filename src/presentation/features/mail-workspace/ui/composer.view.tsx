@@ -1,18 +1,16 @@
-import {
-  Send,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Paperclip, RefreshCw, Send, Trash2, X } from "lucide-react";
 
 import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import { ComposerAttachmentListView } from "@/presentation/features/mail-workspace/ui/composer-attachment-list.view";
 
-export const ComposerView = ({ composer }: { readonly composer: ComposerViewModel }) =>
+export const ComposerView = ({
+  composer,
+}: {
+  readonly composer: ComposerViewModel;
+}) =>
   composer.isOpen ? (
     <>
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 z-30 bg-slate-950/10"
-      />
+      <div aria-hidden="true" className="fixed inset-0 z-30 bg-slate-950/10" />
       <section
         aria-label="Compose message"
         aria-modal="true"
@@ -32,7 +30,10 @@ export const ComposerView = ({ composer }: { readonly composer: ComposerViewMode
           </button>
         </div>
 
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={composer.onSubmit}>
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={composer.onSubmit}
+        >
           <div className="flex min-h-12 items-center border-b border-slate-100 px-4">
             <label
               className="w-14 text-xs font-semibold text-slate-600"
@@ -77,7 +78,9 @@ export const ComposerView = ({ composer }: { readonly composer: ComposerViewMode
             hidden={!composer.showCc}
             id="composer-cc-row"
           >
-            <span className="w-14 text-xs font-semibold text-slate-600">Cc</span>
+            <span className="w-14 text-xs font-semibold text-slate-600">
+              Cc
+            </span>
             <input
               autoComplete="email"
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none focus-visible:outline-2 focus-visible:outline-indigo-600"
@@ -94,7 +97,9 @@ export const ComposerView = ({ composer }: { readonly composer: ComposerViewMode
             hidden={!composer.showBcc}
             id="composer-bcc-row"
           >
-            <span className="w-14 text-xs font-semibold text-slate-600">Bcc</span>
+            <span className="w-14 text-xs font-semibold text-slate-600">
+              Bcc
+            </span>
             <input
               autoComplete="email"
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none focus-visible:outline-2 focus-visible:outline-indigo-600"
@@ -129,6 +134,10 @@ export const ComposerView = ({ composer }: { readonly composer: ComposerViewMode
             required
             value={composer.body}
           />
+          <ComposerAttachmentListView
+            attachments={composer.attachments}
+            isSending={composer.isSending}
+          />
           {composer.error ? (
             <p
               className="mx-4 mb-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
@@ -141,12 +150,79 @@ export const ComposerView = ({ composer }: { readonly composer: ComposerViewMode
             <button
               aria-live="polite"
               className="flex h-10 items-center gap-2 rounded-xl bg-[#ff785a] px-4 text-sm font-bold text-slate-950 transition hover:bg-[#ff6848] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={composer.isSending}
+              disabled={
+                composer.isSending ||
+                composer.isUploading ||
+                composer.attachments.some(
+                  (attachment) => attachment.state === "error",
+                )
+              }
               type="submit"
             >
               <Send aria-hidden size={16} />
               {composer.isSending ? "Sending…" : "Send"}
             </button>
+            <label
+              aria-label={
+                composer.maxAttachmentBytes > 0
+                  ? "Attach files"
+                  : composer.attachmentCapabilityUnavailable
+                    ? "Attachment limit could not be verified"
+                    : "Attachments are unavailable for this provider"
+              }
+              className={`grid size-9 place-items-center rounded-xl focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-600 ${
+                composer.maxAttachmentBytes > 0 && !composer.isSending
+                  ? "cursor-pointer text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+                  : "cursor-not-allowed text-slate-300"
+              }`}
+              htmlFor="composer-attachments"
+              title={
+                composer.maxAttachmentBytes > 0
+                  ? "Attach files"
+                  : composer.attachmentCapabilityUnavailable
+                    ? "Attachment limit could not be verified"
+                    : "Attachments are unavailable for this provider"
+              }
+            >
+              <Paperclip aria-hidden size={18} />
+              <input
+                className="sr-only"
+                disabled={
+                  composer.isSending || composer.maxAttachmentBytes <= 0
+                }
+                id="composer-attachments"
+                multiple
+                onChange={composer.attachmentInput}
+                type="file"
+              />
+            </label>
+            {composer.attachmentCapabilityUnavailable ? (
+              <button
+                className="flex h-9 items-center gap-1.5 rounded-xl px-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50 disabled:cursor-wait disabled:text-slate-400"
+                disabled={
+                  composer.isAttachmentCapabilityRefreshing ||
+                  composer.isSending
+                }
+                onClick={composer.onRetryAttachmentCapability}
+                type="button"
+              >
+                <RefreshCw
+                  aria-hidden
+                  className={
+                    composer.isAttachmentCapabilityRefreshing
+                      ? "animate-spin"
+                      : undefined
+                  }
+                  size={14}
+                />
+                {composer.isAttachmentCapabilityRefreshing
+                  ? "Checking…"
+                  : "Retry attachment check"}
+              </button>
+            ) : null}
+            <span className="sr-only" role="status">
+              {composer.isUploading ? "Uploading and scanning attachments" : ""}
+            </span>
             <span className="flex-1" />
             <button
               aria-label="Discard draft"
