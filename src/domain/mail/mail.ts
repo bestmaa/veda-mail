@@ -33,6 +33,19 @@ export interface Attachment {
   readonly size: number;
 }
 
+export interface AttachmentDownloadInput {
+  readonly attachmentId: AttachmentId;
+  readonly maxBytes: number;
+  readonly messageId: MessageId;
+  readonly signal?: AbortSignal;
+}
+
+export interface AttachmentDownload {
+  readonly body: ReadableStream<Uint8Array>;
+  readonly name: string;
+  readonly size: number | null;
+}
+
 export interface MessageSummary {
   readonly from: readonly MailAddress[];
   readonly hasAttachment: boolean;

@@ -18,7 +18,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
-| Authenticated attachment download             | Not implemented | Not implemented      |
+| Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
 | Conversation/thread API                       | Not implemented | Not implemented      |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
 
@@ -28,6 +28,21 @@ currently published for `linux/amd64` only, so run
 `./scripts/check-clamav-platform.sh` before starting either provider topology.
 The preflight rejects unsupported architectures; there is no unscanned
 fallback.
+
+Received attachments use a separate capability and 50 MiB decoded-byte
+ceiling; the outbound 18 MiB upload/send limit does not describe downloads.
+The browser receives only an opaque attachment ID scoped to its message. JMAP
+downloads require and verify the provider's exact content length while
+streaming. IMAP downloads revalidate `UIDVALIDITY` and `BODYSTRUCTURE`, resolve
+the server-only MIME part, and stream without claiming a `Content-Length`.
+Veda Mail forces both paths to a non-cacheable attachment response instead of
+an inline preview. Byte ranges, preview, inline CID rendering, and download-all
+are not implemented.
+
+No Stalwart server change is required. Veda Mail uses the authenticated JMAP
+session's existing download URL and keeps its blob ID inside the adapter.
+Received provider content is not passed through the outbound ClamAV quarantine;
+members must continue to treat unexpected downloads as untrusted files.
 
 | Adapter              | Use it for                                                | Authentication                               |
 | -------------------- | --------------------------------------------------------- | -------------------------------------------- |
@@ -78,11 +93,12 @@ After saving, test with a dedicated mailbox:
 5. Reply externally and confirm it arrives.
 6. Confirm the sent copy appears in the Sent folder.
 7. Send a small known-clean attachment and verify its received SHA-256 digest.
-8. For JMAP, lower `maxSizeUpload` in a test session and confirm the UI and
+8. Download the received attachment and verify its SHA-256 digest again.
+9. For JMAP, lower `maxSizeUpload` in a test session and confirm the UI and
    reservation endpoint enforce the advertised provider limit before upload.
-9. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
+10. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
    the picker and exact final MIME message fail before provider submission.
-10. Archive, star, move, and trash a test message.
+11. Archive, star, move, and trash a test message.
 
 ## Common provider examples
 

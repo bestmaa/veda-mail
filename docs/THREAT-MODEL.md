@@ -161,11 +161,25 @@ limiter and encrypted shared session repository.
 - Concurrent sends share an 18 MiB FIFO plaintext-memory budget with bounded
   waiters and timeout. Capacity is acquired before decrypting and released
   after provider submission or any failure.
+- Received downloads require an authenticated same-origin, message-nested
+  route. Attachment IDs are opaque and message-scoped; JMAP blob IDs and IMAP
+  part locators remain server-only.
+- Download responses are forced to `application/octet-stream` and attachment
+  disposition with a sanitized bounded filename. Private no-store caching,
+  `nosniff`, sandbox CSP, same-origin resource policy, and explicit range
+  rejection reduce browser content-sniffing and partial-download bypasses.
+- Decoded output is streamed under a 50 MiB ceiling, bounded concurrency,
+  cancellation, and provider timeouts. JMAP requires exact identity-encoded
+  length; IMAP revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE`
+  before resolving and streaming the server-held MIME part.
 
-Residual risk: authenticated download, safe `Content-Disposition`, preview,
-inline CID, download-all, forwarding original attachments, and explicit
-archive-expansion policy are later M2 slices and remain unavailable. ClamAV
-must have enough memory for signature reloads; operator monitoring is required.
+Residual risk: received attachments are hostile provider content and are not
+scanned by the outbound ClamAV quarantine. Operators may add an independently
+reviewed inbound scanning boundary, and members should scan unexpected files
+before opening them. Preview, inline CID, download-all, forwarding original
+attachments, byte ranges, and explicit archive-expansion policy remain
+unavailable. ClamAV must have enough memory for outbound signature reloads;
+operator monitoring is required.
 
 ### Rules and forwarding
 

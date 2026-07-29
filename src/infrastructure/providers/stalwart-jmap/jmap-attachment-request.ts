@@ -65,6 +65,9 @@ const transportErrorFrom = (
   signal?: AbortSignal,
 ): JmapAttachmentTransportError => {
   if (signal?.aborted) {
+    if (signal.reason instanceof JmapAttachmentTransportError) {
+      return signal.reason;
+    }
     return new JmapAttachmentTransportError(
       "aborted",
       "The attachment operation was cancelled.",

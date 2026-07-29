@@ -2,6 +2,8 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
+  AttachmentDownload,
+  AttachmentDownloadInput,
   MessageListQuery,
   MessageMutation,
   SendMessageInput,
@@ -39,6 +41,12 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public getAccount() {
     return this.reader.getAccount();
+  }
+
+  public downloadAttachment(
+    input: AttachmentDownloadInput,
+  ): Promise<AttachmentDownload> {
+    return this.reader.downloadAttachment(input);
   }
 
   public getMaxAttachmentBytes() {

@@ -1,10 +1,37 @@
 import type { MessageDetail } from "@/domain/mail/mail";
+import type { AttachmentId, MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 
 const inbox = id.mailbox("mock-inbox");
 const archive = id.mailbox("mock-archive");
 const drafts = id.mailbox("mock-drafts");
 const sent = id.mailbox("mock-sent");
+const roadmapAttachmentBytes = new TextEncoder().encode(
+  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n",
+);
+
+export const mockRoadmapAttachment = {
+  id: id.attachment("attachment-roadmap"),
+  messageId: id.message("msg-roadmap"),
+  mimeType: "application/pdf",
+  name: "Q3-roadmap.pdf",
+} as const;
+
+export const createMockRoadmapAttachmentBytes = (): Uint8Array =>
+  roadmapAttachmentBytes.slice();
+
+export const createMockAttachmentContents = (): Map<
+  MessageId,
+  Map<AttachmentId, Uint8Array>
+> =>
+  new Map([
+    [
+      mockRoadmapAttachment.messageId,
+      new Map([
+        [mockRoadmapAttachment.id, createMockRoadmapAttachmentBytes()],
+      ]),
+    ],
+  ]);
 
 export const mockMailboxIds = {
   archive,
@@ -40,17 +67,17 @@ export const createMockMessages = (): MessageDetail[] => [
   {
     attachments: [
       {
-        id: id.attachment("attachment-roadmap"),
-        mimeType: "application/pdf",
-        name: "Q3-roadmap.pdf",
-        size: 2_430_000,
+        id: mockRoadmapAttachment.id,
+        mimeType: mockRoadmapAttachment.mimeType,
+        name: mockRoadmapAttachment.name,
+        size: roadmapAttachmentBytes.byteLength,
       },
     ],
     cc: [{ email: "owner@example.com", name: "Owner" }],
     from: [{ email: "priya@northstar.design", name: "Priya Menon" }],
     hasAttachment: true,
     htmlBody: null,
-    id: id.message("msg-roadmap"),
+    id: mockRoadmapAttachment.messageId,
     isStarred: false,
     isUnread: true,
     mailboxIds: [inbox],

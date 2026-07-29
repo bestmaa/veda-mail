@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
 import { expect, test, type Page } from "@playwright/test";
 import {
   expectNoSeriousAccessibilityViolations,
@@ -25,7 +28,7 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
     reader.getByText("cc owner@example.com", { exact: true }),
   ).toBeVisible();
   await expect(reader.getByText("Q3-roadmap.pdf", { exact: true })).toBeVisible();
-  await expect(reader.getByText(/application\/pdf.*2\.3 MB/)).toBeVisible();
+  await expect(reader.getByText(/application\/pdf.*51 B/)).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 
   const replyAll = page.getByRole("button", { name: "Reply all" });
@@ -60,6 +63,51 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
   ).toHaveValue(/---------- Forwarded message ----------/);
   await page.keyboard.press("Escape");
   await expect(forward).toBeFocused();
+});
+
+test("downloads an attachment byte-identically from the keyboard", async ({
+  page,
+  request,
+}) => {
+  const expected = Buffer.from(
+    "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n",
+  );
+  const expectedHash = createHash("sha256").update(expected).digest("hex");
+  await openRoadmapMessage(page);
+  const link = page.getByRole("link", { name: "Download Q3-roadmap.pdf" });
+  await link.focus();
+  await expect(link).toBeFocused();
+  const downloadEvent = page.waitForEvent("download");
+  await page.keyboard.press("Enter");
+  const download = await downloadEvent;
+
+  expect(download.suggestedFilename()).toBe("Q3-roadmap.pdf");
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const received = await readFile(downloadPath ?? "");
+  expect(createHash("sha256").update(received).digest("hex")).toBe(expectedHash);
+
+  const href = await link.getAttribute("href");
+  expect(href).toBe(
+    "/api/v1/mail/messages/msg-roadmap/attachments/attachment-roadmap",
+  );
+  const response = await page.request.get(href ?? "", {
+    headers: { origin: "http://127.0.0.1:3101" },
+  });
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("application/octet-stream");
+  expect(response.headers()["cache-control"]).toBe(
+    "private, no-store, max-age=0",
+  );
+  expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(
+    createHash("sha256").update(await response.body()).digest("hex"),
+  ).toBe(expectedHash);
+
+  const unauthenticated = await request.get(href ?? "", {
+    headers: { origin: "http://127.0.0.1:3101" },
+  });
+  expect(unauthenticated.status()).toBe(401);
 });
 
 test("submits Reply All and Forward with the correct threading payload", async ({

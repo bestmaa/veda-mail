@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { ProviderModule } from "@/application/ports/mail-provider.port";
+import { MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES } from "@/domain/mail/received-attachment";
 import type { MemberCredentials } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { MockMailGateway } from "@/infrastructure/providers/mock/mock-mail.gateway";
@@ -9,6 +10,8 @@ export class MockProviderModule implements ProviderModule {
   public readonly manifest = {
     capabilities: {
       maxAttachmentBytes: 18 * 1024 * 1024,
+      maxAttachmentDownloadBytes: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
+      supportsAttachmentDownload: true,
       supportsDrafts: false,
       supportsPasswordChange: true,
       supportsProfileSettings: true,

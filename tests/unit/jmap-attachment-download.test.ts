@@ -30,6 +30,11 @@ const messageAttachment = (transport: JmapAttachmentTransport) =>
     size: 4,
   });
 
+const readBytes = async (
+  body: ReadableStream<Uint8Array>,
+): Promise<Uint8Array> =>
+  new Uint8Array(await new Response(body).arrayBuffer());
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -62,7 +67,7 @@ describe("JMAP attachment download transport", () => {
       messageId: "message-one",
     });
 
-    expect(Array.from(downloaded.bytes)).toEqual([1, 2, 3, 4]);
+    expect(Array.from(await readBytes(downloaded.body))).toEqual([1, 2, 3, 4]);
     expect(JSON.stringify(downloaded)).not.toContain("provider-blob-secret");
     await expect(
       transport.download({ attachment, messageId: "another-message" }),
@@ -95,12 +100,13 @@ describe("JMAP attachment download transport", () => {
         ),
       );
       const transport = new JmapAttachmentTransport(config);
-      await expect(
-        transport.download({
-          attachment: messageAttachment(transport),
-          messageId: "message-one",
-        }),
-      ).rejects.toMatchObject({ code: expectedCode });
+      const downloaded = await transport.download({
+        attachment: messageAttachment(transport),
+        messageId: "message-one",
+      });
+      await expect(readBytes(downloaded.body)).rejects.toMatchObject({
+        code: expectedCode,
+      });
     },
   );
 
@@ -121,6 +127,50 @@ describe("JMAP attachment download transport", () => {
         messageId: "message-one",
       }),
     ).rejects.toMatchObject({ code: "size_limit_exceeded" });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a provider content encoding that could invalidate byte limits", async () => {
+    const cancel = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(new ReadableStream<Uint8Array>({ cancel }), {
+          headers: {
+            "content-encoding": "gzip",
+            "content-length": "4",
+          },
+        }),
+      ),
+    );
+    const transport = new JmapAttachmentTransport(config);
+
+    await expect(
+      transport.download({
+        attachment: messageAttachment(transport),
+        messageId: "message-one",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_provider_response" });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("cancels the provider stream when the browser stops downloading", async () => {
+    const cancel = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(new ReadableStream<Uint8Array>({ cancel }), {
+          headers: { "content-length": "4" },
+        }),
+      ),
+    );
+    const transport = new JmapAttachmentTransport(config);
+    const downloaded = await transport.download({
+      attachment: messageAttachment(transport),
+      messageId: "message-one",
+    });
+
+    await downloaded.body.cancel("browser closed");
     expect(cancel).toHaveBeenCalledOnce();
   });
 
@@ -155,9 +205,10 @@ describe("JMAP attachment download transport", () => {
       messageId: "message-one",
       signal: controller.signal,
     });
+    const downloaded = await operation;
+    const bytes = readBytes(downloaded.body);
     queueMicrotask(() => controller.abort());
-
-    await expect(operation).rejects.toMatchObject({ code: "aborted" });
+    await expect(bytes).rejects.toMatchObject({ code: "aborted" });
   });
 
   it("normalizes AbortSignal cancellation into a structured error", async () => {

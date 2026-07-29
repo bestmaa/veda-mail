@@ -28,6 +28,12 @@ interface MailWorkspaceModelOptions {
   readonly signOutPath: string;
 }
 
+export const createAttachmentDownloadHref = (
+  messageId: string,
+  attachmentId: string,
+): string =>
+  `/api/v1/mail/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`;
+
 export const useMailWorkspaceModel = ({
   branding,
   canSignOut,
@@ -44,7 +50,6 @@ export const useMailWorkspaceModel = ({
     mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const settings = useAccountSettingsModel(accountEmail, workspaceAccountName);
-
   const folders = useMemo(
     () =>
       (mail.workspace?.mailboxes ?? []).map((mailbox) => ({
@@ -109,6 +114,7 @@ export const useMailWorkspaceModel = ({
     }
     return {
       attachments: message.attachments.map((attachment) => ({
+        href: createAttachmentDownloadHref(message.id, attachment.id),
         id: attachment.id,
         meta: `${attachment.mimeType} · ${formatFileSize(attachment.size)}`,
         name: attachment.name,

@@ -134,8 +134,12 @@ describe("JMAP attachment resilience", () => {
       size: 1,
     });
 
+    const downloaded = await transport.download({
+      attachment,
+      messageId: "message",
+    });
     await expect(
-      transport.download({ attachment, messageId: "message" }),
+      new Response(downloaded.body).arrayBuffer(),
     ).rejects.toMatchObject({ code: "timeout" });
     expect(cancel).toHaveBeenCalledOnce();
   });
@@ -157,7 +161,11 @@ describe("JMAP attachment resilience", () => {
       size: 1,
     });
 
-    await transport.download({ attachment, messageId: "message" });
+    const downloaded = await transport.download({
+      attachment,
+      messageId: "message",
+    });
+    await new Response(downloaded.body).arrayBuffer();
 
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
       "https://mail.example.com/download/account/providerBlob/" +

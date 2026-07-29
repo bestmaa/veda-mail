@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
@@ -108,5 +108,108 @@ describe("Stalwart reader", () => {
     await expect(
       reader.getReplyContext(id.message("message")),
     ).rejects.toThrow("The message being replied to was not found.");
+  });
+
+  it("resolves an opaque attachment ID before provider byte access", async () => {
+    const attachedEmail: JmapEmail = {
+      ...email,
+      attachments: [
+        {
+          blobId: "provider-secret-blob",
+          name: "report.pdf",
+          size: 4,
+          type: "application/pdf",
+        },
+      ],
+      hasAttachment: true,
+    };
+    const downloadAttachment = vi.fn().mockResolvedValue({
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(Uint8Array.of(1, 2, 3, 4));
+          controller.close();
+        },
+      }),
+      name: "report.pdf",
+      size: 4,
+    });
+    let attachmentResult = {
+      accountId: "account",
+      list: [attachedEmail],
+      state: "state",
+    };
+    const client = {
+      downloadAttachment,
+      getSession: async () => session,
+      request: async () => ({ methodResponses: [], sessionState: "state" }),
+      result: () => attachmentResult,
+    } as unknown as StalwartJmapClient;
+    const reader = new StalwartMailReader(client, {
+      authType: "basic",
+      baseUrl: "https://mail.example.com",
+      secret: "secret",
+      username: "test@example.com",
+    });
+    const detail = await reader.getMessage(id.message("message"));
+    const attachment = detail.attachments[0];
+    expect(attachment).toBeDefined();
+    if (!attachment) return;
+
+    const downloaded = await reader.downloadAttachment({
+      attachmentId: attachment.id,
+      maxBytes: 1_024,
+      messageId: detail.id,
+    });
+    expect(
+      Array.from(
+        new Uint8Array(await new Response(downloaded.body).arrayBuffer()),
+      ),
+    ).toEqual([1, 2, 3, 4]);
+    expect(downloadAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "account",
+        attachment: expect.objectContaining({
+          providerBlobId: "provider-secret-blob",
+        }),
+      }),
+    );
+
+    downloadAttachment.mockClear();
+    await expect(
+      reader.downloadAttachment({
+        attachmentId: id.attachment("message-attachment-guessed"),
+        maxBytes: 1_024,
+        messageId: detail.id,
+      }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(downloadAttachment).not.toHaveBeenCalled();
+
+    attachmentResult = {
+      accountId: "other-account",
+      list: [attachedEmail],
+      state: "state",
+    };
+    await expect(
+      reader.downloadAttachment({
+        attachmentId: attachment.id,
+        maxBytes: 1_024,
+        messageId: detail.id,
+      }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(downloadAttachment).not.toHaveBeenCalled();
+
+    attachmentResult = {
+      accountId: "account",
+      list: [{ ...attachedEmail, id: "other-message" }],
+      state: "state",
+    };
+    await expect(
+      reader.downloadAttachment({
+        attachmentId: attachment.id,
+        maxBytes: 1_024,
+        messageId: detail.id,
+      }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(downloadAttachment).not.toHaveBeenCalled();
   });
 });
