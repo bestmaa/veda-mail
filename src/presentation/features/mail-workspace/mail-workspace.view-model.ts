@@ -47,6 +47,10 @@ export interface ReaderViewModel {
   readonly canArchive: boolean;
   readonly cc: string;
   readonly date: string;
+  readonly downloadAll: {
+    readonly isPreparing: boolean;
+    readonly onClick: () => void;
+  } | null;
   readonly error: string | null;
   readonly from: string;
   readonly fromEmail: string;

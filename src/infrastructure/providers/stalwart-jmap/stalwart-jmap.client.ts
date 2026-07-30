@@ -17,6 +17,15 @@ import { downloadJmapReceivedAttachment } from "@/infrastructure/providers/stalw
 import { uploadJmapOutgoingAttachment } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
 import type { JmapReceivedAttachment } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
 import {
+  awaitProviderOperation,
+  providerOperationSignal,
+  rejectIfProviderOperationAborted,
+} from "@/infrastructure/providers/provider-operation-signal";
+import {
+  basicAuthorizationHeader,
+  stalwartHttpError,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
+import {
   fetchSameOriginJmap,
   invalidJmapResponse,
   readJmapResponseJson,
@@ -32,13 +41,6 @@ import {
 import { assertSafeProviderOrigin } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
 const REQUEST_TIMEOUT_MS = 20_000;
-
-const basicAuthorizationHeader = (config: StalwartConfig): string => {
-  const encoded = Buffer.from(`${config.username}:${config.secret}`).toString(
-    "base64",
-  );
-  return `Basic ${encoded}`;
-};
 
 export class StalwartJmapClient {
   private accessToken: string | null;
@@ -57,21 +59,34 @@ export class StalwartJmapClient {
       config.authType === "bearer" ? (config.refreshToken ?? null) : null;
   }
 
-  public getSession(): Promise<JmapSession> {
+  public async getSession(signal?: AbortSignal): Promise<JmapSession> {
+    const sessionSignal = providerOperationSignal(signal, REQUEST_TIMEOUT_MS);
+    rejectIfProviderOperationAborted(sessionSignal);
     this.sessionPromise ??= this.discover().catch((error: unknown) => {
       this.sessionPromise = null;
       throw error;
     });
-    return this.sessionPromise;
+    return awaitProviderOperation(this.sessionPromise, sessionSignal);
   }
 
   public async request(
     methodCalls: readonly JmapMethodCall[],
     using: readonly string[],
+    signal?: AbortSignal,
   ): Promise<JmapResponse> {
-    const session = await this.getSession();
-    const authHeader = await this.authorizationHeader();
-    const origin = (await assertSafeProviderOrigin(this.config.baseUrl)).origin;
+    const requestSignal = providerOperationSignal(signal, REQUEST_TIMEOUT_MS);
+    rejectIfProviderOperationAborted(requestSignal);
+    const session = await this.getSession(requestSignal);
+    const authHeader = await awaitProviderOperation(
+      this.authorizationHeader(),
+      requestSignal,
+    );
+    const origin = (
+      await awaitProviderOperation(
+        assertSafeProviderOrigin(this.config.baseUrl),
+        requestSignal,
+      )
+    ).origin;
     const apiUrl = sameOriginJmapUrl(session.apiUrl, origin);
     const response = await fetch(apiUrl, {
       body: JSON.stringify({ methodCalls, using: [JMAP_CORE, ...using] }),
@@ -82,11 +97,11 @@ export class StalwartJmapClient {
       },
       method: "POST",
       redirect: "error",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: requestSignal,
     });
 
     if (!response.ok) {
-      throw await this.toHttpError(response);
+      throw stalwartHttpError(response);
     }
     const parsed = jmapResponseSchema.safeParse(
       await readJmapResponseJson(response),
@@ -120,7 +135,7 @@ export class StalwartJmapClient {
       readonly attachment: JmapReceivedAttachment;
     },
   ): Promise<AttachmentDownload> {
-    const session = await this.getSession();
+    const session = await this.getSession(input.signal);
     return downloadJmapReceivedAttachment({
       accountId: input.accountId,
       attachment: input.attachment,
@@ -173,7 +188,7 @@ export class StalwartJmapClient {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
-      throw await this.toHttpError(response);
+      throw stalwartHttpError(response);
     }
     const parsed = jmapSessionSchema.safeParse(
       await readJmapResponseJson(response),
@@ -226,13 +241,5 @@ export class StalwartJmapClient {
         this.refreshPromise = null;
       });
     await this.refreshPromise;
-  }
-
-  private async toHttpError(response: Response): Promise<Error> {
-    const retryAfter = response.headers.get("retry-after");
-    const suffix = retryAfter ? ` Retry after ${retryAfter}s.` : "";
-    return new Error(
-      `Mail provider returned ${response.status}.${suffix}`.trim(),
-    );
   }
 }

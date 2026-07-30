@@ -16,6 +16,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Authenticated received-attachment downloads for JMAP and IMAP, with
   message-scoped opaque identifiers, bounded streaming, and truthful provider
   capability metadata
+- Server-streamed Download all archives for JMAP and IMAP, with authoritative
+  metadata lookup, root-only collision-safe filenames, STORE-mode CRC-verified
+  ZIP entries, byte/count/deadline limits, cancellation-safe concurrency, and
+  actionable preflight failures
 - Server-authoritative forwarding of original received attachments through
   bounded plaintext staging, malware scanning, MIME verification, and the
   encrypted outbound quarantine
@@ -45,6 +49,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
   now bounded
 - Dependency auditing now covers the complete production and development tree
 - Runtime images pin the Node base digest and exclude unused package managers
+- Provider attachment streams now reject cumulative zero-byte chunk floods
+  instead of allowing a no-progress stream to retain resources
 
 ### Security
 
@@ -54,6 +60,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Force received attachments to download as non-cacheable octet streams with
   sanitized `Content-Disposition`, `nosniff`, sandbox CSP, same-origin resource
   policy, range rejection, and a 50 MiB decoded-byte ceiling
+- Generate multi-attachment archives only from server-resolved opaque IDs;
+  stream entries sequentially without expansion or plaintext temporary files,
+  and omit the ZIP directory on any incomplete or dishonest provider stream
 - Never accept provider blob IDs, IMAP part locators, filenames, MIME types, or
   sizes from the browser when forwarding originals; re-resolve each opaque
   message-scoped attachment and fail closed through the scanned quarantine

@@ -2,7 +2,6 @@ import {
   Archive,
   Mail,
   MailOpen,
-  Paperclip,
   Forward,
   Reply,
   ReplyAll,
@@ -16,7 +15,7 @@ import type {
   ReaderViewModel,
 } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { MessageFrameConnector } from "@/presentation/features/mail-workspace/connectors/message-frame.connector";
-import { AttachmentCardView } from "@/presentation/features/mail-workspace/ui/attachment-card.view";
+import { ReceivedAttachmentListView } from "@/presentation/features/mail-workspace/ui/received-attachment-list.view";
 import { ReaderActionView } from "@/presentation/features/mail-workspace/ui/reader-action.view";
 
 interface MessageReaderViewProps {
@@ -141,22 +140,10 @@ export const MessageReaderView = ({
             )}
           </div>
 
-          {reader.attachments.length > 0 ? (
-            <div className="border-t border-slate-100 pt-5">
-              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
-                <Paperclip aria-hidden size={14} />
-                Attachments
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {reader.attachments.map((attachment) => (
-                  <AttachmentCardView
-                    attachment={attachment}
-                    key={attachment.id}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
+          <ReceivedAttachmentListView
+            attachments={reader.attachments}
+            downloadAll={reader.downloadAll}
+          />
 
           <div className="mt-8 flex flex-wrap gap-2">
             <button

@@ -24,6 +24,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   JMAP or IMAP/SMTP, with safe names, MIME detection, quotas, and cancellation
 - Authenticated, message-scoped received-attachment downloads streamed through
   Veda Mail with forced safe-download headers and a 50 MiB decoded-byte limit
+- One-click Download all creates a backpressure-aware, byte-identical ZIP for
+  up to 100 received attachments and 200 MiB without application/JS buffering
 - Original received attachments are re-fetched server-side, staged within a
   bounded plaintext budget, scanned, MIME-verified, and encrypted before they
   can be forwarded; provider locators stay server-only

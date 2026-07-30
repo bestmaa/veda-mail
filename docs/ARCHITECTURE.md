@@ -146,6 +146,23 @@ part, and keeps the IMAP connection alive only for that bounded stream. IMAP
 decoded length is not reliably known before transfer, so the HTTP response
 does not claim a `Content-Length`.
 
+Download all uses the message-scoped static route
+`/api/v1/mail/messages/{messageId}/attachments/archive`. The browser supplies
+only the opaque message ID. A metadata-only gateway call authoritatively lists
+the current attachments, then the existing per-attachment gateway operation
+revalidates and opens each source sequentially.
+
+The server writes a classic ZIP stream in STORE mode with CRC-32 data
+descriptors, fixed privacy-safe metadata, regular-file attributes, and one
+flat, sanitized, collision-safe UTF-8 name per attachment. It never buffers a
+complete archive, creates a plaintext temporary file, follows a provider path,
+or expands a nested archive. The boundary allows at most 100 entries, 50 MiB
+per entry, and 200 MiB of actual decoded payload under a ten-minute deadline,
+four global archive leases, one lease per member, and the shared download
+budget. Any cancellation, dishonest length, no-progress stream, or provider
+failure stops later fetches and omits the central directory, leaving no
+success-looking partial ZIP.
+
 ## Original attachment forwarding boundary
 
 Forwarding never promotes a browser-supplied provider locator into an outgoing

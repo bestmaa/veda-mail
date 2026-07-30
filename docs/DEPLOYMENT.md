@@ -145,8 +145,11 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
   request streaming enabled and allow at least five minutes for steadily
   progressing mobile uploads. Organization-logo JSON remains much smaller.
 - Stream attachment `GET` responses without proxy buffering or transformation;
-  the application enforces a 50 MiB decoded-byte ceiling. Do not add range
-  handling: Veda Mail intentionally rejects partial attachment requests.
+  the application enforces a 50 MiB decoded-byte ceiling for one file and a
+  200 MiB decoded-payload ceiling for Download all ZIPs. Set the proxy timeout
+  above the application's exact ten-minute deadline (eleven or twelve minutes
+  is suitable). Do not add range handling: Veda Mail intentionally rejects
+  partial attachment requests.
 - Do not cache `/api/*`, `/setup`, or `/admin`.
 - Add HSTS only after confirming HTTPS works for the complete domain.
 - Do not rewrite application cookie attributes.
@@ -235,6 +238,8 @@ Verify:
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
 - The received attachment downloads byte-identically, is not cached by the
   proxy, and is served with attachment disposition and `nosniff`.
+- A multi-attachment Download all ZIP passes an independent archive integrity
+  check and every extracted entry matches its source SHA-256 digest.
 - Forwarding that received attachment shows copy/scan progress, sends only
   after the import is clean, and arrives byte-identically without a provider
   blob or MIME-part locator appearing in browser request data.

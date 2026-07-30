@@ -34,6 +34,7 @@ export default defineConfig({
     env: {
       VEDA_MAIL_ATTACHMENT_SCANNER: "test-clean",
       VEDA_MAIL_DATA_DIR: dataDirectory,
+      VEDA_MAIL_E2E_ARCHIVE_FAILURE: "true",
       VEDA_MAIL_SETUP_TOKEN: "playwright-setup-token-1234567890",
     },
     reuseExistingServer: false,

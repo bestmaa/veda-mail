@@ -1,6 +1,13 @@
 import type { MessageDetail } from "@/domain/mail/mail";
 import type { AttachmentId, MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
+import {
+  createMockArchiveContents,
+  createMockArchiveFailureMessage,
+  createMockArchiveMessage,
+  mockArchiveFailureMessageId,
+  mockArchiveMessageId,
+} from "@/infrastructure/providers/mock/mock-archive-fixture";
 
 const inbox = id.mailbox("mock-inbox");
 const archive = id.mailbox("mock-archive");
@@ -31,6 +38,10 @@ export const createMockAttachmentContents = (): Map<
         [mockRoadmapAttachment.id, createMockRoadmapAttachmentBytes()],
       ]),
     ],
+    [mockArchiveMessageId, createMockArchiveContents()],
+    ...(process.env["VEDA_MAIL_E2E_ARCHIVE_FAILURE"] === "true"
+      ? ([[mockArchiveFailureMessageId, createMockArchiveContents()]] as const)
+      : []),
   ]);
 
 export const mockMailboxIds = {
@@ -64,6 +75,10 @@ export const createMockMessages = (): MessageDetail[] => [
     threadId: id.thread("thread-welcome"),
     to: [{ email: "member@example.com", name: "Sample Member" }],
   },
+  createMockArchiveMessage(),
+  ...(process.env["VEDA_MAIL_E2E_ARCHIVE_FAILURE"] === "true"
+    ? [createMockArchiveFailureMessage()]
+    : []),
   {
     attachments: [
       {

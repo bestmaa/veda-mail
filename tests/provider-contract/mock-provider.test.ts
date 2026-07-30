@@ -89,6 +89,26 @@ describe("mock provider contract", () => {
     expect(received).toEqual(expected);
   });
 
+  it("lists server-authoritative attachment metadata", async () => {
+    const gateway = new MockMailGateway();
+    const listed = await gateway.listMessageAttachments({
+      messageId: mockRoadmapAttachment.messageId,
+    });
+
+    expect(listed).toEqual([
+      expect.objectContaining({
+        id: mockRoadmapAttachment.id,
+        mimeType: mockRoadmapAttachment.mimeType,
+        name: mockRoadmapAttachment.name,
+      }),
+    ]);
+    await expect(
+      gateway.listMessageAttachments({
+        messageId: id.message("missing-message"),
+      }),
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
+
   it("scopes attachment IDs to their exact message", async () => {
     const gateway = new MockMailGateway();
     const input = {

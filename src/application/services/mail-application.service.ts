@@ -3,6 +3,7 @@ import type {
   AttachmentDownloadInput,
   Mailbox,
   MailWorkspace,
+  MessageAttachmentListInput,
   MessageMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
@@ -31,6 +32,10 @@ export class MailApplicationService {
 
   public getMessage(messageId: MessageId) {
     return this.gateway.getMessage(messageId);
+  }
+
+  public listMessageAttachments(input: MessageAttachmentListInput) {
+    return this.gateway.listMessageAttachments(input);
   }
 
   public downloadAttachment(input: AttachmentDownloadInput) {
