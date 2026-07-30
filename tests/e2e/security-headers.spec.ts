@@ -32,7 +32,7 @@ test("enforces a fresh nonce CSP without breaking the mailbox frame", async ({
   expect(first.headers()["strict-transport-security"]).toBeUndefined();
 
   const serverScriptTags = [
-    ...(await first.text()).matchAll(/<script\b[^>]*>/gu),
+    ...(await first.text()).matchAll(/<script\b[^>]*>/giu),
   ].map(([tag]) => tag);
   expect(serverScriptTags.length).toBeGreaterThan(0);
   for (const tag of serverScriptTags) {

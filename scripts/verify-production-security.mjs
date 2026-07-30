@@ -90,7 +90,7 @@ const assertDocumentHeaders = async (response) => {
 };
 
 const assertServerScriptNonces = async (response, nonce) => {
-  const tags = [...(await response.text()).matchAll(/<script\b[^>]*>/gu)].map(
+  const tags = [...(await response.text()).matchAll(/<script\b[^>]*>/giu)].map(
     ([tag]) => tag,
   );
   assert.ok(tags.length > 0, "Production document has no framework scripts.");
