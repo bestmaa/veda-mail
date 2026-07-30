@@ -3,7 +3,7 @@ import type { ParsedMail } from "mailparser";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
-import { encodeMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
+import { encodeScopedImapMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 
 const mocks = vi.hoisted(() => ({
@@ -45,7 +45,11 @@ const config: ImapSmtpMemberConfig = {
   username: "Member@Example.com",
 };
 const messageId = id.message(
-  encodeMessageId({ mailbox: "INBOX", uid: 77 }),
+  encodeScopedImapMessageId(config, {
+    mailbox: "INBOX",
+    uid: 77,
+    uidValidity: BigInt(123),
+  }),
 );
 const structure: MessageStructureObject = {
   childNodes: [
@@ -96,12 +100,11 @@ describe("IMAP message reader attachments", () => {
   it("opens read-only and maps only UIDVALIDITY-bound BODYSTRUCTURE parts", async () => {
     const detail = await new ImapMailReader(config).getMessage(messageId);
     const verified = bindImapReceivedAttachments({
-      accountScope: imapAttachmentAccountScope(config.username),
+      accountScope: imapAttachmentAccountScope(config),
       messageId,
       structure,
       uidValidity: BigInt(123),
     })[0]?.metadata;
-
     expect(mocks.client.mailboxOpen).toHaveBeenCalledWith("INBOX", {
       readOnly: true,
     });
@@ -109,7 +112,6 @@ describe("IMAP message reader attachments", () => {
     expect(JSON.stringify(detail.attachments)).not.toContain("attacker-cid");
     expect(detail.textBody).toBe("Safe body");
   });
-
   it("rejects a provider response for a different UID", async () => {
     mocks.client.fetchOne.mockResolvedValue({
       bodyStructure: structure,
@@ -117,35 +119,39 @@ describe("IMAP message reader attachments", () => {
       source: Buffer.from("MIME source"),
       uid: 78,
     });
-
     await expect(
       new ImapMailReader(config).getMessage(messageId),
     ).rejects.toThrow("Message not found.");
     expect(mocks.parse).not.toHaveBeenCalled();
   });
-
-  it("lists attachment metadata without fetching or parsing message source", async () => {
+  it("classifies visible metadata from a bounded presentation source", async () => {
     const controller = new AbortController();
     const listed = await new ImapMailReader(config).listMessageAttachments({
       messageId,
       signal: controller.signal,
     });
     const verified = bindImapReceivedAttachments({
-      accountScope: imapAttachmentAccountScope(config.username),
+      accountScope: imapAttachmentAccountScope(config),
       messageId,
       structure,
       uidValidity: BigInt(123),
     })[0]?.metadata;
-
     expect(listed).toEqual([{ ...verified, size: null }]);
     expect(mocks.client.fetchOne).toHaveBeenCalledWith(
       77,
-      { bodyStructure: true, uid: true },
+      {
+        bodyStructure: true,
+        source: { maxLength: 5_000_000 },
+        uid: true,
+      },
       { uid: true },
     );
-    expect(mocks.parse).not.toHaveBeenCalled();
+    expect(mocks.parse).toHaveBeenCalledWith(expect.any(Buffer), {
+      skipHtmlToText: true,
+      skipImageLinks: true,
+      skipTextToHtml: true,
+    });
   });
-
   it("does not treat transfer-encoded BODYSTRUCTURE size as decoded bytes", async () => {
     const encodedLargeStructure: MessageStructureObject = {
       childNodes: [
@@ -162,27 +168,24 @@ describe("IMAP message reader attachments", () => {
     };
     mocks.client.fetchOne.mockResolvedValueOnce({
       bodyStructure: encodedLargeStructure,
+      source: Buffer.from("MIME source"),
       uid: 77,
     });
-
     const listed = await new ImapMailReader(config).listMessageAttachments({
       messageId,
     });
-
     expect(listed).toHaveLength(1);
     expect(listed[0]).toMatchObject({
       name: "decoded-safe.bin",
       size: null,
     });
   });
-
   it("catches cancellation during the connection-to-listener handoff", async () => {
     const controller = new AbortController();
     mocks.connectImapClient.mockImplementationOnce(async () => {
       controller.abort();
       return mocks.client;
     });
-
     await expect(
       new ImapMailReader(config).listMessageAttachments({
         messageId,
@@ -192,8 +195,7 @@ describe("IMAP message reader attachments", () => {
     expect(mocks.client.mailboxOpen).not.toHaveBeenCalled();
     expect(mocks.closeImapClient).toHaveBeenCalledOnce();
   });
-
-  it("catches cancellation after mailbox open or metadata fetch", async () => {
+  it("catches cancellation after mailbox open or body fetch", async () => {
     const afterOpen = new AbortController();
     mocks.client.mailboxOpen.mockImplementationOnce(async () => {
       afterOpen.abort();
@@ -206,7 +208,6 @@ describe("IMAP message reader attachments", () => {
       }),
     ).rejects.toMatchObject({ code: "aborted" });
     expect(mocks.client.fetchOne).not.toHaveBeenCalled();
-
     vi.clearAllMocks();
     mocks.connectImapClient.mockResolvedValue(mocks.client);
     mocks.client.mailboxOpen.mockResolvedValue({
@@ -229,14 +230,12 @@ describe("IMAP message reader attachments", () => {
     ).rejects.toMatchObject({ code: "aborted" });
     expect(mocks.closeImapClient).toHaveBeenCalledOnce();
   });
-
   it("preserves IMAP metadata lookup timeout semantics", async () => {
     mocks.client.mailboxOpen.mockRejectedValueOnce(
       Object.assign(new Error("private server address"), {
         code: "ETIMEOUT",
       }),
     );
-
     await expect(
       new ImapMailReader(config).listMessageAttachments({ messageId }),
     ).rejects.toMatchObject({

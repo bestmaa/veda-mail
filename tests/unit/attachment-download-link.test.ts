@@ -41,6 +41,7 @@ describe("attachment download link", () => {
     expect(
       createReceivedAttachmentViewModels("message-one", [
         {
+          disposition: "attachment",
           id: id.attachment("opaque-attachment"),
           mimeType: "application/pdf",
           name: "report.pdf",
@@ -67,18 +68,21 @@ describe("attachment download link", () => {
       "message-one",
       [
         {
+          disposition: "attachment",
           id: id.attachment("text-attachment"),
           mimeType: "TEXT/PLAIN; charset=utf-8",
           name: "notes.txt",
           size: 12,
         },
         {
+          disposition: "attachment",
           id: id.attachment("image-attachment"),
           mimeType: "image/png",
           name: "photo.png",
           size: 12,
         },
         {
+          disposition: "attachment",
           id: id.attachment("imap-base64-text"),
           mimeType: "text/plain",
           name: "decoded-under-limit.txt",

@@ -26,19 +26,17 @@ export interface Mailbox {
   readonly unread: number;
 }
 
-export interface Attachment {
-  readonly id: AttachmentId;
-  readonly mimeType: string;
-  readonly name: string;
-  readonly size: number;
-}
+export type ReceivedAttachmentDisposition = "attachment" | "inline";
 
-export interface MessageAttachmentMetadata {
+export interface Attachment {
+  readonly disposition: ReceivedAttachmentDisposition;
   readonly id: AttachmentId;
   readonly mimeType: string;
   readonly name: string;
   readonly size: number | null;
 }
+
+export type MessageAttachmentMetadata = Attachment;
 
 export interface AttachmentDownloadInput {
   readonly attachmentId: AttachmentId;

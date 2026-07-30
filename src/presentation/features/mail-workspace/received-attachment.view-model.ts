@@ -72,7 +72,11 @@ export const createReceivedAttachmentViewModels = (
         canPreview &&
         preview?.href === previewHref &&
         preview.isLoading,
-      meta: `${attachment.mimeType} · ${formatFileSize(attachment.size)}`,
+      meta: `${attachment.mimeType} · ${
+        attachment.size === null
+          ? "Unknown size"
+          : formatFileSize(attachment.size)
+      }`,
       name: attachment.name,
       onPreview:
         canPreview && preview

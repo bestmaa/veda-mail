@@ -1,7 +1,10 @@
 import "server-only";
 
 import type { Attachment } from "@/domain/mail/mail";
+import { isSupportedReceivedInlineImageMimeType } from "@/domain/mail/inline-image";
 import {
+  normalizeContentId,
+  normalizeReceivedAttachmentDisposition,
   normalizeReceivedAttachmentMimeType,
   sanitizeReceivedAttachmentName,
 } from "@/domain/mail/received-attachment";
@@ -9,15 +12,31 @@ import {
   attachmentIdsEqual,
   createOpaqueReceivedAttachmentId,
 } from "@/infrastructure/providers/attachment-identity";
+import { jmapAttachmentCandidates } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment-candidates";
+import {
+  jmapBodyPartBindingIdentity,
+  jmapBodyPartProviderPartId,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-part-identity";
 import type {
   JmapBodyPart,
   JmapEmail,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export interface JmapReceivedAttachment {
+  readonly contentId: string | null;
   readonly metadata: Attachment;
+}
+
+interface JmapReceivedAttachmentSecret {
+  readonly inlineRenderingAllowed: boolean;
+  readonly providerPartIdentity: string;
   readonly providerBlobId: string;
 }
+
+const attachmentSecrets = new WeakMap<
+  JmapReceivedAttachment,
+  JmapReceivedAttachmentSecret
+>();
 
 const validBlobId = (value: unknown): value is string => {
   if (typeof value !== "string" || value.length === 0 || value.length > 1_024) {
@@ -29,55 +48,111 @@ const validBlobId = (value: unknown): value is string => {
   });
 };
 
-const validSize = (value: unknown): value is number =>
-  typeof value === "number" &&
-  Number.isSafeInteger(value) &&
-  value >= 0;
+const normalizedSize = (value: unknown): number | null | undefined => {
+  if (value === null || value === undefined) return null;
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0
+    ? value
+    : undefined;
+};
+
+const normalizedContentId = (value: unknown): string | null =>
+  typeof value === "string" ? normalizeContentId(value) : null;
+
+const normalizedMediaType = (part: JmapBodyPart): string =>
+  normalizeReceivedAttachmentMimeType(part.type);
 
 const bindAttachment = (
   accountId: string,
-  email: Pick<JmapEmail, "attachments" | "id">,
+  email: Pick<JmapEmail, "id">,
   attachment: JmapBodyPart,
+  fallbackDisposition: Attachment["disposition"],
+  forceAttachment: boolean,
   index: number,
 ): JmapReceivedAttachment | null => {
-  if (!validBlobId(attachment.blobId) || !validSize(attachment.size)) {
-    return null;
-  }
+  const size = normalizedSize(attachment.size);
+  if (!validBlobId(attachment.blobId) || size === undefined) return null;
   const name = sanitizeReceivedAttachmentName(
     attachment.name ?? `Attachment ${index + 1}`,
   );
-  const mimeType = normalizeReceivedAttachmentMimeType(attachment.type);
-  return {
-    metadata: {
+  const mimeType = normalizedMediaType(attachment);
+  const contentId = normalizedContentId(attachment.cid);
+  const normalizedDisposition = normalizeReceivedAttachmentDisposition(
+    attachment.disposition,
+    contentId && isSupportedReceivedInlineImageMimeType(mimeType)
+      ? "inline"
+      : fallbackDisposition,
+  );
+  const disposition = forceAttachment ? "attachment" : normalizedDisposition;
+  const providerPartId = jmapBodyPartProviderPartId(attachment);
+  const bound = Object.freeze({
+    contentId,
+    metadata: Object.freeze({
+      disposition,
       id: createOpaqueReceivedAttachmentId("stalwart-jmap", [
         accountId,
         email.id,
         index,
         attachment.blobId,
+        providerPartId,
         name,
         mimeType,
-        attachment.size,
+        size,
+        contentId,
+        disposition,
       ]),
       mimeType,
       name,
-      size: attachment.size,
-    },
-    providerBlobId: attachment.blobId,
-  };
+      size,
+    }),
+  });
+  attachmentSecrets.set(
+    bound,
+    Object.freeze({
+      inlineRenderingAllowed: !forceAttachment,
+      providerPartIdentity: jmapBodyPartBindingIdentity(attachment),
+      providerBlobId: attachment.blobId,
+    }),
+  );
+  return bound;
 };
 
 export const bindJmapReceivedAttachments = (
   accountId: string,
-  email: Pick<JmapEmail, "attachments" | "id">,
+  email: Pick<JmapEmail, "attachments" | "htmlBody" | "id">,
 ): readonly JmapReceivedAttachment[] =>
-  (email.attachments ?? []).flatMap((attachment, index) => {
-    const bound = bindAttachment(accountId, email, attachment, index);
-    return bound ? [bound] : [];
-  });
+  jmapAttachmentCandidates(email).flatMap(
+    ({ attachment, fallbackDisposition, forceAttachment }, index) => {
+      const bound = bindAttachment(
+        accountId,
+        email,
+        attachment,
+        fallbackDisposition,
+        forceAttachment,
+        index,
+      );
+      return bound ? [bound] : [];
+    },
+  );
+
+export const readJmapReceivedAttachmentProviderBlobId = (
+  attachment: JmapReceivedAttachment,
+): string | null => attachmentSecrets.get(attachment)?.providerBlobId ?? null;
+
+export const readJmapReceivedAttachmentPartIdentity = (
+  attachment: JmapReceivedAttachment,
+): string | null =>
+  attachmentSecrets.get(attachment)?.providerPartIdentity ?? null;
+
+export const isJmapReceivedAttachmentInlineRenderingAllowed = (
+  attachment: JmapReceivedAttachment,
+): boolean =>
+  attachmentSecrets.get(attachment)?.inlineRenderingAllowed === true;
 
 export const findJmapReceivedAttachment = (
   accountId: string,
-  email: Pick<JmapEmail, "attachments" | "id">,
+  email: Pick<JmapEmail, "attachments" | "htmlBody" | "id">,
   attachmentId: string,
 ): JmapReceivedAttachment | null =>
   bindJmapReceivedAttachments(accountId, email).find((attachment) =>

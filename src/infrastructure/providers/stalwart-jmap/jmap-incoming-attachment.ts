@@ -10,7 +10,10 @@ import {
   JmapAttachmentTransport,
   JmapAttachmentTransportError,
 } from "@/infrastructure/providers/stalwart-jmap/jmap-attachment-transport";
-import type { JmapReceivedAttachment } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
+import {
+  readJmapReceivedAttachmentProviderBlobId,
+  type JmapReceivedAttachment,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
 import type { JmapSession } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { assertSafeProviderOrigin } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
 
@@ -73,12 +76,18 @@ export const downloadJmapReceivedAttachment = async (
     uploadUrl: input.session.uploadUrl,
   });
   const metadata = input.attachment.metadata;
+  const providerBlobId = readJmapReceivedAttachmentProviderBlobId(
+    input.attachment,
+  );
+  if (!providerBlobId) {
+    throw new AttachmentDownloadError("not_found", "Attachment not found.");
+  }
   const handle = transport.bindMessageAttachment({
     accountId: input.accountId,
     fileName: metadata.name,
     mediaType: metadata.mimeType,
     messageId: input.messageId,
-    providerBlobId: input.attachment.providerBlobId,
+    providerBlobId,
     size: metadata.size,
   });
   try {

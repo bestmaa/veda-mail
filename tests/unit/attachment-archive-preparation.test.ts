@@ -8,6 +8,7 @@ import { prepareAttachmentArchive } from "@/server/mail/attachment-archive";
 
 const messageId = id.message("archive-preparation");
 const metadata = {
+  disposition: "attachment" as const,
   id: id.attachment("attachment-preparation"),
   mimeType: "application/octet-stream",
   name: "attachment.bin",
@@ -26,12 +27,11 @@ const lease = (release: () => void): AttachmentDownloadLease =>
   ({ release }) as AttachmentDownloadLease;
 
 describe("attachment archive preparation", () => {
-  it("races a non-compliant metadata lookup and releases its lease", async () => {
+  it("holds its lease until bounded provider classification settles", async () => {
     const request = new AbortController();
     const release = vi.fn();
-    const listMessageAttachments = vi.fn(
-      () => new Promise<never>(() => undefined),
-    );
+    const pendingList = deferred<readonly [typeof metadata]>();
+    const listMessageAttachments = vi.fn(() => pendingList.promise);
     const mail = {
       downloadAttachment: vi.fn(),
       listMessageAttachments,
@@ -43,8 +43,21 @@ describe("attachment archive preparation", () => {
       messageId,
       requestSignal: request.signal,
     });
+    let settled = false;
+    void pending.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
     request.abort();
+    await Promise.resolve();
 
+    expect(settled).toBe(false);
+    expect(release).not.toHaveBeenCalled();
+    pendingList.resolve([metadata]);
     await expect(pending).rejects.toMatchObject({ code: "aborted" });
     expect(release).toHaveBeenCalledOnce();
   });

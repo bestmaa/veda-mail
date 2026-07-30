@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   connection: { id: "archive-connection" },
   downloadAttachment: vi.fn(),
   getCurrentConnection: vi.fn(),
+  getMessage: vi.fn(),
   getMailService: vi.fn(),
   listMessageAttachments: vi.fn(),
 }));
@@ -33,12 +34,14 @@ const origin = "https://mail.example.com";
 const messageId = id.message("message-archive");
 const attachments: readonly Attachment[] = [
   {
+    disposition: "attachment",
     id: id.attachment("attachment-one"),
     mimeType: "text/plain",
     name: "one.txt",
     size: 3,
   },
   {
+    disposition: "attachment",
     id: id.attachment("attachment-two"),
     mimeType: "application/octet-stream",
     name: "two.bin",
@@ -80,6 +83,7 @@ beforeEach(() => {
   mocks.getCurrentConnection.mockResolvedValue(mocks.connection);
   mocks.getMailService.mockResolvedValue({
     downloadAttachment: mocks.downloadAttachment,
+    getMessage: mocks.getMessage,
     listMessageAttachments: mocks.listMessageAttachments,
   });
   mocks.listMessageAttachments.mockResolvedValue(attachments);
@@ -101,10 +105,7 @@ describe("attachment archive route", () => {
   it("streams an exact ZIP with hardened headers and authoritative IDs", async () => {
     const routeRequest = request();
     const response = await GET(routeRequest, context());
-    const parsed = parseStoreZip(
-      new Uint8Array(await response.arrayBuffer()),
-    );
-
+    const parsed = parseStoreZip(new Uint8Array(await response.arrayBuffer()));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/zip");
     expect(response.headers.get("content-length")).toBeNull();
@@ -131,6 +132,8 @@ describe("attachment archive route", () => {
       messageId,
       signal: expect.any(AbortSignal),
     });
+    expect(mocks.listMessageAttachments).toHaveBeenCalledOnce();
+    expect(mocks.getMessage).not.toHaveBeenCalled();
     expect(mocks.downloadAttachment).toHaveBeenNthCalledWith(1, {
       attachmentId: attachments[0]?.id,
       maxBytes: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
@@ -165,12 +168,10 @@ describe("attachment archive route", () => {
     );
     expect(crossOrigin.status).toBe(403);
     expect(mocks.getCurrentConnection).not.toHaveBeenCalled();
-
     mocks.getCurrentConnection.mockRejectedValueOnce(
       new ApiError("Sign in required.", "AUTHENTICATION_REQUIRED", 401),
     );
     expect((await GET(request(), context())).status).toBe(401);
-
     expect(
       (await GET(request("", { headers: { range: "bytes=0-1" } }), context()))
         .status,
@@ -180,6 +181,7 @@ describe("attachment archive route", () => {
       400,
     );
     expect(mocks.getMailService).not.toHaveBeenCalled();
+    expect(mocks.getMessage).not.toHaveBeenCalled();
     expect(mocks.listMessageAttachments).not.toHaveBeenCalled();
   });
 
@@ -190,38 +192,34 @@ describe("attachment archive route", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "ATTACHMENT_ARCHIVE_EMPTY" },
     });
-
-    mocks.listMessageAttachments.mockResolvedValueOnce(
-      Array.from({ length: 101 }, (_, index) => ({
-        id: id.attachment(`many-${index}`),
-        mimeType: "text/plain",
-        name: `many-${index}.txt`,
-        size: 1,
-      })),
-    );
+    const excessive = Array.from({ length: 101 }, (_, index) => ({
+      ...attachments[0]!,
+      id: id.attachment(`many-${index}`),
+      name: `many-${index}.txt`,
+      size: 1,
+    }));
+    mocks.listMessageAttachments.mockResolvedValueOnce(excessive);
     response = await GET(request(), context());
     expect(response.status).toBe(413);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "ATTACHMENT_ARCHIVE_TOO_MANY_ENTRIES" },
     });
-
-    mocks.listMessageAttachments.mockResolvedValueOnce([
+    const oversized = [
       {
-        ...attachments[0],
+        ...attachments[0]!,
         size: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES + 1,
       },
-    ]);
+    ];
+    mocks.listMessageAttachments.mockResolvedValueOnce(oversized);
     response = await GET(request(), context());
     expect(response.status).toBe(413);
-
-    mocks.listMessageAttachments.mockResolvedValueOnce(
-      Array.from({ length: 5 }, (_, index) => ({
-        id: id.attachment(`large-${index}`),
-        mimeType: "application/octet-stream",
-        name: `large-${index}.bin`,
-        size: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
-      })),
-    );
+    const aggregate = Array.from({ length: 5 }, (_, index) => ({
+      ...attachments[0]!,
+      id: id.attachment(`large-${index}`),
+      name: `large-${index}.bin`,
+      size: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
+    }));
+    mocks.listMessageAttachments.mockResolvedValueOnce(aggregate);
     response = await GET(request(), context());
     expect(response.status).toBe(413);
     expect(mocks.downloadAttachment).not.toHaveBeenCalled();
@@ -233,7 +231,6 @@ describe("attachment archive route", () => {
     });
     expect((await GET(request(), context())).status).toBe(429);
     expect(mocks.getCurrentConnection).not.toHaveBeenCalled();
-
     mocks.assertSubjectRateLimit.mockImplementationOnce(() => {
       throw new ApiError("Slow down.", "RATE_LIMITED", 429);
     });
@@ -241,5 +238,4 @@ describe("attachment archive route", () => {
     expect(mocks.getCurrentConnection).toHaveBeenCalledOnce();
     expect(mocks.getMailService).not.toHaveBeenCalled();
   });
-
 });

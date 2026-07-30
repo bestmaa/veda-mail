@@ -30,6 +30,8 @@ const addressSchema = z
 const bodyPartSchema = z
   .object({
     blobId: z.string().min(1).max(1_024).nullable().optional(),
+    cid: z.string().max(4_096).nullable().optional(),
+    disposition: z.string().max(256).nullable().optional(),
     name: z.string().max(4_096).nullable().optional(),
     partId: z.string().max(1_024).nullable().optional(),
     size: z
@@ -46,6 +48,10 @@ const bodyPartSchema = z
 export const jmapAttachmentEmailSchema = z
   .object({
     attachments: z.array(bodyPartSchema).max(256).optional(),
+    bodyValues: z
+      .record(z.string(), z.object({ value: z.string() }).passthrough())
+      .optional(),
+    htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
     id: z.string().min(1).max(1_024),
   })
   .passthrough();

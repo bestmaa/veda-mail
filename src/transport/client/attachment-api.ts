@@ -6,6 +6,7 @@ import type {
   DraftId,
   MessageId,
 } from "@/domain/shared/brand";
+import { fetchInlineImage } from "@/transport/client/inline-image-api";
 
 interface ApiEnvelope<TData> {
   readonly data: TData;
@@ -72,6 +73,8 @@ const archivePreflightFailure = (status: number): string => {
 };
 
 export const attachmentApi = {
+  fetchInlineImage,
+
   async previewAttachment(
     href: string,
     signal?: AbortSignal,

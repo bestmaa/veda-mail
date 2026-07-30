@@ -28,7 +28,11 @@ export const listMockMessageAttachments = (
   if (!message) {
     throw new AttachmentDownloadError("not_found", "Message not found.");
   }
-  return structuredClone(message.attachments);
+  return structuredClone(
+    message.attachments.filter(
+      (attachment) => attachment.disposition === "attachment",
+    ),
+  );
 };
 
 export const downloadMockMessageAttachment = async (
@@ -44,14 +48,17 @@ export const downloadMockMessageAttachment = async (
   if (!message || !attachment) {
     throw new AttachmentDownloadError("not_found", "Attachment not found.");
   }
-  if (attachment.size > input.maxBytes) {
+  if (attachment.size !== null && attachment.size > input.maxBytes) {
     throw new AttachmentDownloadError(
       "size_limit_exceeded",
       "Attachment exceeds the download byte limit.",
     );
   }
   const content = contents.get(message.id)?.get(attachment.id);
-  if (!content || content.byteLength !== attachment.size) {
+  if (
+    !content ||
+    (attachment.size !== null && content.byteLength !== attachment.size)
+  ) {
     throw new AttachmentDownloadError(
       "provider_failure",
       "Attachment content is unavailable.",

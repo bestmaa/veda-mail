@@ -7,6 +7,12 @@ import {
 } from "html-to-text";
 import sanitizeHtml from "sanitize-html";
 
+import {
+  createInlineImageSanitizer,
+  INLINE_IMAGE_ATTRIBUTE,
+  type VerifiedInlineImage,
+} from "@/infrastructure/providers/sanitize-inline-mail-images";
+
 const MAX_MAIL_HTML_CHILD_NODES = 1_000;
 const MAX_MAIL_HTML_DEPTH = 32;
 const MAX_MAIL_HTML_TO_TEXT_CHARACTERS = 256_000;
@@ -32,6 +38,7 @@ const allowedTags = [
   "header",
   "hr",
   "i",
+  "img",
   "li",
   "main",
   "nav",
@@ -150,12 +157,23 @@ const mailHtmlToTextOptions: HtmlToTextOptions = {
 
 const convertMailHtmlToPlainText = compile(mailHtmlToTextOptions);
 
-export const sanitizeMailHtml = (value: string): string =>
-  sanitizeHtml(value, {
+interface SanitizeMailHtmlOptions {
+  readonly inlineImages?: readonly VerifiedInlineImage[];
+}
+
+export const sanitizeMailHtml = (
+  value: string,
+  options: SanitizeMailHtmlOptions = {},
+): string => {
+  const inlineImages = createInlineImageSanitizer(
+    options.inlineImages ?? [],
+  );
+  return sanitizeHtml(value, {
     allowProtocolRelative: false,
     allowedAttributes: {
       a: ["href", "rel", "target", "title"],
       blockquote: ["cite"],
+      img: ["alt", INLINE_IMAGE_ATTRIBUTE, "title"],
       td: ["colspan", "rowspan"],
       th: ["colspan", "rowspan"],
     },
@@ -192,8 +210,12 @@ export const sanitizeMailHtml = (value: string): string =>
           tagName,
         };
       },
+      img: inlineImages.transform,
     },
+    exclusiveFilter: (frame) =>
+      frame.tag === "img" && !inlineImages.isAllowed(frame.attribs),
   });
+};
 
 export const mailHtmlToPlainText = (value: string): string => {
   const boundedInput = value.slice(0, MAX_MAIL_HTML_TO_TEXT_CHARACTERS);

@@ -45,7 +45,8 @@ A roadmap item is complete only when all of the following are true:
 - [x] Stalwart JMAP and standard IMAP/SMTP adapters
 - [x] Inbox/mailbox list, message reader, simple search, compose, single reply
 - [x] Read/unread, star, archive, trash, restore, and move provider operations
-- [x] Sanitized HTML reader with scripts and remote images blocked
+- [x] Sanitized HTML reader with scripts and remote images blocked, plus bounded
+  verified inline CID raster images
 - [x] Docker/GHCR distribution, architecture checks, and automated tests
 
 ## M0 — Quality, security, and capability foundation
@@ -111,7 +112,16 @@ receiving-side interoperability remains the release verification gate.
 - [ ] Download all as a bounded, server-streamed, collision-safe ZIP
 - [ ] Safe attachment preview allowlist with isolated renderers (plain-text v1
   implemented; live JMAP/IMAP/ClamAV acceptance remains before completion)
-- [ ] Inline CID image handling without remote-content leakage
+- [x] Inline CID JPEG/PNG/WebP handling for JMAP and IMAP without
+  remote-content leakage, capped at eight rendered images per message and a
+  1,600-pixel output dimension
+- [x] Render supported sequential JMAP JPEG/PNG/WebP body parts that are not
+  referenced from an HTML `cid:` URL, with unsupported media as attachment
+  fallback
+- [x] Add bounded 429/503 retry with sanitized alt-text fallback for transient
+  inline-image preparation failures
+- [x] Add an explicit manual retry control for inline images that remain
+  unavailable after the bounded automatic retry
 - [ ] Open-source malware-scanner hook, quarantine state, timeouts, and archive
   expansion defenses
 

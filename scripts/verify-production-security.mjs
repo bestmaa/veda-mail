@@ -18,7 +18,7 @@ const HSTS = "max-age=31536000";
 const CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate";
 const RESIZE_HASH =
-  "'sha256-po6rY2z0eTgjMb/acZdOGxGy/BTpP0qaIHeVZH1/V9k='";
+  "'sha256-5Y5olpdfb9HF2ncx6UGgnO2gTM7kh1s0vsUA1qpyKYQ='";
 const STYLE_HASH =
   "'sha256-7gSOBhlM+GuUdVmICMTxZKqK2m/EgD0p3SqYCLlMl7Y='";
 
@@ -86,6 +86,13 @@ const assertDocumentHeaders = async (response) => {
   assert.ok(styles.includes(`'nonce-${nonce}'`));
   assert.ok(styles.includes(STYLE_HASH));
   assert.ok(!styles.includes("'unsafe-inline'"));
+  assert.deepEqual(directiveSources(policy, "frame-src"), ["blob:"]);
+  assert.deepEqual(directiveSources(policy, "child-src"), ["blob:"]);
+  assert.deepEqual(directiveSources(policy, "img-src"), [
+    "'self'",
+    "data:",
+    "blob:",
+  ]);
   return { nonce, policy };
 };
 
@@ -195,6 +202,35 @@ try {
     "sandbox; default-src 'none'",
   );
   assert.equal(attachment.headers.get("strict-transport-security"), HSTS);
+
+  const inlineImage = await fetch(
+    `${origin}/api/v1/mail/messages/fake/attachments/fake/inline-image`,
+    {
+      body: JSON.stringify({ renderer: "inline-image" }),
+      headers: {
+        "content-type": "application/json",
+        origin,
+      },
+      method: "POST",
+    },
+  );
+  assert.equal(inlineImage.status, 401);
+  assert.equal(inlineImage.headers.get("referrer-policy"), "no-referrer");
+  const inlinePolicy = inlineImage.headers.get("content-security-policy");
+  assert.equal(
+    inlinePolicy,
+    "sandbox; default-src 'none'; base-uri 'none'; form-action 'none'",
+  );
+  assert.doesNotMatch(inlinePolicy, /allow-same-origin/u);
+  assert.equal(
+    inlineImage.headers.get("cross-origin-resource-policy"),
+    "same-origin",
+  );
+  assert.equal(
+    inlineImage.headers.get("x-content-type-options"),
+    "nosniff",
+  );
+  assert.equal(inlineImage.headers.get("strict-transport-security"), HSTS);
   console.log("Production security-header smoke passed.");
 } catch (error) {
   if (serverOutput) console.error(serverOutput);

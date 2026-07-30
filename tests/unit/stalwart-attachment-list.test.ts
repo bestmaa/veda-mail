@@ -27,7 +27,7 @@ const config = {
 } as const;
 
 describe("Stalwart attachment metadata listing", () => {
-  it("requests only attachment metadata and returns opaque public IDs", async () => {
+  it("requests only presentation metadata and returns opaque file-card IDs", async () => {
     let calls: readonly JmapMethodCall[] = [];
     let requestSignal: AbortSignal | undefined;
     const controller = new AbortController();
@@ -49,12 +49,16 @@ describe("Stalwart attachment metadata listing", () => {
             attachments: [
               {
                 blobId: "private-provider-blob",
+                cid: "<report@example.test>",
+                disposition: "attachment",
                 name: "../../report.pdf",
+                partId: "report-part",
                 size: 4,
                 type: "application/pdf",
               },
               {
                 blobId: "private-provider-blob-2",
+                disposition: "inline",
                 name: "notes.txt",
                 size: 2,
                 type: "text/plain",
@@ -77,17 +81,32 @@ describe("Stalwart attachment metadata listing", () => {
 
     expect(calls[0]?.[1]).toEqual({
       accountId: "account",
+      bodyProperties: [
+        "partId",
+        "blobId",
+        "size",
+        "name",
+        "type",
+        "disposition",
+        "cid",
+      ],
+      fetchHTMLBodyValues: true,
       ids: ["message"],
-      properties: ["id", "attachments"],
+      maxBodyValueBytes: 2_000_000,
+      properties: ["id", "attachments", "htmlBody", "bodyValues"],
     });
     expect(requestSignal).toBe(controller.signal);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
+      disposition: "attachment",
       mimeType: "application/pdf",
       name: "_.._report.pdf",
       size: 4,
     });
+    expect(result[1]).toMatchObject({ disposition: "attachment" });
     expect(JSON.stringify(result)).not.toContain("private-provider-blob");
+    expect(JSON.stringify(result)).not.toContain("report-part");
+    expect(JSON.stringify(result)).not.toContain("report@example.test");
   });
 
   it("rejects mismatched account and message responses", async () => {
@@ -109,6 +128,17 @@ describe("Stalwart attachment metadata listing", () => {
     result = {
       accountId: "account",
       list: [{ attachments: [], id: "other-message" }],
+      state: "state",
+    };
+    await expect(
+      reader.listMessageAttachments({ messageId: id.message("message") }),
+    ).rejects.toMatchObject({ code: "not_found" });
+    result = {
+      accountId: "account",
+      list: [
+        { attachments: [], id: "message" },
+        { attachments: [], id: "unexpected-message" },
+      ],
       state: "state",
     };
     await expect(

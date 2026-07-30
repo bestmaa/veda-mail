@@ -19,7 +19,11 @@ export const createComposerAttachmentViewModel = (
 ): ComposerAttachmentViewModel => ({
   error: attachment.error,
   id: attachment.key,
-  meta: `${formatFileSize(attachment.size)} · ${attachmentStatus(attachment)}`,
+  meta: `${
+    attachment.size === null
+      ? "Unknown size"
+      : formatFileSize(attachment.size)
+  } · ${attachmentStatus(attachment)}`,
   name: attachment.name,
   onRemove: () => remove(attachment.key),
   ...(attachment.source

@@ -52,6 +52,7 @@ export const providerUploadReference = (
   if (!secret || secret.kind !== "upload" || secret.owner !== owner) {
     return undefined;
   }
+  if (handle.size === null) return undefined;
   return Object.freeze({
     blobId: secret.blobId,
     size: handle.size,

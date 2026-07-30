@@ -69,6 +69,7 @@ export interface ReaderViewModel {
   readonly isLoading: boolean;
   readonly isStarred: boolean;
   readonly isUnread: boolean;
+  readonly messageId: string;
   readonly subject: string;
   readonly to: string;
 }

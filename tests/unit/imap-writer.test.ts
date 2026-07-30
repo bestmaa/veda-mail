@@ -3,7 +3,9 @@ import { simpleParser } from "mailparser";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  append: vi.fn(),
   assertMessageBytes: vi.fn(async () => undefined),
+  mailboxOpen: vi.fn(),
   sendMail: vi.fn(
     async (message: {
       readonly envelope: {
@@ -28,23 +30,28 @@ vi.mock("@/infrastructure/providers/imap-smtp/imap-client", () => ({
   withImapClient: async (
     _config: unknown,
     task: (client: {
-      append: () => Promise<{ uid: number }>;
+      append: () => Promise<{
+        uid?: number;
+        uidValidity?: bigint;
+      }>;
       fetchOne: () => Promise<{
         envelope: { messageId: string };
         headers: Buffer;
+        uid: number;
       }>;
       list: () => Promise<readonly { path: string; specialUse: string }[]>;
-      mailboxOpen: () => Promise<void>;
+      mailboxOpen: () => Promise<{ exists: number; uidValidity: bigint }>;
     }) => Promise<unknown>,
   ) =>
     task({
-      append: async () => ({ uid: 1 }),
+      append: mocks.append,
       fetchOne: async () => ({
         envelope: { messageId: "<source@example.net>" },
         headers: Buffer.from("References: <parent@example.net>\r\n"),
+        uid: 1,
       }),
       list: async () => [{ path: "Sent", specialUse: "\\Sent" }],
-      mailboxOpen: async () => undefined,
+      mailboxOpen: mocks.mailboxOpen,
     }),
 }));
 
@@ -56,7 +63,10 @@ import type { ComposeInput } from "@/domain/mail/mail";
 import { OutgoingMessageSizeError } from "@/domain/mail/mail-errors";
 import { id } from "@/domain/shared/brand";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
-import { encodeMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
+import {
+  decodeScopedImapMessageId,
+  encodeScopedImapMessageId,
+} from "@/infrastructure/providers/imap-smtp/imap-codec";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 
 const config: ImapSmtpMemberConfig = {
@@ -86,24 +96,57 @@ const input: ComposeInput = {
 
 describe("IMAP/SMTP writer", () => {
   beforeEach(() => {
+    mocks.append.mockReset();
+    mocks.append.mockResolvedValue({
+      uid: 1,
+      uidValidity: BigInt(123),
+    });
     mocks.assertMessageBytes.mockClear();
+    mocks.mailboxOpen.mockReset();
+    mocks.mailboxOpen.mockResolvedValue({
+      exists: 1,
+      uidValidity: BigInt(123),
+    });
     mocks.sendMail.mockClear();
   });
 
+  it("uses selected UIDVALIDITY when APPEND resolves a UID without UIDPLUS metadata", async () => {
+    mocks.append.mockResolvedValueOnce({ uid: 9 });
+
+    const receipt = await writer().sendMessage(input);
+
+    expect(decodeScopedImapMessageId(config, receipt.id)).toMatchObject({
+      mailbox: "Sent",
+      uid: 9,
+      uidValidity: "123",
+    });
+    expect(mocks.mailboxOpen).toHaveBeenCalledWith("Sent");
+  });
   it("uses the authenticated sender domain in the Message-ID", async () => {
-    await writer().sendMessage(input);
+    const receipt = await writer().sendMessage(input);
 
     const submitted = mocks.sendMail.mock.calls[0]?.[0];
     if (!submitted) throw new Error("No message was submitted.");
     const parsed = await simpleParser(submitted.raw);
 
     expect(parsed.messageId).toMatch(/^<[0-9a-f-]{36}@example\.com>$/);
+    expect(decodeScopedImapMessageId(config, receipt.id)).toMatchObject({
+      mailbox: "Sent",
+      uid: 1,
+      uidValidity: "123",
+      version: 1,
+    });
   });
-
   it("sets provider-derived reply headers on the MIME message", async () => {
     await writer().sendMessage({
       ...input,
-      inReplyTo: id.message(encodeMessageId({ mailbox: "INBOX", uid: 1 })),
+      inReplyTo: id.message(
+        encodeScopedImapMessageId(config, {
+          mailbox: "INBOX",
+          uid: 1,
+          uidValidity: BigInt(123),
+        }),
+      ),
     });
     const submitted = mocks.sendMail.mock.calls[0]?.[0];
     if (!submitted) throw new Error("No message was submitted.");
@@ -153,7 +196,6 @@ describe("IMAP/SMTP writer", () => {
     expect(parsed.to).toBeUndefined();
     expect(parsed.bcc).toBeUndefined();
   });
-
   it("preserves verified attachment bytes in the outgoing MIME message", async () => {
     const content = Buffer.from([0, 1, 2, 3, 254, 255]);
     await writer().sendMessage({
@@ -181,7 +223,6 @@ describe("IMAP/SMTP writer", () => {
       submitted.raw.byteLength,
     );
   });
-
   it("stops before SMTP when the exact MIME message exceeds SIZE", async () => {
     const content = Buffer.from("provider-size-limit");
     mocks.assertMessageBytes.mockRejectedValueOnce(

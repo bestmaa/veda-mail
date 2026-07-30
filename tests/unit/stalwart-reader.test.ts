@@ -59,6 +59,15 @@ describe("Stalwart reader", () => {
 
     expect(result.textBody).toBe("Full body");
     expect(options).toMatchObject({
+      bodyProperties: [
+        "partId",
+        "blobId",
+        "size",
+        "name",
+        "type",
+        "disposition",
+        "cid",
+      ],
       fetchHTMLBodyValues: true,
       fetchTextBodyValues: true,
       maxBodyValueBytes: 2_000_000,
@@ -116,7 +125,9 @@ describe("Stalwart reader", () => {
       attachments: [
         {
           blobId: "provider-secret-blob",
+          disposition: "attachment",
           name: "report.pdf",
+          partId: "provider-secret-part",
           size: 4,
           type: "application/pdf",
         },
@@ -169,9 +180,20 @@ describe("Stalwart reader", () => {
       expect.objectContaining({
         accountId: "account",
         attachment: expect.objectContaining({
-          providerBlobId: "provider-secret-blob",
+          contentId: null,
+          metadata: expect.objectContaining({
+            disposition: "attachment",
+            id: attachment.id,
+          }),
         }),
       }),
+    );
+    const boundAttachment = downloadAttachment.mock.calls[0]?.[0]?.attachment;
+    expect(JSON.stringify(boundAttachment)).not.toContain(
+      "provider-secret-blob",
+    );
+    expect(JSON.stringify(boundAttachment)).not.toContain(
+      "provider-secret-part",
     );
 
     downloadAttachment.mockClear();

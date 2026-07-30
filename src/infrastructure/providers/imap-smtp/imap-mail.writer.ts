@@ -14,8 +14,9 @@ import type {
 import { id } from "@/domain/shared/brand";
 import {
   decodeMailboxId,
-  decodeMessageId,
-  encodeMessageId,
+  decodeScopedImapMessageId,
+  encodeScopedImapMessageId,
+  imapUidValidityMatches,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import {
@@ -84,6 +85,18 @@ const rolePath = (
   return mailbox.path;
 };
 
+const messageReference = (
+  config: ImapSmtpMemberConfig,
+  messageId: string,
+  notFoundMessage: string,
+) => {
+  try {
+    return decodeScopedImapMessageId(config, messageId);
+  } catch {
+    throw new Error(notFoundMessage);
+  }
+};
+
 export class ImapMailWriter {
   public constructor(
     private readonly config: ImapSmtpMemberConfig,
@@ -92,10 +105,17 @@ export class ImapMailWriter {
     ),
   ) {}
 
-  public mutateMessage(mutation: MessageMutation): Promise<void> {
+  public async mutateMessage(mutation: MessageMutation): Promise<void> {
+    const reference = messageReference(
+      this.config,
+      mutation.messageId,
+      "Message not found.",
+    );
     return withImapClient(this.config, async (client) => {
-      const reference = decodeMessageId(mutation.messageId);
-      await client.mailboxOpen(reference.mailbox);
+      const opened = await client.mailboxOpen(reference.mailbox);
+      if (!imapUidValidityMatches(reference, opened.uidValidity)) {
+        throw new Error("Message not found.");
+      }
       if (mutation.type === "set-read" || mutation.type === "set-starred") {
         const flag = mutation.type === "set-read" ? "\\Seen" : "\\Flagged";
         const update = mutation.value
@@ -162,15 +182,17 @@ export class ImapMailWriter {
       },
       raw,
     });
-    let sentReference = encodeMessageId({
-      mailbox: "Sent",
-      uid: Math.max(1, Date.now()),
-    });
+    let sentReference = String(receipt.messageId ?? mail.messageId);
     await withImapClient(this.config, async (client) => {
       const sent = rolePath(await client.list(), "sent");
+      const opened = await client.mailboxOpen(sent);
       const appended = await client.append(sent, raw, ["\\Seen"], new Date());
       if (appended && appended.uid) {
-        sentReference = encodeMessageId({ mailbox: sent, uid: appended.uid });
+        sentReference = encodeScopedImapMessageId(this.config, {
+          mailbox: sent,
+          uid: appended.uid,
+          uidValidity: appended.uidValidity ?? opened.uidValidity,
+        });
       }
     }).catch(() => undefined);
     return {
@@ -180,16 +202,22 @@ export class ImapMailWriter {
   }
 
   private getReplyContext(messageId: string): Promise<ReplyContext> {
+    const notFound = "The message being replied to was not found.";
+    const reference = messageReference(this.config, id.message(messageId), notFound);
     return withImapClient(this.config, async (client) => {
-      const reference = decodeMessageId(id.message(messageId));
-      await client.mailboxOpen(reference.mailbox);
+      const opened = await client.mailboxOpen(reference.mailbox, {
+        readOnly: true,
+      });
+      if (!imapUidValidityMatches(reference, opened.uidValidity)) {
+        throw new Error(notFound);
+      }
       const source = await client.fetchOne(
         reference.uid,
-        { envelope: true, headers: ["references"] },
+        { envelope: true, headers: ["references"], uid: true },
         { uid: true },
       );
-      if (!source) {
-        throw new Error("The message being replied to was not found.");
+      if (!source || source.uid !== reference.uid) {
+        throw new Error(notFound);
       }
       return {
         messageId: safeMessageId(source.envelope?.messageId),

@@ -77,7 +77,10 @@ export const downloadJmapAttachment = async (
   ) {
     throw invalidAttachmentInput();
   }
-  if (input.attachment.size > maxBytes) {
+  if (
+    input.attachment.size !== null &&
+    input.attachment.size > maxBytes
+  ) {
     throw new JmapAttachmentTransportError(
       "size_limit_exceeded",
       "The attachment exceeds the configured size limit.",
@@ -107,7 +110,9 @@ export const downloadJmapAttachment = async (
     input.signal,
   );
   const body = createJmapResponseStream(response, {
-    expectedBytes: input.attachment.size,
+    ...(input.attachment.size !== null
+      ? { expectedBytes: input.attachment.size }
+      : {}),
     maxBytes,
     ...(onFinalize ? { onFinalize } : {}),
     requireContentLength: true,

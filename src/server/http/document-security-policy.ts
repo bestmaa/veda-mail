@@ -51,7 +51,7 @@ export const buildDocumentSecurityPolicy = (
     `style-src ${styleSources.join(" ")}`,
     `style-src-elem ${styleSources.join(" ")}`,
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data:",
+    "img-src 'self' data: blob:",
     "font-src 'self'",
     "connect-src 'self'",
     "frame-src blob:",

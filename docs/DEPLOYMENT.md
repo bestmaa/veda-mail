@@ -74,7 +74,8 @@ use `docker compose up --build -d`.
 
 ClamAV is fail-closed and may take several minutes to download/load signatures
 on its first start. Until it is healthy, normal mail remains available but
-attachment uploads return a recoverable scanner-unavailable error. Budget at
+attachment uploads return a recoverable scanner-unavailable error and received
+inline CID images remain blocked instead of bypassing inspection. Budget at
 least 4 GB RAM for ClamAV because signature reloads temporarily use additional
 memory. Check both services:
 
@@ -147,6 +148,13 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
 - Permit explicit attachment-preview `POST` requests and responses up to
   1 MiB. Do not rewrite them to `GET`, prefetch them, cache them, buffer them
   beyond proxy necessities, or loosen their response CSP/content type.
+- Permit message-nested inline-image `POST` requests and WebP responses up to
+  5 MiB. Do not rewrite them to `GET`, prefetch them, cache or transform them,
+  buffer them, or loosen their no-store/nosniff/sandbox/CORP headers. Set the
+  per-request upstream/read timeout above the application's 90-second
+  preparation deadline plus its 30-second response deadline; 150 seconds is
+  suitable. These requests use the existing provider and private ClamAV
+  connections; no Stalwart change or new public port is required.
 - Stream attachment `GET` responses without proxy buffering or transformation;
   the application enforces a 50 MiB decoded-byte ceiling for one file and a
   200 MiB decoded-payload ceiling for Download all ZIPs. Set the proxy timeout
@@ -254,6 +262,13 @@ Verify:
   verdict; the response is no-store/no-transform `text/plain`, the frame has
   `sandbox="allow-same-origin"` without scripts, and SVG/HTML/PDF/image
   attachments show Download without raw Preview.
+- For both JMAP and IMAP, a known-clean JPEG/PNG/WebP referenced by a unique CID
+  renders from a `blob:` URL only after a clean scan and WebP normalization.
+  Also verify one JMAP sequential image body part without a CID renders through
+  the same path while unsupported media remains an attachment fallback.
+  Confirm remote images remain blocked, the message frame omits
+  `allow-same-origin`, and its CSP has `img-src blob:` with no child network
+  access. This requires no Stalwart configuration change.
 - An EICAR test file is rejected in a dedicated non-production mailbox test.
 - A container restart signs members out but preserves configuration.
 

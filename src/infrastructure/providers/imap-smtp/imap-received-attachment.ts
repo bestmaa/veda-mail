@@ -13,10 +13,13 @@ import {
 import {
   collectImapAttachmentParts,
   type ImapAttachmentPart,
+  isSupportedImapInlineRasterType,
 } from "@/infrastructure/providers/imap-smtp/imap-attachment-structure";
+import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import type { MessageStructureObject } from "imapflow";
 
 export interface ImapReceivedAttachment {
+  readonly contentId: string | null;
   readonly metadata: Attachment;
   readonly part: string;
 }
@@ -35,8 +38,14 @@ const assertUidValidity = (value: bigint): string => {
   return value.toString();
 };
 
-export const imapAttachmentAccountScope = (username: string): string =>
-  username.trim().toLowerCase();
+export const imapAttachmentAccountScope = (
+  config: Pick<ImapSmtpMemberConfig, "imapHost" | "imapPort" | "username">,
+): string =>
+  JSON.stringify([
+    config.imapHost.trim().toLowerCase(),
+    config.imapPort.trim(),
+    config.username,
+  ]);
 
 const bindAttachment = (
   input: BindImapAttachmentsInput,
@@ -48,9 +57,10 @@ const bindAttachment = (
   const mimeType = normalizeReceivedAttachmentMimeType(
     attachment.contentType,
   );
-  const size = attachment.size ?? 0;
   return {
+    contentId: attachment.contentId,
     metadata: {
+      disposition: attachment.disposition,
       id: createOpaqueReceivedAttachmentId("imap-smtp", [
         input.accountScope,
         input.messageId,
@@ -62,11 +72,11 @@ const bindAttachment = (
         attachment.transferEncoding,
         name,
         mimeType,
-        size,
+        attachment.size,
       ]),
       mimeType,
       name,
-      size,
+      size: null,
     },
     part: attachment.part,
   };
@@ -76,10 +86,28 @@ export const bindImapReceivedAttachments = (
   input: BindImapAttachmentsInput,
 ): readonly ImapReceivedAttachment[] => {
   const uidValidity = assertUidValidity(input.uidValidity);
-  return collectImapAttachmentParts(input.structure).map(
-    (attachment, ordinal) =>
-      bindAttachment(input, attachment, ordinal, uidValidity),
-  );
+  const attachments = collectImapAttachmentParts(input.structure);
+  const inlineContentIdCounts = new Map<string, number>();
+  for (const attachment of attachments) {
+    if (
+      attachment.contentId &&
+      isSupportedImapInlineRasterType(attachment.contentType)
+    ) {
+      inlineContentIdCounts.set(
+        attachment.contentId,
+        (inlineContentIdCounts.get(attachment.contentId) ?? 0) + 1,
+      );
+    }
+  }
+  return attachments.map((attachment, ordinal) => {
+    const effectiveAttachment =
+      attachment.disposition === "inline" &&
+      attachment.contentId &&
+      inlineContentIdCounts.get(attachment.contentId) !== 1
+        ? { ...attachment, disposition: "attachment" as const }
+        : attachment;
+    return bindAttachment(input, effectiveAttachment, ordinal, uidValidity);
+  });
 };
 
 export const findImapReceivedAttachment = (

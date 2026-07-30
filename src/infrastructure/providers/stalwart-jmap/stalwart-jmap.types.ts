@@ -2,6 +2,15 @@ export const JMAP_CORE = "urn:ietf:params:jmap:core";
 export const JMAP_MAIL = "urn:ietf:params:jmap:mail";
 export const JMAP_SUBMISSION = "urn:ietf:params:jmap:submission";
 export const STALWART_JMAP = "urn:stalwart:jmap";
+export const JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES = [
+  "partId",
+  "blobId",
+  "size",
+  "name",
+  "type",
+  "disposition",
+  "cid",
+] as const;
 
 export interface StalwartConfig {
   readonly authType: "basic" | "bearer";
@@ -57,6 +66,8 @@ export interface JmapAddress {
 
 export interface JmapBodyPart {
   readonly blobId?: string | null | undefined;
+  readonly cid?: string | null | undefined;
+  readonly disposition?: string | null | undefined;
   readonly name?: string | null | undefined;
   readonly partId?: string | null | undefined;
   readonly size?: number | null | undefined;

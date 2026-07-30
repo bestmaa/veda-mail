@@ -146,10 +146,61 @@ part, and keeps the IMAP connection alive only for that bounded stream. IMAP
 decoded length is not reliably known before transfer, so the HTTP response
 does not claim a `Content-Length`.
 
+## Inline CID image boundary
+
+Inline CID display is a derived rendering operation, not a relaxation of the
+raw attachment download boundary. Both adapters expose only normalized
+attachment metadata and opaque, message-scoped handles. JMAP binds supported
+JPEG/PNG/WebP Content-IDs and ordered `htmlBody` image parts to account-scoped
+blob references inside its adapter. A supported sequential image without a
+Content-ID receives an internal opaque-only marker; unsupported or ambiguous
+media remains an attachment fallback.
+IMAP derives the same candidates from authoritative `BODYSTRUCTURE` and binds
+the server-held MIME part, message UID, and `UIDVALIDITY` into its opaque
+identity.
+
+The server-side HTML sanitizer replaces only a unique, verified `cid:` match
+with an opaque data marker. It removes the original source URL along with
+remote, data, blob, unsupported, missing, or ambiguous image references. The
+sanitizer and frame loader share an eight-image-per-message limit.
+
+After the isolated frame loads, the browser submits an explicit authenticated,
+same-origin `POST` to
+`/api/v1/mail/messages/{messageId}/attachments/{attachmentId}/inline-image`.
+`GET`, `HEAD`, query parameters, byte ranges, and cross-origin requests are
+rejected. The browser sends no provider URL, JMAP blob ID, IMAP part locator,
+filename, MIME claim, or source bytes.
+
+The server re-resolves the current provider object under bounded download,
+rate, concurrency, and deadline controls. It collects at most 5 MiB, requires
+every byte to receive a clean ClamAV verdict, and requires the provider MIME
+hint to agree with magic-number detection for JPEG, PNG, or WebP. Strict
+container checks precede Sharp/libvips decoding. The decoder accepts only one
+page within 4,096 pixels per dimension and 16 megapixels, applies orientation,
+fits the output within 1,600 by 1,600 pixels without enlargement, strips
+metadata, and emits WebP.
+
+The response is private, no-store, `nosniff`, same-origin, range-disabled WebP.
+The parent verifies its exact type and bounded length, transfers the Blob
+through `postMessage` with a render-specific token, and creates the object URL
+inside the child. The message frame has no `allow-same-origin`; its CSP allows
+only `blob:` image sources and the reviewed hashed resize/message helper, with
+all child network connections blocked. No Stalwart configuration change or
+new provider endpoint is required.
+
+Residual boundaries are explicit. Sharp/libvips is a native decoder running
+inside the Veda Mail process under byte, pixel, dimension, time, and concurrency
+limits; it is not process-isolated. Eligible transient busy or unavailable
+preparation responses receive at most two abort-aware automatic retries.
+Remaining failures become sanitized alt text; an accessible parent-side control
+retries only failed opaque attachment IDs and remains bounded and fail-closed.
+
 Download all uses the message-scoped static route
 `/api/v1/mail/messages/{messageId}/attachments/archive`. The browser supplies
-only the opaque message ID. A metadata-only gateway call authoritatively lists
-the current attachments, then the existing per-attachment gateway operation
+only the opaque message ID. A signal-aware gateway call authoritatively
+classifies the current visible/downloadable attachments and may inspect bounded
+message presentation data to apply the same sanitizer and inline-image render
+cap as the reader. The existing per-attachment gateway operation then
 revalidates and opens each source sequentially.
 
 The server writes a classic ZIP stream in STORE mode with CRC-32 data

@@ -9,8 +9,8 @@ import type {
 } from "@/domain/mail/mail";
 import { createBoundedAttachmentDownloadStream } from "@/infrastructure/providers/attachment-download-stream";
 import {
-  decodeMessageId,
-  encodeMessageId,
+  decodeScopedImapMessageId,
+  imapUidValidityMatches,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import {
   closeImapClient,
@@ -82,12 +82,11 @@ const assertDownloadInput = (input: AttachmentDownloadInput): void => {
 };
 
 const decodeCanonicalMessageId = (
+  config: ImapSmtpMemberConfig,
   messageId: AttachmentDownloadInput["messageId"],
 ) => {
   try {
-    const reference = decodeMessageId(messageId);
-    if (encodeMessageId(reference) !== messageId) throw notFound();
-    return reference;
+    return decodeScopedImapMessageId(config, messageId);
   } catch {
     throw notFound();
   }
@@ -98,7 +97,7 @@ export const downloadImapAttachment = async (
   input: AttachmentDownloadInput,
 ): Promise<AttachmentDownload> => {
   assertDownloadInput(input);
-  const reference = decodeCanonicalMessageId(input.messageId);
+  const reference = decodeCanonicalMessageId(config, input.messageId);
   const client = await connectImapClient(config, input.signal).catch(
     (error: unknown) => {
       throw mapProviderError(error, input.signal);
@@ -120,6 +119,9 @@ export const downloadImapAttachment = async (
       readOnly: true,
     });
     if (input.signal?.aborted) throw aborted();
+    if (!imapUidValidityMatches(reference, opened.uidValidity)) {
+      throw notFound();
+    }
     const message = await client.fetchOne(
       reference.uid,
       { bodyStructure: true, uid: true },
@@ -134,7 +136,7 @@ export const downloadImapAttachment = async (
     }
     const attachment = findImapReceivedAttachment(
       {
-        accountScope: imapAttachmentAccountScope(config.username),
+        accountScope: imapAttachmentAccountScope(config),
         messageId: input.messageId,
         structure: message.bodyStructure,
         uidValidity: opened.uidValidity,

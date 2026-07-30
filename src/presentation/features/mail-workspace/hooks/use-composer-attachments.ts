@@ -7,6 +7,7 @@ import {
   useState,
   type ChangeEventHandler,
 } from "react";
+
 import type { UploadedAttachment } from "@/domain/mail/mail";
 import { id, type DraftId } from "@/domain/shared/brand";
 import {
@@ -22,7 +23,6 @@ import { mailApi } from "@/transport/client/api-client";
 
 const MAX_ATTACHMENT_COUNT = 10;
 const MAX_TOTAL_BYTES = 18 * 1024 * 1024;
-
 const freshDraftId = (): DraftId => id.draft(crypto.randomUUID());
 const removeUploadedAttachment = (
   draftId: DraftId,
@@ -43,7 +43,7 @@ export const useComposerAttachments = (
   const ready = attachments.flatMap((item) =>
     item.state === "ready" && item.upload ? [item.upload] : [],
   );
-  const totalBytes = attachments.reduce((total, item) => total + item.size, 0);
+  const totalBytes = attachments.reduce((total, item) => total + (item.size ?? 0), 0);
   const maxFileBytes = Math.min(capability.maximum ?? 0, MAX_TOTAL_BYTES);
 
   const expireReady = useCallback(() => {

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import type { MessageSummary } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
-import { mapParsedMessage } from "@/infrastructure/providers/imap-smtp/imap-mail.mapper";
+import {
+  mapImapSummary,
+  mapParsedMessage,
+} from "@/infrastructure/providers/imap-smtp/imap-mail.mapper";
 
 const summary: MessageSummary = {
   from: [{ email: "sender@example.com", name: "Sender" }],
@@ -18,6 +21,14 @@ const summary: MessageSummary = {
   subject: "Security fixture",
   threadId: id.thread("thread-1"),
   to: [{ email: "member@example.com", name: null }],
+};
+const identity = {
+  config: {
+    imapHost: "imap.example.com",
+    imapPort: "993",
+    username: "member@example.com",
+  },
+  uidValidity: BigInt(123),
 };
 
 describe("IMAP MIME mapping", () => {
@@ -59,10 +70,15 @@ describe("IMAP MIME mapping", () => {
 
   it("uses only provider-verified attachment metadata", () => {
     const verified = {
-      id: id.attachment("opaque-verified-id"),
-      mimeType: "application/pdf",
-      name: "verified.pdf",
-      size: 42,
+      contentId: null,
+      metadata: {
+        disposition: "attachment" as const,
+        id: id.attachment("opaque-verified-id"),
+        mimeType: "application/pdf",
+        name: "verified.pdf",
+        size: null,
+      },
+      part: "2",
     };
     const detail = mapParsedMessage(
       summary,
@@ -81,9 +97,60 @@ describe("IMAP MIME mapping", () => {
       [verified],
     );
 
-    expect(detail.attachments).toEqual([verified]);
+    expect(detail.attachments).toEqual([verified.metadata]);
     expect(JSON.stringify(detail.attachments)).not.toContain(
       "attacker-controlled-cid",
     );
+  });
+
+  it("keeps an unreferenced inline part visible as an attachment fallback", () => {
+    const unreferenced = {
+      contentId: "unreferenced@example.test",
+      metadata: {
+        disposition: "inline" as const,
+        id: id.attachment("opaque-unreferenced-id"),
+        mimeType: "image/png",
+        name: "unreferenced.png",
+        size: null,
+      },
+      part: "2",
+    };
+    const detail = mapParsedMessage(
+      summary,
+      {
+        attachments: [],
+        html: "<p>No inline image reference</p>",
+        text: "No inline image reference",
+      } as unknown as ParsedMail,
+      [unreferenced],
+    );
+
+    expect(detail.attachments).toEqual([
+      { ...unreferenced.metadata, disposition: "attachment" },
+    ]);
+  });
+
+  it("derives the summary paperclip from authoritative attachment parts", () => {
+    const named = mapImapSummary("INBOX", {
+      bodyStructure: {
+        parameters: { name: "report.pdf" },
+        part: "1",
+        type: "application/pdf",
+      },
+      seq: 1,
+      uid: 1,
+    }, identity);
+    const cidOnlyInline = mapImapSummary("INBOX", {
+      bodyStructure: {
+        id: "<logo@example.test>",
+        part: "1",
+        type: "image/png",
+      },
+      seq: 2,
+      uid: 2,
+    }, identity);
+
+    expect(named.hasAttachment).toBe(true);
+    expect(cidOnlyInline.hasAttachment).toBe(false);
   });
 });

@@ -10,8 +10,7 @@ import type {
   MessagePage,
   ReplyContext,
 } from "@/domain/mail/mail";
-import type { MessageId } from "@/domain/shared/brand";
-import { id } from "@/domain/shared/brand";
+import { id, type MessageId } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import {
   downloadStalwartMessageAttachment,
@@ -32,6 +31,7 @@ import {
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
 import {
   JMAP_MAIL,
+  JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
   type StalwartConfig,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
@@ -48,7 +48,6 @@ const summaryProperties = [
   "preview",
   "hasAttachment",
 ] as const;
-
 const detailProperties = [
   ...summaryProperties,
   "cc",
@@ -156,6 +155,7 @@ export class StalwartMailReader {
           "Email/get",
           {
             accountId,
+            bodyProperties: JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
             fetchHTMLBodyValues: true,
             fetchTextBodyValues: true,
             ids: [messageId],
@@ -174,9 +174,8 @@ export class StalwartMailReader {
       jmapListResultSchema(jmapEmailSchema),
     );
     const email = result.list[0];
-    if (!email) {
+    if (result.accountId !== accountId || email?.id !== messageId)
       throw new Error("Message not found.");
-    }
     return mapMessageDetail(email, accountId);
   }
 
@@ -231,7 +230,8 @@ export class StalwartMailReader {
       jmapListResultSchema(jmapReplyContextSchema),
     );
     const email = result.list[0];
-    if (!email) throw new Error("The message being replied to was not found.");
+    if (result.accountId !== accountId || email?.id !== messageId)
+      throw new Error("The message being replied to was not found.");
     return {
       messageId: email.messageId?.[0] ?? null,
       references: email.references ?? [],

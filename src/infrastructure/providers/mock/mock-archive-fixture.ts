@@ -45,6 +45,7 @@ export const createMockArchiveContents = (): Map<
 
 export const createMockArchiveMessage = (): MessageDetail => ({
   attachments: mockArchiveAttachments.map((attachment) => ({
+    disposition: "attachment",
     id: attachment.id,
     mimeType: attachment.mimeType,
     name: attachment.name,

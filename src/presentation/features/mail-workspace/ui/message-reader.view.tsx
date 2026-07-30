@@ -133,7 +133,10 @@ export const MessageReaderView = ({
 
           <div className="mail-body py-7 text-[15px] leading-7 text-slate-700">
             {reader.htmlBody ? (
-              <MessageFrameConnector sanitizedHtml={reader.htmlBody} />
+              <MessageFrameConnector
+                messageId={reader.messageId}
+                sanitizedHtml={reader.htmlBody}
+              />
             ) : (
               <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                 {reader.body}

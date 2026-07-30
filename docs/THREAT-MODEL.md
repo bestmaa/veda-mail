@@ -76,8 +76,8 @@ and multiple replicas do not share sessions or rate-limit state.
 - Inline script attributes, objects, media, workers, external connections, and
   framing ancestors are blocked. Nonced or reviewed-hash scripts, same-origin
   styles/fonts/API calls, same-origin or data images, sandboxed `srcdoc`, and
-  reserved blob preview frames cover the current client and the reviewed
-  pending attachment-preview release.
+  reviewed blob-backed attachment and inline-image frames cover the current
+  client.
 - React-controlled branding and frame sizing still require inline style
   attributes. This exception is isolated with `style-src-attr`; executable
   inline script remains disallowed. Development alone permits eval and inline
@@ -110,13 +110,38 @@ private management networks.
 - HTML is sanitized on the server and rendered in a sandboxed frame.
 - Scripts, event handlers, remote images, active embeds, and unsafe URLs are
   removed or blocked.
+- Unique provider-verified JPEG, PNG, or WebP Content-IDs may become opaque
+  inline-image markers. Eligible JMAP image body parts declared in the ordered
+  `htmlBody` structure may also use a server-generated synthetic marker when
+  they have no Content-ID; the marker is bound to the opaque attachment ID, and
+  ambiguous or explicitly attached parts fail closed as visible attachments.
+  The sanitizer removes original `cid:` URLs; remote, data, blob, unsupported,
+  missing, and ambiguous images do not become renderable markers. Rendering is
+  capped at eight images per message.
+- Each marker is resolved through an authenticated, same-origin, POST-only
+  route carrying opaque message and attachment IDs. JMAP blob IDs and IMAP
+  MIME-part locators remain inside their adapters.
+- Every source byte, up to 5 MiB, must receive a complete clean ClamAV verdict.
+  The declared supported type must match magic-number detection, strict
+  container validation, and one-page Sharp decoding within 4,096 pixels per
+  dimension and 16 megapixels. The output is metadata-free WebP fitted within
+  1,600 by 1,600 pixels.
+- The frame receives only the verified WebP Blob through a render-scoped
+  `postMessage`. Its sandbox omits `allow-same-origin`, and its child CSP permits
+  only `blob:` image sources plus the reviewed helper script and styles; child
+  network connections remain blocked.
 - Safe links are forced into isolated `noopener`/`noreferrer` tabs so hostile
   content cannot replace the trusted message frame.
 - Plain-text content is rendered as text with whitespace preserved.
 
 Residual risk: every sanitizer change must continue to pass the shared
-malicious-MIME and mutation-XSS corpus. Remote-content opt-in and inline CID
-handling are not implemented.
+malicious-MIME and mutation-XSS corpus. Sharp/libvips is a native decoder in the
+application process; byte, pixel, dimension, timeout, and concurrency limits
+reduce exposure but do not provide process isolation. Eligible transient
+429/503 inline-image responses receive at most two abort-aware automatic
+retries. Remaining failures become sanitized alt text; an accessible
+parent-side manual retry control retries only failed opaque attachment IDs and
+remains bounded and fail-closed. Remote-content opt-in remains unimplemented.
 
 ### Composing, replying, and forwarding
 
@@ -201,11 +226,13 @@ limiter and encrypted shared session repository.
   cancellation, and provider timeouts. JMAP requires exact identity-encoded
   length; IMAP revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE`
   before resolving and streaming the server-held MIME part.
-- Download all accepts only an opaque message ID, performs an authoritative
-  metadata-only provider lookup, and opens at most one attachment source at a
-  time. Generated ZIPs use STORE mode, CRC-32, fixed metadata, regular root
-  files, and collision-safe sanitized names; they contain no source paths,
-  comments, symlinks, device entries, or provider identifiers.
+- Download all accepts only an opaque message ID and performs an authoritative,
+  signal-aware provider classification that may inspect bounded message
+  presentation data to match the reader's sanitizer and inline-image render
+  cap. It opens at most one downloadable attachment source at a time. Generated
+  ZIPs use STORE mode, CRC-32, fixed metadata, regular root files, and
+  collision-safe sanitized names; they contain no source paths, comments,
+  symlinks, device entries, or provider identifiers.
 - Archive generation allows at most 100 entries, 50 MiB per entry, 200 MiB
   actual decoded payload, 32 zero-progress chunks per entry, and ten minutes.
   Dedicated four-global/one-member concurrency also consumes the shared
@@ -245,11 +272,11 @@ limiter and encrypted shared session repository.
 Residual risk: received attachments are hostile provider content. Direct and
 Download all responses are transport-only and are not scanned, so members
 should scan unexpected downloads before opening them. Forwarding and the
-bounded plain-text preview do pass through ClamAV, but a clean signature verdict
-is defense-in-depth rather than proof of safety. Complex preview formats,
-inline CID, and byte ranges remain unavailable. Download all has an explicit
-no-expansion policy; it is not a malware verdict. ClamAV must have enough
-memory for signature reloads; operator monitoring is required.
+bounded plain-text preview and inline CID render path do pass through ClamAV,
+but a clean signature verdict is defense-in-depth rather than proof of safety.
+Complex preview formats and byte ranges remain unavailable. Download all has
+an explicit no-expansion policy; it is not a malware verdict. ClamAV must have
+enough memory for signature reloads; operator monitoring is required.
 
 ### Rules and forwarding
 

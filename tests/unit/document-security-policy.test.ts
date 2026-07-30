@@ -11,6 +11,14 @@ import {
 
 const fixedNonce = "AAECAwQFBgcICQoLDA0ODw";
 
+const directiveSources = (policy: string, name: string): string[] =>
+  policy
+    .split(";")
+    .map((directive) => directive.trim())
+    .find((directive) => directive.startsWith(`${name} `))
+    ?.split(/\s+/u)
+    .slice(1) ?? [];
+
 describe("document Content Security Policy", () => {
   it("creates unique CSP-safe 128-bit nonces", () => {
     const nonces = new Set(
@@ -38,8 +46,13 @@ describe("document Content Security Policy", () => {
     );
     expect(policy).toContain("script-src-attr 'none'");
     expect(policy).toContain("style-src-attr 'unsafe-inline'");
-    expect(policy).toContain("frame-src blob:");
-    expect(policy).toContain("child-src blob:");
+    expect(directiveSources(policy, "frame-src")).toEqual(["blob:"]);
+    expect(directiveSources(policy, "child-src")).toEqual(["blob:"]);
+    expect(directiveSources(policy, "img-src")).toEqual([
+      "'self'",
+      "data:",
+      "blob:",
+    ]);
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).toContain("upgrade-insecure-requests");
     expect(policy).not.toContain("'unsafe-eval'");
