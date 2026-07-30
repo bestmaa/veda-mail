@@ -150,8 +150,12 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
   above the application's exact ten-minute deadline (eleven or twelve minutes
   is suitable). Do not add range handling: Veda Mail intentionally rejects
   partial attachment requests.
-- Do not cache `/api/*`, `/setup`, or `/admin`.
-- Add HSTS only after confirming HTTPS works for the complete domain.
+- Do not cache any application document or `/api/*`, including `/`, `/setup`,
+  and `/admin`; preserve Veda Mail's private no-store response policy.
+- Preserve the application's CSP and production
+  `Strict-Transport-Security: max-age=31536000` headers without adding
+  duplicates. Veda Mail intentionally omits `includeSubDomains` and preload;
+  add either only after confirming HTTPS works for every affected subdomain.
 - Do not rewrite application cookie attributes.
 
 Production cookies are Secure, HttpOnly, SameSite=Lax, and scoped to the

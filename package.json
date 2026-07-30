@@ -44,6 +44,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:production-security": "node scripts/verify-production-security.mjs",
     "test:watch": "vitest",
     "check:lines": "node scripts/check-line-limits.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
