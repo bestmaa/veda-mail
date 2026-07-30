@@ -31,7 +31,7 @@ export const useComposerFocusTrap = (isOpen: boolean, onEscape: () => void) => {
       );
       const focusable = [
         ...(dialog?.querySelectorAll<HTMLElement>(
-          "button:not(:disabled), input:not(:disabled), textarea:not(:disabled)",
+          "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']",
         ) ?? []),
       ];
       const first = focusable[0];

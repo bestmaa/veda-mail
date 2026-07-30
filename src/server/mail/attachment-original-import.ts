@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import type {
   AttachmentId,
@@ -43,6 +44,24 @@ export const importOriginalAttachment = async (
       getMailService(input.connection),
       deadline.signal,
     );
+    const originals = await waitForAttachmentImport(
+      mail.listMessageAttachments({
+        messageId: input.messageId,
+        signal: deadline.signal,
+      }),
+      deadline.signal,
+    );
+    const authorized = originals.some(
+      (attachment) =>
+        attachment.disposition === "attachment" &&
+        attachment.id === input.attachmentId,
+    );
+    if (!authorized) {
+      throw new AttachmentDownloadError(
+        "not_found",
+        "The attachment was not found.",
+      );
+    }
     return await importReceivedAttachment(
       {
         attachmentId: input.attachmentId,

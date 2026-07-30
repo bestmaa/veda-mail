@@ -1,12 +1,15 @@
 import { Paperclip, RefreshCw, Send, Trash2, X } from "lucide-react";
 
-import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import type { ComposerViewModel, DeliveryNoticeViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerAttachmentListView } from "@/presentation/features/mail-workspace/ui/composer-attachment-list.view";
+import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
 
 export const ComposerView = ({
   composer,
+  deliveryNotice,
 }: {
   readonly composer: ComposerViewModel;
+  readonly deliveryNotice: DeliveryNoticeViewModel | null;
 }) =>
   composer.isOpen ? (
     <>
@@ -30,8 +33,11 @@ export const ComposerView = ({
           </button>
         </div>
 
+        {deliveryNotice ? (
+          <PartialDeliveryNoticeView notice={deliveryNotice} placement="composer" />
+        ) : null}
         <form
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           onSubmit={composer.onSubmit}
         >
           <div className="flex min-h-12 items-center border-b border-slate-100 px-4">

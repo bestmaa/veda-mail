@@ -5,6 +5,7 @@ import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jma
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import {
   JMAP_MAIL,
+  MAX_JMAP_BODY_VALUE_BYTES,
   type JmapEmail,
   type JmapMethodCall,
   type JmapSession,
@@ -70,7 +71,7 @@ describe("Stalwart reader", () => {
       ],
       fetchHTMLBodyValues: true,
       fetchTextBodyValues: true,
-      maxBodyValueBytes: 2_000_000,
+      maxBodyValueBytes: MAX_JMAP_BODY_VALUE_BYTES,
     });
   });
 

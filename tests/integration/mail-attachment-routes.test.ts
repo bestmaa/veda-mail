@@ -10,10 +10,7 @@ const mocks = vi.hoisted(() => {
     };
   });
   return {
-    connection: vi.fn(async () => ({
-      id: "attachment-connection",
-      providerId: "mock",
-    })),
+    connection: vi.fn(),
     getMaxAttachmentBytes,
     mailService: vi.fn(async () => ({ getMaxAttachmentBytes, sendMessage })),
     sendMessage,
@@ -33,8 +30,11 @@ import {
   PUT as upload,
 } from "@/app/api/v1/mail/attachments/[attachmentId]/route";
 import { POST as send } from "@/app/api/v1/mail/send/route";
-
+import type { ProviderConnection } from "@/domain/provider/provider";
+import { id } from "@/domain/shared/brand";
+import { connectionStore } from "@/server/connections/connection-store";
 const origin = "https://mail.example.com";
+let activeConnection: ProviderConnection;
 const draftId = () => crypto.randomUUID();
 const route = (attachmentId: string) => ({
   params: Promise.resolve({ attachmentId }),
@@ -93,7 +93,17 @@ const uploadAttachment = (
   );
 
 beforeEach(() => {
-  mocks.connection.mockClear();
+  connectionStore.clearAll();
+  activeConnection = connectionStore.create(
+    {
+      config: {},
+      displayName: "Attachment routes",
+      providerId: id.provider("mock"),
+    },
+    "attachment-routes-revision",
+  );
+  mocks.connection.mockReset();
+  mocks.connection.mockResolvedValue(activeConnection);
   mocks.getMaxAttachmentBytes.mockReset();
   mocks.getMaxAttachmentBytes.mockResolvedValue(18 * 1024 * 1024);
   mocks.mailService.mockClear();

@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+
+import {
+  verifyAllRejectedDraft,
+  verifyPartialDeliveryNotice,
+} from "./support/compose-delivery-scenarios";
+import { verifyDeliveryNoticePersistence } from "./support/delivery-notice-persistence-scenario";
 import {
   expectNoSeriousAccessibilityViolations,
   useInstalledMailbox,
@@ -79,3 +85,18 @@ test("traps focus, locks a pending send, and retains a failed draft", async ({
   await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeEnabled();
   await expectNoSeriousAccessibilityViolations(page);
 });
+
+test(
+  "closes a partially delivered draft and warns against duplicate sends",
+  verifyPartialDeliveryNotice,
+);
+
+test(
+  "keeps an all-rejected draft and ready attachment available for correction",
+  verifyAllRejectedDraft,
+);
+
+test(
+  "hydrates, deduplicates, and restores a failed persisted dismissal",
+  verifyDeliveryNoticePersistence,
+);

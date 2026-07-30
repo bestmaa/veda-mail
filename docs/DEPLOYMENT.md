@@ -15,16 +15,24 @@ The deployment preflight fails closed on other architectures instead of
 silently disabling malware scanning.
 
 ```bash
-docker pull ghcr.io/bestmaa/veda-mail:latest
+docker pull ghcr.io/bestmaa/veda-mail:sha-<full-main-commit>
 ```
 
 The `latest` tag follows protected `main`. Each release also publishes one
-immutable `sha-<full-commit>` tag. Pin the resulting OCI index digest in
-production:
+immutable `sha-<full-main-commit>` tag. Treat `latest` as a discovery alias,
+not a production pin. Verify the immutable tag's OCI index and both runtime
+manifests, then pin the index digest in portable Compose deployments:
 
 ```dotenv
-VEDA_MAIL_IMAGE=ghcr.io/bestmaa/veda-mail:latest
+VEDA_MAIL_IMAGE=ghcr.io/bestmaa/veda-mail:sha-<full-main-commit>@sha256:<verified-index-digest>
 ```
+
+An architecture-fixed deployment may instead pin the verified runtime child
+digest, for example
+`ghcr.io/bestmaa/veda-mail@sha256:<verified-amd64-child-digest>`. The OCI index
+digest and its amd64/arm64 child digests are different values; record both and
+verify the selected child's `org.opencontainers.image.revision` label matches
+the full protected-main commit before deployment.
 
 Published images include an SBOM, OCI provenance, and a GitHub artifact
 attestation. Both platform variants are scanned at their exact candidate
@@ -163,6 +171,9 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
   partial attachment requests.
 - Do not cache any application document or `/api/*`, including `/`, `/setup`,
   and `/admin`; preserve Veda Mail's private no-store response policy.
+- Do not automatically retry `POST /api/v1/mail/send` with a newly generated
+  body or draft key. The browser reuses one stable draft UUID and Veda Mail
+  replays its terminal receipt; proxy retries must preserve the request body.
 - Preserve the application's CSP and production
   `Strict-Transport-Security: max-age=31536000` headers without adding
   duplicates. Veda Mail intentionally omits `includeSubDomains` and preload;
@@ -231,8 +242,9 @@ official init process currently starts as root before dropping to ClamAV
 service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
-Keep one replica. Member sessions and rate limits are process-local. Scaling
-requires a shared encrypted session repository and distributed limiter.
+Keep one replica. Member sessions, rate limits, delivery notices, and the send
+idempotency ledger are process-local. Scaling requires a shared encrypted
+session repository, distributed limiter, and atomic shared send ledger.
 
 ## Post-deployment checks
 

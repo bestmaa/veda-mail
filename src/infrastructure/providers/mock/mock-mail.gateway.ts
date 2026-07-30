@@ -218,7 +218,12 @@ export class MockMailGateway implements MailGateway {
       threadId: id.thread(`thread-${messageId}`),
       to: input.to,
     });
-    return { id: messageId, submittedAt: now };
+    return {
+      deliveryStatus: "accepted" as const,
+      id: messageId,
+      rejectedRecipients: [],
+      submittedAt: now,
+    };
   }
 
   public async testConnection(): Promise<void> {}

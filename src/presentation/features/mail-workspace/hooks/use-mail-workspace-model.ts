@@ -8,6 +8,7 @@ import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/u
 import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/use-mail-data-model";
 import { useMemberSessionModel } from "@/presentation/features/mail-workspace/hooks/use-member-session-model";
 import { useMobileNavigationModel } from "@/presentation/features/mail-workspace/hooks/use-mobile-navigation-model";
+import { usePartialDeliveryNotice } from "@/presentation/features/mail-workspace/hooks/use-partial-delivery-notice";
 import { useAttachmentArchiveDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-archive-download";
 import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hooks/use-attachment-preview";
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
@@ -38,7 +39,8 @@ export const useMailWorkspaceModel = ({
   signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
   const mail = useMailDataModel();
-  const composer = useComposerModel(mail.refresh, maxAttachmentBytes);
+  const partialDelivery = usePartialDeliveryNotice(mail.refresh);
+  const composer = useComposerModel(partialDelivery.onSent, maxAttachmentBytes);
   const navigation = useMobileNavigationModel();
   const archiveDownload = useAttachmentArchiveDownload();
   const attachmentPreview = useAttachmentPreview();
@@ -200,6 +202,7 @@ export const useMailWorkspaceModel = ({
     onSearchSubmit: mail.onSearchSubmit,
     onToggleRead: mail.toggleRead,
     onToggleStar: mail.toggleStar,
+    deliveryNotice: partialDelivery.notice,
     reader,
     searchInput: mail.onSearchInput,
     searchValue: mail.searchValue,

@@ -11,25 +11,37 @@ useInstalledMailbox();
 const firstUploadId = "a".repeat(32);
 const secondUploadId = "b".repeat(32);
 const thirdUploadId = "c".repeat(32);
+const inlineUploadId = "d".repeat(32);
+const inlineSourceAttachment = {
+  disposition: "inline",
+  id: "forward-inline-cid",
+  mimeType: "image/png",
+  name: "embedded-logo.png",
+  size: 23,
+};
 const sourceAttachments = [
   {
+    disposition: "attachment",
     id: "forward-source-one",
     mimeType: "application/pdf",
     name: "roadmap.pdf",
     size: 51,
   },
   {
+    disposition: "attachment",
     id: "forward-source-two",
     mimeType: "text/plain",
     name: "notes.txt",
     size: 19,
   },
   {
+    disposition: "attachment",
     id: "forward-source-three",
     mimeType: "image/png",
     name: "diagram.png",
     size: 27,
   },
+  inlineSourceAttachment,
 ];
 
 const openForwardSource = async (page: Page) => {
@@ -114,7 +126,9 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
           ? firstUploadId
           : attachmentId === sourceAttachments[1]?.id
             ? secondUploadId
-            : thirdUploadId;
+            : attachmentId === sourceAttachments[2]?.id
+              ? thirdUploadId
+              : inlineUploadId;
       await requestRoute.fulfill({
         json: {
           data: {
@@ -132,12 +146,16 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
 
   const dialog = await openForwardSource(page);
   await expect(dialog.getByText("Copying and scanning…")).toHaveCount(3);
+  await expect(dialog.getByText(inlineSourceAttachment.name)).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeDisabled();
   await expect.poll(() => imports.length).toBe(1);
   expect(Object.keys(imports[0]?.body ?? {})).toEqual(["draftId"]);
 
   releaseFirst();
   await expect.poll(() => imports.length).toBe(3);
+  expect(imports.map(({ attachmentId }) => attachmentId)).not.toContain(
+    inlineSourceAttachment.id,
+  );
   expect(importsOverlapped).toBe(false);
   await expect(
     dialog.getByText(
@@ -206,6 +224,7 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
     secondUploadId,
     thirdUploadId,
   ]);
+  expect(sends[0]?.["attachmentIds"]).not.toContain(inlineUploadId);
   expect(sends[1]?.["attachmentIds"]).toEqual(
     sends[0]?.["attachmentIds"],
   );

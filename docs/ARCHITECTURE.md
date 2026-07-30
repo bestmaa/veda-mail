@@ -87,6 +87,91 @@ The included Standard IMAP + SMTP adapter covers providers that expose secure
 password/app-password protocol access. OAuth-only vendors use the same
 contracts through a vendor adapter.
 
+## Message submission boundary
+
+The browser submits a stable UUID draft ID, canonicalized to one lowercase key
+at every attachment and send boundary, structured To, CC, and BCC addresses,
+plus an optional opaque reply message ID. Before provider access,
+the send route bounds the JSON body, validates header fields, caps and
+deduplicates recipients, derives reply headers from the provider-owned source,
+and charges both a message-rate window and a
+300-recipient-per-verified-connection one-minute window.
+
+The JMAP adapter uses structured address properties, reads decoded JSON through
+a 16 MiB stream cap, and retains at most the first 100 provider-supplied
+addresses in each To, CC, BCC, From, and Reply-To list. Sender-controlled address
+and summary strings are truncated before validation so one oversized message
+cannot fail the whole inbox batch. Detailed JMAP reads request at most 256,000
+bytes per body value, retain at most 128 referenced values within a 256,000
+character aggregate source budget, and independently cap final text and
+sanitized HTML presentations at 256,000 characters with a visible truncation
+marker. The IMAP/SMTP adapter keeps BCC in the SMTP envelope and out of delivered
+MIME. It intersects Nodemailer's immediate rejected values with the validated
+submitted set, case-insensitively and in submission order. No match means
+accepted, a strict subset means partial delivery, and rejection of the complete
+set becomes a safe domain error without provider text or cause.
+
+Partial delivery follows the normal private Sent-copy append attempt and
+returns only matched submitted addresses to the authenticated composer, which
+presents a bounded warning against resending to everyone. Known
+pre-submission SMTP setup, authentication, envelope, and message-construction
+failures remain retryable behind a generic non-recipient-bearing error. A
+timeout, socket/connection failure, or unknown rejection from the SMTP
+`sendMail` boundary is terminal uncertain because the server may have accepted
+the final DATA terminator; no normal Sent copy is appended in that case.
+
+The HTTP boundary canonicalizes every provider receipt again. Only an explicit
+accepted result with no rejections or a non-empty strict rejected subset is
+trusted. Contradictory, malformed, oversized, or unrelated values become a
+terminal uncertain receipt with locally generated opaque metadata. Attachments
+are consumed for partial and uncertain outcomes to prevent a blind duplicate
+submission; an explicit all-recipient rejection remains retryable.
+
+Immediately after validation and rate charging, the route reserves
+`connection ID + draft UUID` before attachment inspection, decryption, claim,
+or provider access. Its SHA-256 fingerprint covers the exact post-validation
+recipient buckets, order, names and addresses, subject, body, reply ID, and
+attachment-ID order without additional case or Unicode normalization. An
+identical concurrent request waits for its owner; an identical completed
+request replays the same canonical terminal receipt without touching
+attachments or the provider. Reusing the draft UUID for a different
+fingerprint returns a conflict. Definitive pre-submission or all-recipient
+failure releases the reservation.
+
+The terminal entry is committed synchronously as soon as the canonical
+provider receipt exists, before notice persistence or attachment cleanup can
+await. Its non-sliding 30-minute TTL starts at completion and cannot outlive
+the verified connection; pending work lives only until that connection
+expires. Each pending entry reserves 512 KiB, then terminal completion replaces
+that reservation with a conservative UTF-8/UTF-16 estimate while retaining the
+complete bounded partial-recipient receipt. Limits are 64 pending, 900 total
+entries, 32 MiB pending, and 48 MiB total per connection, plus 1,024 connection
+buckets, 10,000 entries, and 256 MiB process-wide. No entry is evicted to admit
+a send: exhausted capacity returns a retryable fail-closed error before
+attachment or provider work.
+
+Partial and uncertain receipts are copied into a connection-scoped, bounded
+in-memory FIFO before the response is returned. The browser hydrates that queue
+after an ordinary page reload and dismisses entries through an authenticated
+same-origin endpoint; recipient data is not written to browser storage. Notice
+identifiers are server-generated UUIDs and dismissals are idempotent. Each
+connection retains at most 100 entries and uses an explicit overflow sentinel
+when detail is compressed. Process-wide storage is additionally capped at 128
+connection buckets, 2,000 notices, and an estimated 8 MiB. Oldest buckets are
+compressed to a sentinel under count or byte pressure. At the connection-key
+cap, new connection buckets are refused without modifying existing buckets.
+The already-existing verified connection record receives one boolean warning
+flag, so no 129th notice-map key or recipient data is retained. Only that exact
+connection sees the metadata-free overflow warning. It has no UUID and can
+reappear after local dismissal until the connection ends; configuration updates
+preserve it, while sign-out, connection expiry, or full reset clears it. Every
+notice bucket expires within 12 hours. This queue is deliberately not durable
+across process restarts or independent replicas.
+
+The idempotency ledger is also process-local. A restart signs out the member,
+and independent replicas must not be used as interchangeable send targets
+without a shared encrypted session and atomic idempotency implementation.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never
@@ -254,6 +339,13 @@ ID to the message-nested opaque attachment import route. The server re-resolves
 the current authenticated provider object, verifies the provider's outbound
 size capability, and fetches decoded bytes under shared concurrency, absolute
 deadline, and plaintext-memory budgets.
+
+The client creates import jobs only for attachments that the current reader
+classifies as final visible file cards. This is a usability filter, not an
+authorization decision: before downloading, the server independently re-lists
+the authoritative message presentation and requires the opaque ID to have
+`attachment` disposition. Rendered, hidden, stale, or forged inline IDs cannot
+cross into the outbound quarantine.
 
 Decoded bytes are collected once into a fixed-size bounded buffer so IMAP's
 unknown decoded length can be measured without a second provider fetch. The

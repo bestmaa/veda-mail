@@ -7,3 +7,10 @@ export class OutgoingMessageSizeError extends Error {
     this.name = "OutgoingMessageSizeError";
   }
 }
+
+export class MessageDeliveryRejectedError extends Error {
+  public constructor() {
+    super("The mail provider rejected every submitted recipient.");
+    this.name = "MessageDeliveryRejectedError";
+  }
+}

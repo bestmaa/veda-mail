@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
   return {
     firstId,
     finishSlowRead: () => finishSlowRead?.(),
+    getCurrentConnection: vi.fn(),
     quarantine: {
       claim: vi.fn(async () => [
         {
@@ -56,10 +57,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/server/connections/connection-session", () => ({
-  getCurrentConnection: async () => ({
-    id: "read-settlement-connection",
-    providerId: "mock",
-  }),
+  getCurrentConnection: mocks.getCurrentConnection,
 }));
 vi.mock("@/server/mail/attachment-service", async () => {
   const { ApiError } = await import("@/transport/http/api-error");
@@ -85,10 +83,25 @@ vi.mock("@/server/mail/mail-service", () => ({
 }));
 
 import { POST } from "@/app/api/v1/mail/send/route";
+import type { ProviderConnection } from "@/domain/provider/provider";
+import { id } from "@/domain/shared/brand";
+import { connectionStore } from "@/server/connections/connection-store";
 
 const origin = "https://mail.example.com";
+let activeConnection: ProviderConnection;
 
 beforeEach(() => {
+  connectionStore.clearAll();
+  activeConnection = connectionStore.create(
+    {
+      config: {},
+      displayName: "Read settlement",
+      providerId: id.provider("mock"),
+    },
+    "read-settlement-revision",
+  );
+  mocks.getCurrentConnection.mockReset();
+  mocks.getCurrentConnection.mockResolvedValue(activeConnection);
   mocks.reset();
   mocks.readClaimed.mockClear();
   mocks.release.mockClear();

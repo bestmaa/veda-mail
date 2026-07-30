@@ -40,7 +40,9 @@ const composer = (
 });
 
 const renderComposer = (model: ComposerViewModel): string =>
-  renderToStaticMarkup(createElement(ComposerView, { composer: model }));
+  renderToStaticMarkup(
+    createElement(ComposerView, { composer: model, deliveryNotice: null }),
+  );
 
 describe("composer component", () => {
   it("renders nothing while closed", () => {

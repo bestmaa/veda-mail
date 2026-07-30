@@ -8,6 +8,7 @@ import {
   normalizeRecipientBuckets,
   parseAddressInput,
   parseRecipientInputs,
+  selectForwardableOriginalAttachments,
 } from "@/domain/mail/compose";
 import type { MailAddress, MessageDetail } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
@@ -189,5 +190,28 @@ describe("reply and forward semantics", () => {
     );
     expect(draft.body).toContain('Cc: "Team" <team@example.com>');
     expect(draft.body).toContain("\n\nFirst line\nSecond line");
+  });
+
+  it("forwards visible files without promoting rendered inline CID images", () => {
+    const inlineImage = {
+      disposition: "inline",
+      id: id.attachment("inline-cid-image"),
+      mimeType: "image/png",
+      name: "embedded-logo.png",
+      size: 128,
+    } as const;
+    const visibleFile = {
+      disposition: "attachment",
+      id: id.attachment("visible-file"),
+      mimeType: "application/pdf",
+      name: "roadmap.pdf",
+      size: 512,
+    } as const;
+
+    expect(
+      selectForwardableOriginalAttachments(
+        message({ attachments: [inlineImage, visibleFile] }),
+      ),
+    ).toEqual([visibleFile]);
   });
 });

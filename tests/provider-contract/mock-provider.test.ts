@@ -72,6 +72,8 @@ describe("mock provider contract", () => {
       to: [{ email: "recipient@example.com", name: null }],
     });
     expect(receipt.id).toContain("sent-");
+    expect(receipt.deliveryStatus).toBe("accepted");
+    expect(receipt.rejectedRecipients).toEqual([]);
   });
 
   it("downloads the exact attachment bytes with truthful metadata", async () => {

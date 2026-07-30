@@ -2,7 +2,11 @@ import "server-only";
 
 import { z } from "zod";
 
-import { JMAP_CORE } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { boundJmapBodyValues } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-body-values";
+import {
+  JMAP_CORE,
+  MAX_JMAP_BODY_VALUE_CHARACTERS,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 const stringRecord = z.record(z.string(), z.string());
 const booleanRecord = z.record(z.string(), z.boolean());
@@ -22,10 +26,38 @@ const jmapCapabilitiesSchema = unknownRecord.and(
 
 const addressSchema = z
   .object({
-    email: z.string().min(1).max(998),
-    name: z.string().max(4_096).nullable().optional(),
+    email: z.preprocess(
+      (value) => (typeof value === "string" ? value.slice(0, 998) : value),
+      z.string().min(1),
+    ),
+    name: z
+      .preprocess(
+        (value) =>
+          typeof value === "string" ? value.slice(0, 4_096) : value,
+        z.string(),
+      )
+      .nullable()
+      .optional(),
   })
   .passthrough();
+const addressListSchema = z.preprocess(
+  (value) => (Array.isArray(value) ? value.slice(0, 100) : value),
+  z.array(addressSchema),
+);
+const messageIdentifierListSchema = z.preprocess(
+  (value) => (Array.isArray(value) ? value.slice(0, 256) : value),
+  z.array(
+    z.preprocess(
+      (value) => (typeof value === "string" ? value.slice(0, 2_048) : value),
+      z.string(),
+    ),
+  ),
+);
+
+const bodyValueSchema = z.object({
+  isTruncated: z.boolean().optional(),
+  value: z.string().max(MAX_JMAP_BODY_VALUE_CHARACTERS),
+});
 
 const bodyPartSchema = z
   .object({
@@ -45,49 +77,64 @@ const bodyPartSchema = z
   })
   .passthrough();
 
-export const jmapAttachmentEmailSchema = z
-  .object({
-    attachments: z.array(bodyPartSchema).max(256).optional(),
-    bodyValues: z
-      .record(z.string(), z.object({ value: z.string() }).passthrough())
-      .optional(),
-    htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
-    id: z.string().min(1).max(1_024),
-  })
-  .passthrough();
+export const jmapAttachmentEmailSchema = z.preprocess(
+  (value) => boundJmapBodyValues(value, ["htmlBody"]),
+  z
+    .object({
+      attachments: z.array(bodyPartSchema).max(256).optional(),
+      bodyValues: z.record(z.string(), bodyValueSchema).optional(),
+      bodyValuesTruncated: z.boolean().optional(),
+      htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
+      id: z.string().min(1).max(1_024),
+    })
+    .passthrough(),
+);
 
-export const jmapEmailSchema = z
-  .object({
-    attachments: z.array(bodyPartSchema).max(256).optional(),
-    bcc: z.array(addressSchema).nullable().optional(),
-    bodyValues: z
-      .record(z.string(), z.object({ value: z.string() }).passthrough())
-      .optional(),
-    cc: z.array(addressSchema).nullable().optional(),
-    from: z.array(addressSchema).nullable().optional(),
-    hasAttachment: z.boolean(),
-    htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
-    id: z.string().min(1),
-    keywords: booleanRecord,
-    mailboxIds: booleanRecord,
-    messageId: z.array(z.string()).nullable().optional(),
-    preview: z.string().default(""),
-    receivedAt: z.string().min(1),
-    references: z.array(z.string()).nullable().optional(),
-    replyTo: z.array(addressSchema).nullable().optional(),
-    size: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
-    subject: z.string().nullable(),
-    textBody: z.array(bodyPartSchema).max(1_024).optional(),
-    threadId: z.string().min(1),
-    to: z.array(addressSchema).nullable().optional(),
-  })
-  .passthrough();
+export const jmapEmailSchema = z.preprocess(
+  (value) => boundJmapBodyValues(value, ["textBody", "htmlBody"]),
+  z
+    .object({
+      attachments: z.array(bodyPartSchema).max(256).optional(),
+      bcc: addressListSchema.nullable().optional(),
+      bodyValues: z.record(z.string(), bodyValueSchema).optional(),
+      bodyValuesTruncated: z.boolean().optional(),
+      cc: addressListSchema.nullable().optional(),
+      from: addressListSchema.nullable().optional(),
+      hasAttachment: z.boolean(),
+      htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
+      id: z.string().min(1),
+      keywords: booleanRecord,
+      mailboxIds: booleanRecord,
+      messageId: messageIdentifierListSchema.nullable().optional(),
+      preview: z
+        .preprocess(
+          (value) =>
+            typeof value === "string" ? value.slice(0, 16_384) : value,
+          z.string(),
+        )
+        .default(""),
+      receivedAt: z.string().min(1),
+      references: messageIdentifierListSchema.nullable().optional(),
+      replyTo: addressListSchema.nullable().optional(),
+      size: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      subject: z
+        .preprocess(
+          (value) => (typeof value === "string" ? value.slice(0, 998) : value),
+          z.string(),
+        )
+        .nullable(),
+      textBody: z.array(bodyPartSchema).max(1_024).optional(),
+      threadId: z.string().min(1),
+      to: addressListSchema.nullable().optional(),
+    })
+    .passthrough(),
+);
 
 export const jmapReplyContextSchema = z
   .object({
     id: z.string().min(1),
-    messageId: z.array(z.string()).nullable().optional(),
-    references: z.array(z.string()).nullable().optional(),
+    messageId: messageIdentifierListSchema.nullable().optional(),
+    references: messageIdentifierListSchema.nullable().optional(),
   })
   .passthrough();
 
@@ -123,7 +170,9 @@ export const jmapSessionSchema = z
 
 export const jmapResponseSchema = z
   .object({
-    methodResponses: z.array(z.tuple([z.string(), z.unknown(), z.string()])),
+    methodResponses: z
+      .array(z.tuple([z.string(), z.unknown(), z.string()]))
+      .max(32),
     sessionState: z.string(),
   })
   .passthrough();
@@ -132,14 +181,14 @@ export const jmapListResultSchema = <T extends z.ZodType>(itemSchema: T) =>
   z
     .object({
       accountId: z.string().min(1),
-      list: z.array(itemSchema),
+      list: z.array(itemSchema).max(1_024),
       state: z.string(),
     })
     .passthrough();
 
 export const jmapQueryResultSchema = z
   .object({
-    ids: z.array(z.string()),
+    ids: z.array(z.string()).max(1_024),
     position: z.number().int().nonnegative(),
     queryState: z.string(),
     total: z.number().int().nonnegative(),

@@ -6,12 +6,14 @@ useInstalledMailbox();
 
 const sources = [
   {
+    disposition: "attachment",
     id: "forward-cancel-one",
     mimeType: "application/pdf",
     name: "roadmap.pdf",
     size: 51,
   },
   {
+    disposition: "attachment",
     id: "forward-cancel-two",
     mimeType: "text/plain",
     name: "notes.txt",

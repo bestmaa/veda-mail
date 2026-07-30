@@ -5,6 +5,7 @@ import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jma
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import {
   JMAP_MAIL,
+  MAX_JMAP_BODY_VALUE_BYTES,
   type JmapMethodCall,
   type JmapSession,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
@@ -92,7 +93,7 @@ describe("Stalwart attachment metadata listing", () => {
       ],
       fetchHTMLBodyValues: true,
       ids: ["message"],
-      maxBodyValueBytes: 2_000_000,
+      maxBodyValueBytes: MAX_JMAP_BODY_VALUE_BYTES,
       properties: ["id", "attachments", "htmlBody", "bodyValues"],
     });
     expect(requestSignal).toBe(controller.signal);

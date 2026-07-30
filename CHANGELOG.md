@@ -47,6 +47,39 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 - JSON request bodies, recipient fields, and mailbox read/mutation rates are
   now bounded
+- SMTP send receipts now distinguish full acceptance from partial delivery.
+  Rejections are matched only to the validated submitted recipient set; an
+  all-recipient rejection returns a safe generic failure without provider or
+  recipient detail
+- Every adapter receipt is canonicalized at runtime. Malformed or contradictory
+  delivery metadata becomes a terminal `uncertain` result with local opaque
+  metadata, so the composer warns against a blind resend instead of treating a
+  possibly delivered message as failed
+- Partial and uncertain outcomes remain in a bounded in-memory FIFO for the
+  current verified connection, survive ordinary page reloads, clear with the
+  session, and use an explicit overflow warning when detail is compressed.
+  Process-wide limits cap storage at 128 connection buckets, 2,000 notices, and
+  an estimated 8 MiB, with a defensive 12-hour expiry. If the connection-key
+  cap refuses a new bucket, the already-existing verified connection record
+  receives a recipient-free warning flag without adding another notice-map key
+- Send requests now require a stable UUID draft identifier, canonicalized to
+  lowercase at every attachment and send boundary. A
+  connection-scoped SHA-256 fingerprint of the exact validated provider-bound
+  intent coalesces concurrent attempts and replays terminal receipts for 30
+  minutes from completion, capped by session expiry. Definitive failures
+  release the reservation; bounded in-memory capacity fails closed before
+  attachment or provider work
+- Authenticated sends now charge each normalized To, CC, and BCC address
+  against a 300-recipient-per-connection, one-minute budget in addition to the
+  existing message-rate limit
+- Stalwart JMAP now reads JSON through a 16 MiB decoded-stream cap, retains at
+  most the first 100 addresses in each To, CC, BCC, From, or Reply-To list, and
+  truncates oversized sender-controlled summary text before validation. It also
+  caps referenced body values and final text/HTML presentations at 256,000
+  characters and visibly marks clipped message content
+- Original-attachment forwarding now excludes rendered or hidden inline parts
+  both when the client creates import jobs and when the server independently
+  authorizes each opaque attachment ID
 - Dependency auditing now covers the complete production and development tree
 - Runtime images pin the Node base digest and exclude unused package managers
 - Provider attachment streams now reject cumulative zero-byte chunk floods
@@ -75,6 +108,15 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Sanitize provider-derived Message-IDs, bound reply reference chains, and
   always preserve the direct parent for standards-compliant threading
 - Keep BCC recipients in the SMTP envelope and out of delivered MIME headers
+- Keep provider-rejected SMTP values out of receipts unless they match an
+  address the authenticated member actually submitted, and replace SMTP failure
+  details before request logging
+- Treat SMTP failures after an ambiguous submission boundary and JMAP failures
+  after the final submission request is issued as terminal recipient-free
+  uncertain outcomes, while definite pre-submission failures remain retryable
+- Replace JMAP method-error descriptions, unexpected method names, and
+  provider-controlled retry headers with generic diagnostics before request
+  logging
 - Centralize hostile-mail HTML sanitization and isolate external links in
   `noopener`/`noreferrer` tabs
 - Rate-limit authenticated mail work by verified connection identifiers rather

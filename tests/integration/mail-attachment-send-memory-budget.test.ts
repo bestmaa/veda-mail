@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const sendMessage = vi.fn();
   return {
     acquire,
+    getCurrentConnection: vi.fn(),
     getMaxAttachmentBytes: vi.fn(async () => 18 * 1024 * 1024),
     release,
     sendMessage,
@@ -13,10 +14,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/server/connections/connection-session", () => ({
-  getCurrentConnection: async () => ({
-    id: "attachment-memory-connection",
-    providerId: "mock",
-  }),
+  getCurrentConnection: mocks.getCurrentConnection,
 }));
 vi.mock("@/server/mail/attachment-send-memory-budget", () => ({
   attachmentSendMemoryBudget: () => ({ acquire: mocks.acquire }),
@@ -31,9 +29,13 @@ vi.mock("@/server/mail/mail-service", () => ({
 import { PUT as upload } from "@/app/api/v1/mail/attachments/[attachmentId]/route";
 import { POST as reserve } from "@/app/api/v1/mail/attachments/route";
 import { POST as send } from "@/app/api/v1/mail/send/route";
+import type { ProviderConnection } from "@/domain/provider/provider";
+import { id } from "@/domain/shared/brand";
+import { connectionStore } from "@/server/connections/connection-store";
 import { ApiError } from "@/transport/http/api-error";
 
 const origin = "https://mail.example.com";
+let activeConnection: ProviderConnection;
 const headers = { host: "mail.example.com", origin };
 const route = (attachmentId: string) => ({
   params: Promise.resolve({ attachmentId }),
@@ -89,6 +91,17 @@ const uploadAttachment = async (
 };
 
 beforeEach(() => {
+  connectionStore.clearAll();
+  activeConnection = connectionStore.create(
+    {
+      config: {},
+      displayName: "Attachment memory",
+      providerId: id.provider("mock"),
+    },
+    "attachment-memory-revision",
+  );
+  mocks.getCurrentConnection.mockReset();
+  mocks.getCurrentConnection.mockResolvedValue(activeConnection);
   mocks.acquire.mockReset();
   mocks.acquire.mockResolvedValue({ release: mocks.release });
   mocks.getMaxAttachmentBytes.mockClear();

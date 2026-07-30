@@ -8,6 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 
+import { selectForwardableOriginalAttachments } from "@/domain/mail/compose";
 import type { MessageDetail, UploadedAttachment } from "@/domain/mail/mail";
 import type { DraftId } from "@/domain/shared/brand";
 import { markComposerAttachmentReady } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
@@ -109,8 +110,8 @@ export const useComposerOriginalAttachmentImports = (
 
   const importOriginalAttachments = useCallback(
     (message: MessageDetail, draftId: DraftId) => {
-      const jobs: OriginalAttachmentImportJob[] = message.attachments.map(
-        (attachment) => {
+      const jobs: OriginalAttachmentImportJob[] =
+        selectForwardableOriginalAttachments(message).map((attachment) => {
           const key = crypto.randomUUID();
           const item = {
             error: null,
@@ -128,8 +129,7 @@ export const useComposerOriginalAttachmentImports = (
             item,
             operation: registry.begin(key, draftId),
           };
-        },
-      );
+        });
       if (jobs.length === 0) return;
       setAttachments((current) => [
         ...current,
