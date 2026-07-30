@@ -60,7 +60,7 @@
     "@lexical/selection": "0.44.0",
     "file-type": "22.0.1",
     "html-to-text": "10.0.0",
-    "imapflow": "^1.5.0",
+    "imapflow": "^1.6.5",
     "lexical": "0.44.0",
     "lucide-react": "^1.26.0",
     "mailparser": "^3.9.14",
