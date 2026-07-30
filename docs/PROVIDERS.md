@@ -19,6 +19,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
+| Scanned forwarding of original attachments    | Yes             | Yes                  |
 | Conversation/thread API                       | Not implemented | Not implemented      |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
 
@@ -39,10 +40,18 @@ Veda Mail forces both paths to a non-cacheable attachment response instead of
 an inline preview. Byte ranges, preview, inline CID rendering, and download-all
 are not implemented.
 
+Forwarding originals uses the same authenticated, message-scoped lookup but
+never reuses a provider blob directly. Veda Mail stages the decoded source
+within the lower provider/outbound limit, scans and verifies it through the
+encrypted quarantine, and sends only the resulting quarantine ID. IMAP's
+unknown decoded size is measured in one bounded pass. The browser supplies no
+filename, MIME type, size, blob ID, or MIME-part locator.
+
 No Stalwart server change is required. Veda Mail uses the authenticated JMAP
 session's existing download URL and keeps its blob ID inside the adapter.
-Received provider content is not passed through the outbound ClamAV quarantine;
-members must continue to treat unexpected downloads as untrusted files.
+Direct received-attachment downloads are not passed through the outbound
+ClamAV quarantine; members must continue to treat unexpected downloads as
+untrusted files. Forwarded originals do pass through quarantine before send.
 
 | Adapter              | Use it for                                                | Authentication                               |
 | -------------------- | --------------------------------------------------------- | -------------------------------------------- |

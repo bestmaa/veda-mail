@@ -221,7 +221,7 @@ export const ComposerView = ({
               </button>
             ) : null}
             <span className="sr-only" role="status">
-              {composer.isUploading ? "Uploading and scanning attachments" : ""}
+              {composer.isUploading ? "Preparing and scanning attachments" : ""}
             </span>
             <span className="flex-1" />
             <button

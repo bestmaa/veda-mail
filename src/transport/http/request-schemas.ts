@@ -51,6 +51,15 @@ export const attachmentReservationSchema = z
   })
   .strict();
 
+export const attachmentImportSchema = z
+  .object({
+    draftId: z
+      .string()
+      .uuid("The attachment draft identifier is invalid.")
+      .transform(id.draft),
+  })
+  .strict();
+
 export const connectionRequestSchema = z.object({
   config: z.record(z.string(), z.string()),
   displayName: z.string().trim().min(2).max(80),

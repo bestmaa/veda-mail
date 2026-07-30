@@ -61,6 +61,18 @@ describe("composer attachment upload registry", () => {
     expect(removeUpload).toHaveBeenCalledWith(draftId, upload.id);
   });
 
+  it("does not let a stalled best-effort deletion pin later work", async () => {
+    const registry = new ComposerAttachmentUploadRegistry();
+    const operation = registry.begin("upload-key", draftId);
+    const removeUpload = vi.fn(() => new Promise<void>(() => undefined));
+    registry.cancelAll();
+
+    await expect(
+      registry.complete("upload-key", operation, upload, removeUpload),
+    ).resolves.toBe(false);
+    expect(removeUpload).toHaveBeenCalledWith(draftId, upload.id);
+  });
+
   it("marks expired and server-invalidated ready uploads as actionable errors", () => {
     const ready = [
       {

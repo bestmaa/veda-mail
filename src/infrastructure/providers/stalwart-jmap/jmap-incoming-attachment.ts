@@ -88,7 +88,12 @@ export const downloadJmapReceivedAttachment = async (
       messageId: input.messageId,
       ...(input.signal ? { signal: input.signal } : {}),
     });
-    return { body: downloaded.body, name: metadata.name, size: metadata.size };
+    return {
+      body: downloaded.body,
+      mimeType: metadata.mimeType,
+      name: metadata.name,
+      size: metadata.size,
+    };
   } catch (error) {
     throw normalizeError(error);
   }

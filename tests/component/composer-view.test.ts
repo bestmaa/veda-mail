@@ -83,6 +83,7 @@ describe("composer component", () => {
   });
 
   it("announces ready and failed attachment states", () => {
+    const retry = vi.fn();
     const html = renderComposer(
       composer({
         attachments: [
@@ -102,6 +103,15 @@ describe("composer component", () => {
             onRemove: vi.fn(),
             state: "error",
           },
+          {
+            error: "Original attachment is too large.",
+            id: "forward-failed",
+            meta: "18 MiB · Upload failed",
+            name: "archive.zip",
+            onRemove: vi.fn(),
+            onRetry: retry,
+            state: "error",
+          },
         ],
       }),
     );
@@ -110,6 +120,10 @@ describe("composer component", () => {
     expect(html).toContain("report.pdf is ready to send.");
     expect(html).toContain('role="alert"');
     expect(html).toContain("unsafe.exe upload failed: Malware detected.");
+    expect(html).toContain(
+      "archive.zip could not be copied: Original attachment is too large.",
+    );
+    expect(html).toContain('aria-label="Retry copying archive.zip"');
   });
 
   it("renders visible recipients and locks sending controls", () => {

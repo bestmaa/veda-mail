@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 
+import { createComposerAttachmentViewModel } from "@/presentation/features/mail-workspace/composer-attachment.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/use-composer-model";
 import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/use-mail-data-model";
@@ -171,20 +172,13 @@ export const useMailWorkspaceModel = ({
     branding: brandingView,
     activeFolder,
     composer: {
-      attachments: composer.attachments.map((attachment) => ({
-        error: attachment.error,
-        id: attachment.key,
-        meta: `${formatFileSize(attachment.size)} · ${
-          attachment.state === "ready"
-            ? attachment.upload?.mimeType
-            : attachment.state === "uploading"
-              ? "Scanning…"
-              : "Upload failed"
-        }`,
-        name: attachment.name,
-        onRemove: () => composer.removeAttachment(attachment.key),
-        state: attachment.state,
-      })),
+      attachments: composer.attachments.map((attachment) =>
+        createComposerAttachmentViewModel(
+          attachment,
+          composer.removeAttachment,
+          composer.retryAttachment,
+        ),
+      ),
       attachmentInput: composer.onAttachmentInput,
       attachmentCapabilityUnavailable: composer.attachmentCapabilityUnavailable,
       bcc: composer.bcc,

@@ -1,5 +1,10 @@
 import type { UploadedAttachment } from "@/domain/mail/mail";
-import type { AttachmentUploadId, DraftId } from "@/domain/shared/brand";
+import type {
+  AttachmentId,
+  AttachmentUploadId,
+  DraftId,
+  MessageId,
+} from "@/domain/shared/brand";
 
 export type RemoveUploadedAttachment = (
   draftId: DraftId,
@@ -18,6 +23,10 @@ export interface ComposerAttachment {
   readonly upload: UploadedAttachment | null;
   readonly name: string;
   readonly size: number;
+  readonly source?: {
+    readonly attachmentId: AttachmentId;
+    readonly messageId: MessageId;
+  };
   readonly state: "error" | "ready" | "uploading";
 }
 
@@ -109,7 +118,7 @@ export class ComposerAttachmentUploadRegistry {
     ) {
       return true;
     }
-    await removeUpload(operation.draftId, upload.id).catch(() => undefined);
+    void removeUpload(operation.draftId, upload.id).catch(() => undefined);
     return false;
   }
 }

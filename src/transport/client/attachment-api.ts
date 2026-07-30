@@ -1,5 +1,10 @@
 import type { UploadedAttachment } from "@/domain/mail/mail";
-import type { AttachmentUploadId, DraftId } from "@/domain/shared/brand";
+import type {
+  AttachmentId,
+  AttachmentUploadId,
+  DraftId,
+  MessageId,
+} from "@/domain/shared/brand";
 
 interface ApiEnvelope<TData> {
   readonly data: TData;
@@ -73,6 +78,27 @@ export const attachmentApi = {
       }).catch(() => undefined);
       throw error;
     }
+  },
+
+  async importAttachment(
+    draftId: DraftId,
+    messageId: MessageId,
+    attachmentId: AttachmentId,
+    signal?: AbortSignal,
+  ): Promise<UploadedAttachment> {
+    const response = await fetch(
+      `/api/v1/mail/messages/${encodeURIComponent(
+        messageId,
+      )}/attachments/${encodeURIComponent(attachmentId)}/imports`,
+      {
+        body: JSON.stringify({ draftId }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        ...(signal ? { signal } : {}),
+      },
+    );
+    await assertOk(response);
+    return ((await response.json()) as ApiEnvelope<UploadedAttachment>).data;
   },
 
   async removeAttachment(

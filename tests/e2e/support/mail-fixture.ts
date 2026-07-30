@@ -3,6 +3,7 @@ import {
   expect,
   test,
   type APIRequestContext,
+  type BrowserContext,
   type Page,
 } from "@playwright/test";
 
@@ -65,11 +66,27 @@ export const signIn = async (page: Page) => {
 };
 
 export const useInstalledMailbox = () => {
-  test.beforeAll(async ({ request }) => {
+  let authentication: Awaited<ReturnType<BrowserContext["storageState"]>>;
+
+  test.beforeAll(async ({ baseURL, browser, request }) => {
     await installApplication(request);
+    const context = await browser.newContext({
+      baseURL: baseURL ?? origin,
+    });
+    try {
+      const page = await context.newPage();
+      await signIn(page);
+      authentication = await context.storageState();
+    } finally {
+      await context.close();
+    }
   });
-  test.beforeEach(async ({ page }) => {
-    await signIn(page);
+  test.beforeEach(async ({ context, page }) => {
+    await context.addCookies(authentication.cookies);
+    await page.goto("/");
+    await expect(
+      page.getByRole("button", { name: "New message" }),
+    ).toBeVisible();
   });
 };
 

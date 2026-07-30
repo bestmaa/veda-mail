@@ -235,6 +235,9 @@ Verify:
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
 - The received attachment downloads byte-identically, is not cached by the
   proxy, and is served with attachment disposition and `nosniff`.
+- Forwarding that received attachment shows copy/scan progress, sends only
+  after the import is clean, and arrives byte-identically without a provider
+  blob or MIME-part locator appearing in browser request data.
 - An EICAR test file is rejected in a dedicated non-production mailbox test.
 - A container restart signs members out but preserves configuration.
 

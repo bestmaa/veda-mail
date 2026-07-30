@@ -146,6 +146,25 @@ part, and keeps the IMAP connection alive only for that bounded stream. IMAP
 decoded length is not reliably known before transfer, so the HTTP response
 does not claim a `Content-Length`.
 
+## Original attachment forwarding boundary
+
+Forwarding never promotes a browser-supplied provider locator into an outgoing
+message. For each original attachment, the browser posts only the fresh draft
+ID to the message-nested opaque attachment import route. The server re-resolves
+the current authenticated provider object, verifies the provider's outbound
+size capability, and fetches decoded bytes under shared concurrency, absolute
+deadline, and plaintext-memory budgets.
+
+Decoded bytes are collected once into a fixed-size bounded buffer so IMAP's
+unknown decoded length can be measured without a second provider fetch. The
+buffer is exposed to quarantine in fixed 64 KiB views, then wiped. Only after
+the exact byte count is known does the server reserve draft quota, sanitize the
+provider-bound name and MIME hint, run ClamAV plus magic-number detection,
+encrypt the clean result, and return a normal quarantine upload ID. Abort,
+timeout, provider, quota, type, scan, or storage failure cancels the source,
+removes the reservation, and releases every resource lease. A later send uses
+the same claim, integrity-check, retry, and consume path as a local upload.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

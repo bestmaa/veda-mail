@@ -58,7 +58,6 @@ export class MockMailGateway implements MailGateway {
   public async changePassword(input: MemberPasswordChange): Promise<void> {
     void input;
   }
-
   public async downloadAttachment(
     input: AttachmentDownloadInput,
   ): Promise<AttachmentDownload> {
@@ -93,6 +92,7 @@ export class MockMailGateway implements MailGateway {
         input.maxBytes,
         input.signal,
       ),
+      mimeType: attachment.mimeType,
       name: attachment.name,
       size: content.byteLength,
     };

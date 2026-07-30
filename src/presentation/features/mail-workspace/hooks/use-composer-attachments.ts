@@ -7,7 +7,6 @@ import {
   useState,
   type ChangeEventHandler,
 } from "react";
-
 import type { UploadedAttachment } from "@/domain/mail/mail";
 import { id, type DraftId } from "@/domain/shared/brand";
 import {
@@ -18,6 +17,7 @@ import {
   type ComposerAttachment,
 } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import { useAttachmentCapability } from "@/presentation/features/mail-workspace/hooks/use-attachment-capability";
+import { useComposerOriginalAttachmentImports } from "@/presentation/features/mail-workspace/hooks/use-composer-original-attachment-imports";
 import { mailApi } from "@/transport/client/api-client";
 
 const MAX_ATTACHMENT_COUNT = 10;
@@ -37,6 +37,8 @@ export const useComposerAttachments = (
     [],
   );
   const uploads = useRef(new ComposerAttachmentUploadRegistry());
+  const { importOriginalAttachments, retryOriginalAttachment } =
+    useComposerOriginalAttachmentImports(uploads.current, setAttachments);
   const capability = useAttachmentCapability(initialProviderMaxBytes);
   const ready = attachments.flatMap((item) =>
     item.state === "ready" && item.upload ? [item.upload] : [],
@@ -90,9 +92,19 @@ export const useComposerAttachments = (
         }
       }
       setAttachments([]);
-      setDraftId(freshDraftId());
+      const nextDraftId = freshDraftId();
+      setDraftId(nextDraftId);
+      return nextDraftId;
     },
     [draftId, ready],
+  );
+
+  const retry = useCallback(
+    (key: string) => {
+      const target = attachments.find((item) => item.key === key);
+      if (target) retryOriginalAttachment(target, draftId);
+    },
+    [attachments, draftId, retryOriginalAttachment],
   );
 
   const uploadFile = useCallback(
@@ -207,6 +219,7 @@ export const useComposerAttachments = (
       draftId,
       expireReady,
       hasError: attachments.some((item) => item.state === "error"),
+      importOriginalAttachments,
       invalidateReady,
       isCapabilityRefreshing: capability.isRefreshing,
       isUploading: attachments.some((item) => item.state === "uploading"),
@@ -214,6 +227,7 @@ export const useComposerAttachments = (
       onFiles,
       refreshCapability: capability.refresh,
       remove,
+      retry,
     }),
     [
       attachments,
@@ -226,8 +240,10 @@ export const useComposerAttachments = (
       invalidateReady,
       maxFileBytes,
       onFiles,
+      importOriginalAttachments,
       ready,
       remove,
+      retry,
     ],
   );
 };

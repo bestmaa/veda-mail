@@ -1,4 +1,4 @@
-import { FileText, LoaderCircle, X } from "lucide-react";
+import { FileText, LoaderCircle, RotateCcw, X } from "lucide-react";
 
 import type { ComposerAttachmentViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 
@@ -51,12 +51,30 @@ export const ComposerAttachmentListView = ({
               {attachment.state === "ready"
                 ? `${attachment.name} is ready to send.`
                 : attachment.state === "error"
-                  ? `${attachment.name} upload failed: ${
-                      attachment.error ?? "Attachment upload failed."
-                    }`
-                  : `${attachment.name} is uploading and being scanned.`}
+                  ? attachment.onRetry
+                    ? `${attachment.name} could not be copied: ${
+                        attachment.error ?? "Attachment copy failed."
+                      }`
+                    : `${attachment.name} upload failed: ${
+                        attachment.error ?? "Attachment upload failed."
+                      }`
+                  : attachment.onRetry
+                    ? `${attachment.name} is being copied and scanned.`
+                    : `${attachment.name} is uploading and being scanned.`}
             </span>
           </span>
+          {attachment.state === "error" && attachment.onRetry ? (
+            <button
+              aria-label={`Retry copying ${attachment.name}`}
+              className="flex h-7 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+              disabled={isSending}
+              onClick={attachment.onRetry}
+              type="button"
+            >
+              <RotateCcw aria-hidden size={13} />
+              Retry
+            </button>
+          ) : null}
           <button
             aria-label={`Remove ${attachment.name}`}
             className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-700"
