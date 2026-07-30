@@ -54,7 +54,7 @@
     "file-type": "22.0.1",
     "html-to-text": "10.0.0",
     "imapflow": "^1.5.0",
-    "lucide-react": "^1.26.0",
+    "lucide-react": "^1.28.0",
     "mailparser": "^3.9.14",
     "next": "16.2.11",
     "nodemailer": "9.0.3",
