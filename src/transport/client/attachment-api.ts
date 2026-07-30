@@ -1,4 +1,5 @@
 import type { UploadedAttachment } from "@/domain/mail/mail";
+import { MAX_RECEIVED_ATTACHMENT_TEXT_PREVIEW_BYTES } from "@/domain/mail/received-attachment";
 import type {
   AttachmentId,
   AttachmentUploadId,
@@ -23,6 +24,40 @@ const assertOk = async (response: Response): Promise<void> => {
   if (!response.ok) throw new Error(await failureMessage(response));
 };
 
+const readBoundedPreviewText = async (
+  response: Response,
+  declaredLength: number,
+): Promise<string> => {
+  if (!response.body) {
+    throw new Error("The attachment preview returned no content.");
+  }
+  const reader = response.body.getReader();
+  const bytes = new Uint8Array(declaredLength);
+  let offset = 0;
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      if (result.value.byteLength > declaredLength - offset) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("The attachment preview exceeded its safe size.");
+      }
+      bytes.set(result.value, offset);
+      offset += result.value.byteLength;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (offset !== declaredLength) {
+    throw new Error("The attachment preview was incomplete.");
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("The attachment preview returned invalid text.");
+  }
+};
+
 const archivePreflightFailure = (status: number): string => {
   const messages: Readonly<Record<number, string>> = {
     401: "Please sign in again before downloading attachments.",
@@ -37,6 +72,46 @@ const archivePreflightFailure = (status: number): string => {
 };
 
 export const attachmentApi = {
+  async previewAttachment(
+    href: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const response = await fetch(href, {
+      body: JSON.stringify({ renderer: "text" }),
+      cache: "no-store",
+      headers: {
+        Accept: "text/plain",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      ...(signal ? { signal } : {}),
+    });
+    await assertOk(response);
+    if (
+      response.headers.get("content-type")?.toLowerCase() !==
+      "text/plain; charset=utf-8"
+    ) {
+      const error = new Error(
+        "The attachment preview returned an unsafe type.",
+      );
+      await response.body?.cancel(error).catch(() => undefined);
+      throw error;
+    }
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (
+      !Number.isSafeInteger(declaredLength) ||
+      declaredLength < 1 ||
+      declaredLength > MAX_RECEIVED_ATTACHMENT_TEXT_PREVIEW_BYTES
+    ) {
+      const error = new Error(
+        "The attachment preview returned an invalid size.",
+      );
+      await response.body?.cancel(error).catch(() => undefined);
+      throw error;
+    }
+    return readBoundedPreviewText(response, declaredLength);
+  },
+
   async preflightAttachmentArchive(
     href: string,
     signal?: AbortSignal,

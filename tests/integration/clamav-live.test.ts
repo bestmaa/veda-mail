@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { ClamAvAttachmentScanner } from "@/server/security/attachment-inspection";
+import {
+  ClamAvAttachmentScanner,
+  MagicNumberMimeDetector,
+} from "@/server/security/attachment-inspection";
+import { inspectTextAttachmentPreview } from "@/server/mail/attachment-preview-text";
 
 const port = Number(process.env["VEDA_MAIL_TEST_CLAMAV_PORT"]);
 const liveTest = Number.isSafeInteger(port) && port > 0 ? it : it.skip;
@@ -36,6 +40,40 @@ describe("live ClamAV integration", () => {
       expect(infected).toEqual({
         reason: "Malware signature detected.",
         verdict: "infected",
+      });
+
+      await expect(
+        inspectTextAttachmentPreview(
+          {
+            bytes: Buffer.from("Veda Mail safe plain text preview."),
+            declaredMimeType: "text/plain",
+            fileName: "clean.txt",
+            signal: new AbortController().signal,
+          },
+          {
+            mimeDetector: new MagicNumberMimeDetector(),
+            scanner,
+          },
+        ),
+      ).resolves.toEqual(
+        new TextEncoder().encode("Veda Mail safe plain text preview."),
+      );
+      await expect(
+        inspectTextAttachmentPreview(
+          {
+            bytes: eicar,
+            declaredMimeType: "text/plain",
+            fileName: "blocked.txt",
+            signal: new AbortController().signal,
+          },
+          {
+            mimeDetector: new MagicNumberMimeDetector(),
+            scanner,
+          },
+        ),
+      ).rejects.toMatchObject({
+        code: "ATTACHMENT_PREVIEW_BLOCKED",
+        status: 422,
       });
     },
   );

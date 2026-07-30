@@ -11,8 +11,10 @@ describe("attachment card component", () => {
         attachment: {
           href: "/api/v1/mail/messages/message%2F1/attachments/attachment%3F1",
           id: "attachment?1",
+          isPreviewing: false,
           meta: "application/pdf - 24 KiB",
           name: "quarterly report.pdf",
+          onPreview: null,
         },
       }),
     );
@@ -24,7 +26,27 @@ describe("attachment card component", () => {
       'href="/api/v1/mail/messages/message%2F1/attachments/attachment%3F1"',
     );
     expect(html).toContain("focus-visible:outline-indigo-600");
-    expect(html).toContain(">Download</span>");
+    expect(html).toContain("Download</a>");
     expect(html).not.toContain("target=");
+  });
+
+  it("keeps preview an explicit button separate from download", () => {
+    const html = renderToStaticMarkup(
+      createElement(AttachmentCardView, {
+        attachment: {
+          href: "/api/v1/mail/messages/message-one/attachments/text-one",
+          id: "text-one",
+          isPreviewing: false,
+          meta: "text/plain - 12 B",
+          name: "notes.txt",
+          onPreview: () => undefined,
+        },
+      }),
+    );
+
+    expect(html).toContain('aria-label="Preview notes.txt"');
+    expect(html).toContain('type="button"');
+    expect(html).toContain('aria-label="Download notes.txt"');
+    expect(html).toContain('download=""');
   });
 });

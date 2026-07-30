@@ -144,6 +144,9 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
 - Permit raw attachment `PUT` requests up to 18 MiB plus HTTP overhead; keep
   request streaming enabled and allow at least five minutes for steadily
   progressing mobile uploads. Organization-logo JSON remains much smaller.
+- Permit explicit attachment-preview `POST` requests and responses up to
+  1 MiB. Do not rewrite them to `GET`, prefetch them, cache them, buffer them
+  beyond proxy necessities, or loosen their response CSP/content type.
 - Stream attachment `GET` responses without proxy buffering or transformation;
   the application enforces a 50 MiB decoded-byte ceiling for one file and a
   200 MiB decoded-payload ceiling for Download all ZIPs. Set the proxy timeout
@@ -247,6 +250,10 @@ Verify:
 - Forwarding that received attachment shows copy/scan progress, sends only
   after the import is clean, and arrives byte-identically without a provider
   blob or MIME-part locator appearing in browser request data.
+- A small plain-text received attachment previews only after a clean ClamAV
+  verdict; the response is no-store/no-transform `text/plain`, the frame has
+  `sandbox="allow-same-origin"` without scripts, and SVG/HTML/PDF/image
+  attachments show Download without raw Preview.
 - An EICAR test file is rejected in a dedicated non-production mailbox test.
 - A container restart signs members out but preserves configuration.
 

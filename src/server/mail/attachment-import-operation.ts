@@ -58,6 +58,7 @@ export const createAttachmentImportDeadline = (
 export const waitForAttachmentImport = <T>(
   operation: Promise<T>,
   signal: AbortSignal,
+  onLateValue?: (value: T) => void,
 ): Promise<T> =>
   new Promise<T>((resolve, reject) => {
     let settled = false;
@@ -70,7 +71,17 @@ export const waitForAttachmentImport = <T>(
     const onAbort = (): void => settle(() => reject(aborted()));
     signal.addEventListener("abort", onAbort, { once: true });
     void operation.then(
-      (value) => settle(() => resolve(value)),
+      (value) => {
+        if (settled) {
+          try {
+            onLateValue?.(value);
+          } catch {
+            // Cleanup of a provider-controlled late value is best-effort.
+          }
+          return;
+        }
+        settle(() => resolve(value));
+      },
       (error: unknown) => settle(() => reject(error)),
     );
     if (signal.aborted) onAbort();

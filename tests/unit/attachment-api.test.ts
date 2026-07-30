@@ -16,6 +16,81 @@ afterEach(() => {
 });
 
 describe("attachment client API", () => {
+  it("requests plain text preview only through an explicit bounded POST", async () => {
+    const signal = new AbortController().signal;
+    const fetchMock = vi.fn(async () =>
+      new Response("safe text", {
+        headers: {
+          "content-length": "9",
+          "content-type": "text/plain; charset=utf-8",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      attachmentApi.previewAttachment(
+        "/api/v1/mail/messages/message/attachments/attachment/preview",
+        signal,
+      ),
+    ).resolves.toBe("safe text");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/mail/messages/message/attachments/attachment/preview",
+      {
+        body: JSON.stringify({ renderer: "text" }),
+        cache: "no-store",
+        headers: {
+          Accept: "text/plain",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        signal,
+      },
+    );
+  });
+
+  it("rejects untrusted preview response types and lengths", async () => {
+    const unsafeTypeCancel = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          new ReadableStream({ cancel: unsafeTypeCancel }),
+          {
+          headers: {
+            "content-length": "25",
+            "content-type": "text/html; charset=utf-8",
+          },
+          },
+        ),
+      ),
+    );
+    await expect(
+      attachmentApi.previewAttachment("/preview"),
+    ).rejects.toThrow("unsafe type");
+    expect(unsafeTypeCancel).toHaveBeenCalledOnce();
+
+    const unsafeLengthCancel = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          new ReadableStream({ cancel: unsafeLengthCancel }),
+          {
+          headers: {
+            "content-length": "1048577",
+            "content-type": "text/plain; charset=utf-8",
+          },
+          },
+        ),
+      ),
+    );
+    await expect(
+      attachmentApi.previewAttachment("/preview"),
+    ).rejects.toThrow("invalid size");
+    expect(unsafeLengthCancel).toHaveBeenCalledOnce();
+  });
+
   it("imports by opaque route IDs with only the server-bound draft ID", async () => {
     const signal = new AbortController().signal;
     const fetchMock = vi.fn<

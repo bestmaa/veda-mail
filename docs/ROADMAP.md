@@ -109,7 +109,8 @@ receiving-side interoperability remains the release verification gate.
   using safe `Content-Disposition`, `nosniff`, and streaming limits
 - [ ] Forward original attachments without trusting client-supplied blob IDs
 - [ ] Download all as a bounded, server-streamed, collision-safe ZIP
-- [ ] Safe attachment preview allowlist with isolated renderers
+- [ ] Safe attachment preview allowlist with isolated renderers (plain-text v1
+  implemented; live JMAP/IMAP/ClamAV acceptance remains before completion)
 - [ ] Inline CID image handling without remote-content leakage
 - [ ] Open-source malware-scanner hook, quarantine state, timeouts, and archive
   expansion defenses

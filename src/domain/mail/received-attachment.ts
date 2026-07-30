@@ -1,6 +1,7 @@
 const DEFAULT_ATTACHMENT_NAME = "attachment.bin";
 const MAX_ATTACHMENT_NAME_BYTES = 180;
 export const MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES = 50 * 1024 * 1024;
+export const MAX_RECEIVED_ATTACHMENT_TEXT_PREVIEW_BYTES = 1 * 1024 * 1024;
 const MIME_TYPE =
   /^[a-z0-9][a-z0-9!#$&^_.+-]{0,62}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,62}$/u;
 const WINDOWS_RESERVED_NAME =

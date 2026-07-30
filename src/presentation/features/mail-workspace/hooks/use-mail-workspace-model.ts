@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { createComposerAttachmentViewModel } from "@/presentation/features/mail-workspace/composer-attachment.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
@@ -9,17 +9,14 @@ import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/u
 import { useMemberSessionModel } from "@/presentation/features/mail-workspace/hooks/use-member-session-model";
 import { useMobileNavigationModel } from "@/presentation/features/mail-workspace/hooks/use-mobile-navigation-model";
 import { useAttachmentArchiveDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-archive-download";
+import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hooks/use-attachment-preview";
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
+import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model";
 import {
-  formatFullDate,
   formatMessageDate,
   formatSender,
   initials,
 } from "@/presentation/shared/formatters/mail-formatters";
-import {
-  createAttachmentArchiveViewModel,
-  createReceivedAttachmentViewModels,
-} from "@/presentation/features/mail-workspace/received-attachment.view-model";
 import {
   createBrandingViewModel,
   type BrandingInput,
@@ -44,6 +41,8 @@ export const useMailWorkspaceModel = ({
   const composer = useComposerModel(mail.refresh, maxAttachmentBytes);
   const navigation = useMobileNavigationModel();
   const archiveDownload = useAttachmentArchiveDownload();
+  const attachmentPreview = useAttachmentPreview();
+  const closeAttachmentPreview = attachmentPreview.close;
   const session = useMemberSessionModel(canSignOut, signOutPath);
   const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName =
@@ -88,66 +87,33 @@ export const useMailWorkspaceModel = ({
     [mail],
   );
 
-  const reader = useMemo(() => {
-    const message = mail.selectedMessage;
-    if (!message && !mail.isReaderLoading) {
-      return null;
-    }
-    if (!message) {
-      return {
-        attachments: [],
-        avatar: "",
-        body: "",
-        canArchive: false,
-        cc: "",
-        date: "",
-        downloadAll: null,
-        error: mail.readerError,
-        from: "",
-        fromEmail: "",
-        htmlBody: null,
-        isLoading: true,
-        isStarred: false,
-        isUnread: false,
-        subject: "Opening message…",
-        to: "",
-      };
-    }
-    const archive = createAttachmentArchiveViewModel(
-      message.id,
-      message.attachments.length,
+  useEffect(() => {
+    closeAttachmentPreview();
+  }, [closeAttachmentPreview, mail.selectedMessage?.id]);
+
+  const reader = useMemo(
+    () =>
+      createReaderViewModel({
+        archiveDownload,
+        attachmentPreview,
+        canArchive: Boolean(
+          mail.workspace?.mailboxes.some(
+            (mailbox) => mailbox.role === "archive",
+          ),
+        ),
+        isLoading: mail.isReaderLoading,
+        message: mail.selectedMessage,
+        readerError: mail.readerError,
+      }),
+    [
+      mail.isReaderLoading,
+      mail.readerError,
+      mail.selectedMessage,
+      mail.workspace?.mailboxes,
       archiveDownload,
-    );
-    return {
-      attachments: createReceivedAttachmentViewModels(
-        message.id,
-        message.attachments,
-      ),
-      avatar: initials(formatSender(message.from)),
-      body: message.textBody,
-      canArchive: Boolean(
-        mail.workspace?.mailboxes.some((mailbox) => mailbox.role === "archive"),
-      ),
-      cc: message.cc.map((address) => address.email).join(", "),
-      date: formatFullDate(message.receivedAt),
-      downloadAll: archive.downloadAll,
-      error: archive.error ?? mail.readerError,
-      from: formatSender(message.from),
-      fromEmail: message.from[0]?.email ?? "",
-      htmlBody: message.htmlBody,
-      isLoading: mail.isReaderLoading,
-      isStarred: message.isStarred,
-      isUnread: message.isUnread,
-      subject: message.subject,
-      to: message.to.map((address) => address.email).join(", "),
-    };
-  }, [
-    mail.isReaderLoading,
-    mail.readerError,
-    mail.selectedMessage,
-    mail.workspace?.mailboxes,
-    archiveDownload,
-  ]);
+      attachmentPreview,
+    ],
+  );
 
   const activeFolder =
     mail.workspace?.mailboxes.find(

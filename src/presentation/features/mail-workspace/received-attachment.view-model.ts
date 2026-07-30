@@ -1,4 +1,5 @@
 import type { Attachment } from "@/domain/mail/mail";
+import { normalizeReceivedAttachmentMimeType } from "@/domain/mail/received-attachment";
 import type { AttachmentViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { formatFileSize } from "@/presentation/shared/formatters/mail-formatters";
 
@@ -10,6 +11,17 @@ export const createAttachmentDownloadHref = (
 
 export const createAttachmentArchiveHref = (messageId: string): string =>
   `/api/v1/mail/messages/${encodeURIComponent(messageId)}/attachments/archive`;
+
+export const createAttachmentPreviewHref = (
+  messageId: string,
+  attachmentId: string,
+): string =>
+  `${createAttachmentDownloadHref(messageId, attachmentId)}/preview`;
+
+export const canPreviewReceivedAttachment = (
+  attachment: Attachment,
+): boolean =>
+  normalizeReceivedAttachmentMimeType(attachment.mimeType) === "text/plain";
 
 export const createAttachmentArchiveViewModel = (
   messageId: string,
@@ -35,10 +47,37 @@ export const createAttachmentArchiveViewModel = (
 export const createReceivedAttachmentViewModels = (
   messageId: string,
   attachments: readonly Attachment[],
+  preview?: {
+    readonly href: string | null;
+    readonly isLoading: boolean;
+    readonly open: (
+      href: string,
+      name: string,
+      trigger: HTMLButtonElement,
+    ) => Promise<void>;
+  },
 ): readonly AttachmentViewModel[] =>
-  attachments.map((attachment) => ({
-    href: createAttachmentDownloadHref(messageId, attachment.id),
-    id: attachment.id,
-    meta: `${attachment.mimeType} · ${formatFileSize(attachment.size)}`,
-    name: attachment.name,
-  }));
+  attachments.map((attachment) => {
+    const previewHref = createAttachmentPreviewHref(
+      messageId,
+      attachment.id,
+    );
+    const canPreview = Boolean(
+      preview && canPreviewReceivedAttachment(attachment),
+    );
+    return {
+      href: createAttachmentDownloadHref(messageId, attachment.id),
+      id: attachment.id,
+      isPreviewing:
+        canPreview &&
+        preview?.href === previewHref &&
+        preview.isLoading,
+      meta: `${attachment.mimeType} · ${formatFileSize(attachment.size)}`,
+      name: attachment.name,
+      onPreview:
+        canPreview && preview
+          ? (trigger) =>
+              void preview.open(previewHref, attachment.name, trigger)
+          : null,
+    };
+  });
