@@ -166,7 +166,12 @@ export const downloadImapAttachment = async (
       ...(input.signal ? { signal: input.signal } : {}),
       source,
     });
-    return { body, name: attachment.metadata.name, size: null };
+    return {
+      body,
+      mimeType: attachment.metadata.mimeType,
+      name: attachment.metadata.name,
+      size: null,
+    };
   } catch (error) {
     await finalize();
     throw mapProviderError(error, input.signal);

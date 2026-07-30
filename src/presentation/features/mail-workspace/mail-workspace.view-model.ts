@@ -95,6 +95,7 @@ export interface ComposerAttachmentViewModel {
   readonly meta: string;
   readonly name: string;
   readonly onRemove: () => void;
+  readonly onRetry?: () => void;
   readonly state: "error" | "ready" | "uploading";
 }
 

@@ -121,6 +121,7 @@ export class AttachmentQuarantine {
     scope: AttachmentScope,
     body: AttachmentBody,
     contentLength: number,
+    signal?: AbortSignal,
   ): Promise<AttachmentSnapshot> {
     const record = authorizeAttachment(this.#records.get(id), this.#key, scope);
     return uploadQuarantinedAttachment(
@@ -132,6 +133,7 @@ export class AttachmentQuarantine {
         now: this.#now,
         records: this.#records,
         scanner: this.#scanner,
+        ...(signal ? { signal } : {}),
         uploadIdleTimeoutMs: this.#uploadIdleTimeoutMs,
         uploadTimeoutMs: this.#uploadTimeoutMs,
       },

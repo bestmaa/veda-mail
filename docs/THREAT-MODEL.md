@@ -172,14 +172,24 @@ limiter and encrypted shared session repository.
   cancellation, and provider timeouts. JMAP requires exact identity-encoded
   length; IMAP revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE`
   before resolving and streaming the server-held MIME part.
+- Forwarding an original attachment accepts only message-scoped opaque route
+  IDs plus a fresh draft ID. The server re-fetches the current provider object,
+  stages decoded bytes within the verified outbound limit and a shared
+  plaintext-memory lease, wipes the staging buffer, and imports only a clean,
+  MIME-verified result into encrypted quarantine.
+- Import cancellation and absolute deadlines reach the provider stream,
+  scanner, and quarantine operation. Reservation cleanup is bounded and
+  best-effort failures are logged without identifiers or replacement of the
+  original safe error.
 
 Residual risk: received attachments are hostile provider content and are not
 scanned by the outbound ClamAV quarantine. Operators may add an independently
 reviewed inbound scanning boundary, and members should scan unexpected files
-before opening them. Preview, inline CID, download-all, forwarding original
-attachments, byte ranges, and explicit archive-expansion policy remain
-unavailable. ClamAV must have enough memory for outbound signature reloads;
-operator monitoring is required.
+before opening them. Forwarding an original does pass it through the outbound
+quarantine, but direct download does not. Preview, inline CID, download-all,
+byte ranges, and explicit archive-expansion policy remain unavailable. ClamAV
+must have enough memory for outbound signature reloads; operator monitoring is
+required.
 
 ### Rules and forwarding
 

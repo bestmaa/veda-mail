@@ -15,6 +15,10 @@ import {
   commitAttachmentOperation,
   runAttachmentOperation,
 } from "@/server/attachments/attachment-operation";
+import {
+  detectAttachmentMime,
+  scanAttachmentFailClosed,
+} from "@/server/attachments/attachment-upload-inspection";
 import type {
   AttachmentBody,
   AttachmentMimeDetector,
@@ -24,9 +28,6 @@ import type {
 } from "@/server/attachments/attachment-types";
 import { AttachmentQuarantineError } from "@/server/attachments/attachment-types";
 
-const MIME_PATTERN =
-  /^[a-z0-9][a-z0-9!#$&^_.+-]{0,62}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,62}$/;
-
 interface UploadContext {
   readonly directory: string;
   readonly key: Buffer;
@@ -35,6 +36,7 @@ interface UploadContext {
   readonly now: () => number;
   readonly records: Map<string, StoredAttachment>;
   readonly scanner: AttachmentScanner;
+  readonly signal?: AbortSignal;
   readonly uploadIdleTimeoutMs: number;
   readonly uploadTimeoutMs: number;
 }
@@ -55,6 +57,13 @@ const reject = (record: StoredAttachment): void => {
 const isRejected = (record: StoredAttachment): boolean =>
   record.state === "rejected";
 
+const aborted = (): AttachmentQuarantineError =>
+  new AttachmentQuarantineError(
+    "Attachment upload was aborted.",
+    "ATTACHMENT_UPLOAD_ABORTED",
+    409,
+  );
+
 const assertActive = (
   context: UploadContext,
   record: StoredAttachment,
@@ -74,53 +83,6 @@ const assertActive = (
   }
 };
 
-const scanFailClosed = (scanner: AttachmentScanner): AttachmentScanner => ({
-  async scan(content, scanContext) {
-    try {
-      return await scanner.scan(content, scanContext);
-    } catch (error) {
-      if (error instanceof AttachmentQuarantineError) {
-        throw error;
-      }
-      throw new AttachmentQuarantineError(
-        "Attachment scanner is unavailable.",
-        "ATTACHMENT_SCAN_UNAVAILABLE",
-        503,
-      );
-    }
-  },
-});
-
-const detectMime = async (
-  detector: AttachmentMimeDetector,
-  record: StoredAttachment,
-  sample: Uint8Array,
-): Promise<string> => {
-  let result;
-  try {
-    result = await detector.detect({
-      byteLength: record.contentLength,
-      declaredMimeType: record.declaredMimeType,
-      fileName: record.fileName,
-      sample,
-    });
-  } catch {
-    throw new AttachmentQuarantineError(
-      "Attachment type detection is unavailable.",
-      "ATTACHMENT_MIME_UNAVAILABLE",
-      503,
-    );
-  }
-  if (result.verdict !== "accepted" || !MIME_PATTERN.test(result.mimeType)) {
-    throw new AttachmentQuarantineError(
-      "Attachment type is not allowed.",
-      "ATTACHMENT_TYPE_REJECTED",
-      422,
-    );
-  }
-  return result.mimeType;
-};
-
 export const uploadQuarantinedAttachment = async (
   context: UploadContext,
   record: StoredAttachment,
@@ -129,6 +91,9 @@ export const uploadQuarantinedAttachment = async (
   contentLength: number,
 ): Promise<AttachmentSnapshot> => {
   assertUnexpired(record, context.now());
+  if (context.signal?.aborted) {
+    throw aborted();
+  }
   if (record.state !== "reserved") {
     throw new AttachmentQuarantineError(
       "Attachment is not ready for upload.",
@@ -150,6 +115,9 @@ export const uploadQuarantinedAttachment = async (
   transitionAttachment(record, "uploading");
   const controller = new AbortController();
   record.operation = controller;
+  const onExternalAbort = (): void => controller.abort();
+  context.signal?.addEventListener("abort", onExternalAbort, { once: true });
+  if (context.signal?.aborted) onExternalAbort();
   let timedOut = false;
   let idleDeadline: NodeJS.Timeout | undefined;
   const armIdleDeadline = () => {
@@ -177,7 +145,7 @@ export const uploadQuarantinedAttachment = async (
       key: context.key,
       maximumBytes: context.maximumBytes,
       onProgress: armIdleDeadline,
-      scanner: scanFailClosed(context.scanner),
+      scanner: scanAttachmentFailClosed(context.scanner),
       signal: controller.signal,
     });
     const completedUpload = encrypted;
@@ -192,7 +160,12 @@ export const uploadQuarantinedAttachment = async (
     }
     record.detectedMimeType = await runAttachmentOperation(
       controller.signal,
-      () => detectMime(context.mimeDetector, record, completedUpload.sample),
+      () =>
+        detectAttachmentMime(
+          context.mimeDetector,
+          record,
+          completedUpload.sample,
+        ),
     );
     assertActive(context, record, id, "quarantined");
     record.sha256 = completedUpload.sha256;
@@ -228,6 +201,9 @@ export const uploadQuarantinedAttachment = async (
         410,
       );
     }
+    if (context.signal?.aborted) {
+      throw aborted();
+    }
     if (error instanceof AttachmentQuarantineError) {
       throw error;
     }
@@ -237,6 +213,7 @@ export const uploadQuarantinedAttachment = async (
       503,
     );
   } finally {
+    context.signal?.removeEventListener("abort", onExternalAbort);
     clearTimeout(idleDeadline);
     clearTimeout(uploadDeadline);
     delete record.operation;

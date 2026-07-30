@@ -42,6 +42,7 @@ export interface AttachmentDownloadInput {
 
 export interface AttachmentDownload {
   readonly body: ReadableStream<Uint8Array>;
+  readonly mimeType: string;
   readonly name: string;
   readonly size: number | null;
 }

@@ -17,19 +17,29 @@ export interface AttachmentSendMemoryBudgetOptions {
 }
 
 interface MemoryWaiter {
+  readonly abortError: () => Error;
+  readonly busyError: () => ApiError;
   readonly bytes: number;
-  readonly reject: (error: ApiError) => void;
+  readonly reject: (error: Error) => void;
   readonly resolve: (lease: AttachmentSendMemoryLease) => void;
+  readonly signal?: AbortSignal;
+  abort?: () => void;
   settled: boolean;
   timeout?: NodeJS.Timeout;
 }
 
-const busyError = (): ApiError =>
+const sendBusyError = (): ApiError =>
   new ApiError(
     "Attachment sending is busy. Please wait and try again.",
     "ATTACHMENT_SEND_BUSY",
     503,
   );
+
+export interface AttachmentMemoryAcquireOptions {
+  readonly abortError?: () => Error;
+  readonly busyError?: () => ApiError;
+  readonly signal?: AbortSignal;
+}
 
 const assertPositiveSafeInteger = (value: number, label: string): void => {
   if (!Number.isSafeInteger(value) || value < 1) {
@@ -59,8 +69,14 @@ export class AttachmentSendMemoryBudget {
     this.#waitTimeoutMs = options.waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
   }
 
-  public async acquire(bytes: number): Promise<AttachmentSendMemoryLease> {
+  public async acquire(
+    bytes: number,
+    options: AttachmentMemoryAcquireOptions = {},
+  ): Promise<AttachmentSendMemoryLease> {
     assertPositiveSafeInteger(bytes, "Attachment memory request");
+    const abortError = options.abortError ?? (() => new Error("Aborted."));
+    const busyError = options.busyError ?? sendBusyError;
+    if (options.signal?.aborted) throw abortError();
     if (bytes > this.#capacityBytes) throw busyError();
     if (
       this.#waiters.length === 0 &&
@@ -71,16 +87,22 @@ export class AttachmentSendMemoryBudget {
     if (this.#waiters.length >= this.#maxWaiters) throw busyError();
     return new Promise<AttachmentSendMemoryLease>((resolve, reject) => {
       const waiter: MemoryWaiter = {
+        abortError,
+        busyError,
         bytes,
         reject,
         resolve,
+        ...(options.signal ? { signal: options.signal } : {}),
         settled: false,
       };
+      this.#waiters.push(waiter);
+      waiter.abort = () => this.#rejectWaiter(waiter, waiter.abortError());
       waiter.timeout = setTimeout(() => {
-        this.#expire(waiter);
+        this.#rejectWaiter(waiter, waiter.busyError());
       }, this.#waitTimeoutMs);
       waiter.timeout.unref();
-      this.#waiters.push(waiter);
+      waiter.signal?.addEventListener("abort", waiter.abort, { once: true });
+      if (waiter.signal?.aborted) waiter.abort();
     });
   }
 
@@ -106,17 +128,25 @@ export class AttachmentSendMemoryBudget {
       this.#waiters.shift();
       if (waiter.settled) continue;
       waiter.settled = true;
-      if (waiter.timeout) clearTimeout(waiter.timeout);
+      this.#cleanupWaiter(waiter);
       waiter.resolve(this.#createLease(waiter.bytes));
     }
   }
 
-  #expire(waiter: MemoryWaiter): void {
+  #cleanupWaiter(waiter: MemoryWaiter): void {
+    if (waiter.timeout) clearTimeout(waiter.timeout);
+    if (waiter.abort) {
+      waiter.signal?.removeEventListener("abort", waiter.abort);
+    }
+  }
+
+  #rejectWaiter(waiter: MemoryWaiter, error: Error): void {
     if (waiter.settled) return;
     waiter.settled = true;
     const index = this.#waiters.indexOf(waiter);
     if (index >= 0) this.#waiters.splice(index, 1);
-    waiter.reject(busyError());
+    this.#cleanupWaiter(waiter);
+    waiter.reject(error);
     this.#drain();
   }
 }

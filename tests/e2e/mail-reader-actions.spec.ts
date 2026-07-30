@@ -154,8 +154,12 @@ test("submits Reply All and Forward with the correct threading payload", async (
   await sendComposer(page);
 
   expect(sentPayloads[1]).toMatchObject({
+    attachmentIds: [expect.stringMatching(/^[A-Za-z0-9_-]{32}$/)],
     bcc: [],
     cc: [],
+    draftId: expect.stringMatching(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    ),
     subject: "Fwd: Revised product roadmap · Q3",
     to: [{ email: "colleague@example.com", name: null }],
   });

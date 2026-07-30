@@ -6,7 +6,6 @@ import {
   type ChangeEventHandler,
   type FormEventHandler,
 } from "react";
-
 import {
   createForwardDraft,
   createReplyAllDraft,
@@ -72,7 +71,7 @@ export const useComposerModel = (
   const openDraft = useCallback(
     (draft: ComposeInput, nextTitle: ComposerTitle) => {
       returnFocus.remember();
-      attachments.discard(true);
+      const draftId = attachments.discard(true);
       void attachments.refreshCapability();
       setTo(formatAddressInput(draft.to));
       setCc(formatAddressInput(draft.cc));
@@ -85,31 +84,31 @@ export const useComposerModel = (
       setTitle(nextTitle);
       setError(null);
       setIsOpen(true);
+      return draftId;
     },
     [attachments, returnFocus],
   );
 
   const openReply = useCallback(
-    (message: MessageDetail | null) => {
-      if (message) openDraft(createReplyDraft(message), "Reply");
-    },
+    (message: MessageDetail | null) =>
+      message && openDraft(createReplyDraft(message), "Reply"),
     [openDraft],
   );
 
   const openReplyAll = useCallback(
-    (message: MessageDetail | null, signedInEmail: string) => {
-      if (message) {
-        openDraft(createReplyAllDraft(message, signedInEmail), "Reply all");
-      }
-    },
+    (message: MessageDetail | null, signedInEmail: string) =>
+      message &&
+      openDraft(createReplyAllDraft(message, signedInEmail), "Reply all"),
     [openDraft],
   );
-
   const openForward = useCallback(
     (message: MessageDetail | null) => {
-      if (message) openDraft(createForwardDraft(message), "Forward message");
+      if (message) {
+        const draftId = openDraft(createForwardDraft(message), "Forward message");
+        attachments.importOriginalAttachments(message, draftId);
+      }
     },
-    [openDraft],
+    [attachments, openDraft],
   );
 
   const close = useCallback(() => {
@@ -233,6 +232,7 @@ export const useComposerModel = (
     onToggleBcc,
     onToggleCc,
     removeAttachment: attachments.remove,
+    retryAttachment: attachments.retry,
     onSubjectInput,
     onSubmit,
     onToInput,
