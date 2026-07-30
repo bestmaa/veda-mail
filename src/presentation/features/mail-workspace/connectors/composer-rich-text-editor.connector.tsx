@@ -23,6 +23,10 @@ import {
 import { useEffect, useMemo } from "react";
 
 import { ComposerPlainTransferConnector } from "@/presentation/features/mail-workspace/connectors/composer-plain-transfer.connector";
+import { ComposerSignatureControlsConnector } from "@/presentation/features/mail-workspace/connectors/composer-signature-controls.connector";
+import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
+import { $initializeComposerSignatureSlot } from "@/presentation/features/mail-workspace/composer-signature-editor";
+import { EmailSignatureNode } from "@/presentation/features/mail-workspace/composer-signature.node";
 import { useComposerEditorToolbar } from "@/presentation/features/mail-workspace/hooks/use-composer-editor-toolbar";
 import type { RichComposerSnapshot } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import { ComposerFormattingToolbarView } from "@/presentation/features/mail-workspace/ui/composer-formatting-toolbar.view";
@@ -124,13 +128,24 @@ export const ComposerRichTextEditorConnector = ({
   autoFocus,
   disabled,
   initialHtml,
+  label = "Message body",
+  namespace = "VedaMailComposer",
   onChange,
+  placeholder = "Write a clear message…",
+  required = true,
+  signature,
 }: {
   readonly autoFocus: boolean;
   readonly disabled: boolean;
   readonly initialHtml: string;
+  readonly label?: string;
+  readonly namespace?: string;
   readonly onChange: (snapshot: RichComposerSnapshot) => void;
+  readonly placeholder?: string;
+  readonly required?: boolean;
+  readonly signature?: ComposerSignatureEditorConfiguration;
 }) => {
+  const signaturePlacement = signature?.initialContentPlacement;
   const initialConfig = useMemo(
     () => ({
       editorState: (editor: LexicalEditor) => {
@@ -143,29 +158,50 @@ export const ComposerRichTextEditorConnector = ({
           root.append(...$generateNodesFromDOM(editor, document));
         }
         if (root.isEmpty()) root.append($createParagraphNode());
+        if (signaturePlacement) {
+          $initializeComposerSignatureSlot(signaturePlacement);
+        }
       },
       editable: !disabled,
-      namespace: "VedaMailComposer",
-      nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode],
+      namespace,
+      nodes: [
+        HeadingNode,
+        QuoteNode,
+        ListNode,
+        ListItemNode,
+        LinkNode,
+        EmailSignatureNode,
+      ],
       onError: (error: Error) => {
         throw error;
       },
       theme,
     }),
-    [disabled, initialHtml],
+    [
+      disabled,
+      initialHtml,
+      namespace,
+      signaturePlacement,
+    ],
   );
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <FormattingConnector disabled={disabled} />
+      {signature ? (
+        <ComposerSignatureControlsConnector
+          configuration={signature}
+          disabled={disabled}
+        />
+      ) : null}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <RichTextPlugin
           contentEditable={
             <ContentEditable
               aria-disabled={disabled}
-              aria-label="Message body"
+              aria-label={label}
               aria-multiline="true"
-              aria-required="true"
+              aria-required={required}
               className="composer-rich-editor h-full min-h-0 overflow-y-auto px-4 py-4 text-sm leading-6 text-slate-700 outline-none focus-visible:outline-2 focus-visible:outline-indigo-600"
               spellCheck
             />
@@ -173,7 +209,7 @@ export const ComposerRichTextEditorConnector = ({
           ErrorBoundary={LexicalErrorBoundary}
           placeholder={
             <span className="pointer-events-none absolute left-4 top-4 text-sm text-slate-500">
-              Write a clear message…
+              {placeholder}
             </span>
           }
         />

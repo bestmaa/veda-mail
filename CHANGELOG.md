@@ -34,6 +34,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
   ordered and unordered lists, isolated links, undo/redo, plain-text mode, and
   browser spellcheck. The client editor uses version-pinned, MIT-licensed
   Lexical 0.44.0 and accepts pasted or dropped content as plain text only
+- Multiple named plain or sanitized-rich signatures with explicit save,
+  separate new-message and reply/forward defaults, conflict-safe settings,
+  exact-once new/reply/forward placement, and a None/change composer picker
 - Provider capability matrix and public Gmail-class product roadmap
 - Member-visible provider capability status with unsupported features called out
 - Coverage thresholds, route/component harnesses, and Playwright browser
@@ -99,6 +102,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Derive signature ownership from the authenticated gateway account, encrypt
+  each canonical signature book with an owner-bound AES-256-GCM key, hide raw
+  identities behind HMAC keys, and persist only through bounded, atomic
+  mode-0600 writes. Same-origin checks, verified-session rate limits, strict
+  schemas, stale-revision conflicts, and the outbound sanitizer apply before
+  provider submission
 - Enforce a per-document nonce Content Security Policy, retain only the reviewed
   message-frame script hash and React style-attribute exception, and emit
   production host-only HSTS

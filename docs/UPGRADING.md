@@ -77,6 +77,19 @@ the existing authenticated JMAP or SMTP connection, and the change requires no
 Stalwart configuration, provider-profile update, `/data` migration, or mailbox
 data migration.
 
+Named email signatures add `/data/member-signatures.json` on first use. No
+environment variable, provider-profile migration, mailbox migration, Stalwart
+configuration, schema change, API extension, or new port is required. The file
+contains encrypted owner books and must be backed up together with
+`installation.json`; its keys derive from that installation's session secret.
+Do not copy either file independently between installations.
+
+The signature writer is process-serialized and supports exactly one Veda Mail
+process for a writable `/data` volume. Do not start old and new application
+versions concurrently or attach multiple replicas to the same signature file.
+An older rollback image ignores the new file, but preserve the whole matching
+volume so signatures return when the newer version is restored.
+
 Then verify:
 
 ```bash

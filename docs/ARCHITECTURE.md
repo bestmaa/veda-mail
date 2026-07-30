@@ -198,6 +198,50 @@ The idempotency ledger is also process-local. A restart signs out the member,
 and independent replicas must not be used as interchangeable send targets
 without a shared encrypted session and atomic idempotency implementation.
 
+## Email signature boundary
+
+Email signatures are durable Veda Mail preferences, not provider-side identity
+objects. The member route first authenticates the current provider connection,
+resolves its account through `MailGateway`, and derives the owner from that
+gateway-owned email address plus the connection's provider ID. The browser
+cannot supply or override an owner address.
+
+With the supplied Compose layout, signature books live in
+`/data/member-signatures.json`. The outer file contains keyed owner buckets but
+no raw email addresses or signature plaintext. An HMAC-SHA-256 of the
+normalized provider/email identity and installation session secret selects the
+bucket. Each book is independently encrypted with AES-256-GCM under an
+HKDF-derived key; authenticated additional data binds its ciphertext to that
+owner key. Strict schemas are applied outside and after decryption. Invalid,
+noncanonical, corrupted, or authentication-failing records fail closed.
+
+Writes create a mode-0600 temporary file, sync it, and atomically replace the
+fixed store. A member may keep at most 20 case-insensitively named signatures.
+Each successful create, update, delete, or default change rotates an opaque
+book revision. A mutation supplies the revision it read; a stale revision
+returns a conflict instead of silently replacing another browser's change.
+Deleting a signature also clears either default that referenced it.
+
+Signature writes require same-origin validation before authentication, a
+bounded 128 KiB JSON body, strict discriminated operation schemas, and
+request/verified-connection rate limits. Names are single-line and capped at
+80 characters and 256 UTF-8 bytes. Plain or rich source fields are capped at
+16 KiB characters and bytes. The canonical plain/HTML pair is capped at
+32 KiB combined, with rich input limited to 256 elements and nesting depth 16.
+Rich content passes the centralized outbound sanitizer, which removes active
+content, remote media, arbitrary styles, and unsafe links and derives the
+plain variant from the sanitized HTML.
+
+The composer inserts only that canonical pair. The ordinary send boundary
+canonicalizes the complete message again before either provider receives it,
+so signatures do not add a provider-specific MIME or API shape. No Stalwart
+configuration, schema, migration, or additional endpoint is required.
+
+Revision compare-and-write serialization is process-local. Exactly one Veda
+Mail process may write a given signature file. Multiple replicas sharing a
+writable `/data` volume can race and are unsupported until this file store is
+replaced by a shared transactional implementation.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never
@@ -401,8 +445,8 @@ npm run check:lines
 
 ## Runtime model
 
-- Installation, branding, service profile, and member 2FA are durable on
-  `/data`.
+- Installation, branding, service profile, member 2FA, and encrypted member
+  signatures are durable on `/data`.
 - Pending attachment uploads are encrypted, process-local quarantine data with
   a 30-minute TTL; a one-minute background sweep expires them without another
   request, and production startup removes bounded orphan quarantine
@@ -410,7 +454,8 @@ npm run check:lines
 - Member connections and gateway credentials are memory-only for 12 hours.
 - Restarting the process intentionally signs every member out.
 - A multi-replica deployment needs a shared encrypted session repository and
-  coordinated rate limiter behind the existing server boundary.
+  coordinated rate limiter, plus a transactional replacement for the
+  process-serialized signature file, behind the existing server boundary.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

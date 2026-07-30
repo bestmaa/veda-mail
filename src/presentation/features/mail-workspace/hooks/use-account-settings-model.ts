@@ -2,9 +2,11 @@
 
 import { type FormEvent, useCallback, useState } from "react";
 
+import { createProviderFeatures } from "@/presentation/features/mail-workspace/account-settings-provider-features";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
+import type { EmailSignatureSettingsViewModel } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
-import { formatFileSize } from "@/presentation/shared/formatters/mail-formatters";
+import { useModalDialogFocus } from "@/presentation/shared/hooks/use-modal-dialog-focus";
 import {
   memberSettingsApi,
   type MemberSettingsSnapshot,
@@ -31,8 +33,11 @@ const defaultCapabilities = {
 export const useAccountSettingsModel = (
   fallbackEmail: string,
   fallbackName: string,
+  signatures: EmailSignatureSettingsViewModel,
 ): AccountSettingsViewModel => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] =
+    useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<MemberSettingsSnapshot | null>(null);
   const [displayName, setDisplayName] = useState(fallbackName);
@@ -50,8 +55,22 @@ export const useAccountSettingsModel = (
     reset: resetTwoFactor,
     view: twoFactorView,
   } = useTwoFactorSettingsModel();
+  const close = useCallback(() => {
+    if (signatures.hasUnsavedChanges) {
+      setIsCloseConfirmationOpen(true);
+      return;
+    }
+    setIsOpen(false);
+  }, [signatures.hasUnsavedChanges]);
+  useModalDialogFocus(
+    isOpen,
+    "#account-settings-dialog",
+    close,
+    "[data-settings-initial-focus]",
+  );
 
   const open = useCallback(() => {
+    setIsCloseConfirmationOpen(false);
     setIsOpen(true);
     setIsLoading(true);
     setDisplayName(fallbackName);
@@ -135,7 +154,19 @@ export const useAccountSettingsModel = (
   return {
     canChangePassword: capabilities.passwordChange,
     canEditProfile: capabilities.profileSettings,
-    close: () => setIsOpen(false),
+    close,
+    closeConfirmation: {
+      description:
+        "Closing account settings will discard unsaved signature changes.",
+      isOpen: isCloseConfirmationOpen,
+      onCancel: () => setIsCloseConfirmationOpen(false),
+      onConfirm: () => {
+        signatures.discardAll();
+        setIsCloseConfirmationOpen(false);
+        setIsOpen(false);
+      },
+      title: "Discard signature changes?",
+    },
     displayName,
     email: snapshot?.profile.email ?? fallbackEmail,
     isLoading,
@@ -163,59 +194,11 @@ export const useAccountSettingsModel = (
       success: profileSuccess,
     },
     profileName: snapshot?.profile.displayName ?? null,
-    providerFeatures: [
-      {
-        detail: capabilities.mail.supportsServerSearch
-          ? "Available"
-          : "Not available",
-        label: "Server-side search",
-        supported: capabilities.mail.supportsServerSearch,
-      },
-      {
-        detail: capabilities.mail.supportsDrafts
-          ? "Available"
-          : "Not available",
-        label: "Provider draft sync",
-        supported: capabilities.mail.supportsDrafts,
-      },
-      {
-        detail: capabilities.mail.supportsThreads
-          ? "Available"
-          : "Not available",
-        label: "Conversation threads",
-        supported: capabilities.mail.supportsThreads,
-      },
-      {
-        detail: capabilities.mail.supportsPush
-          ? "Available"
-          : "Manual refresh",
-        label: "Live mailbox updates",
-        supported: capabilities.mail.supportsPush,
-      },
-      {
-        detail:
-          snapshot?.attachmentCapability.status === "unavailable"
-            ? "Temporarily unavailable"
-            : capabilities.mail.maxAttachmentBytes > 0
-            ? `Up to ${formatFileSize(capabilities.mail.maxAttachmentBytes)}`
-            : "Not available",
-        label: "Attachment upload & send",
-        supported: capabilities.mail.maxAttachmentBytes > 0,
-      },
-      {
-        detail:
-          capabilities.mail.supportsAttachmentDownload &&
-          capabilities.mail.maxAttachmentDownloadBytes > 0
-            ? `Up to ${formatFileSize(
-                capabilities.mail.maxAttachmentDownloadBytes,
-              )}`
-            : "Not available",
-        label: "Received attachment downloads",
-        supported:
-          capabilities.mail.supportsAttachmentDownload &&
-          capabilities.mail.maxAttachmentDownloadBytes > 0,
-      },
-    ],
+    providerFeatures: createProviderFeatures(
+      capabilities,
+      snapshot?.attachmentCapability.status,
+    ),
+    signatures,
     twoFactor: {
       ...twoFactorView,
       canManage: capabilities.twoFactorAuthentication,

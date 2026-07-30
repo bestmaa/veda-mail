@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
+import { EmailSignatureConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/email-signature-confirmation.connector";
+import { EmailSignatureSettingsView } from "@/presentation/features/mail-workspace/ui/email-signature-settings.view";
 import { TwoFactorSettingsView } from "@/presentation/features/mail-workspace/ui/two-factor-settings.view";
 
 const status = (error: string | null, success: string | null) =>
@@ -30,10 +32,12 @@ export const AccountSettingsView = ({
       aria-labelledby="account-settings-title"
       aria-modal="true"
       className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6"
+      id="account-settings-dialog"
       role="dialog"
+      tabIndex={-1}
     >
       <button
-        aria-label="Close profile settings"
+        aria-label="Close account settings"
         className="absolute inset-0 cursor-default"
         onClick={settings.close}
         type="button"
@@ -45,13 +49,14 @@ export const AccountSettingsView = ({
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-extrabold text-slate-900" id="account-settings-title">
-              Profile &amp; security
+              Account settings
             </h2>
             <p className="truncate text-xs text-slate-500">{settings.email}</p>
           </div>
           <button
-            aria-label="Close profile settings"
+            aria-label="Close account settings"
             className="grid size-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+            data-settings-initial-focus
             onClick={settings.close}
             type="button"
           >
@@ -139,6 +144,8 @@ export const AccountSettingsView = ({
                 </div>
               </form>
 
+              <EmailSignatureSettingsView settings={settings.signatures} />
+
               <TwoFactorSettingsView settings={settings.twoFactor} />
 
               <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" onSubmit={settings.password.onSubmit}>
@@ -182,5 +189,10 @@ export const AccountSettingsView = ({
           )}
         </div>
       </section>
+      <EmailSignatureConfirmationConnector
+        confirmation={settings.closeConfirmation}
+        confirmLabel="Discard and close"
+        idPrefix="account-settings-close-confirmation"
+      />
     </div>
   ) : null;

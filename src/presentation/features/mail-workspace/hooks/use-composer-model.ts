@@ -4,33 +4,29 @@ import {
   useCallback,
   useState,
   type ChangeEventHandler,
-  type FormEventHandler,
 } from "react";
 import {
   createForwardDraft,
   createReplyAllDraft,
   createReplyDraft,
   formatAddressInput,
-  parseRecipientInputs,
 } from "@/domain/mail/compose";
 import type { ComposeInput, MessageDetail, SendReceipt } from "@/domain/mail/mail";
-import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
-import {
-  attachmentRecoveryMessage,
-  composerSendErrorMessage,
-} from "@/presentation/features/mail-workspace/hooks/composer-send-error";
+import type { EmailSignatureBook } from "@/domain/member/email-signature";
 import { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import {
   useComposerFocusTrap,
   useComposerReturnFocus,
 } from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
-import { mailApi } from "@/transport/client/api-client";
+import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
+import { useComposerSignatures } from "@/presentation/features/mail-workspace/hooks/use-composer-signatures";
 
 type ComposerTitle = "Forward message" | "New message" | "Reply all" | "Reply";
 export const useComposerModel = (
   onSent: (receipt: SendReceipt, submittedEmails: readonly string[]) => void,
   maxAttachmentBytes: number | null,
+  signatureBook: EmailSignatureBook | null = null,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -44,7 +40,13 @@ export const useComposerModel = (
   const [title, setTitle] = useState<ComposerTitle>("New message");
   const [error, setError] = useState<string | null>(null);
   const attachments = useComposerAttachments(maxAttachmentBytes);
-  const body = useComposerBody(isSending);
+  const signatures = useComposerSignatures(signatureBook);
+  const {
+    detach: detachSignature,
+    prepare: prepareSignatures,
+    reset: resetSignatures,
+  } = signatures;
+  const body = useComposerBody(isSending, detachSignature);
   const { loadPlainDraft, reset: resetBody } = body;
   const returnFocus = useComposerReturnFocus();
   const resetFields = useCallback(() => {
@@ -55,18 +57,20 @@ export const useComposerModel = (
     setShowBcc(false);
     setSubject("");
     resetBody();
+    resetSignatures();
     setInReplyTo(undefined);
     setTitle("New message");
     setError(null);
-  }, [resetBody]);
+  }, [resetBody, resetSignatures]);
 
   const open = useCallback(() => {
     returnFocus.remember();
     resetFields();
+    prepareSignatures("new");
     attachments.discard(true);
     void attachments.refreshCapability();
     setIsOpen(true);
-  }, [attachments, resetFields, returnFocus]);
+  }, [attachments, prepareSignatures, resetFields, returnFocus]);
 
   const openDraft = useCallback(
     (draft: ComposeInput, nextTitle: ComposerTitle) => {
@@ -80,13 +84,14 @@ export const useComposerModel = (
       setShowBcc(draft.bcc.length > 0);
       setSubject(draft.subject);
       loadPlainDraft(draft.body);
+      prepareSignatures("reply-forward");
       setInReplyTo(draft.inReplyTo);
       setTitle(nextTitle);
       setError(null);
       setIsOpen(true);
       return draftId;
     },
-    [attachments, loadPlainDraft, returnFocus],
+    [attachments, loadPlainDraft, prepareSignatures, returnFocus],
   );
 
   const openReply = useCallback(
@@ -116,8 +121,9 @@ export const useComposerModel = (
     setIsOpen(false);
     setError(null);
     attachments.discard(true);
+    resetSignatures();
     returnFocus.restore();
-  }, [attachments, isSending, returnFocus]);
+  }, [attachments, isSending, resetSignatures, returnFocus]);
 
   useComposerFocusTrap(isOpen, isSending, close);
 
@@ -146,71 +152,21 @@ export const useComposerModel = (
     [cc],
   );
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = useCallback(
-    async (event) => {
-      event.preventDefault();
-      const recipients = parseRecipientInputs({ bcc, cc, to });
-      if (
-        recipients.to.length + recipients.cc.length + recipients.bcc.length ===
-        0
-      ) {
-        setError("Add at least one recipient.");
-        return;
-      }
-      if (!body.text.trim()) {
-        setError("Message body cannot be blank.");
-        return;
-      }
-      if (attachments.isUploading || attachments.hasError) {
-        setError(
-          attachments.isUploading
-            ? "Wait for attachment uploads to finish."
-            : "Remove failed attachments before sending.",
-        );
-        return;
-      }
-      if (attachments.expireReady())
-        return setError(EXPIRED_ATTACHMENT_MESSAGE);
-      setIsSending(true);
-      setError(null);
-      try {
-        const receipt = await mailApi.sendMessage({
-          attachmentIds: attachments.attachmentIds,
-          bcc: recipients.bcc,
-          ...body.payload,
-          cc: recipients.cc,
-          draftId: attachments.draftId,
-          ...(inReplyTo ? { inReplyTo } : {}),
-          subject,
-          to: recipients.to,
-        });
-        setIsOpen(false);
-        resetFields();
-        attachments.discard(false);
-        returnFocus.restore();
-        onSent(receipt, [...recipients.to, ...recipients.cc, ...recipients.bcc].map(({ email }) => email));
-      } catch (nextError) {
-        const recovery = attachmentRecoveryMessage(nextError);
-        if (recovery) attachments.invalidateReady(recovery);
-        setError(recovery ?? composerSendErrorMessage(nextError));
-      } finally {
-        setIsSending(false);
-      }
-    },
-    [
-      attachments,
-      bcc,
-      body.payload,
-      body.text,
-      cc,
-      inReplyTo,
-      onSent,
-      resetFields,
-      returnFocus,
-      subject,
-      to,
-    ],
-  );
+  const onSubmit = useComposerSubmit({
+    attachments,
+    bcc,
+    body,
+    cc,
+    inReplyTo,
+    onSent,
+    resetFields,
+    restoreFocus: returnFocus.restore,
+    setError,
+    setIsOpen,
+    setIsSending,
+    subject,
+    to,
+  });
 
   return {
     attachmentCapabilityUnavailable: attachments.capabilityUnavailable,
@@ -242,6 +198,7 @@ export const useComposerModel = (
     openReplyAll,
     showBcc,
     showCc,
+    signatures,
     subject,
     title,
     to,

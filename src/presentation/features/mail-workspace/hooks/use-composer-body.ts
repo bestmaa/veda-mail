@@ -25,7 +25,10 @@ export interface RichComposerSnapshot {
   readonly text: string;
 }
 
-export const useComposerBody = (isSending: boolean) => {
+export const useComposerBody = (
+  isSending: boolean,
+  onRichDocumentFlattened: () => void = () => undefined,
+) => {
   const [mode, setMode] = useState<ComposerBodyMode>("rich");
   const [text, setText] = useState("");
   const [html, setHtml] = useState("");
@@ -93,7 +96,8 @@ export const useComposerBody = (isSending: boolean) => {
   const switchToPlain = useCallback(() => {
     setMode("plain");
     setIsPlainModeWarningOpen(false);
-  }, []);
+    onRichDocumentFlattened();
+  }, [onRichDocumentFlattened]);
 
   const onToggleMode = useCallback(() => {
     if (isSending) return;

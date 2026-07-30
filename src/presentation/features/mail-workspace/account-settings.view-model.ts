@@ -1,10 +1,15 @@
 import type { ChangeEventHandler, FormEventHandler } from "react";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
+import type {
+  EmailSignatureConfirmationViewModel,
+  EmailSignatureSettingsViewModel,
+} from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
   readonly canEditProfile: boolean;
   readonly close: () => void;
+  readonly closeConfirmation: EmailSignatureConfirmationViewModel;
   readonly displayName: string;
   readonly email: string;
   readonly isLoading: boolean;
@@ -37,6 +42,7 @@ export interface AccountSettingsViewModel {
     readonly label: string;
     readonly supported: boolean;
   }[];
+  readonly signatures: EmailSignatureSettingsViewModel;
   readonly twoFactor: {
     readonly cancelEnrollment: () => void;
     readonly canManage: boolean;

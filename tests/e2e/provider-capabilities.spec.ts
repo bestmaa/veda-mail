@@ -9,10 +9,10 @@ useInstalledMailbox();
 test("shows provider-supported and unavailable mail features", async ({
   page,
 }) => {
-  await page.getByRole("button", { name: /Open profile settings/ }).click();
+  await page.getByRole("button", { name: /Open account settings/ }).click();
 
   const dialog = page.getByRole("dialog", {
-    name: "Profile & security",
+    name: "Account settings",
   });
   await expect(
     dialog.getByRole("heading", { name: "Provider capabilities" }),
