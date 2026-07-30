@@ -9,12 +9,13 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   attachmentScope,
   body,
   cleanScanner,
+  controlledDelayedBody,
   otherAttachmentScope,
   quarantineFixture,
   reserveText,
@@ -27,6 +28,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   await chmod(directory, 0o700).catch(() => undefined);
   await rm(directory, { force: true, recursive: true });
 });
@@ -228,22 +230,19 @@ describe("attachment quarantine lifecycle", () => {
   });
 
   it("allows a slow upload while every chunk meets the idle deadline", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const quarantine = quarantineFixture(directory, {
       uploadIdleTimeoutMs: 30,
       uploadTimeoutMs: 250,
     });
     const reserved = await reserveText(quarantine, 3);
-    const slowBody = {
-      async *[Symbol.asyncIterator]() {
-        for (const chunk of ["a", "b", "c"]) {
-          await new Promise((resolve) => setTimeout(resolve, 15));
-          yield Buffer.from(chunk);
-        }
-      },
-    };
-
-    await expect(
-      quarantine.upload(reserved.id, attachmentScope, slowBody, 3),
-    ).resolves.toMatchObject({ state: "clean" });
+    const slow = controlledDelayedBody(15, "a", "b", "c");
+    const upload = quarantine.upload(reserved.id, attachmentScope, slow.body, 3);
+    for (const waiting of slow.waiting) {
+      await waiting;
+      await vi.advanceTimersByTimeAsync(15);
+    }
+    vi.useRealTimers();
+    await expect(upload).resolves.toMatchObject({ state: "clean" });
   });
 });
