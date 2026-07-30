@@ -23,7 +23,31 @@ const assertOk = async (response: Response): Promise<void> => {
   if (!response.ok) throw new Error(await failureMessage(response));
 };
 
+const archivePreflightFailure = (status: number): string => {
+  const messages: Readonly<Record<number, string>> = {
+    401: "Please sign in again before downloading attachments.",
+    404: "The message or one of its attachments is no longer available.",
+    409: "This message does not have attachments to download.",
+    413: "These attachments are too large to download together.",
+    429: "Another archive is busy. Please try again shortly.",
+    502: "The mail provider could not prepare these attachments.",
+    504: "The mail provider took too long. Please try again.",
+  };
+  return messages[status] ?? `Unable to prepare this ZIP (status ${status}).`;
+};
+
 export const attachmentApi = {
+  async preflightAttachmentArchive(
+    href: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const response = await fetch(href, {
+      method: "HEAD",
+      ...(signal ? { signal } : {}),
+    });
+    if (!response.ok) throw new Error(archivePreflightFailure(response.status));
+  },
+
   async getAttachmentCapability(): Promise<{
     readonly maxAttachmentBytes: number | null;
     readonly status: "available" | "unavailable" | "unsupported";

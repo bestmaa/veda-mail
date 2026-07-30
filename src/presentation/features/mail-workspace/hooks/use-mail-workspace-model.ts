@@ -8,14 +8,18 @@ import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/u
 import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/use-mail-data-model";
 import { useMemberSessionModel } from "@/presentation/features/mail-workspace/hooks/use-member-session-model";
 import { useMobileNavigationModel } from "@/presentation/features/mail-workspace/hooks/use-mobile-navigation-model";
+import { useAttachmentArchiveDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-archive-download";
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
 import {
-  formatFileSize,
   formatFullDate,
   formatMessageDate,
   formatSender,
   initials,
 } from "@/presentation/shared/formatters/mail-formatters";
+import {
+  createAttachmentArchiveViewModel,
+  createReceivedAttachmentViewModels,
+} from "@/presentation/features/mail-workspace/received-attachment.view-model";
 import {
   createBrandingViewModel,
   type BrandingInput,
@@ -29,12 +33,6 @@ interface MailWorkspaceModelOptions {
   readonly signOutPath: string;
 }
 
-export const createAttachmentDownloadHref = (
-  messageId: string,
-  attachmentId: string,
-): string =>
-  `/api/v1/mail/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`;
-
 export const useMailWorkspaceModel = ({
   branding,
   canSignOut,
@@ -45,6 +43,7 @@ export const useMailWorkspaceModel = ({
   const mail = useMailDataModel();
   const composer = useComposerModel(mail.refresh, maxAttachmentBytes);
   const navigation = useMobileNavigationModel();
+  const archiveDownload = useAttachmentArchiveDownload();
   const session = useMemberSessionModel(canSignOut, signOutPath);
   const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName =
@@ -102,6 +101,7 @@ export const useMailWorkspaceModel = ({
         canArchive: false,
         cc: "",
         date: "",
+        downloadAll: null,
         error: mail.readerError,
         from: "",
         fromEmail: "",
@@ -113,13 +113,16 @@ export const useMailWorkspaceModel = ({
         to: "",
       };
     }
+    const archive = createAttachmentArchiveViewModel(
+      message.id,
+      message.attachments.length,
+      archiveDownload,
+    );
     return {
-      attachments: message.attachments.map((attachment) => ({
-        href: createAttachmentDownloadHref(message.id, attachment.id),
-        id: attachment.id,
-        meta: `${attachment.mimeType} · ${formatFileSize(attachment.size)}`,
-        name: attachment.name,
-      })),
+      attachments: createReceivedAttachmentViewModels(
+        message.id,
+        message.attachments,
+      ),
       avatar: initials(formatSender(message.from)),
       body: message.textBody,
       canArchive: Boolean(
@@ -127,7 +130,8 @@ export const useMailWorkspaceModel = ({
       ),
       cc: message.cc.map((address) => address.email).join(", "),
       date: formatFullDate(message.receivedAt),
-      error: mail.readerError,
+      downloadAll: archive.downloadAll,
+      error: archive.error ?? mail.readerError,
       from: formatSender(message.from),
       fromEmail: message.from[0]?.email ?? "",
       htmlBody: message.htmlBody,
@@ -142,6 +146,7 @@ export const useMailWorkspaceModel = ({
     mail.readerError,
     mail.selectedMessage,
     mail.workspace?.mailboxes,
+    archiveDownload,
   ]);
 
   const activeFolder =

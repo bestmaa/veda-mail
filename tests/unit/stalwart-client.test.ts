@@ -181,6 +181,40 @@ describe("Stalwart JMAP client", () => {
     ).rejects.toThrow("invalid JMAP response");
   });
 
+  it("merges caller cancellation into the bounded JMAP request signal", async () => {
+    const fetchMock = vi.fn(
+      async (
+        input: string | URL | Request,
+        init?: RequestInit,
+      ): Promise<Response> => {
+        if (String(input).includes(".well-known/jmap")) {
+          return Response.json(session);
+        }
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true },
+          );
+        });
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    const pending = new StalwartJmapClient(config).request(
+      [],
+      [JMAP_MAIL],
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    controller.abort(new DOMException("cancelled", "AbortError"));
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(fetchMock.mock.calls[1]?.[1]?.signal?.aborted).toBe(true);
+  });
+
   it("rejects malformed method payloads", () => {
     const response = {
       methodResponses: [

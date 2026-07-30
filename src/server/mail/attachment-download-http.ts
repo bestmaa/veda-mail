@@ -36,7 +36,7 @@ const routeParamsSchema = z
 export const parseAttachmentDownloadRouteParams = (input: unknown) =>
   routeParamsSchema.parse(input);
 
-const commonHeaders = (): Headers =>
+export const attachmentDownloadHeaders = (): Headers =>
   new Headers({
     "Accept-Ranges": "none",
     "Cache-Control": "private, no-store, max-age=0",
@@ -104,7 +104,7 @@ export const createAttachmentDownloadResponse = (
       );
     }
     const size = assertDownloadSize(download.size);
-    const headers = commonHeaders();
+    const headers = attachmentDownloadHeaders();
     headers.set("Content-Type", "application/octet-stream");
     headers.set(
       "Content-Disposition",
@@ -180,7 +180,7 @@ export const asAttachmentDownloadApiError = (error: unknown): ApiError =>
 
 export const attachmentDownloadFailure = (error: unknown): Response => {
   const response = apiFailure(error, "Unable to download this attachment.");
-  const headers = commonHeaders();
+  const headers = attachmentDownloadHeaders();
   for (const [name, value] of headers) response.headers.set(name, value);
   return response;
 };

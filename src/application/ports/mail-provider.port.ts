@@ -4,6 +4,8 @@ import type {
   MailAccount,
   Mailbox,
   MessageDetail,
+  MessageAttachmentMetadata,
+  MessageAttachmentListInput,
   MessageListQuery,
   MessageMutation,
   MessagePage,
@@ -34,6 +36,9 @@ export interface MailGateway {
   getMemberProfile(): Promise<MemberProfile>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
+  listMessageAttachments(
+    input: MessageAttachmentListInput,
+  ): Promise<readonly MessageAttachmentMetadata[]>;
   listMailboxes(): Promise<readonly Mailbox[]>;
   listMessages(query: MessageListQuery): Promise<MessagePage>;
   mutateMessage(mutation: MessageMutation): Promise<void>;

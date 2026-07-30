@@ -5,6 +5,7 @@ import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error
 const FIRST_BYTE_TIMEOUT_MS = 20_000;
 const IDLE_TIMEOUT_MS = 30_000;
 const ABSOLUTE_TIMEOUT_MS = 5 * 60_000;
+const MAX_EMPTY_SOURCE_CHUNKS = 32;
 
 interface BoundedAttachmentStreamOptions {
   readonly errors?: {
@@ -67,6 +68,7 @@ export const createBoundedAttachmentDownloadStream = (
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
   let finalized = false;
   let total = 0;
+  let emptyChunks = 0;
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let absoluteTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -93,6 +95,24 @@ export const createBoundedAttachmentDownloadStream = (
 
   const onAbort = (): void => fail(errors.aborted());
 
+  const readProgressChunk =
+    async (): Promise<ReadableStreamReadResult<Uint8Array>> => {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) return chunk;
+        if (!(chunk.value instanceof Uint8Array)) {
+          throw errors.providerFailure();
+        }
+        if (chunk.value.byteLength > 0) {
+          return chunk;
+        }
+        emptyChunks += 1;
+        if (emptyChunks > MAX_EMPTY_SOURCE_CHUNKS) {
+          throw errors.providerFailure();
+        }
+      }
+    };
+
   return new ReadableStream<Uint8Array>(
     {
       cancel: async (reason) => {
@@ -105,7 +125,7 @@ export const createBoundedAttachmentDownloadStream = (
       pull: async (streamController) => {
         if (finalized) return;
         try {
-          const chunk = await reader.read();
+          const chunk = await readProgressChunk();
           if (chunk.done) {
             if (
               options.expectedBytes !== undefined &&
@@ -116,10 +136,6 @@ export const createBoundedAttachmentDownloadStream = (
             }
             streamController.close();
             finalize();
-            return;
-          }
-          if (!(chunk.value instanceof Uint8Array)) {
-            fail(errors.providerFailure());
             return;
           }
           total += chunk.value.byteLength;

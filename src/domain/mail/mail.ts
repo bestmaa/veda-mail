@@ -33,6 +33,13 @@ export interface Attachment {
   readonly size: number;
 }
 
+export interface MessageAttachmentMetadata {
+  readonly id: AttachmentId;
+  readonly mimeType: string;
+  readonly name: string;
+  readonly size: number | null;
+}
+
 export interface AttachmentDownloadInput {
   readonly attachmentId: AttachmentId;
   readonly maxBytes: number;
@@ -45,6 +52,11 @@ export interface AttachmentDownload {
   readonly mimeType: string;
   readonly name: string;
   readonly size: number | null;
+}
+
+export interface MessageAttachmentListInput {
+  readonly messageId: MessageId;
+  readonly signal?: AbortSignal;
 }
 
 export interface MessageSummary {

@@ -2,32 +2,32 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
-  AttachmentDownload,
   AttachmentDownloadInput,
   Mailbox,
   MessageDetail,
+  MessageAttachmentListInput,
   MessageListQuery,
   MessageMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
-import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
+import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type {
   MemberPasswordChange,
   MemberProfileUpdate,
   MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
 import {
-  assertMockAttachmentDownloadInput,
-  createMockAttachmentStream,
-  throwIfMockAttachmentAborted,
-} from "@/infrastructure/providers/mock/mock-attachment-download";
+  downloadMockMessageAttachment,
+  listMockMessageAttachments,
+} from "@/infrastructure/providers/mock/mock-received-attachment.reader";
 import {
   createMockAttachmentContents,
   createMockMessages,
   mockMailboxIds,
 } from "@/infrastructure/providers/mock/mock-seed";
+import { mockArchiveFailureMessageId } from "@/infrastructure/providers/mock/mock-archive-fixture";
 
 const mailboxDefinitions = [
   { color: "#4f46e5", id: mockMailboxIds.inbox, name: "Inbox", role: "inbox" },
@@ -50,6 +50,7 @@ const mailboxDefinitions = [
 
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
+  private archiveFailureLookups = 0;
   private messages = createMockMessages();
   private profile = {
     displayName: "Sample Member",
@@ -60,42 +61,12 @@ export class MockMailGateway implements MailGateway {
   }
   public async downloadAttachment(
     input: AttachmentDownloadInput,
-  ): Promise<AttachmentDownload> {
-    assertMockAttachmentDownloadInput(input.maxBytes, input.signal);
-
-    const message = this.messages.find((item) => item.id === input.messageId);
-    const attachment = message?.attachments.find(
-      (item) => item.id === input.attachmentId,
+  ) {
+    return downloadMockMessageAttachment(
+      this.messages,
+      this.attachmentContents,
+      input,
     );
-    if (!message || !attachment) {
-      throw new AttachmentDownloadError("not_found", "Attachment not found.");
-    }
-    if (attachment.size > input.maxBytes) {
-      throw new AttachmentDownloadError(
-        "size_limit_exceeded",
-        "Attachment exceeds the download byte limit.",
-      );
-    }
-    const content = this.attachmentContents
-      .get(message.id)
-      ?.get(attachment.id);
-    if (!content || content.byteLength !== attachment.size) {
-      throw new AttachmentDownloadError(
-        "provider_failure",
-        "Attachment content is unavailable.",
-      );
-    }
-    throwIfMockAttachmentAborted(input.signal);
-    return {
-      body: createMockAttachmentStream(
-        content.slice(),
-        input.maxBytes,
-        input.signal,
-      ),
-      mimeType: attachment.mimeType,
-      name: attachment.name,
-      size: content.byteLength,
-    };
   }
 
   public async getAccount() {
@@ -125,6 +96,19 @@ export class MockMailGateway implements MailGateway {
       throw new Error("Message not found.");
     }
     return structuredClone(message);
+  }
+
+  public async listMessageAttachments(input: MessageAttachmentListInput) {
+    if (input.messageId === mockArchiveFailureMessageId) {
+      this.archiveFailureLookups += 1;
+      if (this.archiveFailureLookups % 2 === 0) {
+        throw new AttachmentDownloadError(
+          "provider_failure",
+          "Simulated provider archive failure.",
+        );
+      }
+    }
+    return listMockMessageAttachments(this.messages, input);
   }
 
   public async listMailboxes(): Promise<readonly Mailbox[]> {

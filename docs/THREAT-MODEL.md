@@ -172,6 +172,19 @@ limiter and encrypted shared session repository.
   cancellation, and provider timeouts. JMAP requires exact identity-encoded
   length; IMAP revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE`
   before resolving and streaming the server-held MIME part.
+- Download all accepts only an opaque message ID, performs an authoritative
+  metadata-only provider lookup, and opens at most one attachment source at a
+  time. Generated ZIPs use STORE mode, CRC-32, fixed metadata, regular root
+  files, and collision-safe sanitized names; they contain no source paths,
+  comments, symlinks, device entries, or provider identifiers.
+- Archive generation allows at most 100 entries, 50 MiB per entry, 200 MiB
+  actual decoded payload, 32 zero-progress chunks per entry, and ten minutes.
+  Dedicated four-global/one-member concurrency also consumes the shared
+  download budget. Cancellation, no-progress chunks, size lies, truncation, or
+  provider failure stops later fetches and prevents central-directory output.
+- The generated outer ZIP never expands or compresses an attached archive.
+  Nested archives remain byte-identical opaque files, avoiding traversal,
+  decompression bombs, recursion, and server compression amplification.
 - Forwarding an original attachment accepts only message-scoped opaque route
   IDs plus a fresh draft ID. The server re-fetches the current provider object,
   stages decoded bytes within the verified outbound limit and a shared
@@ -186,10 +199,10 @@ Residual risk: received attachments are hostile provider content and are not
 scanned by the outbound ClamAV quarantine. Operators may add an independently
 reviewed inbound scanning boundary, and members should scan unexpected files
 before opening them. Forwarding an original does pass it through the outbound
-quarantine, but direct download does not. Preview, inline CID, download-all,
-byte ranges, and explicit archive-expansion policy remain unavailable. ClamAV
-must have enough memory for outbound signature reloads; operator monitoring is
-required.
+quarantine, but direct and Download all responses do not. Preview, inline CID,
+and byte ranges remain unavailable. Download all has an explicit no-expansion
+policy; it is a transport bundle, not a malware verdict. ClamAV must have
+enough memory for outbound signature reloads; operator monitoring is required.
 
 ### Rules and forwarding
 

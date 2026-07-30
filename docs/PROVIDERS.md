@@ -19,6 +19,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
+| Download all ZIP (100 files / 200 MiB)         | Yes             | Yes                  |
 | Scanned forwarding of original attachments    | Yes             | Yes                  |
 | Conversation/thread API                       | Not implemented | Not implemented      |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
@@ -37,8 +38,12 @@ downloads require and verify the provider's exact content length while
 streaming. IMAP downloads revalidate `UIDVALIDITY` and `BODYSTRUCTURE`, resolve
 the server-only MIME part, and stream without claiming a `Content-Length`.
 Veda Mail forces both paths to a non-cacheable attachment response instead of
-an inline preview. Byte ranges, preview, inline CID rendering, and download-all
-are not implemented.
+an inline preview. Download all first performs a metadata-only provider lookup,
+then streams each revalidated attachment sequentially into one STORE-mode ZIP.
+The browser supplies only the opaque message ID; generated names are flat,
+sanitized, and collision-safe. The archive is capped at 100 files, 50 MiB per
+file, and 200 MiB actual decoded payload. Byte ranges, preview, and inline CID
+rendering are not implemented.
 
 Forwarding originals uses the same authenticated, message-scoped lookup but
 never reuses a provider blob directly. Veda Mail stages the decoded source
@@ -51,7 +56,9 @@ No Stalwart server change is required. Veda Mail uses the authenticated JMAP
 session's existing download URL and keeps its blob ID inside the adapter.
 Direct received-attachment downloads are not passed through the outbound
 ClamAV quarantine; members must continue to treat unexpected downloads as
-untrusted files. Forwarded originals do pass through quarantine before send.
+untrusted files. Generated Download all ZIPs preserve that policy and never
+expand nested archives. Forwarded originals do pass through quarantine before
+send.
 
 | Adapter              | Use it for                                                | Authentication                               |
 | -------------------- | --------------------------------------------------------- | -------------------------------------------- |
@@ -103,11 +110,13 @@ After saving, test with a dedicated mailbox:
 6. Confirm the sent copy appears in the Sent folder.
 7. Send a small known-clean attachment and verify its received SHA-256 digest.
 8. Download the received attachment and verify its SHA-256 digest again.
-9. For JMAP, lower `maxSizeUpload` in a test session and confirm the UI and
+9. Download a multi-attachment message as one ZIP, run an independent archive
+   integrity check, and verify every extracted SHA-256 digest.
+10. For JMAP, lower `maxSizeUpload` in a test session and confirm the UI and
    reservation endpoint enforce the advertised provider limit before upload.
-10. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
+11. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
    the picker and exact final MIME message fail before provider submission.
-11. Archive, star, move, and trash a test message.
+12. Archive, star, move, and trash a test message.
 
 ## Common provider examples
 

@@ -24,6 +24,7 @@ import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/
 
 const DOWNLOAD_CHUNK_BYTES = 64 * 1024;
 const TIMEOUT_CODES = new Set([
+  "ETIMEOUT",
   "ETIMEDOUT",
   "ESOCKETTIMEDOUT",
   "LockTimeout",
@@ -41,7 +42,7 @@ const notFound = (): AttachmentDownloadError =>
 const aborted = (): AttachmentDownloadError =>
   downloadError("aborted", "The attachment download was cancelled.");
 
-const isTimeoutError = (error: unknown): boolean => {
+export const isImapTimeoutError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
   const code =
     "code" in error && typeof error.code === "string" ? error.code : "";
@@ -54,7 +55,7 @@ const mapProviderError = (
 ): AttachmentDownloadError => {
   if (error instanceof AttachmentDownloadError) return error;
   if (signal?.aborted) return aborted();
-  if (isTimeoutError(error)) {
+  if (isImapTimeoutError(error)) {
     return downloadError(
       "timeout",
       "The mail provider attachment download timed out.",

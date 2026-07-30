@@ -1,5 +1,4 @@
 import "server-only";
-
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -7,13 +6,18 @@ import type {
   Mailbox,
   MessageDetail,
   MessageListQuery,
+  MessageAttachmentListInput,
   MessagePage,
   ReplyContext,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
-import { downloadStalwartMessageAttachment } from "@/infrastructure/providers/stalwart-jmap/stalwart-attachment.reader";
+import {
+  downloadStalwartMessageAttachment,
+  listStalwartMessageAttachments,
+  normalizeStalwartAttachmentLookupError,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-attachment.reader";
 import {
   mapMailbox,
   mapMessageDetail,
@@ -179,8 +183,25 @@ export class StalwartMailReader {
   public async downloadAttachment(
     input: AttachmentDownloadInput,
   ): Promise<AttachmentDownload> {
-    const { accountId } = await this.getAccountContext();
-    return downloadStalwartMessageAttachment(this.client, accountId, input);
+    try {
+      const { accountId } = await this.getAccountContext(input.signal);
+      return await downloadStalwartMessageAttachment(
+        this.client, accountId, input,
+      );
+    } catch (error) {
+      throw normalizeStalwartAttachmentLookupError(error, input.signal);
+    }
+  }
+
+  public async listMessageAttachments(input: MessageAttachmentListInput) {
+    try {
+      const { accountId } = await this.getAccountContext(input.signal);
+      return await listStalwartMessageAttachments(
+        this.client, accountId, input,
+      );
+    } catch (error) {
+      throw normalizeStalwartAttachmentLookupError(error, input.signal);
+    }
   }
 
   public async getAccountId(): Promise<string> {
@@ -217,8 +238,8 @@ export class StalwartMailReader {
     };
   }
 
-  private async getAccountContext() {
-    const session = await this.client.getSession();
+  private async getAccountContext(signal?: AbortSignal) {
+    const session = await this.client.getSession(signal);
     const accountId = session.primaryAccounts[JMAP_MAIL];
     if (!accountId) {
       throw new Error("This Stalwart account does not expose JMAP Mail.");

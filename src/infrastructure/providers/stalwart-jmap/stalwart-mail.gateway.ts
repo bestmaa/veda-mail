@@ -3,6 +3,7 @@ import "server-only";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
   AttachmentDownloadInput,
+  MessageAttachmentListInput,
   MessageListQuery,
   MessageMutation,
   SendMessageInput,
@@ -59,6 +60,10 @@ export class StalwartMailGateway implements MailGateway {
 
   public getMessage(messageId: MessageId) {
     return this.reader.getMessage(messageId);
+  }
+
+  public listMessageAttachments(input: MessageAttachmentListInput) {
+    return this.reader.listMessageAttachments(input);
   }
 
   public listMailboxes() {
