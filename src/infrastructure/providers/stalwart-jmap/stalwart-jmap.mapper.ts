@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  Attachment,
   MailAddress,
   Mailbox,
   MailboxRole,
@@ -12,7 +13,15 @@ import {
   mailHtmlToPlainText,
   sanitizeMailHtml,
 } from "@/infrastructure/providers/sanitize-mail-html";
-import { bindJmapReceivedAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
+import { renderedInlineImageAttachmentIds } from "@/infrastructure/providers/sanitize-inline-mail-images";
+import {
+  bindJmapReceivedAttachments,
+  type JmapReceivedAttachment,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
+import {
+  jmapInlineImageCandidates,
+  jmapSequentialInlineImages,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-inline-image";
 import type {
   JmapAddress,
   JmapBodyPart,
@@ -60,6 +69,11 @@ interface BodyValue {
   readonly type: string;
   readonly value: string;
 }
+
+type MessagePresentationEmail = Pick<
+  JmapEmail,
+  "attachments" | "bodyValues" | "htmlBody" | "id"
+>;
 
 const bodyValues = (
   parts: readonly JmapBodyPart[] | undefined,
@@ -115,21 +129,80 @@ const textBodyValue = (email: JmapEmail): string => {
   );
 };
 
-const htmlBodyValue = (email: JmapEmail): string | null => {
-  const values = bodyValues(email.htmlBody, email);
-  if (!values.some(({ type, value }) => type === "text/html" && value)) {
-    return null;
-  }
-  const html = values
-    .map(({ type, value }) => {
-      if (type === "text/html") {
-        return sanitizeMailHtml(value);
-      }
-      return type === "text/plain" ? `<pre>${escapeHtml(value)}</pre>` : "";
-    })
-    .join("");
+const htmlBodyValue = (
+  email: MessagePresentationEmail,
+  attachments: readonly JmapReceivedAttachment[],
+): string | null => {
+  const inlineImages = jmapInlineImageCandidates(attachments);
+  const sequentialImages = jmapSequentialInlineImages(
+    email.htmlBody,
+    attachments,
+  );
+  const seenPartIds = new Set<string>();
+  let hasHtmlPresentation = false;
+  const fragments = (email.htmlBody ?? []).map((part, index) => {
+    const sequentialImage = sequentialImages[index];
+    if (sequentialImage) {
+      hasHtmlPresentation = true;
+      const contentId = escapeHtml(
+        encodeURIComponent(sequentialImage.contentId),
+      );
+      return `<img src="cid:${contentId}" alt="${escapeHtml(
+        sequentialImage.name,
+      )}">`;
+    }
+    const partId = part.partId;
+    if (!partId || seenPartIds.has(partId)) return "";
+    const value = email.bodyValues?.[partId]?.value;
+    if (value === undefined) return "";
+    seenPartIds.add(partId);
+    const type =
+      part.type.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+    if (type === "text/html") {
+      hasHtmlPresentation ||= Boolean(value);
+      return sanitizeMailHtml(value, { inlineImages });
+    }
+    return type === "text/plain"
+      ? `<pre>${escapeHtml(value)}</pre>`
+      : "";
+  });
+  if (!hasHtmlPresentation) return null;
+  const html = sanitizeMailHtml(fragments.join(""), {
+    inlineImages,
+  });
   return html || null;
 };
+
+interface MessagePresentation {
+  readonly attachments: readonly Attachment[];
+  readonly htmlBody: string | null;
+}
+
+const messagePresentation = (
+  email: MessagePresentationEmail,
+  accountId: string,
+): MessagePresentation => {
+  const attachments = bindJmapReceivedAttachments(accountId, email);
+  const htmlBody = htmlBodyValue(email, attachments);
+  const renderedInlineIds = renderedInlineImageAttachmentIds(htmlBody);
+  return {
+    attachments: attachments.map(({ metadata }) =>
+      metadata.disposition === "inline" &&
+      !renderedInlineIds.has(metadata.id)
+        ? { ...metadata, disposition: "attachment" as const }
+        : metadata,
+    ),
+    htmlBody,
+  };
+};
+
+export const mapVisibleMessageAttachments = (
+  email: MessagePresentationEmail,
+  accountId = "",
+): readonly Attachment[] =>
+  messagePresentation(email, accountId).attachments.filter(
+    ({ disposition }) => disposition === "attachment",
+  );
 
 export const mapMailbox = (mailbox: JmapMailbox): Mailbox => {
   const role = mailboxRole(mailbox.role);
@@ -162,13 +235,12 @@ export const mapMessageDetail = (
   email: JmapEmail,
   accountId = "",
 ): MessageDetail => {
+  const presentation = messagePresentation(email, accountId);
   return {
     ...mapMessageSummary(email),
-    attachments: bindJmapReceivedAttachments(accountId, email).map(
-      ({ metadata }) => metadata,
-    ),
+    attachments: presentation.attachments,
     cc: addresses(email.cc),
-    htmlBody: htmlBodyValue(email),
+    htmlBody: presentation.htmlBody,
     replyTo: addresses(email.replyTo),
     textBody: textBodyValue(email),
   };

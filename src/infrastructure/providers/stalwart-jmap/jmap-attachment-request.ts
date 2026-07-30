@@ -40,7 +40,7 @@ export function assertJmapText(
 export const assertJmapAttachmentMetadata = (
   fileName: string,
   mediaType: string,
-  size: number,
+  size: number | null,
 ): void => {
   assertJmapText(fileName, 255);
   assertJmapText(mediaType, 255);
@@ -55,7 +55,7 @@ export const assertJmapAttachmentMetadata = (
   if (!/^[^\s/;]+\/[^\s/;]+$/u.test(mediaType)) {
     throw invalidAttachmentInput();
   }
-  if (!Number.isSafeInteger(size) || size < 0) {
+  if (size !== null && (!Number.isSafeInteger(size) || size < 0)) {
     throw invalidAttachmentInput();
   }
 };

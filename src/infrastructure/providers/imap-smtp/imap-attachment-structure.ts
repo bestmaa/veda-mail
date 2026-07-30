@@ -2,6 +2,8 @@ import "server-only";
 
 import type { MessageStructureObject } from "imapflow";
 
+import { isSupportedReceivedInlineImageMimeType } from "@/domain/mail/inline-image";
+import { normalizeContentId } from "@/domain/mail/received-attachment";
 import {
   normalizeAttachmentFilename,
   normalizeAttachmentMimeType,
@@ -10,6 +12,8 @@ import {
 const SAFE_PART = /^(?:[1-9]\d*)(?:\.(?:[1-9]\d*)){0,31}$/;
 const MAX_STRUCTURE_NODES = 512;
 const MAX_STRUCTURE_DEPTH = 32;
+export const isSupportedImapInlineRasterType = (mimeType: string): boolean =>
+  isSupportedReceivedInlineImageMimeType(mimeType);
 
 export interface ImapAttachmentPart {
   readonly contentId: string | null;
@@ -49,14 +53,6 @@ const attachmentFilename = (node: MessageStructureObject): string | undefined =>
   parameter(node.dispositionParameters, "filename") ??
   parameter(node.parameters, "name");
 
-const contentId = (value: string | undefined): string | null => {
-  if (!value) return null;
-  if (/[\r\n]/.test(value) || value.length > 998) {
-    throw new Error("IMAP Content-ID is unsafe.");
-  }
-  return value.trim() || null;
-};
-
 const transferEncoding = (value: string | undefined): string | null => {
   const normalized = value?.trim().toLowerCase() ?? "";
   return /^[a-z0-9][a-z0-9-]{0,31}$/.test(normalized) ? normalized : null;
@@ -67,18 +63,33 @@ const toAttachment = (
   isRoot: boolean,
 ): ImapAttachmentPart | null => {
   const filename = attachmentFilename(node);
-  const disposition = node.disposition?.toLowerCase();
+  const disposition = node.disposition?.trim().toLowerCase();
+  const contentType = normalizeAttachmentMimeType(node.type);
+  const normalizedContentId = normalizeContentId(node.id?.trim() ?? "");
+  const isLeaf = !node.childNodes?.length;
+  const isCidImageLeaf =
+    Boolean(normalizedContentId) &&
+    contentType.startsWith("image/") &&
+    isLeaf;
+  const isCidRasterLeaf =
+    isCidImageLeaf &&
+    isSupportedImapInlineRasterType(contentType) &&
+    isLeaf;
   const isAttachment =
     disposition === "attachment" ||
+    (disposition === "inline" && isLeaf) ||
     Boolean(filename) ||
-    (disposition === "inline" && Boolean(node.id));
+    isCidImageLeaf;
   if (!isAttachment) return null;
   const part = effectivePart(node, isRoot);
   if (!part) return null;
   return {
-    contentId: contentId(node.id),
-    contentType: normalizeAttachmentMimeType(node.type),
-    disposition: disposition === "inline" ? "inline" : "attachment",
+    contentId: normalizedContentId,
+    contentType,
+    disposition:
+      isCidRasterLeaf && disposition !== "attachment"
+        ? "inline"
+        : "attachment",
     filename: normalizeAttachmentFilename(filename ?? "attachment.bin"),
     part: assertSafeImapPartSpecifier(part),
     size:
@@ -100,6 +111,7 @@ export const collectImapAttachmentParts = (
   structure: MessageStructureObject,
 ): readonly ImapAttachmentPart[] => {
   const results: ImapAttachmentPart[] = [];
+  const partCounts = new Map<string, number>();
   const pending: {
     readonly depth: number;
     readonly isRoot: boolean;
@@ -115,6 +127,8 @@ export const collectImapAttachmentParts = (
     if (nodeCount > MAX_STRUCTURE_NODES || entry.depth > MAX_STRUCTURE_DEPTH) {
       throw new Error("IMAP body structure exceeds safe traversal limits.");
     }
+    const part = effectivePart(entry.node, entry.isRoot);
+    if (part) partCounts.set(part, (partCounts.get(part) ?? 0) + 1);
     const attachment = toAttachment(entry.node, entry.isRoot);
     if (attachment) results.push(attachment);
     const children = entry.node.childNodes ?? [];
@@ -132,7 +146,20 @@ export const collectImapAttachmentParts = (
       }
     }
   }
-  return results;
+  return results.filter(({ part }) => partCounts.get(part) === 1);
+};
+
+export const hasImapDownloadableAttachment = (
+  structure?: MessageStructureObject,
+): boolean => {
+  if (!structure) return false;
+  try {
+    return collectImapAttachmentParts(structure).some(
+      ({ disposition }) => disposition === "attachment",
+    );
+  } catch {
+    return false;
+  }
 };
 
 export const findImapBodyPart = (
@@ -146,6 +173,7 @@ export const findImapBodyPart = (
     readonly node: MessageStructureObject;
   }[] = [{ depth: 0, isRoot: true, node: structure }];
   const visited = new Set<MessageStructureObject>();
+  let match: MessageStructureObject | null = null;
   while (pending.length > 0) {
     const entry = pending.pop();
     if (!entry || visited.has(entry.node)) continue;
@@ -157,7 +185,8 @@ export const findImapBodyPart = (
       throw new Error("IMAP body structure exceeds safe traversal limits.");
     }
     if (effectivePart(entry.node, entry.isRoot) === safePart) {
-      return entry.node;
+      if (match) return null;
+      match = entry.node;
     }
     const children = entry.node.childNodes ?? [];
     if (children.length + visited.size > MAX_STRUCTURE_NODES) {
@@ -171,7 +200,7 @@ export const findImapBodyPart = (
       });
     }
   }
-  return null;
+  return match;
 };
 
 export const createImapAttachmentDownloadTarget = (

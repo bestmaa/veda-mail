@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import { id } from "@/domain/shared/brand";
@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   connection: { id: "archive-lifecycle-connection" },
   downloadAttachment: vi.fn(),
   getCurrentConnection: vi.fn(),
+  getMessage: vi.fn(),
   getMailService: vi.fn(),
   listMessageAttachments: vi.fn(),
 }));
@@ -27,6 +28,7 @@ import { GET } from "@/app/api/v1/mail/messages/[messageId]/attachments/archive/
 const origin = "https://mail.example.com";
 const messageId = id.message("message-lifecycle");
 const item = {
+  disposition: "attachment" as const,
   id: id.attachment("attachment-lifecycle"),
   mimeType: "application/octet-stream",
   name: "one.bin",
@@ -51,9 +53,14 @@ beforeEach(() => {
   mocks.getCurrentConnection.mockResolvedValue(mocks.connection);
   mocks.getMailService.mockResolvedValue({
     downloadAttachment: mocks.downloadAttachment,
+    getMessage: mocks.getMessage,
     listMessageAttachments: mocks.listMessageAttachments,
   });
   mocks.listMessageAttachments.mockResolvedValue([item]);
+});
+
+afterEach(() => {
+  expect(mocks.getMessage).not.toHaveBeenCalled();
 });
 
 describe("attachment archive lifecycle", () => {

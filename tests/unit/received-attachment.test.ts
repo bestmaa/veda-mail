@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  normalizeCidUrlContentId,
+  normalizeContentId,
+  normalizeReceivedAttachmentDisposition,
   normalizeReceivedAttachmentMimeType,
   sanitizeReceivedAttachmentName,
 } from "@/domain/mail/received-attachment";
@@ -48,6 +51,53 @@ describe("received attachment metadata", () => {
     ).toBe("application/octet-stream");
     expect(normalizeReceivedAttachmentMimeType(undefined)).toBe(
       "application/octet-stream",
+    );
+  });
+
+  it.each([
+    ["<Logo.Part+1@Example.TEST>", "Logo.Part+1@Example.TEST"],
+    ["asset%2Fv1@example.test", "asset%2Fv1@example.test"],
+    ["encoded%20space@example.test", "encoded%20space@example.test"],
+  ])("normalizes raw Content-ID header %j", (input, expected) => {
+    expect(normalizeContentId(input)).toBe(expected);
+  });
+
+  it.each([
+    ["Logo%2EPart%2B1%40Example.TEST", "Logo.Part+1@Example.TEST"],
+    ["%3Clogo%40example.test%3E", "logo@example.test"],
+    ["once%252Fonly@example.test", "once%2Fonly@example.test"],
+  ])("decodes cid URL Content-ID %j exactly once", (input, expected) => {
+    expect(normalizeCidUrlContentId(input)).toBe(expected);
+  });
+
+  it.each([
+    "",
+    "<>",
+    "<missing@example.test",
+    "missing@example.test>",
+    "<<nested@example.test>>",
+    "white space@example.test",
+    "\ud800",
+    "a".repeat(999),
+  ])("rejects unsafe or malformed Content-ID %j", (input) => {
+    expect(normalizeContentId(input)).toBeNull();
+  });
+
+  it.each([
+    "encoded%20space@example.test",
+    "line%0Abreak@example.test",
+    "bad%escape@example.test",
+  ])("rejects unsafe or malformed cid URL Content-ID %j", (input) => {
+    expect(normalizeCidUrlContentId(input)).toBeNull();
+  });
+
+  it("normalizes only the supported received dispositions", () => {
+    expect(normalizeReceivedAttachmentDisposition(" INLINE ")).toBe("inline");
+    expect(normalizeReceivedAttachmentDisposition("attachment")).toBe(
+      "attachment",
+    );
+    expect(normalizeReceivedAttachmentDisposition("form-data", "inline")).toBe(
+      "inline",
     );
   });
 });

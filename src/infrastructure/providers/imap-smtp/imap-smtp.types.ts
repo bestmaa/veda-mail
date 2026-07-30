@@ -18,6 +18,9 @@ export interface ImapSmtpMemberConfig extends ImapSmtpServiceConfig {
 }
 
 export interface ImapMessageReference {
+  readonly accountScope: string;
   readonly mailbox: string;
   readonly uid: number;
+  readonly uidValidity: string;
+  readonly version: 1;
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { id } from "@/domain/shared/brand";
 import { MockMailGateway } from "@/infrastructure/providers/mock/mock-mail.gateway";
+import { mockInlineImageAttachment } from "@/infrastructure/providers/mock/mock-inline-image-fixture";
 import {
   createMockRoadmapAttachmentBytes,
   mockRoadmapAttachment,
@@ -97,11 +98,17 @@ describe("mock provider contract", () => {
 
     expect(listed).toEqual([
       expect.objectContaining({
+        disposition: "attachment",
         id: mockRoadmapAttachment.id,
         mimeType: mockRoadmapAttachment.mimeType,
         name: mockRoadmapAttachment.name,
       }),
     ]);
+    await expect(
+      gateway.listMessageAttachments({
+        messageId: mockInlineImageAttachment.messageId,
+      }),
+    ).resolves.toEqual([]);
     await expect(
       gateway.listMessageAttachments({
         messageId: id.message("missing-message"),

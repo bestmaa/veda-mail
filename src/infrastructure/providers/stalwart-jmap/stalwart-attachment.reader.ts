@@ -8,15 +8,16 @@ import type {
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
-import {
-  bindJmapReceivedAttachments,
-  findJmapReceivedAttachment,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
+import { findJmapReceivedAttachment } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-attachment";
+import { mapVisibleMessageAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.mapper";
 import {
   jmapAttachmentEmailSchema,
   jmapListResultSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
-import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import {
+  JMAP_MAIL,
+  JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export const normalizeStalwartAttachmentLookupError = (
   error: unknown,
@@ -48,17 +49,26 @@ const getAttachmentEmail = async (
   client: StalwartJmapClient,
   accountId: string,
   messageId: MessageId,
+  includeHtmlBodyValues: boolean,
   signal?: AbortSignal,
 ) => {
   try {
+    const bodyValueArguments = includeHtmlBodyValues
+      ? {
+          fetchHTMLBodyValues: true,
+          maxBodyValueBytes: 2_000_000,
+          properties: ["id", "attachments", "htmlBody", "bodyValues"],
+        }
+      : { properties: ["id", "attachments", "htmlBody"] };
     const response = await client.request(
       [
         [
           "Email/get",
           {
             accountId,
+            bodyProperties: JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
             ids: [messageId],
-            properties: ["id", "attachments"],
+            ...bodyValueArguments,
           },
           "attachment-email",
         ],
@@ -74,7 +84,9 @@ const getAttachmentEmail = async (
     );
     const email = result.list[0];
     const responseMatchesRequest =
-      result.accountId === accountId && email?.id === messageId;
+      result.accountId === accountId &&
+      result.list.length === 1 &&
+      email?.id === messageId;
     if (!responseMatchesRequest || !email) {
       throw new AttachmentDownloadError("not_found", "Attachment not found.");
     }
@@ -89,15 +101,16 @@ export const listStalwartMessageAttachments = async (
   accountId: string,
   input: { readonly messageId: MessageId; readonly signal?: AbortSignal },
 ): Promise<readonly Attachment[]> =>
-  bindJmapReceivedAttachments(
-    accountId,
+  mapVisibleMessageAttachments(
     await getAttachmentEmail(
       client,
       accountId,
       input.messageId,
+      true,
       input.signal,
     ),
-  ).map((attachment) => attachment.metadata);
+    accountId,
+  );
 
 export const downloadStalwartMessageAttachment = async (
   client: StalwartJmapClient,
@@ -108,6 +121,7 @@ export const downloadStalwartMessageAttachment = async (
     client,
     accountId,
     input.messageId,
+    false,
     input.signal,
   );
   const attachment = findJmapReceivedAttachment(
@@ -118,7 +132,10 @@ export const downloadStalwartMessageAttachment = async (
   if (!attachment) {
     throw new AttachmentDownloadError("not_found", "Attachment not found.");
   }
-  if (attachment.metadata.size > input.maxBytes) {
+  if (
+    attachment.metadata.size !== null &&
+    attachment.metadata.size > input.maxBytes
+  ) {
     throw new AttachmentDownloadError(
       "size_limit_exceeded",
       "The attachment exceeds the download size limit.",

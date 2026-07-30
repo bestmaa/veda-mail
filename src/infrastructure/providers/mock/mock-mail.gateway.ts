@@ -182,6 +182,7 @@ export class MockMailGateway implements MailGateway {
     const now = new Date().toISOString();
     const messageId = id.message(`sent-${crypto.randomUUID()}`);
     const attachments = (input.attachments ?? []).map((attachment) => ({
+      disposition: "attachment" as const,
       id: id.attachment(`mock-${crypto.randomUUID()}`),
       mimeType: attachment.mimeType,
       name: attachment.name,

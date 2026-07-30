@@ -19,9 +19,10 @@ today, not every feature the upstream server protocol could eventually supply.
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
-| Download all ZIP (100 files / 200 MiB)         | Yes             | Yes                  |
+| Download all ZIP (100 files / 200 MiB)        | Yes             | Yes                  |
 | Scanned forwarding of original attachments    | Yes             | Yes                  |
-| Scanned plain-text preview (1 MiB)             | Yes             | Yes                  |
+| Scanned plain-text preview (1 MiB)            | Yes             | Yes                  |
+| Verified inline CID JPEG/PNG/WebP             | Yes             | Yes                  |
 | Conversation/thread API                       | Not implemented | Not implemented      |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
 
@@ -39,12 +40,42 @@ downloads require and verify the provider's exact content length while
 streaming. IMAP downloads revalidate `UIDVALIDITY` and `BODYSTRUCTURE`, resolve
 the server-only MIME part, and stream without claiming a `Content-Length`.
 Veda Mail forces both paths to a non-cacheable attachment response. Download
-all first performs a metadata-only provider lookup,
-then streams each revalidated attachment sequentially into one STORE-mode ZIP.
-The browser supplies only the opaque message ID; generated names are flat,
-sanitized, and collision-safe. The archive is capped at 100 files, 50 MiB per
-file, and 200 MiB actual decoded payload. Byte ranges and inline CID rendering
-are not implemented.
+all first performs a signal-aware provider classification lookup that may
+inspect bounded message presentation data so it returns exactly the current
+visible/downloadable file-card metadata. It then streams each revalidated
+attachment sequentially into one STORE-mode ZIP. The browser supplies only the
+opaque message ID; generated names are flat, sanitized, and collision-safe. The
+archive is capped at 100 files, 50 MiB per file, and 200 MiB actual decoded
+payload. Byte ranges are not implemented.
+
+Received inline CID images use a separate, fail-closed display path for JPEG,
+PNG, and WebP. JMAP derives candidates from the authenticated message's
+attachment and HTML-body metadata, including supported ordered `htmlBody`
+image parts without a textual `cid:` reference. IMAP derives them from the current
+`BODYSTRUCTURE` and revalidates `UIDVALIDITY` and the MIME part before download.
+Only a unique provider-verified Content-ID can replace the matching `cid:` URL
+with an opaque, message-scoped attachment marker. Remote, data, blob,
+unsupported, missing, and ambiguous image references remain blocked.
+
+The reader issues an authenticated same-origin `POST` with only the opaque
+message and attachment IDs. The server accepts at most 5 MiB of source bytes,
+requires a complete clean ClamAV verdict and an exact supported magic-number
+match, validates the raster container, and uses Sharp to decode and re-encode
+one metadata-free WebP. Input dimensions are bounded at 4,096 pixels and
+16 megapixels; output fits within 1,600 by 1,600 pixels. At most eight verified
+images are rendered per message.
+
+The WebP is passed as a browser Blob to the message frame rather than exposed as
+a provider URL. That frame has an opaque origin because its sandbox omits
+`allow-same-origin`; its child CSP permits `blob:` images but no network
+connections. Existing authenticated JMAP download and IMAP access are
+sufficient, so this feature requires no Stalwart server configuration change.
+
+Unsupported or ambiguous sequential JMAP media stays visible as an attachment
+fallback. An eligible transient 429 or 503 inline-image response receives at
+most two abort-aware automatic retries. After exhaustion the sanitized alt text
+remains; an accessible parent-side control retries only failed opaque
+attachment IDs and remains bounded and fail-closed.
 
 Plain-text preview is a separate explicit POST using the same opaque
 message-scoped lookup. It fetches once, caps provider bytes at 1 MiB, requires
@@ -123,9 +154,9 @@ After saving, test with a dedicated mailbox:
 9. Download a multi-attachment message as one ZIP, run an independent archive
    integrity check, and verify every extracted SHA-256 digest.
 10. For JMAP, lower `maxSizeUpload` in a test session and confirm the UI and
-   reservation endpoint enforce the advertised provider limit before upload.
+    reservation endpoint enforce the advertised provider limit before upload.
 11. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
-   the picker and exact final MIME message fail before provider submission.
+    the picker and exact final MIME message fail before provider submission.
 12. Archive, star, move, and trash a test message.
 
 ## Common provider examples

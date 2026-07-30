@@ -4,7 +4,7 @@ import type { ImapFlow, MessageStructureObject } from "imapflow";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
-import { encodeMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
+import { encodeScopedImapMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import {
   bindImapReceivedAttachments,
   imapAttachmentAccountScope,
@@ -36,7 +36,11 @@ const config: ImapSmtpMemberConfig = {
 };
 
 const messageId = id.message(
-  encodeMessageId({ mailbox: "INBOX", uid: 77 }),
+  encodeScopedImapMessageId(config, {
+    mailbox: "INBOX",
+    uid: 77,
+    uidValidity: BigInt(9),
+  }),
 );
 const structure: MessageStructureObject = {
   childNodes: [
@@ -55,7 +59,7 @@ const structure: MessageStructureObject = {
 
 const attachmentId = (uidValidity = BigInt(9)) => {
   const attachment = bindImapReceivedAttachments({
-    accountScope: imapAttachmentAccountScope(config.username),
+    accountScope: imapAttachmentAccountScope(config),
     messageId,
     structure,
     uidValidity,
@@ -132,6 +136,7 @@ describe("IMAP attachment download", () => {
     await expect(
       downloadImapAttachment(config, input()),
     ).rejects.toMatchObject({ code: "not_found" });
+    expect(client.fetchOne).not.toHaveBeenCalled();
     expect(client.download).not.toHaveBeenCalled();
     expect(mocks.close).toHaveBeenCalledOnce();
   });
@@ -140,7 +145,10 @@ describe("IMAP attachment download", () => {
     const client = fakeClient();
     mocks.connect.mockResolvedValue(client as unknown as ImapFlow);
     const wrongId = bindImapReceivedAttachments({
-      accountScope: "other@example.com",
+      accountScope: imapAttachmentAccountScope({
+        ...config,
+        username: "other@example.com",
+      }),
       messageId,
       structure,
       uidValidity: BigInt(9),

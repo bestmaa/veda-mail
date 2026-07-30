@@ -32,6 +32,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Explicit plain-text attachment preview uses a 1 MiB cap, full ClamAV scan,
   magic-type check, whole-file UTF-8/control validation, and a script-disabled
   sandboxed Blob frame; active and complex formats remain download-only
+- Verified JMAP and IMAP CID images are scanned, magic-checked, bounded, and
+  normalized to metadata-free WebP before entering an opaque sandbox as
+  `blob:` content; remote images never load
 - Member-visible provider capabilities for drafts, threads, push, search, and
   attachments; unavailable features are stated rather than guessed
 - Sanitized HTML mail; scripts and remote images are removed

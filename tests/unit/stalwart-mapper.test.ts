@@ -122,6 +122,7 @@ describe("Stalwart JMAP mapper", () => {
     });
 
     expect(detail.attachments[0]).toMatchObject({
+      disposition: "attachment",
       mimeType: "text/html",
       name: "_CON_fdp.exe",
       size: 12,

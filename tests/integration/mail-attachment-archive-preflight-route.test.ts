@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   connection: { id: "archive-preflight-connection" },
   downloadAttachment: vi.fn(),
   getCurrentConnection: vi.fn(),
+  getMessage: vi.fn(),
   getMailService: vi.fn(),
   listMessageAttachments: vi.fn(),
 }));
@@ -27,12 +28,14 @@ const origin = "https://mail.example.com";
 const messageId = id.message("archive-preflight-message");
 const metadata = [
   {
+    disposition: "attachment" as const,
     id: id.attachment("preflight-one"),
     mimeType: "text/plain",
     name: "one.txt",
     size: null,
   },
   {
+    disposition: "attachment" as const,
     id: id.attachment("preflight-two"),
     mimeType: "text/plain",
     name: "two.txt",
@@ -54,6 +57,7 @@ beforeEach(() => {
   mocks.getCurrentConnection.mockResolvedValue(mocks.connection);
   mocks.getMailService.mockResolvedValue({
     downloadAttachment: mocks.downloadAttachment,
+    getMessage: mocks.getMessage,
     listMessageAttachments: mocks.listMessageAttachments,
   });
   mocks.listMessageAttachments.mockResolvedValue(metadata);
@@ -72,6 +76,8 @@ describe("attachment archive HEAD preflight", () => {
       messageId,
       signal: expect.any(AbortSignal),
     });
+    expect(mocks.listMessageAttachments).toHaveBeenCalledOnce();
+    expect(mocks.getMessage).not.toHaveBeenCalled();
     expect(mocks.downloadAttachment).not.toHaveBeenCalled();
   });
 

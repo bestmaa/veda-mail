@@ -55,12 +55,74 @@ describe("IMAP attachment body structure", () => {
         transferEncoding: "base64",
       },
       {
-        contentId: "<logo@example.test>",
+        contentId: "logo@example.test",
         contentType: "image/png",
         disposition: "inline",
         filename: "logo.png",
         part: "3.1",
         size: 256,
+        transferEncoding: null,
+      },
+    ]);
+  });
+
+  it("renders supported CID raster leaves and preserves unsupported image fallbacks", () => {
+    const related: MessageStructureObject = {
+      childNodes: [
+        {
+          id: " <hero@example.test> ",
+          part: "1",
+          size: 128,
+          type: "IMAGE/PNG",
+        },
+        {
+          id: "<vector@example.test>",
+          part: "2",
+          size: 64,
+          type: "image/svg+xml",
+        },
+        {
+          id: "<animation@example.test>",
+          part: "3",
+          size: 64,
+          type: "image/gif",
+        },
+        {
+          childNodes: [{ part: "4.1", type: "image/png" }],
+          id: "<container@example.test>",
+          part: "4",
+          type: "image/png",
+        },
+      ],
+      type: "multipart/related",
+    };
+
+    expect(collectImapAttachmentParts(related)).toEqual([
+      {
+        contentId: "hero@example.test",
+        contentType: "image/png",
+        disposition: "inline",
+        filename: "attachment.bin",
+        part: "1",
+        size: 128,
+        transferEncoding: null,
+      },
+      {
+        contentId: "vector@example.test",
+        contentType: "image/svg+xml",
+        disposition: "attachment",
+        filename: "attachment.bin",
+        part: "2",
+        size: 64,
+        transferEncoding: null,
+      },
+      {
+        contentId: "animation@example.test",
+        contentType: "image/gif",
+        disposition: "attachment",
+        filename: "attachment.bin",
+        part: "3",
+        size: 64,
         transferEncoding: null,
       },
     ]);

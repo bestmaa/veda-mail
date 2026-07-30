@@ -4,12 +4,10 @@ import type {
   FetchMessageObject,
   ListResponse,
   MessageAddressObject,
-  MessageStructureObject,
 } from "imapflow";
 import type { AddressObject, ParsedMail } from "mailparser";
 
 import type {
-  Attachment,
   MailAddress,
   Mailbox,
   MailboxRole,
@@ -19,12 +17,13 @@ import type {
 import { id } from "@/domain/shared/brand";
 import {
   encodeMailboxId,
-  encodeMessageId,
+  encodeScopedImapMessageId,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
-import {
-  mailHtmlToPlainText,
-  sanitizeMailHtml,
-} from "@/infrastructure/providers/sanitize-mail-html";
+import { hasImapDownloadableAttachment } from "@/infrastructure/providers/imap-smtp/imap-attachment-structure";
+import { classifyImapMessagePresentation } from "@/infrastructure/providers/imap-smtp/imap-message-presentation";
+import type { ImapReceivedAttachment } from "@/infrastructure/providers/imap-smtp/imap-received-attachment";
+import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { mailHtmlToPlainText } from "@/infrastructure/providers/sanitize-mail-html";
 
 const colors: Record<MailboxRole, string> = {
   archive: "#10b981",
@@ -70,13 +69,6 @@ const parsedAddresses = (
     })),
   );
 
-const hasAttachment = (node?: MessageStructureObject): boolean =>
-  Boolean(
-    node &&
-    (node.disposition?.toLowerCase() === "attachment" ||
-      node.childNodes?.some(hasAttachment)),
-  );
-
 export const mapImapMailbox = (mailbox: ListResponse): Mailbox => {
   const role = roleFor(mailbox);
   return {
@@ -92,15 +84,26 @@ export const mapImapMailbox = (mailbox: ListResponse): Mailbox => {
 export const mapImapSummary = (
   mailbox: string,
   message: FetchMessageObject,
+  identity: {
+    readonly config: Pick<
+      ImapSmtpMemberConfig,
+      "imapHost" | "imapPort" | "username"
+    >;
+    readonly uidValidity: bigint;
+  },
 ): MessageSummary => {
-  const messageId = encodeMessageId({ mailbox, uid: message.uid });
+  const messageId = encodeScopedImapMessageId(identity.config, {
+    mailbox,
+    uid: message.uid,
+    uidValidity: identity.uidValidity,
+  });
   const received =
     message.internalDate instanceof Date
       ? message.internalDate
       : new Date(message.internalDate ?? message.envelope?.date ?? Date.now());
   return {
     from: envelopeAddresses(message.envelope?.from),
-    hasAttachment: hasAttachment(message.bodyStructure),
+    hasAttachment: hasImapDownloadableAttachment(message.bodyStructure),
     id: id.message(messageId),
     isStarred: message.flags?.has("\\Flagged") ?? false,
     isUnread: !(message.flags?.has("\\Seen") ?? false),
@@ -119,15 +122,19 @@ export const mapImapSummary = (
 export const mapParsedMessage = (
   summary: MessageSummary,
   parsed: ParsedMail,
-  attachments: readonly Attachment[] = [],
-): MessageDetail => ({
-  ...summary,
-  attachments,
-  cc: parsedAddresses(parsed.cc),
-  htmlBody:
-    typeof parsed.html === "string" ? sanitizeMailHtml(parsed.html) : null,
-  replyTo: parsedAddresses(parsed.replyTo),
-  textBody:
-    parsed.text ??
-    (parsed.textAsHtml ? mailHtmlToPlainText(parsed.textAsHtml) : ""),
-});
+  receivedAttachments: readonly ImapReceivedAttachment[] = [],
+): MessageDetail => {
+  const presentation = classifyImapMessagePresentation(
+    parsed,
+    receivedAttachments,
+  );
+  return {
+    ...summary,
+    ...presentation,
+    cc: parsedAddresses(parsed.cc),
+    replyTo: parsedAddresses(parsed.replyTo),
+    textBody:
+      parsed.text ??
+      (parsed.textAsHtml ? mailHtmlToPlainText(parsed.textAsHtml) : ""),
+  };
+};

@@ -10,6 +10,7 @@ import { parseStoreZip } from "@/../tests/support/store-zip";
 
 const messageId = id.message("archive-edge-cases");
 const item = (size: number | null = null): MessageAttachmentMetadata => ({
+  disposition: "attachment",
   id: id.attachment("attachment-edge-case"),
   mimeType: "application/octet-stream",
   name: "edge.bin",

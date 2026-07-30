@@ -41,7 +41,7 @@ export interface JmapPublicAttachment {
   readonly attachmentId: string;
   readonly fileName: string;
   readonly mediaType: string;
-  readonly size: number;
+  readonly size: number | null;
 }
 
 export interface JmapAttachmentHandle extends JmapPublicAttachment {
@@ -63,7 +63,7 @@ export interface JmapBindMessageAttachmentInput {
   readonly mediaType: string;
   readonly messageId: string;
   readonly providerBlobId: string;
-  readonly size: number;
+  readonly size: number | null;
 }
 
 export interface JmapDownloadAttachmentInput {

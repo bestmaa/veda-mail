@@ -17,6 +17,7 @@ const attachment = (
   name: string,
   size: number,
 ): Attachment => ({
+  disposition: "attachment",
   id: id.attachment(`archive-attachment-${index}`),
   mimeType: "application/octet-stream",
   name,

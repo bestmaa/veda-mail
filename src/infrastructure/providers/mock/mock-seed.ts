@@ -13,6 +13,11 @@ import {
   mockPreviewAttachment,
   mockPreviewMessageId,
 } from "@/infrastructure/providers/mock/mock-preview-fixture";
+import {
+  createMockInlineImageBytes,
+  createMockInlineImageMessage,
+  mockInlineImageAttachment,
+} from "@/infrastructure/providers/mock/mock-inline-image-fixture";
 
 const inbox = id.mailbox("mock-inbox");
 const archive = id.mailbox("mock-archive");
@@ -48,6 +53,12 @@ export const createMockAttachmentContents = (): Map<
       mockPreviewMessageId,
       new Map([
         [mockPreviewAttachment.id, mockPreviewAttachment.bytes.slice()],
+      ]),
+    ],
+    [
+      mockInlineImageAttachment.messageId,
+      new Map([
+        [mockInlineImageAttachment.id, createMockInlineImageBytes()],
       ]),
     ],
     ...(process.env["VEDA_MAIL_E2E_ARCHIVE_FAILURE"] === "true"
@@ -86,6 +97,7 @@ export const createMockMessages = (): MessageDetail[] => [
     threadId: id.thread("thread-welcome"),
     to: [{ email: "member@example.com", name: "Sample Member" }],
   },
+  createMockInlineImageMessage(inbox),
   createMockArchiveMessage(),
   createMockPreviewMessage(),
   ...(process.env["VEDA_MAIL_E2E_ARCHIVE_FAILURE"] === "true"
@@ -94,6 +106,7 @@ export const createMockMessages = (): MessageDetail[] => [
   {
     attachments: [
       {
+        disposition: "attachment",
         id: mockRoadmapAttachment.id,
         mimeType: mockRoadmapAttachment.mimeType,
         name: mockRoadmapAttachment.name,

@@ -23,6 +23,7 @@ export const mockPreviewAttachment = {
 export const createMockPreviewMessage = (): MessageDetail => ({
   attachments: [
     {
+      disposition: "attachment",
       id: mockPreviewAttachment.id,
       mimeType: mockPreviewAttachment.mimeType,
       name: mockPreviewAttachment.name,

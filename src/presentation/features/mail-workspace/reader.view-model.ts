@@ -67,14 +67,18 @@ export const createReaderViewModel = (input: {
       isLoading: true,
       isStarred: false,
       isUnread: false,
+      messageId: "",
       subject: "Opening message…",
       to: "",
     };
   }
   const message = input.message;
+  const visibleAttachments = message.attachments.filter(
+    ({ disposition }) => disposition === "attachment",
+  );
   const archive = createAttachmentArchiveViewModel(
     message.id,
-    message.attachments.length,
+    visibleAttachments.length,
     input.archiveDownload,
   );
   const previewBelongsToMessage = Boolean(
@@ -85,7 +89,7 @@ export const createReaderViewModel = (input: {
   return {
     attachments: createReceivedAttachmentViewModels(
       message.id,
-      message.attachments,
+      visibleAttachments,
       input.attachmentPreview,
     ),
     attachmentPreview: {
@@ -111,6 +115,7 @@ export const createReaderViewModel = (input: {
     isLoading: input.isLoading,
     isStarred: message.isStarred,
     isUnread: message.isUnread,
+    messageId: message.id,
     subject: message.subject,
     to: message.to.map((address) => address.email).join(", "),
   };

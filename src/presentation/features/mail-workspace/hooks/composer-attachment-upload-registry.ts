@@ -22,7 +22,7 @@ export interface ComposerAttachment {
   readonly key: string;
   readonly upload: UploadedAttachment | null;
   readonly name: string;
-  readonly size: number;
+  readonly size: number | null;
   readonly source?: {
     readonly attachmentId: AttachmentId;
     readonly messageId: MessageId;

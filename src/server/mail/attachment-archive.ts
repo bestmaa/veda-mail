@@ -6,9 +6,7 @@ import type {
   AttachmentDownload,
   MessageAttachmentMetadata,
 } from "@/domain/mail/mail";
-import {
-  MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
-} from "@/domain/mail/received-attachment";
+import { MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES } from "@/domain/mail/received-attachment";
 import type { MessageId } from "@/domain/shared/brand";
 import type { AttachmentDownloadLease } from "@/server/mail/attachment-download-concurrency";
 import {
@@ -16,6 +14,7 @@ import {
   MAX_ATTACHMENT_ARCHIVE_BYTES,
   MAX_ATTACHMENT_ARCHIVE_ENTRIES,
 } from "@/server/mail/attachment-archive-generator";
+import { assertAttachmentArchiveMetadata } from "@/server/mail/attachment-archive-metadata";
 import { uniqueArchiveEntryNames } from "@/server/mail/attachment-archive-names";
 import { attachmentArchiveAbortError } from "@/server/mail/attachment-archive-source";
 import { createAttachmentArchiveStream } from "@/server/mail/attachment-archive-stream";
@@ -80,13 +79,11 @@ const validateAttachments = (
       413,
     );
   }
+  assertAttachmentArchiveMetadata(attachments);
   let knownBytes = 0;
   for (const attachment of attachments) {
     if (attachment.size === null) continue;
-    if (
-      !Number.isSafeInteger(attachment.size) ||
-      attachment.size < 0
-    ) {
+    if (!Number.isSafeInteger(attachment.size) || attachment.size < 0) {
       throw invalidMetadata();
     }
     if (attachment.size > MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES) {
@@ -148,13 +145,14 @@ const listArchiveAttachments = async (
   mail: MailApplicationService,
   messageId: MessageId,
   signal: AbortSignal,
-): Promise<readonly MessageAttachmentMetadata[]> =>
-  validateAttachments(
-    await awaitArchiveOperation(
-      mail.listMessageAttachments({ messageId, signal }),
-      signal,
-    ),
-  );
+): Promise<readonly MessageAttachmentMetadata[]> => {
+  const attachments = await mail.listMessageAttachments({
+    messageId,
+    signal,
+  });
+  if (signal.aborted) throw attachmentArchiveAbortError(signal);
+  return validateAttachments(attachments);
+};
 
 const cancelDownload = (
   download: AttachmentDownload,
