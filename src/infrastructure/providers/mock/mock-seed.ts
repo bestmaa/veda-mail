@@ -8,6 +8,11 @@ import {
   mockArchiveFailureMessageId,
   mockArchiveMessageId,
 } from "@/infrastructure/providers/mock/mock-archive-fixture";
+import {
+  createMockPreviewMessage,
+  mockPreviewAttachment,
+  mockPreviewMessageId,
+} from "@/infrastructure/providers/mock/mock-preview-fixture";
 
 const inbox = id.mailbox("mock-inbox");
 const archive = id.mailbox("mock-archive");
@@ -39,6 +44,12 @@ export const createMockAttachmentContents = (): Map<
       ]),
     ],
     [mockArchiveMessageId, createMockArchiveContents()],
+    [
+      mockPreviewMessageId,
+      new Map([
+        [mockPreviewAttachment.id, mockPreviewAttachment.bytes.slice()],
+      ]),
+    ],
     ...(process.env["VEDA_MAIL_E2E_ARCHIVE_FAILURE"] === "true"
       ? ([[mockArchiveFailureMessageId, createMockArchiveContents()]] as const)
       : []),
@@ -76,6 +87,7 @@ export const createMockMessages = (): MessageDetail[] => [
     to: [{ email: "member@example.com", name: "Sample Member" }],
   },
   createMockArchiveMessage(),
+  createMockPreviewMessage(),
   ...(process.env["VEDA_MAIL_E2E_ARCHIVE_FAILURE"] === "true"
     ? [createMockArchiveFailureMessage()]
     : []),

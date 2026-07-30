@@ -35,7 +35,7 @@ const cleanTestScanner: AttachmentScanner = {
   },
 };
 
-const scanner = (): AttachmentScanner =>
+export const attachmentScanner = (): AttachmentScanner =>
   process.env.NODE_ENV === "test" ||
   (process.env.NODE_ENV !== "production" &&
     process.env["VEDA_MAIL_ATTACHMENT_SCANNER"] === "test-clean")
@@ -95,7 +95,7 @@ export const attachmentService = () => {
       path.join(tmpdir(), `${ATTACHMENT_DIRECTORY_PREFIX}${process.pid}-`),
     ),
     mimeDetector: new MagicNumberMimeDetector(),
-    scanner: scanner(),
+    scanner: attachmentScanner(),
   });
   globalAttachments.__vedaMailAttachmentService = service;
   globalAttachments.__vedaMailAttachmentCleanupTimer =

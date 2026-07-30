@@ -29,6 +29,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Original received attachments are re-fetched server-side, staged within a
   bounded plaintext budget, scanned, MIME-verified, and encrypted before they
   can be forwarded; provider locators stay server-only
+- Explicit plain-text attachment preview uses a 1 MiB cap, full ClamAV scan,
+  magic-type check, whole-file UTF-8/control validation, and a script-disabled
+  sandboxed Blob frame; active and complex formats remain download-only
 - Member-visible provider capabilities for drafts, threads, push, search, and
   attachments; unavailable features are stated rather than guessed
 - Sanitized HTML mail; scripts and remote images are removed

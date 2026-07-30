@@ -163,6 +163,38 @@ budget. Any cancellation, dishonest length, no-progress stream, or provider
 failure stops later fetches and omits the central directory, leaving no
 success-looking partial ZIP.
 
+## Plain-text attachment preview boundary
+
+Preview is a separate explicit `POST` to the message-nested opaque attachment
+route. `GET`, `HEAD`, query parameters, byte ranges, cross-origin requests, and
+all renderer values except the strict `text` contract are rejected before
+provider access. The browser never submits a provider locator, MIME type,
+filename, or size.
+
+The server fetches the provider object once under the shared download budget,
+a dedicated two-global/one-member preview lease, a 1 MiB input ceiling, and a
+90-second composite preparation deadline. A separate 30-second absolute
+response deadline releases the preview lease even if a client stops reading.
+Every exact byte must be consumed by ClamAV and receive a clean verdict before
+type detection or decoding. Both the normalized provider hint and magic
+inspection must resolve to `text/plain`; the complete file must be fatal-valid
+UTF-8 without NUL, unsafe C0/C1 controls, or bidi override/isolate controls.
+Newlines are normalized before the 100,000-code point and 10,000-line ceilings
+are enforced.
+
+Only the derived inert text is returned, with a fixed filename,
+`text/plain; charset=utf-8`, private no-store/no-transform caching, `nosniff`,
+a sandbox CSP, same-origin resource policy, and no ranges. The client verifies
+response type and length, creates a plain-text Blob, and displays it in an
+iframe with `sandbox="allow-same-origin"`. Same-origin is the only sandbox
+token so the parent native modal can contain keyboard focus and route Escape;
+scripts, forms, popups, navigation, and active content remain disabled. The
+Blob URL is revoked on close, message change, replacement, or unmount. SVG,
+HTML, PDF, Office, images, media, archives, structured text, unknown binary,
+malware, and ambiguous input never fall back to raw inline rendering. Image
+preview requires a future network-disabled, resource-limited
+decode-and-re-encode worker.
+
 ## Original attachment forwarding boundary
 
 Forwarding never promotes a browser-supplied provider locator into an outgoing

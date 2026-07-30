@@ -21,6 +21,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
 | Download all ZIP (100 files / 200 MiB)         | Yes             | Yes                  |
 | Scanned forwarding of original attachments    | Yes             | Yes                  |
+| Scanned plain-text preview (1 MiB)             | Yes             | Yes                  |
 | Conversation/thread API                       | Not implemented | Not implemented      |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
 
@@ -37,13 +38,22 @@ The browser receives only an opaque attachment ID scoped to its message. JMAP
 downloads require and verify the provider's exact content length while
 streaming. IMAP downloads revalidate `UIDVALIDITY` and `BODYSTRUCTURE`, resolve
 the server-only MIME part, and stream without claiming a `Content-Length`.
-Veda Mail forces both paths to a non-cacheable attachment response instead of
-an inline preview. Download all first performs a metadata-only provider lookup,
+Veda Mail forces both paths to a non-cacheable attachment response. Download
+all first performs a metadata-only provider lookup,
 then streams each revalidated attachment sequentially into one STORE-mode ZIP.
 The browser supplies only the opaque message ID; generated names are flat,
 sanitized, and collision-safe. The archive is capped at 100 files, 50 MiB per
-file, and 200 MiB actual decoded payload. Byte ranges, preview, and inline CID
-rendering are not implemented.
+file, and 200 MiB actual decoded payload. Byte ranges and inline CID rendering
+are not implemented.
+
+Plain-text preview is a separate explicit POST using the same opaque
+message-scoped lookup. It fetches once, caps provider bytes at 1 MiB, requires
+a full clean ClamAV verdict, verifies `text/plain` by hint and magic, validates
+the whole UTF-8/control surface, and returns only inert text in a
+script-disabled Blob frame. The only sandbox token is `allow-same-origin`
+so the parent modal can contain keyboard focus; active behavior remains
+disabled. Complex formats and raw inline bytes are never previewed. No provider
+configuration or Stalwart change is required.
 
 Forwarding originals uses the same authenticated, message-scoped lookup but
 never reuses a provider blob directly. Veda Mail stages the decoded source

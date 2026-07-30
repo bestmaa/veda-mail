@@ -36,12 +36,23 @@ export interface MessageItemViewModel {
 export interface AttachmentViewModel {
   readonly href: string;
   readonly id: string;
+  readonly isPreviewing: boolean;
   readonly meta: string;
   readonly name: string;
+  readonly onPreview: ((trigger: HTMLButtonElement) => void) | null;
 }
 
 export interface ReaderViewModel {
   readonly attachments: readonly AttachmentViewModel[];
+  readonly attachmentPreview: {
+    readonly error: string | null;
+    readonly isLoading: boolean;
+    readonly isOpen: boolean;
+    readonly name: string;
+    readonly onClose: () => void;
+    readonly onRestoreFocus: () => void;
+    readonly url: string | null;
+  };
   readonly avatar: string;
   readonly body: string;
   readonly canArchive: boolean;

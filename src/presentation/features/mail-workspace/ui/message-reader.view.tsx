@@ -15,6 +15,7 @@ import type {
   ReaderViewModel,
 } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { MessageFrameConnector } from "@/presentation/features/mail-workspace/connectors/message-frame.connector";
+import { AttachmentPreviewDialogConnector } from "@/presentation/features/mail-workspace/connectors/attachment-preview-dialog.connector";
 import { ReceivedAttachmentListView } from "@/presentation/features/mail-workspace/ui/received-attachment-list.view";
 import { ReaderActionView } from "@/presentation/features/mail-workspace/ui/reader-action.view";
 
@@ -144,6 +145,7 @@ export const MessageReaderView = ({
             attachments={reader.attachments}
             downloadAll={reader.downloadAll}
           />
+          <AttachmentPreviewDialogConnector {...reader.attachmentPreview} />
 
           <div className="mt-8 flex flex-wrap gap-2">
             <button

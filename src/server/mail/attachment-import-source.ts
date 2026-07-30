@@ -28,10 +28,27 @@ export const attachmentImportProviderFailure = (): AttachmentDownloadError =>
     "The mail provider returned an invalid attachment.",
   );
 
+const attachmentImportAborted = (): AttachmentDownloadError =>
+  new AttachmentDownloadError(
+    "aborted",
+    "The attachment import was cancelled.",
+  );
+
+const cancelLateAttachmentDownload = (download: AttachmentDownload): void => {
+  try {
+    const body = download?.body;
+    if (typeof body?.cancel !== "function") return;
+    void body.cancel(attachmentImportAborted()).catch(() => undefined);
+  } catch {
+    // Provider cancellation is best-effort and must not mask the abort.
+  }
+};
+
 export const fetchAttachmentImportSource = async (
   input: AttachmentImportSourceInput,
 ): Promise<AttachmentDownload> => {
   try {
+    if (input.signal.aborted) throw attachmentImportAborted();
     const download = await waitForAttachmentImport(
       input.download({
         attachmentId: input.attachmentId,
@@ -40,6 +57,7 @@ export const fetchAttachmentImportSource = async (
         signal: input.signal,
       }),
       input.signal,
+      cancelLateAttachmentDownload,
     );
     let body: ReadableStream<Uint8Array>;
     try {

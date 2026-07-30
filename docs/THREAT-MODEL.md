@@ -194,15 +194,33 @@ limiter and encrypted shared session repository.
   scanner, and quarantine operation. Reservation cleanup is bounded and
   best-effort failures are logged without identifiers or replacement of the
   original safe error.
+- Preview is never a content-disposition change on the raw download route. It
+  is an explicit, same-origin, POST-only operation with a strict text renderer
+  contract, 1 MiB cap, 90-second preparation deadline,
+  two-global/one-member lease, and the shared provider-download budget.
+- Every preview byte must receive a complete clean ClamAV verdict before magic
+  inspection and whole-file decoding. Both the provider hint and detected type
+  must be `text/plain`; fatal UTF-8, unsafe control/bidi, normalized-line, code
+  point, and line-count checks fail closed.
+- Approved text is returned under no-store/nosniff/sandbox/CORP headers and
+  rendered only from a verified `text/plain` Blob inside an iframe with
+  `sandbox="allow-same-origin"`. That is the only token, used so the parent
+  native modal can enforce keyboard containment across the frame; scripts,
+  forms, popups, and navigation stay disabled. The object URL is revoked on
+  close or context change. SVG, HTML, PDF, images, Office, archives, media,
+  and unknown bytes remain download-only; there is no raw-inline fallback.
+- Preparation has a 90-second composite deadline and response delivery has a
+  separate 30-second absolute deadline, so hung dependencies and slow clients
+  cannot retain either preview lease indefinitely.
 
-Residual risk: received attachments are hostile provider content and are not
-scanned by the outbound ClamAV quarantine. Operators may add an independently
-reviewed inbound scanning boundary, and members should scan unexpected files
-before opening them. Forwarding an original does pass it through the outbound
-quarantine, but direct and Download all responses do not. Preview, inline CID,
-and byte ranges remain unavailable. Download all has an explicit no-expansion
-policy; it is a transport bundle, not a malware verdict. ClamAV must have
-enough memory for outbound signature reloads; operator monitoring is required.
+Residual risk: received attachments are hostile provider content. Direct and
+Download all responses are transport-only and are not scanned, so members
+should scan unexpected downloads before opening them. Forwarding and the
+bounded plain-text preview do pass through ClamAV, but a clean signature verdict
+is defense-in-depth rather than proof of safety. Complex preview formats,
+inline CID, and byte ranges remain unavailable. Download all has an explicit
+no-expansion policy; it is not a malware verdict. ClamAV must have enough
+memory for signature reloads; operator monitoring is required.
 
 ### Rules and forwarding
 
