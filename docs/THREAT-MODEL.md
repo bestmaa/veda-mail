@@ -231,16 +231,45 @@ delivered BCC header.
 Residual risk: limits are in-process. Horizontal scaling requires a distributed
 limiter and encrypted shared session repository.
 
+## Outbound rich-text boundary
+
+- The send API requires `body` and accepts optional `htmlBody`. Both are
+  untrusted input. When `htmlBody` is present, the server ignores the browser
+  fallback for provider output, sanitizes and canonicalizes the HTML, and
+  derives the readable plain-text `body` from that canonical result before
+  idempotency reservation, attachment access, or provider submission.
+- The outbound allowlist is `a`, `br`, `em`, `h1`, `h2`, `li`, `ol`, `p`,
+  `strong`, `u`, and `ul`; `b` and `i` canonicalize to `strong` and `em`.
+  Links retain only a canonical `href` plus forced
+  `rel="noopener noreferrer"` and `target="_blank"`. Only absolute `http`,
+  `https`, and restricted address-only `mailto` destinations survive.
+  Credential-bearing URLs, relative/protocol-relative URLs, active content,
+  forms, remote media, arbitrary styles, and event attributes cannot reach a
+  provider.
+- Each input and canonical output is limited to 256,000 characters and
+  256,000 UTF-8 bytes. The input pair and canonical output pair each have a
+  512,000-character/byte combined budget. Rich HTML is additionally limited to
+  1,000 elements, nesting depth 32, and 2,048 characters/bytes per link.
+  Unsafe controls, bidi controls, malformed Unicode, unreadable sanitized
+  content, and overflow fail closed.
+- The canonical `body` plus `htmlBody` pair is covered by the stable-draft send
+  fingerprint. A changed canonical rich message cannot replay a prior send.
+- The Lexical client accepts paste and drop as `text/plain` only, preventing
+  source-page markup or remote elements from entering editor state. This is
+  defense in depth; the server allowlist remains authoritative for custom or
+  tampered clients.
+
 ## Feature gates for future work
 
-### Rich text
+### Rich-text extensions
 
-- All outbound rich text, signatures, templates, and quoted HTML must pass the
-  same centralized allowlist before storage, preview, or provider submission.
-- Generate an equivalent readable plain-text part and prohibit arbitrary
-  styles, active embeds, remote media, forms, scripts, and event attributes.
-- Links must retain the isolated new-tab policy, and sanitizer changes must add
-  provider MIME plus mutation-XSS regression cases before release.
+- Future signatures, templates, quoted HTML, and provider-backed drafts must
+  pass the same centralized allowlist before storage, preview, or provider
+  submission.
+- Future draft persistence must store a canonical HTML/plain pair without
+  weakening the current no-remote-media or isolated-link policy.
+- Sanitizer changes must add provider MIME plus mutation-XSS regression cases
+  before release.
 
 ### Attachments
 

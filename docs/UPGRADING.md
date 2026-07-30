@@ -63,6 +63,20 @@ attachment and send routes. Replay protection is process-local, lasts 30
 minutes from terminal completion, and is capped by the connection lifetime.
 No Stalwart configuration or migration is required.
 
+Safe rich-text compose keeps required `body` and adds optional `htmlBody` to
+the send API. Custom plain-text clients can continue omitting `htmlBody`.
+Custom rich clients must still provide a nonblank `body`, but Veda Mail
+sanitizes and canonicalizes `htmlBody` and derives the provider-bound plain
+alternative on the server. Each field is limited to 256,000 characters and
+256,000 UTF-8 bytes; the combined limit is 512,000. Update any custom client
+that relied on the former 1,000,000-character plain-body ceiling.
+
+The web image now includes version-pinned, MIT-licensed Lexical 0.44.0 client
+modules. No new service or environment variable is required. Rich sends use
+the existing authenticated JMAP or SMTP connection, and the change requires no
+Stalwart configuration, provider-profile update, `/data` migration, or mailbox
+data migration.
+
 Then verify:
 
 ```bash

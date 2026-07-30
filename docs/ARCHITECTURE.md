@@ -91,11 +91,36 @@ contracts through a vendor adapter.
 
 The browser submits a stable UUID draft ID, canonicalized to one lowercase key
 at every attachment and send boundary, structured To, CC, and BCC addresses,
-plus an optional opaque reply message ID. Before provider access,
-the send route bounds the JSON body, validates header fields, caps and
-deduplicates recipients, derives reply headers from the provider-owned source,
-and charges both a message-rate window and a
-300-recipient-per-verified-connection one-minute window.
+required plain `body`, optional rich `htmlBody`, and an optional opaque reply
+message ID. Before provider access, the send route bounds the JSON body,
+validates header fields, caps and deduplicates recipients, derives reply
+headers from the provider-owned source, and charges both a message-rate window
+and a 300-recipient-per-verified-connection one-minute window.
+
+The client-side rich editor is built from version-pinned, MIT-licensed Lexical
+0.44.0 modules. It emits semantic headings, emphasis, lists, and links, offers
+an explicit plain-text mode, and inserts pasted or dropped content as plain
+text only. Client filtering is a usability and defense-in-depth control, not a
+trust boundary.
+
+The server treats both body fields as untrusted. Each is capped at 256,000
+characters and UTF-8 bytes and their combined budget is 512,000. When
+`htmlBody` is present, one centralized outbound policy restricts it to
+paragraphs, line breaks, two heading levels, emphasis/underline, ordered and
+unordered lists, and isolated absolute `http`, `https`, or restricted
+address-only `mailto` links. The policy rejects unsafe controls, malformed
+Unicode, oversized link destinations, more than 1,000 elements, or nesting
+beyond 32; scripts, forms, styles, event handlers, remote media, and
+unsupported markup are discarded. It then derives the readable provider-bound
+`body` from the canonical HTML instead of trusting the client fallback.
+
+This canonical plain/HTML pair enters the idempotency fingerprint and the
+provider-independent `SendMessageInput`. SMTP supplies Nodemailer `text` and
+optional `html`, producing `multipart/alternative` inside
+`multipart/mixed` when attachments exist. JMAP supplies matching
+`bodyValues`, `textBody`, and `htmlBody`, or an explicit alternative nested
+inside a mixed attachment body structure. Omitting `htmlBody` preserves the
+plain-text-only provider shape.
 
 The JMAP adapter uses structured address properties, reads decoded JSON through
 a 16 MiB stream cap, and retains at most the first 100 provider-supplied
@@ -131,12 +156,13 @@ Immediately after validation and rate charging, the route reserves
 `connection ID + draft UUID` before attachment inspection, decryption, claim,
 or provider access. Its SHA-256 fingerprint covers the exact post-validation
 recipient buckets, order, names and addresses, subject, body, reply ID, and
-attachment-ID order without additional case or Unicode normalization. An
-identical concurrent request waits for its owner; an identical completed
-request replays the same canonical terminal receipt without touching
-attachments or the provider. Reusing the draft UUID for a different
-fingerprint returns a conflict. Definitive pre-submission or all-recipient
-failure releases the reservation.
+attachment-ID order without additional case or Unicode normalization. For rich
+mail, `body` is the server-derived plain alternative and `htmlBody` is the
+server-canonicalized HTML. An identical concurrent request waits for its owner;
+an identical completed request replays the same canonical terminal receipt
+without touching attachments or the provider. Reusing the draft UUID for a
+different fingerprint returns a conflict. Definitive pre-submission or
+all-recipient failure releases the reservation.
 
 The terminal entry is committed synchronously as soon as the canonical
 provider receipt exists, before notice persistence or attachment cleanup can

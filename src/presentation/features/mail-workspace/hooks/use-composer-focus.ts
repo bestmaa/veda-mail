@@ -17,7 +17,23 @@ export const useComposerReturnFocus = () => {
   };
 };
 
-export const useComposerFocusTrap = (isOpen: boolean, onEscape: () => void) => {
+export const useComposerFocusTrap = (
+  isOpen: boolean,
+  isSending: boolean,
+  onEscape: () => void,
+) => {
+  useEffect(() => {
+    if (!isOpen || !isSending) return;
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(
+          '[role="dialog"][aria-label="Compose message"]',
+        )
+        ?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen, isSending]);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleDialogKeys = (event: KeyboardEvent) => {
@@ -29,23 +45,48 @@ export const useComposerFocusTrap = (isOpen: boolean, onEscape: () => void) => {
       const dialog = document.querySelector<HTMLElement>(
         '[role="dialog"][aria-label="Compose message"]',
       );
+      if (isSending && dialog) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
       const focusable = [
         ...(dialog?.querySelectorAll<HTMLElement>(
-          "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']",
+          "a[href], button:not(:disabled), input:not(:disabled), " +
+            "select:not(:disabled), textarea:not(:disabled), " +
+            "[contenteditable='true'], [tabindex]:not([tabindex='-1'])",
         ) ?? []),
-      ];
+      ].filter(
+        (element) =>
+          !element.closest("[hidden]") &&
+          !element.matches(":disabled, [aria-disabled='true']") &&
+          element.getAttribute("contenteditable") !== "false" &&
+          element.getClientRects().length > 0,
+      );
       const first = focusable[0];
       const last = focusable.at(-1);
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
+      if (!dialog) return;
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const active =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      if (!active || !dialog.contains(active) || !focusable.includes(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && active === last) {
         event.preventDefault();
         first.focus();
       }
     };
     window.addEventListener("keydown", handleDialogKeys);
     return () => window.removeEventListener("keydown", handleDialogKeys);
-  }, [isOpen, onEscape]);
+  }, [isOpen, isSending, onEscape]);
 };

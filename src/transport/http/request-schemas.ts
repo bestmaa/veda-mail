@@ -1,5 +1,9 @@
 import { hasHeaderControlCharacter } from "@/domain/mail/header-safety";
 import { id } from "@/domain/shared/brand";
+import {
+  combinedOutgoingContentWithinLimit,
+  outgoingContentString,
+} from "@/transport/http/outgoing-content-schema";
 import { z } from "zod";
 
 const addressSchema = z
@@ -73,11 +77,9 @@ export const sendMessageSchema = z
       .max(10, "A message can contain at most 10 attachments.")
       .default([]),
     bcc: recipientListSchema.default([]),
-    body: z
-      .string()
+    body: outgoingContentString("Message body")
       .trim()
-      .min(1, "Message body cannot be blank.")
-      .max(1_000_000, "Message body cannot exceed 1,000,000 characters."),
+      .min(1, "Message body cannot be blank."),
     cc: recipientListSchema.default([]),
     draftId: z
       .string()
@@ -94,6 +96,7 @@ export const sendMessageSchema = z
       )
       .transform(id.message)
       .optional(),
+    htmlBody: outgoingContentString("Rich message body").optional(),
     subject: z
       .string()
       .trim()
@@ -106,6 +109,16 @@ export const sendMessageSchema = z
   })
   .strict()
   .superRefine((message, context) => {
+    if (
+      !combinedOutgoingContentWithinLimit(message.body, message.htmlBody)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Combined message content cannot exceed 512,000 characters or UTF-8 bytes.",
+        path: ["htmlBody"],
+      });
+    }
     if (new Set(message.attachmentIds).size !== message.attachmentIds.length) {
       context.addIssue({
         code: "custom",

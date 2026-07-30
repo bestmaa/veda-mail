@@ -93,7 +93,7 @@ test("sends CC-only and BCC-only mail with accessible disclosures", async ({
   ).toBeVisible();
 });
 
-test("keeps the expanded composer inside a mobile viewport", async ({
+test("keeps rich compose controls reachable above a short mobile viewport", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 844, width: 390 });
@@ -102,13 +102,57 @@ test("keeps the expanded composer inside a mobile viewport", async ({
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog.getByRole("button", { exact: true, name: "Cc" }).click();
   await dialog.getByRole("button", { exact: true, name: "Bcc" }).click();
+  const body = dialog.getByRole("textbox", {
+    exact: true,
+    name: "Message body",
+  });
+  await body.fill(
+    Array.from(
+      { length: 24 },
+      (_, index) => `Mobile composer line ${index + 1}`,
+    ).join("\n"),
+  );
+
+  // A shrinking dynamic viewport approximates the space left by a software
+  // keyboard without coupling the test to a specific mobile browser UI.
+  await page.setViewportSize({ height: 500, width: 390 });
 
   const bounds = await dialog.boundingBox();
   expect(bounds).not.toBeNull();
   expect(bounds?.x ?? -1).toBeGreaterThanOrEqual(0);
   expect(bounds?.y ?? -1).toBeGreaterThanOrEqual(0);
   expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(390);
-  expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBeLessThanOrEqual(844);
+  expect((bounds?.y ?? 0) + (bounds?.height ?? 0)).toBeLessThanOrEqual(500);
+
+  const form = dialog.locator("form");
+  await expect
+    .poll(() =>
+      form.evaluate(
+        (element) => element.scrollHeight > element.clientHeight,
+      ),
+    )
+    .toBe(true);
+  const toolbar = dialog.getByRole("toolbar", {
+    name: "Formatting options",
+  });
+  await expect
+    .poll(() =>
+      toolbar.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    )
+    .toBe(true);
+  await toolbar.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  expect(await toolbar.evaluate((element) => element.scrollLeft)).toBeGreaterThan(
+    0,
+  );
+
+  const send = dialog.getByRole("button", { name: /^Send$/ });
+  await send.scrollIntoViewIfNeeded();
+  await expect(send).toBeVisible();
+  expect(await form.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

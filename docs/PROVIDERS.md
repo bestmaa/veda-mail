@@ -13,7 +13,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | --------------------------------------------- | --------------- | -------------------- |
 | Mailbox/message read                          | Yes             | Yes                  |
 | Server-side text search                       | Yes             | Yes                  |
-| Plain-text send, To/CC/BCC                    | Yes             | Yes                  |
+| Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
@@ -36,6 +36,20 @@ provider-independent domain. Detailed reads request no more than 256,000 bytes
 per body value, retain no more than 128 referenced body values within a 256,000
 character aggregate source budget, and cap each final text or sanitized HTML
 presentation at 256,000 characters with a visible truncation marker.
+
+Both adapters also receive the same server-canonicalized content contract:
+required readable `body` plus optional safe `htmlBody`. When rich content is
+submitted, Veda Mail derives `body` from the sanitized HTML rather than
+trusting the browser-supplied fallback. Standard SMTP sends matching
+`text/plain` and `text/html` alternatives, nested inside `multipart/mixed`
+when attachments exist. Stalwart JMAP sends matching body values and
+`textBody`/`htmlBody` declarations, or an explicit
+`multipart/alternative` nested inside `multipart/mixed` for attachments.
+Plain messages remain text-only in both adapters.
+
+Rich-text send is a Veda Mail application feature. It requires no provider
+profile change, Stalwart configuration change, mailbox data migration, or new
+mail-server port.
 
 The Standard IMAP + SMTP adapter omits BCC from delivered MIME while retaining
 it in the SMTP envelope. If SMTP immediately rejects only some recipients, Veda

@@ -60,7 +60,7 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
   ).toHaveValue("Fwd: Revised product roadmap · Q3");
   await expect(
     dialog.getByRole("textbox", { exact: true, name: "Message body" }),
-  ).toHaveValue(/---------- Forwarded message ----------/);
+  ).toContainText(/---------- Forwarded message ----------/);
   await page.keyboard.press("Escape");
   await expect(forward).toBeFocused();
 });
@@ -136,7 +136,7 @@ test("submits Reply All and Forward with the correct threading payload", async (
     name: "Message body",
   });
   await expect(bodyInput).toBeFocused();
-  await bodyInput.fill(`Reply accepted.\n${await bodyInput.inputValue()}`);
+  await bodyInput.fill(`Reply accepted.\n${await bodyInput.textContent()}`);
   await sendComposer(page);
 
   expect(sentPayloads[0]).toMatchObject({

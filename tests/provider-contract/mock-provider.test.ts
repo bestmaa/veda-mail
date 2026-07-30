@@ -68,12 +68,17 @@ describe("mock provider contract", () => {
       bcc: [],
       body: "Provider contract test",
       cc: [],
+      htmlBody: "<p><strong>Provider contract</strong> test</p>",
       subject: "A test message",
       to: [{ email: "recipient@example.com", name: null }],
     });
     expect(receipt.id).toContain("sent-");
     expect(receipt.deliveryStatus).toBe("accepted");
     expect(receipt.rejectedRecipients).toEqual([]);
+    await expect(gateway.getMessage(receipt.id)).resolves.toMatchObject({
+      htmlBody: "<p><strong>Provider contract</strong> test</p>",
+      textBody: "Provider contract test",
+    });
   });
 
   it("downloads the exact attachment bytes with truthful metadata", async () => {

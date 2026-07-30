@@ -202,7 +202,7 @@ export class MockMailGateway implements MailGateway {
       cc: input.cc,
       from: [{ email: "member@example.com", name: "Sample Member" }],
       hasAttachment: attachments.length > 0,
-      htmlBody: null,
+      htmlBody: input.htmlBody ?? null,
       id: messageId,
       isStarred: false,
       isUnread: false,
@@ -212,6 +212,7 @@ export class MockMailGateway implements MailGateway {
       replyTo: [],
       size:
         new TextEncoder().encode(input.body).byteLength +
+        new TextEncoder().encode(input.htmlBody ?? "").byteLength +
         attachments.reduce((total, attachment) => total + attachment.size, 0),
       subject: input.subject || "(No subject)",
       textBody: input.body,

@@ -8,6 +8,7 @@ const intent = (): CanonicalSendIntent => ({
   bcc: [{ email: "Hidden@Example.com", name: "Hidden Person" }],
   body: "Body with e\u0301",
   cc: [{ email: "Copy@Example.com", name: null }],
+  htmlBody: null,
   inReplyTo: "provider-message-id",
   subject: "Subject",
   to: [{ email: "Primary@Example.com", name: "Primary Person" }],
@@ -75,5 +76,24 @@ describe("send intent fingerprint", () => {
         sendIntentFingerprint(first),
       );
     }
+  });
+
+  it("binds the exact canonical HTML representation including its absence", () => {
+    const plain = intent();
+    const rich = {
+      ...plain,
+      htmlBody: "<p>Body with e\u0301</p>",
+    };
+    const changed = {
+      ...rich,
+      htmlBody: "<p><strong>Body with e\u0301</strong></p>",
+    };
+
+    expect(sendIntentFingerprint(rich)).not.toBe(
+      sendIntentFingerprint(plain),
+    );
+    expect(sendIntentFingerprint(changed)).not.toBe(
+      sendIntentFingerprint(rich),
+    );
   });
 });

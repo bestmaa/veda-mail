@@ -30,6 +30,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
   provider-derived `In-Reply-To` and `References` headers
 - Plain-text forwarding with readable original-message metadata
 - Reader To/CC metadata and compose focus management
+- Safe rich-text composing with semantic headings, bold/italic/underline,
+  ordered and unordered lists, isolated links, undo/redo, plain-text mode, and
+  browser spellcheck. The client editor uses version-pinned, MIT-licensed
+  Lexical 0.44.0 and accepts pasted or dropped content as plain text only
 - Provider capability matrix and public Gmail-class product roadmap
 - Member-visible provider capability status with unsupported features called out
 - Coverage thresholds, route/component harnesses, and Playwright browser
@@ -69,6 +73,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
   minutes from completion, capped by session expiry. Definitive failures
   release the reservation; bounded in-memory capacity fails closed before
   attachment or provider work
+- The send API retains required `body` and adds optional `htmlBody`. When rich
+  content is present, the server sanitizes and canonicalizes it, derives the
+  provider-bound readable `body`, and fingerprints that canonical pair rather
+  than trusting the browser fallback
+- Rich sends use equivalent plain-text and HTML alternatives. SMTP emits
+  `multipart/alternative`, nested inside `multipart/mixed` when attachments
+  exist; JMAP uses matching `textBody`/`htmlBody` values or the equivalent
+  explicit mixed body structure. Plain-only sends retain their prior shape
 - Authenticated sends now charge each normalized To, CC, and BCC address
   against a 300-recipient-per-connection, one-minute budget in addition to the
   existing message-rate limit
@@ -119,6 +131,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
   logging
 - Centralize hostile-mail HTML sanitization and isolate external links in
   `noopener`/`noreferrer` tabs
+- Centralize outbound HTML canonicalization before idempotency reservation or
+  provider access. Allow only semantic text, headings, lists, and isolated
+  `http`, `https`, or restricted `mailto` links; strip active content, remote
+  media, and arbitrary styles, and reject unsafe Unicode, excessive nesting or
+  nodes, and per-part or combined size overflow
 - Rate-limit authenticated mail work by verified connection identifiers rather
   than caller-controlled cookies
 - Add CodeQL plus Trivy source, secret, misconfiguration, container, and OS gates

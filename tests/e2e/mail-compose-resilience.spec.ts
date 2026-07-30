@@ -38,7 +38,7 @@ test("traps focus, locks a pending send, and retains a failed draft", async ({
   await expect(dialog.getByRole("alert")).toHaveText(
     "Add at least one recipient.",
   );
-  await expect(bodyInput).toHaveValue(
+  await expect(bodyInput).toContainText(
     "Keep this draft after every recoverable error.",
   );
 
@@ -79,7 +79,7 @@ test("traps focus, locks a pending send, and retains a failed draft", async ({
     "Mail provider is temporarily unavailable.",
   );
   await expect(toInput).toHaveValue("recipient@example.com");
-  await expect(bodyInput).toHaveValue(
+  await expect(bodyInput).toContainText(
     "Keep this draft after every recoverable error.",
   );
   await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeEnabled();
