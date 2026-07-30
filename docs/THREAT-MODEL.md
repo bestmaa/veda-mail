@@ -65,6 +65,35 @@ URLs, analytics, or client-readable cookies.
 Residual risk: member sessions are memory-local. A restart signs members out,
 and multiple replicas do not share sessions or rate-limit state.
 
+### Browser response isolation
+
+- Every application document receives a fresh cryptographic nonce and an
+  enforced Content Security Policy. Executable page scripts require that nonce;
+  the sandboxed message-frame styles and resize helper require their reviewed
+  SHA-256 hashes.
+- Documents are private and non-cacheable so a shared cache cannot reuse
+  nonce-bearing HTML or disclose an authenticated mailbox representation.
+- Inline script attributes, objects, media, workers, external connections, and
+  framing ancestors are blocked. Nonced or reviewed-hash scripts, same-origin
+  styles/fonts/API calls, same-origin or data images, sandboxed `srcdoc`, and
+  reserved blob preview frames cover the current client and the reviewed
+  pending attachment-preview release.
+- React-controlled branding and frame sizing still require inline style
+  attributes. This exception is isolated with `style-src-attr`; executable
+  inline script remains disallowed. Development alone permits eval and inline
+  style elements for framework tooling; HMR uses the same-origin connection
+  policy.
+- Production responses emit host-only HSTS for one year. Subdomains and preload
+  are deliberately excluded until an operator can prove HTTPS coverage for
+  every related hostname.
+- Attachment and archive routes are excluded from the document policy. Their
+  stricter sandbox CSP and `Referrer-Policy: no-referrer` remain authoritative.
+
+Residual risk: CSP is defense in depth, not a substitute for server-side mail
+sanitization. A future external script, image, connection, worker, or frame
+source requires a threat-model update and an explicit narrowly scoped policy
+change. Reverse proxies must preserve exactly one CSP and HSTS value.
+
 ### Provider SSRF and credentials
 
 - Production provider hosts require an explicit hostname allowlist.

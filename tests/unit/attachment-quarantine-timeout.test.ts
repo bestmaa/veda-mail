@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   attachmentScope,
@@ -17,11 +17,13 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   await rm(directory, { force: true, recursive: true });
 });
 
 describe("attachment quarantine operation deadlines", () => {
   it("enforces the idle deadline while MIME detection hangs after scanning", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const entered = Promise.withResolvers<void>();
     const quarantine = quarantineFixture(directory, {
       mimeDetector: {
@@ -40,16 +42,19 @@ describe("attachment quarantine operation deadlines", () => {
       body("data"),
       4,
     );
-    await entered.promise;
-
-    await expect(upload).rejects.toMatchObject({
+    const rejection = expect(upload).rejects.toMatchObject({
       code: "ATTACHMENT_UPLOAD_TIMEOUT",
       status: 408,
     });
+    await entered.promise;
+    await vi.advanceTimersByTimeAsync(25);
+
+    await rejection;
     await expect(readdir(directory)).resolves.toEqual([]);
   });
 
   it("does not commit a delayed MIME result after the total deadline", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const entered = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     const quarantine = quarantineFixture(directory, {
@@ -70,12 +75,14 @@ describe("attachment quarantine operation deadlines", () => {
       body("data"),
       4,
     );
-    await entered.promise;
-
-    await expect(upload).rejects.toMatchObject({
+    const rejection = expect(upload).rejects.toMatchObject({
       code: "ATTACHMENT_UPLOAD_TIMEOUT",
       status: 408,
     });
+    await entered.promise;
+    await vi.advanceTimersByTimeAsync(25);
+
+    await rejection;
     release.resolve();
     await Promise.resolve();
     await expect(readdir(directory)).resolves.toEqual([]);

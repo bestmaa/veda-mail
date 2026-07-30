@@ -54,6 +54,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Enforce a per-document nonce Content Security Policy, retain only the reviewed
+  message-frame script hash and React style-attribute exception, and emit
+  production host-only HSTS
+- Keep attachment and archive `no-referrer` plus sandbox policies authoritative
+  by excluding API routes from the document security-header proxy
 - Keep provider attachment identifiers server-only; require opaque upload IDs,
   AES-256-GCM integrity, SHA-256 verification, dynamic provider limits, and
   strict fail-closed scan verdicts
