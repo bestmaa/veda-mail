@@ -34,9 +34,14 @@ const waitFor = async (condition: () => Promise<boolean>) => {
 
 describe("attachment service lifecycle", () => {
   it("reaps expired encrypted attachments without another user request", async () => {
-    const quarantine = quarantineFixture(directory, { ttlMs: 25 });
+    let now = 1_000;
+    const quarantine = quarantineFixture(directory, {
+      now: () => now,
+      ttlMs: 25,
+    });
     const reserved = await reserveText(quarantine, 1);
     await quarantine.upload(reserved.id, attachmentScope, body("x"), 1);
+    now += 25;
     const timer = scheduleAttachmentExpirySweep(quarantine, 10);
     try {
       await waitFor(async () => (await readdir(directory)).length === 0);
