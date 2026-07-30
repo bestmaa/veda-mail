@@ -1,4 +1,4 @@
-const frameStyles = `
+export const MESSAGE_FRAME_STYLES = `
 :root{color-scheme:light}
 html{overflow:hidden}
 body{
@@ -32,6 +32,8 @@ export const MESSAGE_RESIZE_SCRIPT =
 
 export const MESSAGE_RESIZE_SCRIPT_HASH =
   "po6rY2z0eTgjMb/acZdOGxGy/BTpP0qaIHeVZH1/V9k=";
+export const MESSAGE_FRAME_STYLE_HASH =
+  "7gSOBhlM+GuUdVmICMTxZKqK2m/EgD0p3SqYCLlMl7Y=";
 
 export const buildSanitizedMessageDocument = (
   sanitizedHtml: string,
@@ -41,10 +43,10 @@ export const buildSanitizedMessageDocument = (
 <meta charset="utf-8">
 <meta
   http-equiv="Content-Security-Policy"
-  content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'; script-src 'sha256-${MESSAGE_RESIZE_SCRIPT_HASH}'"
+  content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'sha256-${MESSAGE_FRAME_STYLE_HASH}'; style-src-attr 'none'; script-src 'sha256-${MESSAGE_RESIZE_SCRIPT_HASH}'"
 >
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>${frameStyles}</style>
+<style>${MESSAGE_FRAME_STYLES}</style>
 </head>
 <body>${sanitizedHtml}<script>${MESSAGE_RESIZE_SCRIPT}</script></body>
 </html>`;
