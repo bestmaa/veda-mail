@@ -20,6 +20,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Allowed-domain controls and a protected provider configuration
 - Inbox, reader, search, To/CC/BCC compose, Reply, Reply All, Forward, star,
   archive, and delete flows
+- Safe rich-text composing with headings, emphasis, lists, isolated links,
+  plain-text mode, and a server-derived readable text alternative
 - Encrypted, ClamAV-scanned attachment upload and byte-identical send through
   JMAP or IMAP/SMTP, with safe names, MIME detection, quotas, and cancellation
 - Authenticated, message-scoped received-attachment downloads streamed through
@@ -37,7 +39,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   `blob:` content; remote images never load
 - Member-visible provider capabilities for drafts, threads, push, search, and
   attachments; unavailable features are stated rather than guessed
-- Sanitized HTML mail; scripts and remote images are removed
+- Sanitized inbound and outbound HTML mail; scripts and remote images are
+  removed
 - Opaque HttpOnly cookies; mailbox passwords never enter browser storage
 - Pure prop-driven views, connectors, hooks, and ports/adapters
 - Strict TypeScript, architecture checks, a 250-line source limit, Playwright

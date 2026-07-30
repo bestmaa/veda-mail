@@ -134,16 +134,24 @@ malicious-file tests pass.
 - [ ] Provider-backed create, update, list, open, and discard drafts
 - [ ] Debounced autosave with visible saving/saved/offline/error status
 - [ ] Restore an interrupted compose session without duplicating a draft
-- [ ] Safe rich-text editor: headings, emphasis, lists, links, and plain-text
-  alternative; no arbitrary scripts, event handlers, remote embeds, or styles
+- [x] Safe rich-text editor v1: headings, emphasis, lists, isolated links,
+  browser spellcheck, and an explicit plain-text mode. The server creates the
+  readable plain alternative and removes scripts, event handlers, remote
+  embeds, and arbitrary styles before either included provider sees content
 - [ ] Per-identity signatures with plain-text and sanitized-rich variants
 - [ ] Reusable templates with explicit insert/replace behavior
 - [ ] Send confirmation preference and an undo-send delay backed by a durable
   queue
-- [ ] Spellcheck and keyboard shortcuts without trapping assistive technology
+- [ ] Complete the keyboard-shortcut and assistive-technology audit beyond v1
+  browser spellcheck and standard formatting shortcuts
 
 Acceptance: reloading or losing the network cannot silently lose a draft, and
 the MIME message has equivalent readable HTML and plain-text parts.
+
+Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
+Completing this milestone still requires durable drafts, autosave/restore,
+signatures, templates, delayed send, and the broader shortcut/accessibility
+audit listed above.
 
 ## M4 — Fast mailbox management
 

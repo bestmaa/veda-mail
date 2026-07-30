@@ -106,7 +106,11 @@ export class StalwartMailWriter {
             accountId,
             create: {
               [createId]: {
-                ...jmapComposeBody(input.body, uploadedAttachments),
+                ...jmapComposeBody(
+                  input.body,
+                  input.htmlBody,
+                  uploadedAttachments,
+                ),
                 cc: addresses(input.cc),
                 bcc: addresses(input.bcc),
                 from: [

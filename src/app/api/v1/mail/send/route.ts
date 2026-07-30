@@ -27,6 +27,7 @@ import {
   failIdempotentSend,
   prepareIdempotentSend,
 } from "@/server/mail/send-idempotency";
+import { canonicalizeOutgoingMailContent } from "@/server/mail/outgoing-mail-content";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -67,6 +68,7 @@ export const POST = async (request: Request) => {
     const connection = await getCurrentConnection();
     assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
     const parsed = sendMessageSchema.parse(await readJsonBody(request));
+    const content = canonicalizeOutgoingMailContent(parsed);
     assertSubjectRateLimit(
       "mail-send-recipient",
       connection.id,
@@ -80,8 +82,9 @@ export const POST = async (request: Request) => {
       {
         attachmentIds: parsed.attachmentIds,
         bcc: parsed.bcc,
-        body: parsed.body,
+        body: content.body,
         cc: parsed.cc,
+        htmlBody: content.htmlBody ?? null,
         ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
         subject: parsed.subject,
         to: parsed.to,
@@ -144,8 +147,9 @@ export const POST = async (request: Request) => {
       const input: SendMessageInput = {
         attachments,
         bcc: parsed.bcc,
-        body: parsed.body,
+        body: content.body,
         cc: parsed.cc,
+        ...(content.htmlBody ? { htmlBody: content.htmlBody } : {}),
         ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
         subject: parsed.subject,
         to: parsed.to,

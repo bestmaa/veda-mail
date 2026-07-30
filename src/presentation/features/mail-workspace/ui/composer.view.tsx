@@ -2,6 +2,7 @@ import { Paperclip, RefreshCw, Send, Trash2, X } from "lucide-react";
 
 import type { ComposerViewModel, DeliveryNoticeViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerAttachmentListView } from "@/presentation/features/mail-workspace/ui/composer-attachment-list.view";
+import { ComposerBodyView } from "@/presentation/features/mail-workspace/ui/composer-body.view";
 import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
 
 export const ComposerView = ({
@@ -17,8 +18,9 @@ export const ComposerView = ({
       <section
         aria-label="Compose message"
         aria-modal="true"
-        className="fixed inset-x-3 bottom-3 z-40 flex max-h-[calc(100vh-24px)] flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-2xl shadow-slate-900/20 sm:inset-x-auto sm:right-5 sm:w-[560px]"
+        className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] z-40 flex min-w-0 max-h-[calc(100dvh_-_max(0.75rem,env(safe-area-inset-top))_-_max(0.75rem,env(safe-area-inset-bottom)))] flex-col overflow-hidden overscroll-contain rounded-[22px] border border-slate-200 bg-white shadow-2xl shadow-slate-900/20 sm:left-auto sm:right-[max(1.25rem,env(safe-area-inset-right))] sm:w-[560px]"
         role="dialog"
+        tabIndex={-1}
       >
         <div className="flex h-13 shrink-0 items-center gap-2 bg-[#292c68] px-4 text-white">
           <p className="flex-1 text-sm font-bold">{composer.title}</p>
@@ -37,7 +39,7 @@ export const ComposerView = ({
           <PartialDeliveryNoticeView notice={deliveryNotice} placement="composer" />
         ) : null}
         <form
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain"
           onSubmit={composer.onSubmit}
         >
           <div className="flex min-h-12 items-center border-b border-slate-100 px-4">
@@ -130,15 +132,10 @@ export const ComposerView = ({
               value={composer.subject}
             />
           </label>
-          <textarea
-            aria-label="Message body"
-            autoFocus={composer.focusBody}
-            className="min-h-56 flex-1 resize-none px-4 py-4 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-500 focus-visible:outline-2 focus-visible:outline-indigo-600"
-            disabled={composer.isSending}
-            onChange={composer.bodyInput}
-            placeholder="Write a clear message…"
-            required
-            value={composer.body}
+          <ComposerBodyView
+            body={composer.body}
+            focusBody={composer.focusBody}
+            isSending={composer.isSending}
           />
           <ComposerAttachmentListView
             attachments={composer.attachments}

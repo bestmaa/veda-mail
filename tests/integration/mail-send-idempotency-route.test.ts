@@ -81,6 +81,38 @@ describe("mail send idempotency route", () => {
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
   });
 
+  it("fingerprints canonical provider content instead of hostile raw HTML", async () => {
+    const draftId = crypto.randomUUID();
+    const first = await POST(
+      request(
+        payload(draftId, {
+          body: "First divergent client fallback",
+          htmlBody: "<p>Hello <strong>team</strong></p>",
+        }),
+      ),
+    );
+    const replay = await POST(
+      request(
+        payload(draftId, {
+          body: "Second divergent client fallback",
+          htmlBody:
+            "<p>Hello <b>team</b><script>PRIVATE_RETRY_DATA</script></p>",
+        }),
+      ),
+    );
+
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(201);
+    expect(await replay.json()).toEqual(await first.json());
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: "Hello team",
+        htmlBody: "<p>Hello <strong>team</strong></p>",
+      }),
+    );
+  });
+
   it("coalesces concurrent requests into one provider submission", async () => {
     const provider = Promise.withResolvers<unknown>();
     mocks.sendMessage.mockReset();

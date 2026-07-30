@@ -206,8 +206,8 @@ describe("send message validation", () => {
       "Message body cannot be blank",
     );
     expect(() =>
-      sendMessageSchema.parse(message({ body: "a".repeat(1_000_001) })),
-    ).toThrow("Message body cannot exceed 1,000,000 characters");
+      sendMessageSchema.parse(message({ body: "a".repeat(256_001) })),
+    ).toThrow("Message body cannot exceed 256,000 characters");
     expect(() =>
       sendMessageSchema.parse(message({ subject: "a".repeat(999) })),
     ).toThrow("Subject cannot exceed 998 characters");

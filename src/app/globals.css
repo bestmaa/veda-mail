@@ -84,6 +84,66 @@ button:disabled {
   text-underline-offset: 3px;
 }
 
+.composer-rich-editor {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.composer-editor-paragraph {
+  margin: 0 0 0.65rem;
+}
+
+.composer-editor-h1,
+.composer-editor-h2 {
+  color: #1e293b;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0.5rem 0;
+}
+
+.composer-editor-h1 {
+  font-size: 1.35rem;
+}
+
+.composer-editor-h2 {
+  font-size: 1.1rem;
+}
+
+.composer-editor-ol,
+.composer-editor-ul {
+  margin: 0.45rem 0;
+  padding-inline-start: 1.6rem;
+}
+
+.composer-editor-ol {
+  list-style: decimal;
+}
+
+.composer-editor-ul {
+  list-style: disc;
+}
+
+.composer-editor-list-item {
+  margin: 0.2rem 0;
+}
+
+.composer-editor-nested-list-item {
+  list-style: none;
+}
+
+.composer-editor-link {
+  color: #3730a3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.composer-editor-quote {
+  border-inline-start: 3px solid #c7d2fe;
+  color: #475569;
+  margin: 0.6rem 0;
+  padding-inline-start: 0.8rem;
+}
+
 @media (min-width: 768px) {
   .mail-workspace-grid {
     grid-template-columns: 236px minmax(0, 1fr);

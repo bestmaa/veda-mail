@@ -13,8 +13,22 @@ const composer = (
   attachmentInput: vi.fn(),
   bcc: "",
   bccInput: vi.fn(),
-  body: "",
-  bodyInput: vi.fn(),
+  body: {
+    cancelPlainMode: vi.fn(),
+    confirmPlainMode: vi.fn(),
+    editorVersion: 0,
+    html: "",
+    isPlainModeWarningOpen: false,
+    mode: "rich",
+    onPlainDrop: vi.fn(),
+    onPlainInput: vi.fn(),
+    onPlainPaste: vi.fn(),
+    onRichChange: vi.fn(),
+    onToggleMode: vi.fn(),
+    onWarningKeyDown: vi.fn(),
+    plainTransferStatus: "",
+    text: "",
+  },
   cc: "",
   ccInput: vi.fn(),
   error: null,
@@ -54,12 +68,33 @@ describe("composer component", () => {
 
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-label="Compose message"');
+    expect(html).toContain('role="toolbar"');
+    expect(html).toContain('aria-label="Formatting options"');
+    expect(html).toContain('aria-label="Switch to plain text"');
+    expect(html).toContain('aria-keyshortcuts="Control+B Meta+B"');
+    expect(html).toContain('aria-label="Message body"');
+    expect(html).toContain('aria-multiline="true"');
+    expect(html).toContain('aria-required="true"');
     expect(html).toContain('aria-controls="composer-cc-row"');
     expect(html).toContain('aria-controls="composer-bcc-row"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('hidden="" id="composer-cc-row"');
     expect(html).toContain('hidden="" id="composer-bcc-row"');
     expect(html).not.toMatch(/id="composer-to"[^>]*required/);
+  });
+
+  it("exposes pressed state only on formatting toggles", () => {
+    const html = renderComposer(composer());
+    const button = (label: string) =>
+      html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>`, "u"))
+        ?.[0];
+
+    expect(button("Bold")).toContain('aria-pressed="false"');
+    expect(button("Bulleted list")).toContain('aria-pressed="false"');
+    expect(button("Insert link")).toContain('aria-pressed="false"');
+    expect(button("Clear formatting")).not.toContain("aria-pressed");
+    expect(button("Undo")).not.toContain("aria-pressed");
+    expect(button("Redo")).not.toContain("aria-pressed");
   });
 
   it("distinguishes a temporarily unverified provider limit", () => {
@@ -144,5 +179,44 @@ describe("composer component", () => {
     expect(html).not.toContain('hidden="" id="composer-bcc-row"');
     expect(html).toContain("Sending…");
     expect(html.match(/disabled=""/g)?.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("renders the plain editor and formatting-loss confirmation", () => {
+    const base = composer();
+    const html = renderComposer(
+      composer({
+        body: {
+          ...base.body,
+          isPlainModeWarningOpen: true,
+          mode: "plain",
+          text: "Readable fallback",
+        },
+      }),
+    );
+
+    expect(html).toContain('aria-label="Switch to rich text"');
+    expect(html).toContain("Readable fallback");
+    expect(html).toContain("Switching to plain text will remove");
+    expect(html).toContain("Keep formatting");
+    expect(html).not.toContain('aria-label="Formatting options"');
+  });
+
+  it("locks both formatting-loss choices while sending", () => {
+    const base = composer();
+    const html = renderComposer(
+      composer({
+        body: { ...base.body, isPlainModeWarningOpen: true },
+        isSending: true,
+      }),
+    );
+    const warningButton = (id: string) =>
+      html.match(new RegExp(`<button[^>]*id="${id}"[^>]*>`, "u"))?.[0];
+
+    expect(warningButton("composer-formatting-loss-confirm")).toContain(
+      'disabled=""',
+    );
+    expect(warningButton("composer-formatting-loss-cancel")).toContain(
+      'disabled=""',
+    );
   });
 });

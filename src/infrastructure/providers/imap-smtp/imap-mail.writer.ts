@@ -157,6 +157,7 @@ export class ImapMailWriter {
       ...(replyMessageId
         ? { inReplyTo: replyMessageId, references: [...references] }
         : {}),
+      html: input.htmlBody,
       messageId: `<${createMessageId(this.config.username)}>`,
       subject: input.subject || "(No subject)",
       text: input.body,

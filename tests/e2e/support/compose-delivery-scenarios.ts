@@ -164,7 +164,7 @@ export const verifyAllRejectedDraft = async ({
     "The mail provider rejected every recipient.",
   );
   await expect(to).toHaveValue("rejected@example.com");
-  await expect(body).toHaveValue(
+  await expect(body).toHaveText(
     "Keep this body after a complete recipient rejection.",
   );
   await expect(

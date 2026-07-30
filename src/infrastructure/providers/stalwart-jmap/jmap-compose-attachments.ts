@@ -38,23 +38,47 @@ export const uploadVerifiedJmapAttachments = async (
 
 export const jmapComposeBody = (
   body: string,
+  htmlBody: string | undefined,
   attachments: readonly JmapComposeAttachment[],
-): Readonly<Record<string, unknown>> => ({
-  bodyValues: { body: { value: body } },
-  ...(attachments.length > 0
+): Readonly<Record<string, unknown>> => {
+  const textPart = {
+    partId: htmlBody ? "text" : "body",
+    type: "text/plain",
+  };
+  const bodyValues = htmlBody
+    ? { html: { value: htmlBody }, text: { value: body } }
+    : { body: { value: body } };
+  const messageBody = htmlBody
     ? {
-        bodyStructure: {
-          subParts: [
-            { partId: "body", type: "text/plain" },
-            ...attachments.map((attachment) => ({
-              blobId: attachment.blobId,
-              disposition: "attachment",
-              name: attachment.name,
-              type: attachment.type,
-            })),
-          ],
-          type: "multipart/mixed",
-        },
+        subParts: [
+          textPart,
+          { partId: "html", type: "text/html" },
+        ],
+        type: "multipart/alternative",
       }
-    : { textBody: [{ partId: "body", type: "text/plain" }] }),
-});
+    : textPart;
+  return {
+    bodyValues,
+    ...(attachments.length > 0
+      ? {
+          bodyStructure: {
+            subParts: [
+              messageBody,
+              ...attachments.map((attachment) => ({
+                blobId: attachment.blobId,
+                disposition: "attachment",
+                name: attachment.name,
+                type: attachment.type,
+              })),
+            ],
+            type: "multipart/mixed",
+          },
+        }
+      : htmlBody
+        ? {
+            htmlBody: [{ partId: "html", type: "text/html" }],
+            textBody: [textPart],
+          }
+        : { textBody: [textPart] }),
+  };
+};

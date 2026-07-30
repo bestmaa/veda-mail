@@ -51,6 +51,7 @@ redistributing images or bundles.
 
 The default Compose topology references an official ClamAV image as a separate
 GPL-2.0 sidecar. Preserve its notices and provide the corresponding ClamAV
-source when distribution rules require it. Veda Mail's `file-type` dependency
-is MIT-licensed. Exact versions and integrity data remain locked in
+source when distribution rules require it. Veda Mail's `file-type` dependency,
+the version-pinned Lexical 0.44.0 composer modules, and `sanitize-html` 2.17.6
+are MIT-licensed. Exact versions and integrity data remain locked in
 `package-lock.json` and `compose.yaml`.

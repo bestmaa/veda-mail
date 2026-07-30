@@ -9,6 +9,12 @@ import type {
   ThreadId,
 } from "@/domain/shared/brand";
 
+export const MAX_OUTGOING_CONTENT_CHARACTERS = 256_000;
+export const MAX_OUTGOING_CONTENT_UTF8_BYTES = 256_000;
+export const MAX_OUTGOING_CONTENT_COMBINED_CHARACTERS = 512_000;
+export const MAX_OUTGOING_CONTENT_COMBINED_UTF8_BYTES = 512_000;
+export const MAX_OUTGOING_HTML_NODES = 1_000;
+
 export type MailboxRole =
   "archive" | "drafts" | "inbox" | "sent" | "spam" | "trash" | "custom";
 
@@ -115,6 +121,7 @@ export interface ComposeInput {
   readonly body: string;
   readonly cc: readonly MailAddress[];
   readonly draftId?: DraftId;
+  readonly htmlBody?: string;
   readonly inReplyTo?: MessageId;
   readonly subject: string;
   readonly to: readonly MailAddress[];
@@ -134,6 +141,7 @@ export interface SendMessageInput {
   readonly bcc: readonly MailAddress[];
   readonly body: string;
   readonly cc: readonly MailAddress[];
+  readonly htmlBody?: string;
   readonly inReplyTo?: MessageId;
   readonly subject: string;
   readonly to: readonly MailAddress[];

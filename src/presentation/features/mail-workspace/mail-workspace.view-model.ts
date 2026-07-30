@@ -1,6 +1,9 @@
 import type {
   ChangeEventHandler,
+  ClipboardEventHandler,
+  DragEventHandler,
   FormEventHandler,
+  KeyboardEventHandler,
   MouseEventHandler,
 } from "react";
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
@@ -80,8 +83,7 @@ export interface ComposerViewModel {
   readonly attachmentInput: ChangeEventHandler<HTMLInputElement>;
   readonly bcc: string;
   readonly bccInput: ChangeEventHandler<HTMLInputElement>;
-  readonly body: string;
-  readonly bodyInput: ChangeEventHandler<HTMLTextAreaElement>;
+  readonly body: ComposerBodyViewModel;
   readonly cc: string;
   readonly ccInput: ChangeEventHandler<HTMLInputElement>;
   readonly error: string | null;
@@ -103,6 +105,26 @@ export interface ComposerViewModel {
   readonly to: string;
   readonly toInput: ChangeEventHandler<HTMLInputElement>;
   readonly title: string;
+}
+
+export interface ComposerBodyViewModel {
+  readonly cancelPlainMode: () => void;
+  readonly confirmPlainMode: () => void;
+  readonly editorVersion: number;
+  readonly html: string;
+  readonly isPlainModeWarningOpen: boolean;
+  readonly mode: "plain" | "rich";
+  readonly onPlainDrop: DragEventHandler<HTMLTextAreaElement>;
+  readonly onPlainInput: ChangeEventHandler<HTMLTextAreaElement>;
+  readonly onPlainPaste: ClipboardEventHandler<HTMLTextAreaElement>;
+  readonly onRichChange: (snapshot: {
+    readonly html: string;
+    readonly text: string;
+  }) => void;
+  readonly onToggleMode: () => void;
+  readonly onWarningKeyDown: KeyboardEventHandler<HTMLDivElement>;
+  readonly plainTransferStatus: string;
+  readonly text: string;
 }
 
 export interface ComposerAttachmentViewModel {

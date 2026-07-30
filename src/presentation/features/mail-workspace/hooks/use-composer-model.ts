@@ -20,6 +20,7 @@ import {
   composerSendErrorMessage,
 } from "@/presentation/features/mail-workspace/hooks/composer-send-error";
 import { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
+import { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import {
   useComposerFocusTrap,
   useComposerReturnFocus,
@@ -27,7 +28,6 @@ import {
 import { mailApi } from "@/transport/client/api-client";
 
 type ComposerTitle = "Forward message" | "New message" | "Reply all" | "Reply";
-
 export const useComposerModel = (
   onSent: (receipt: SendReceipt, submittedEmails: readonly string[]) => void,
   maxAttachmentBytes: number | null,
@@ -40,13 +40,13 @@ export const useComposerModel = (
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
   const [inReplyTo, setInReplyTo] = useState<ComposeInput["inReplyTo"]>();
   const [title, setTitle] = useState<ComposerTitle>("New message");
   const [error, setError] = useState<string | null>(null);
   const attachments = useComposerAttachments(maxAttachmentBytes);
+  const body = useComposerBody(isSending);
+  const { loadPlainDraft, reset: resetBody } = body;
   const returnFocus = useComposerReturnFocus();
-
   const resetFields = useCallback(() => {
     setTo("");
     setCc("");
@@ -54,11 +54,11 @@ export const useComposerModel = (
     setShowCc(false);
     setShowBcc(false);
     setSubject("");
-    setBody("");
+    resetBody();
     setInReplyTo(undefined);
     setTitle("New message");
     setError(null);
-  }, []);
+  }, [resetBody]);
 
   const open = useCallback(() => {
     returnFocus.remember();
@@ -79,14 +79,14 @@ export const useComposerModel = (
       setShowCc(draft.cc.length > 0);
       setShowBcc(draft.bcc.length > 0);
       setSubject(draft.subject);
-      setBody(draft.body);
+      loadPlainDraft(draft.body);
       setInReplyTo(draft.inReplyTo);
       setTitle(nextTitle);
       setError(null);
       setIsOpen(true);
       return draftId;
     },
-    [attachments, returnFocus],
+    [attachments, loadPlainDraft, returnFocus],
   );
 
   const openReply = useCallback(
@@ -119,7 +119,7 @@ export const useComposerModel = (
     returnFocus.restore();
   }, [attachments, isSending, returnFocus]);
 
-  useComposerFocusTrap(isOpen, close);
+  useComposerFocusTrap(isOpen, isSending, close);
 
   const onToInput: ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => setTo(event.target.value),
@@ -135,10 +135,6 @@ export const useComposerModel = (
   );
   const onSubjectInput: ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => setSubject(event.target.value),
-    [],
-  );
-  const onBodyInput: ChangeEventHandler<HTMLTextAreaElement> = useCallback(
-    (event) => setBody(event.target.value),
     [],
   );
   const onToggleBcc = useCallback(
@@ -161,6 +157,10 @@ export const useComposerModel = (
         setError("Add at least one recipient.");
         return;
       }
+      if (!body.text.trim()) {
+        setError("Message body cannot be blank.");
+        return;
+      }
       if (attachments.isUploading || attachments.hasError) {
         setError(
           attachments.isUploading
@@ -177,7 +177,7 @@ export const useComposerModel = (
         const receipt = await mailApi.sendMessage({
           attachmentIds: attachments.attachmentIds,
           bcc: recipients.bcc,
-          body,
+          ...body.payload,
           cc: recipients.cc,
           draftId: attachments.draftId,
           ...(inReplyTo ? { inReplyTo } : {}),
@@ -200,7 +200,8 @@ export const useComposerModel = (
     [
       attachments,
       bcc,
-      body,
+      body.payload,
+      body.text,
       cc,
       inReplyTo,
       onSent,
@@ -226,7 +227,6 @@ export const useComposerModel = (
     maxAttachmentBytes: attachments.maxFileBytes,
     onBccInput,
     onAttachmentInput: attachments.onFiles,
-    onBodyInput,
     onCcInput,
     onRetryAttachmentCapability: attachments.refreshCapability,
     onToggleBcc,
