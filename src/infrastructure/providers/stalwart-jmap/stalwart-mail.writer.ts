@@ -5,7 +5,6 @@ import type {
   SendMessageInput,
   SendReceipt,
 } from "@/domain/mail/mail";
-import { id } from "@/domain/shared/brand";
 import {
   createMessageId,
   safeMessageId,
@@ -25,6 +24,7 @@ import {
   JMAP_MAIL,
   JMAP_SUBMISSION,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { submitStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
 
 const addresses = (
   values: SendMessageInput["to"],
@@ -97,7 +97,8 @@ export class StalwartMailWriter {
       input,
     );
     const createId = `draft-${crypto.randomUUID()}`;
-    const response = await this.client.request(
+    return submitStalwartMessage(
+      this.client,
       [
         [
           "Email/set",
@@ -154,34 +155,8 @@ export class StalwartMailWriter {
           "submit",
         ],
       ],
-      [JMAP_MAIL, JMAP_SUBMISSION],
+      createId,
     );
-    const createResult = this.client.result(
-      response,
-      "create",
-      "Email/set",
-      jmapSetResultSchema,
-    );
-    const submissionResult = this.client.result(
-      response,
-      "submit",
-      "EmailSubmission/set",
-      jmapSetResultSchema,
-    );
-    const created = createResult.created?.[createId];
-    const submission = submissionResult.created?.["submit"];
-    if (
-      !created ||
-      !submission ||
-      createResult.notCreated?.[createId] ||
-      submissionResult.notCreated?.["submit"]
-    ) {
-      throw new Error("Stalwart did not create the outgoing message.");
-    }
-    return {
-      id: id.message(created.id),
-      submittedAt: new Date().toISOString(),
-    };
   }
 
   private async getIdentity(accountId: string, fromEmail: string) {

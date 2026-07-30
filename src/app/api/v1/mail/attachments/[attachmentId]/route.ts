@@ -22,7 +22,10 @@ interface RouteContext {
   readonly params: Promise<{ readonly attachmentId: string }>;
 }
 
-const draftIdSchema = z.string().uuid().transform(id.draft);
+const draftIdSchema = z
+  .string()
+  .uuid()
+  .transform((value) => id.draft(value.toLowerCase()));
 
 const draftIdFrom = (request: Request) =>
   draftIdSchema.parse(

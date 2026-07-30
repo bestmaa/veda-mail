@@ -4,9 +4,15 @@ import type {
   ConnectionInput,
   ProviderConnection,
 } from "@/domain/provider/provider";
-import type { ConnectionId } from "@/domain/shared/brand";
+import type { SendReceipt } from "@/domain/mail/mail";
+import type { ConnectionId, DraftId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 import { clearGateway } from "@/server/mail/gateway-cache";
+import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
+import {
+  sendIdempotencyStore,
+  type SendIdempotencyBegin,
+} from "@/server/mail/send-idempotency-store";
 
 const CONNECTION_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -16,6 +22,7 @@ interface ConnectionState {
 
 export interface StoredConnection {
   readonly connection: ProviderConnection;
+  readonly deliveryNoticeCapacityWarning: boolean;
   readonly profileRevision: string;
 }
 
@@ -35,11 +42,79 @@ const pruneExpiredConnections = (): void => {
     if (Date.parse(stored.connection.createdAt) < expiresBefore) {
       state.connections.delete(connectionId);
       clearGateway(connectionId);
+      deliveryNoticeStore.clear(connectionId);
+      sendIdempotencyStore.clear(connectionId);
     }
   }
 };
 
 export const connectionStore = {
+  beginSendIfActive(
+    connection: ProviderConnection,
+    draftId: DraftId,
+    fingerprint: string,
+  ): SendIdempotencyBegin | { readonly kind: "inactive" } {
+    pruneExpiredConnections();
+    const current = state.connections.get(connection.id)?.connection;
+    if (
+      !current ||
+      current.createdAt !== connection.createdAt ||
+      current.providerId !== connection.providerId
+    ) {
+      return { kind: "inactive" };
+    }
+    const expiresAt = Date.parse(current.createdAt) + CONNECTION_TTL_MS;
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      state.connections.delete(connection.id);
+      clearGateway(connection.id);
+      deliveryNoticeStore.clear(connection.id);
+      sendIdempotencyStore.clear(connection.id);
+      return { kind: "inactive" };
+    }
+    return sendIdempotencyStore.begin(
+      connection.id,
+      draftId,
+      fingerprint,
+      expiresAt,
+    );
+  },
+
+  appendDeliveryNoticeIfActive(
+    connection: ProviderConnection,
+    receipt: SendReceipt,
+  ): boolean {
+    pruneExpiredConnections();
+    const stored = state.connections.get(connection.id);
+    const current = stored?.connection;
+    if (
+      !current ||
+      current.createdAt !== connection.createdAt ||
+      current.providerId !== connection.providerId
+    ) {
+      return false;
+    }
+    const expiresAt = Date.parse(current.createdAt) + CONNECTION_TTL_MS;
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      state.connections.delete(connection.id);
+      clearGateway(connection.id);
+      deliveryNoticeStore.clear(connection.id);
+      sendIdempotencyStore.clear(connection.id);
+      return false;
+    }
+    const admitted = deliveryNoticeStore.append(
+      connection.id,
+      receipt,
+      expiresAt,
+    );
+    if (!admitted && stored) {
+      state.connections.set(connection.id, {
+        ...stored,
+        deliveryNoticeCapacityWarning: true,
+      });
+    }
+    return admitted;
+  },
+
   create(
     input: ConnectionInput,
     profileRevision: string,
@@ -50,7 +125,11 @@ export const connectionStore = {
       createdAt: new Date().toISOString(),
       id: id.connection(crypto.randomUUID()),
     };
-    state.connections.set(connection.id, { connection, profileRevision });
+    state.connections.set(connection.id, {
+      connection,
+      deliveryNoticeCapacityWarning: false,
+      profileRevision,
+    });
     return connection;
   },
 
@@ -59,9 +138,22 @@ export const connectionStore = {
     return state.connections.get(connectionId) ?? null;
   },
 
+  hasDeliveryNoticeCapacityWarning(connection: ProviderConnection): boolean {
+    pruneExpiredConnections();
+    const stored = state.connections.get(connection.id);
+    const current = stored?.connection;
+    return Boolean(
+      stored?.deliveryNoticeCapacityWarning &&
+        current?.createdAt === connection.createdAt &&
+        current.providerId === connection.providerId,
+    );
+  },
+
   remove(connectionId: ConnectionId): void {
     state.connections.delete(connectionId);
     clearGateway(connectionId);
+    deliveryNoticeStore.clear(connectionId);
+    sendIdempotencyStore.clear(connectionId);
   },
 
   updateConfig(
@@ -83,5 +175,7 @@ export const connectionStore = {
       clearGateway(connectionId);
     }
     state.connections.clear();
+    deliveryNoticeStore.clearAll();
+    sendIdempotencyStore.clearAll();
   },
 };

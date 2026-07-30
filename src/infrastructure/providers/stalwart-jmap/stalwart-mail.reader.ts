@@ -32,9 +32,9 @@ import {
 import {
   JMAP_MAIL,
   JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
+  MAX_JMAP_BODY_VALUE_BYTES,
   type StalwartConfig,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
-
 const summaryProperties = [
   "id",
   "threadId",
@@ -159,7 +159,7 @@ export class StalwartMailReader {
             fetchHTMLBodyValues: true,
             fetchTextBodyValues: true,
             ids: [messageId],
-            maxBodyValueBytes: 2_000_000,
+            maxBodyValueBytes: MAX_JMAP_BODY_VALUE_BYTES,
             properties: detailProperties,
           },
           "email",

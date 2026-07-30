@@ -26,6 +26,74 @@ today, not every feature the upstream server protocol could eventually supply.
 | Conversation/thread API                       | Not implemented | Not implemented      |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
 
+Both adapters receive the same validated, case-insensitively deduplicated
+To/CC/BCC set. Each connection is limited to 30 send requests and 300 normalized
+recipients per one-minute in-process window. Stalwart JMAP also caps each
+decoded JSON response at 16 MiB, retains only the first 100 entries of each
+provider-supplied To, CC, BCC, From, and Reply-To array, and bounds
+sender-controlled address and summary text before mapping it into the
+provider-independent domain. Detailed reads request no more than 256,000 bytes
+per body value, retain no more than 128 referenced body values within a 256,000
+character aggregate source budget, and cap each final text or sanitized HTML
+presentation at 256,000 characters with a visible truncation marker.
+
+The Standard IMAP + SMTP adapter omits BCC from delivered MIME while retaining
+it in the SMTP envelope. If SMTP immediately rejects only some recipients, Veda
+Mail follows the normal Sent-copy append attempt and returns a partial-delivery
+receipt containing only case-insensitive matches from the submitted set. The
+authenticated member sees a bounded warning not to resend to everyone. If every
+recipient is rejected, Veda Mail returns a generic safe failure and does not
+append a Sent copy; raw provider errors and recipient-bearing causes do not
+reach request logs.
+
+Known Nodemailer DNS, TLS, required-TLS, authentication, envelope,
+message-construction, OAuth, configuration, and proxy failures are definite
+pre-submission failures and remain retryable behind a safe generic response.
+Timeout, socket/connection, and unknown failures from `sendMail` are terminal
+uncertain because SMTP acceptance may have happened before the response was
+lost; these outcomes contain no recipient list and skip the normal Sent-copy
+append.
+
+All adapter receipts cross a runtime canonicalization boundary. A malformed,
+contradictory, oversized, or unsubmitted rejection result is returned as a
+terminal uncertain outcome with no provider values. The member must check Sent
+or the provider before retrying; quarantined attachments are consumed because
+submission may already have occurred.
+
+The Stalwart adapter keeps identity discovery, uploads, session refresh, safe
+origin checks, and other preflight work retryable. Once the final
+`Email/set` + `EmailSubmission/set` HTTP request is issued, an indeterminate
+transport response, malformed/missing result, contradictory result, or
+`serverPartialFail` becomes terminal uncertain. Unambiguous created results
+accept; an explicit unambiguous `EmailSubmission` not-created result and
+ordinary state-unchanged JMAP method errors remain retryable. Sanitized,
+request-level 400/401/403/404/405/409/413/415/422/429 responses are also
+retryable because methods were not executed; 408, 5xx, response-read/parse
+failure, or transport loss remains uncertain. Non-OK response bodies are
+canceled before the adapter returns.
+
+Every browser send includes a stable draft UUID. Veda Mail reserves that key
+against an exact fingerprint of the validated provider-bound intent before
+attachments or either adapter are touched. Concurrent duplicates coalesce and
+completed terminal receipts replay for 30 minutes from completion, capped by
+the connection expiry. A changed intent conflicts and exhausted bounded
+capacity fails closed. This protection is in-process and requires the supported
+single application replica.
+
+Partial and uncertain warnings remain available across ordinary page reloads
+while their in-process connection bucket remains present. They are bounded to
+100 records per opaque connection ID, never stored in browser storage, and
+compressed to an explicit overflow warning under detail pressure. A defensive
+12-hour expiry plus process-wide limits of 128 buckets, 2,000 notices, and an
+estimated 8 MiB bound memory. Count or byte pressure first compresses old detail
+to a sentinel; once the connection-key cap is full, a new connection bucket is
+not admitted and existing connection buckets are left intact. Bucketless
+detail for the refused connection is represented by one boolean on its
+already-existing verified connection record, without adding a notice-map key.
+Only that connection sees the metadata-free warning, which can reappear after
+local dismissal until the connection ends. This convenience queue does not
+survive a service restart or synchronize across replicas.
+
 Scanned attachments require the Compose-managed ClamAV sidecar independently
 of the selected provider. The approved zero-HIGH/CRITICAL ClamAV digest is
 currently published for `linux/amd64` only, so run
@@ -93,6 +161,12 @@ encrypted quarantine, and sends only the resulting quarantine ID. IMAP's
 unknown decoded size is measured in one bounded pass. The browser supplies no
 filename, MIME type, size, blob ID, or MIME-part locator.
 
+Only final visible file-card attachments are eligible. The client excludes
+rendered and hidden inline parts before creating import jobs, and the server
+independently re-lists authoritative attachment presentation metadata before
+accepting the opaque ID. A stale, forged, rendered-inline, or hidden-inline ID
+fails as not found.
+
 No Stalwart server change is required. Veda Mail uses the authenticated JMAP
 session's existing download URL and keeps its blob ID inside the adapter.
 Direct received-attachment downloads are not passed through the outbound
@@ -157,7 +231,11 @@ After saving, test with a dedicated mailbox:
     reservation endpoint enforce the advertised provider limit before upload.
 11. For SMTP, test a lower EHLO `SIZE` or administrator ceiling and confirm both
     the picker and exact final MIME message fail before provider submission.
-12. Archive, star, move, and trash a test message.
+12. With a controlled SMTP test server, reject one recipient and then all
+    recipients. Confirm partial delivery lists only the rejected submitted
+    address, warns against resending to everyone, and all-rejected delivery
+    leaves no Sent copy.
+13. Archive, star, move, and trash a test message.
 
 ## Common provider examples
 

@@ -24,6 +24,7 @@ import {
   normalizeAttachmentMimeType,
 } from "@/infrastructure/providers/imap-smtp/mime-attachment-headers";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { smtpDeliveryReceipt } from "@/infrastructure/providers/imap-smtp/smtp-delivery-receipt";
 import {
   SmtpAttachmentCapability,
   type SmtpAttachmentCapabilityPort,
@@ -175,13 +176,25 @@ export class ImapMailWriter {
       secure: this.config.smtpSecurity === "tls",
       socketTimeout: 60_000,
     });
-    const receipt = await transport.sendMail({
-      envelope: {
-        from: this.config.username,
-        to: [...input.to, ...input.cc, ...input.bcc].map((item) => item.email),
-      },
-      raw,
-    });
+    let receipt: Awaited<ReturnType<typeof transport.sendMail>>;
+    try {
+      receipt = await transport.sendMail({
+        envelope: {
+          from: this.config.username,
+          to: [...input.to, ...input.cc, ...input.bcc].map((item) => item.email),
+        },
+        raw,
+      });
+    } catch (error) {
+      smtpDeliveryReceipt(input, error);
+      return {
+        deliveryStatus: "uncertain",
+        id: id.message(mail.messageId),
+        rejectedRecipients: [],
+        submittedAt: new Date().toISOString(),
+      };
+    }
+    const delivery = smtpDeliveryReceipt(input, receipt);
     let sentReference = String(receipt.messageId ?? mail.messageId);
     await withImapClient(this.config, async (client) => {
       const sent = rolePath(await client.list(), "sent");
@@ -196,6 +209,7 @@ export class ImapMailWriter {
       }
     }).catch(() => undefined);
     return {
+      ...delivery,
       id: id.message(sentReference || String(receipt.messageId)),
       submittedAt: new Date().toISOString(),
     };

@@ -11,7 +11,7 @@ import type {
 } from "@/domain/provider/provider";
 import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
-import type { MailboxId, MessageId } from "@/domain/shared/brand";
+import type { DraftId, MailboxId, MessageId } from "@/domain/shared/brand";
 import { attachmentApi } from "@/transport/client/attachment-api";
 
 interface ApiEnvelope<TData> {
@@ -146,7 +146,7 @@ export const mailApi = {
     );
   },
 
-  sendMessage(input: ComposeInput) {
+  sendMessage(input: ComposeInput & { readonly draftId: DraftId }) {
     return fetchData<SendReceipt>("/api/v1/mail/send", {
       body: JSON.stringify(input),
       method: "POST",

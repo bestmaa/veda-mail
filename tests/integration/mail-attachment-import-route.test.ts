@@ -155,20 +155,23 @@ describe("forward original attachment import route", () => {
     expect(mocks.importOriginalAttachment).not.toHaveBeenCalled();
   });
 
-  it("keeps well-formed forged and wrong-message identifiers opaque", async () => {
+  it("keeps unlisted, wrong-message, and inline identifiers opaque", async () => {
+    const privateDetail = "secret inline CID/account/blob/part mismatch";
     mocks.importOriginalAttachment.mockRejectedValue(
-      new AttachmentDownloadError(
-        "not_found",
-        "secret account/blob/part mismatch",
-      ),
+      new AttachmentDownloadError("not_found", privateDetail),
     );
 
     const response = await POST(request(), route());
-    const payload = JSON.stringify(await response.json());
+    const payload = await response.json();
 
     expect(response.status).toBe(404);
-    expect(payload).toContain("ATTACHMENT_NOT_FOUND");
-    expect(payload).not.toContain("secret account/blob/part mismatch");
+    expect(payload).toEqual({
+      error: {
+        code: "ATTACHMENT_NOT_FOUND",
+        message: "The attachment was not found.",
+      },
+    });
+    expect(JSON.stringify(payload)).not.toContain(privateDetail);
   });
 
   it("fails closed when malware scanning rejects imported bytes", async () => {

@@ -71,20 +71,27 @@ const consume = (
   limit: number,
   durationMs: number,
   now: number,
+  cost = 1,
 ): void => {
+  if (!Number.isSafeInteger(cost) || cost < 1) {
+    throw new RangeError("Rate-limit cost must be a positive integer.");
+  }
   prune(now);
   const current = windows.get(key);
   if (!current || current.resetAt <= now) {
+    if (cost > limit) {
+      rateLimited();
+    }
     if (windows.size >= MAX_RATE_WINDOWS) {
       rateLimited();
     }
-    windows.set(key, { count: 1, resetAt: now + durationMs });
+    windows.set(key, { count: cost, resetAt: now + durationMs });
     return;
   }
-  if (current.count >= limit) {
+  if (current.count > limit - cost) {
     rateLimited();
   }
-  current.count += 1;
+  current.count += cost;
 };
 
 export const assertRequestRateLimit = (
@@ -112,6 +119,7 @@ export const assertSubjectRateLimit = (
   subject: string,
   limit: number,
   durationMs: number,
+  cost = 1,
 ): void => {
   const normalized = subject.trim();
   consume(
@@ -119,5 +127,6 @@ export const assertSubjectRateLimit = (
     limit,
     durationMs,
     Date.now(),
+    cost,
   );
 };

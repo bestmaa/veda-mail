@@ -2,6 +2,12 @@ export const JMAP_CORE = "urn:ietf:params:jmap:core";
 export const JMAP_MAIL = "urn:ietf:params:jmap:mail";
 export const JMAP_SUBMISSION = "urn:ietf:params:jmap:submission";
 export const STALWART_JMAP = "urn:stalwart:jmap";
+export const MAX_JMAP_BODY_VALUE_BYTES = 256_000;
+export const MAX_JMAP_BODY_VALUE_CHARACTERS = 256_000;
+export const MAX_JMAP_BODY_VALUE_PARTS = 128;
+export const MAX_JMAP_RENDERED_BODY_CHARACTERS = 256_000;
+export const JMAP_BODY_TRUNCATION_TEXT =
+  "[Message content truncated by Veda Mail.]";
 export const JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES = [
   "partId",
   "blobId",
@@ -78,7 +84,17 @@ export interface JmapEmail {
   readonly attachments?: readonly JmapBodyPart[] | undefined;
   readonly bcc?: readonly JmapAddress[] | null | undefined;
   readonly bodyValues?:
-    Readonly<Record<string, { readonly value: string }>> | undefined;
+    | Readonly<
+        Record<
+          string,
+          {
+            readonly isTruncated?: boolean | undefined;
+            readonly value: string;
+          }
+        >
+      >
+    | undefined;
+  readonly bodyValuesTruncated?: boolean | undefined;
   readonly cc?: readonly JmapAddress[] | null | undefined;
   readonly from?: readonly JmapAddress[] | null | undefined;
   readonly hasAttachment: boolean;

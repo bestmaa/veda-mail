@@ -8,6 +8,7 @@ import { MailHeaderView } from "@/presentation/features/mail-workspace/ui/mail-h
 import { MailSidebarView } from "@/presentation/features/mail-workspace/ui/mail-sidebar.view";
 import { MessageListView } from "@/presentation/features/mail-workspace/ui/message-list.view";
 import { MessageReaderView } from "@/presentation/features/mail-workspace/ui/message-reader.view";
+import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
   <main className="h-dvh min-h-[620px] overflow-hidden bg-[#f8f9fc] text-slate-900" style={props.branding.brandStyle}>
@@ -81,7 +82,13 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
     >
       <PenLine aria-hidden size={21} />
     </button>
-    <ComposerView composer={props.composer} />
+    {props.deliveryNotice && !props.composer.isOpen ? (
+      <PartialDeliveryNoticeView notice={props.deliveryNotice} />
+    ) : null}
+    <ComposerView
+      composer={props.composer}
+      deliveryNotice={props.deliveryNotice}
+    />
     <AccountSettingsView settings={props.settings} />
   </main>
 );

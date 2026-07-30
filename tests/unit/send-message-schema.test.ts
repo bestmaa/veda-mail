@@ -9,6 +9,7 @@ const recipient = (email: string, name: string | null = null) => ({
 
 const message = (overrides: Record<string, unknown> = {}) => ({
   body: "Hello",
+  draftId: "11111111-1111-4111-8111-111111111111",
   subject: "Greetings",
   to: [recipient("to@example.com")],
   ...overrides,
@@ -29,6 +30,7 @@ describe("send message validation", () => {
       bcc: [],
       body: "Hello",
       cc: [],
+      draftId: "11111111-1111-4111-8111-111111111111",
       subject: "Greetings",
       to: [recipient("Person@Example.com", "Person")],
     });
@@ -156,7 +158,7 @@ describe("send message validation", () => {
     ).toThrow("At least one recipient is required");
   });
 
-  it("binds unique attachment identifiers to a draft", () => {
+  it("requires a valid draft and unique attachment identifiers", () => {
     const attachmentId = "A".repeat(32);
     const draftId = crypto.randomUUID();
     expect(
@@ -165,8 +167,11 @@ describe("send message validation", () => {
       ),
     ).toMatchObject({ attachmentIds: [attachmentId], draftId });
     expect(() =>
-      sendMessageSchema.parse(message({ attachmentIds: [attachmentId] })),
-    ).toThrow("attachment draft identifier is required");
+      sendMessageSchema.parse(message({ draftId: undefined })),
+    ).toThrow();
+    expect(() =>
+      sendMessageSchema.parse(message({ draftId: "not-a-uuid" })),
+    ).toThrow("The message draft identifier is invalid");
     expect(() =>
       sendMessageSchema.parse(
         message({

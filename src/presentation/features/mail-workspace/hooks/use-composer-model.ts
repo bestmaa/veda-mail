@@ -13,7 +13,7 @@ import {
   formatAddressInput,
   parseRecipientInputs,
 } from "@/domain/mail/compose";
-import type { ComposeInput, MessageDetail } from "@/domain/mail/mail";
+import type { ComposeInput, MessageDetail, SendReceipt } from "@/domain/mail/mail";
 import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import {
   attachmentRecoveryMessage,
@@ -29,7 +29,7 @@ import { mailApi } from "@/transport/client/api-client";
 type ComposerTitle = "Forward message" | "New message" | "Reply all" | "Reply";
 
 export const useComposerModel = (
-  onSent: () => void,
+  onSent: (receipt: SendReceipt, submittedEmails: readonly string[]) => void,
   maxAttachmentBytes: number | null,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -174,7 +174,7 @@ export const useComposerModel = (
       setIsSending(true);
       setError(null);
       try {
-        await mailApi.sendMessage({
+        const receipt = await mailApi.sendMessage({
           attachmentIds: attachments.attachmentIds,
           bcc: recipients.bcc,
           body,
@@ -188,7 +188,7 @@ export const useComposerModel = (
         resetFields();
         attachments.discard(false);
         returnFocus.restore();
-        onSent();
+        onSent(receipt, [...recipients.to, ...recipients.cc, ...recipients.bcc].map(({ email }) => email));
       } catch (nextError) {
         const recovery = attachmentRecoveryMessage(nextError);
         if (recovery) attachments.invalidateReady(recovery);

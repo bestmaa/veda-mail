@@ -23,7 +23,10 @@ import {
 } from "@/infrastructure/providers/provider-operation-signal";
 import {
   basicAuthorizationHeader,
+  StalwartJmapMethodError,
   stalwartHttpError,
+  type StalwartJmapRequestBoundary,
+  uniqueJmapMethodResponse,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
 import {
   fetchSameOriginJmap,
@@ -73,6 +76,7 @@ export class StalwartJmapClient {
     methodCalls: readonly JmapMethodCall[],
     using: readonly string[],
     signal?: AbortSignal,
+    boundary?: StalwartJmapRequestBoundary,
   ): Promise<JmapResponse> {
     const requestSignal = providerOperationSignal(signal, REQUEST_TIMEOUT_MS);
     rejectIfProviderOperationAborted(requestSignal);
@@ -88,8 +92,11 @@ export class StalwartJmapClient {
       )
     ).origin;
     const apiUrl = sameOriginJmapUrl(session.apiUrl, origin);
+    const body = JSON.stringify({ methodCalls, using: [JMAP_CORE, ...using] });
+    rejectIfProviderOperationAborted(requestSignal);
+    if (boundary) boundary.issued = true;
     const response = await fetch(apiUrl, {
-      body: JSON.stringify({ methodCalls, using: [JMAP_CORE, ...using] }),
+      body,
       cache: "no-store",
       headers: {
         Authorization: authHeader,
@@ -153,23 +160,19 @@ export class StalwartJmapClient {
     callId: string,
     expectedMethod: string,
     schema: ZodType<T>,
+    allowedImplicitMethods: readonly string[] = [],
   ): T {
-    const methodResponse = response.methodResponses.find(
-      ([, , responseCallId]) => responseCallId === callId,
+    const [method, payload] = uniqueJmapMethodResponse(
+      response,
+      callId,
+      expectedMethod,
+      allowedImplicitMethods,
     );
-    if (!methodResponse) {
-      throw new Error(`JMAP response ${callId} was missing.`);
-    }
-    const [method, payload] = methodResponse;
     if (method === "error") {
-      const description =
-        typeof payload === "object" && payload && "description" in payload
-          ? String(payload.description)
-          : "JMAP request failed.";
-      throw new Error(description);
+      throw new StalwartJmapMethodError(payload);
     }
     if (method !== expectedMethod) {
-      throw new Error(`Unexpected JMAP method response: ${method}.`);
+      throw new Error("Mail provider returned an unexpected JMAP response.");
     }
     const parsed = schema.safeParse(payload);
     if (!parsed.success) {

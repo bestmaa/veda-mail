@@ -17,6 +17,7 @@ import {
 import {
   JMAP_MAIL,
   JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
+  MAX_JMAP_BODY_VALUE_BYTES,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export const normalizeStalwartAttachmentLookupError = (
@@ -56,7 +57,7 @@ const getAttachmentEmail = async (
     const bodyValueArguments = includeHtmlBodyValues
       ? {
           fetchHTMLBodyValues: true,
-          maxBodyValueBytes: 2_000_000,
+          maxBodyValueBytes: MAX_JMAP_BODY_VALUE_BYTES,
           properties: ["id", "attachments", "htmlBody", "bodyValues"],
         }
       : { properties: ["id", "attachments", "htmlBody"] };

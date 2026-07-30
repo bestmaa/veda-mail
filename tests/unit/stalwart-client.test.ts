@@ -232,4 +232,5 @@ describe("Stalwart JMAP client", () => {
       ),
     ).toThrow("invalid Email/set payload");
   });
+
 });

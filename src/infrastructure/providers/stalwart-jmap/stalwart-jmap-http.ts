@@ -1,17 +1,53 @@
 import "server-only";
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+export const MAX_JMAP_JSON_RESPONSE_BYTES = 16 * 1_024 * 1_024;
 
 export const invalidJmapResponse = (subject: string): Error =>
   new Error(`Mail provider returned invalid ${subject}.`);
 
 export const readJmapResponseJson = async (
   response: Response,
+  maximumBytes = MAX_JMAP_JSON_RESPONSE_BYTES,
 ): Promise<unknown> => {
+  if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
+    throw new RangeError("maximumBytes must be a positive safe integer.");
+  }
+  const declared = response.headers.get("content-length")?.trim();
+  if (
+    declared &&
+    /^\d+$/u.test(declared) &&
+    BigInt(declared) > BigInt(maximumBytes)
+  ) {
+    void response.body?.cancel().catch(() => undefined);
+    throw invalidJmapResponse("JSON size");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw invalidJmapResponse("JSON");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
   try {
-    return await response.json();
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      total += result.value.byteLength;
+      if (total > maximumBytes) {
+        void reader.cancel().catch(() => undefined);
+        throw invalidJmapResponse("JSON size");
+      }
+      chunks.push(result.value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch {
     throw invalidJmapResponse("JSON");
+  } finally {
+    reader.releaseLock();
   }
 };
 

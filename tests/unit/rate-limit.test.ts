@@ -46,6 +46,39 @@ describe("rate limiter", () => {
     ).toThrow("Too many requests");
   });
 
+  it("atomically charges weighted subject work", () => {
+    const scope = `weighted-${randomUUID()}`;
+    const subject = `mailbox-${randomUUID()}`;
+
+    assertSubjectRateLimit(scope, subject, 10, 60_000, 4);
+    assertSubjectRateLimit(scope, subject, 10, 60_000, 6);
+
+    expect(() =>
+      assertSubjectRateLimit(scope, subject, 10, 60_000, 1),
+    ).toThrow("Too many requests");
+  });
+
+  it("rejects invalid or over-limit weighted work without storing raw subjects", () => {
+    const scope = `weighted-reject-${randomUUID()}`;
+    const subject = `private-${randomUUID()}@example.com`;
+
+    expect(() =>
+      assertSubjectRateLimit(scope, subject, 5, 60_000, 6),
+    ).toThrow("Too many requests");
+    expect(() =>
+      assertSubjectRateLimit(scope, subject, 5, 60_000, 0),
+    ).toThrow("positive integer");
+
+    const state = globalThis as typeof globalThis & {
+      __vedaMailRateLimits?: Map<string, unknown>;
+    };
+    expect(
+      [...(state.__vedaMailRateLimits?.keys() ?? [])].some((key) =>
+        key.includes(subject),
+      ),
+    ).toBe(false);
+  });
+
   it("never stores raw account identifiers in window keys", () => {
     const scope = `hashed-${randomUUID()}`;
     const identifier = `private-${randomUUID()}@example.com`;

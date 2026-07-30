@@ -149,6 +149,15 @@ remains bounded and fail-closed. Remote-content opt-in remains unimplemented.
   recipient count, names, addresses, subject, body, and reply identifiers have
   server-side limits.
 - Recipients are deduplicated case-insensitively in To, CC, then BCC order.
+- Provider-supplied Stalwart JMAP JSON is decoded through a 16 MiB stream cap.
+  To, CC, BCC, From, and Reply-To arrays retain only their first 100 entries,
+  while sender-controlled address, subject, and preview strings are truncated
+  before validation. Malformed retained values still fail closed.
+- Detailed JMAP reads request at most 256,000 bytes per body value and retain at
+  most 128 referenced values within one 256,000-character source budget. Text
+  and sanitized HTML presentations are independently capped at 256,000
+  characters and visibly marked when clipped, preventing entity-escape or
+  multi-part amplification during message opening.
 - Display names, subjects, reply identifiers, and provider-derived Message-IDs
   reject control characters. Reply reference chains are deduplicated and
   bounded by count and aggregate bytes.
@@ -156,6 +165,49 @@ remains bounded and fail-closed. Remote-content opt-in remains unimplemented.
   trusted from the browser.
 - SMTP BCC recipients remain in the delivery envelope and are omitted from MIME
   headers.
+- Immediate SMTP rejection values are intersected case-insensitively with the
+  validated submitted recipient set and deduplicated in submission order. A
+  strict rejected subset produces a bounded authenticated partial-delivery
+  warning; the member is told not to resend to recipients that were accepted.
+- When SMTP rejects every submitted recipient, the provider error is replaced
+  with a generic `MAIL_RECIPIENTS_REJECTED` response. Definite setup,
+  authentication, envelope, and message failures remain retryable, while
+  timeout, socket, connection, and unknown failures returned from the
+  submission boundary are terminal uncertain. All are normalized without a
+  recipient-bearing cause before request logging.
+- Provider receipts are canonicalized independently at the HTTP boundary.
+  Accepted requires no rejected values and partial requires a non-empty strict
+  subset of canonical submitted addresses. Every contradictory or malformed
+  result becomes terminal uncertain state with no provider-supplied recipient
+  or identifier.
+- Canonical partial and uncertain notices are retained only in a bounded
+  connection-scoped server-memory queue. The browser fetches them through the
+  authenticated API and keeps no local/session-storage copy. UUID dismissal is
+  same-origin and idempotent; overflow is explicit, and connection removal or
+  expiry clears recipient metadata. Per-connection and process-wide
+  notice/count/estimated-byte caps bound memory. Count or byte pressure
+  compresses oldest detail to a recipient-free sentinel. At the connection-key
+  cap, new connection buckets are refused without changing existing buckets.
+  A boolean on the already-existing verified connection record exposes a
+  metadata-free warning only to that connection, without adding a notice-map
+  key. The warning can reappear locally until sign-out or connection expiry.
+- Every send requires a UUID draft key, canonicalized to lowercase across
+  reservation, import, upload, and send boundaries. The server hashes the exact
+  validated provider-bound intent and atomically reserves the connection/draft
+  pair before attachment or provider work. Identical pending sends coalesce,
+  terminal accepted/partial/uncertain receipts replay for 30 minutes from
+  completion, and a changed intent conflicts. Definitive failures release the
+  reservation; capacity exhaustion fails closed without eviction.
+- The terminal receipt is stored before notice persistence or attachment
+  cleanup. Full canonical rejected-recipient subsets remain bounded and are
+  included in the conservative byte accounting. Pending work is capped at 64
+  and 32 MiB per connection; all state is capped at 900 entries/48 MiB per
+  connection and 1,024 buckets/10,000 entries/256 MiB process-wide.
+- JMAP method-error descriptions, unexpected method names, and HTTP retry
+  headers are never copied into request errors or logs. Definite request-level
+  4xx failures remain retryable, while 408, 5xx, transport/read/parse failure,
+  `serverPartialFail`, and malformed final outcomes are terminal uncertain.
+  Non-OK bodies are canceled so error streams cannot retain provider sockets.
 
 Residual risk: IMAP Sent copies currently omit original BCC metadata. Preserving
 that information requires a separate private Sent representation, never a
@@ -165,6 +217,14 @@ delivered BCC header.
 
 - Request-body, multipart, recipient, body, provider timeout, and rate limits
   bound common resource-exhaustion paths.
+- Each authenticated connection may make at most 30 send attempts and charge
+  300 normalized To/CC/BCC recipients per one-minute in-process window.
+  Recipient cost is charged after validation and deduplication.
+- Delivery-warning memory expires within 12 hours and is capped process-wide at
+  128 connection buckets, 2,000 notices, and an estimated 8 MiB.
+- Send retry protection is memory-local and completion-relative. A restart
+  signs the member out and clears replay state; multi-replica submission needs
+  a shared atomic ledger before it can preserve exactly-once provider access.
 - Mailbox reads and mutations have global limits plus verified-connection
   subject limits; untrusted cookie values are never used as limiter subjects.
 
@@ -246,6 +306,10 @@ limiter and encrypted shared session repository.
   stages decoded bytes within the verified outbound limit and a shared
   plaintext-memory lease, wipes the staging buffer, and imports only a clean,
   MIME-verified result into encrypted quarantine.
+- The composer creates forward-import jobs only for final visible attachments.
+  The server independently re-lists the message's authoritative presentation
+  metadata and requires the same opaque ID to have `attachment` disposition;
+  rendered, hidden, stale, or tampered inline IDs fail as not found.
 - Import cancellation and absolute deadlines reach the provider stream,
   scanner, and quarantine operation. Reservation cleanup is bounded and
   best-effort failures are logged without identifiers or replacement of the

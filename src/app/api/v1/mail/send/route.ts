@@ -1,9 +1,16 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
+import { MessageDeliveryRejectedError } from "@/domain/mail/mail-errors";
+import { canonicalizeSendReceipt } from "@/domain/mail/send-receipt";
 import { getMailService } from "@/server/mail/mail-service";
-import type { OutgoingAttachment, SendMessageInput } from "@/domain/mail/mail";
+import type {
+  OutgoingAttachment,
+  SendMessageInput,
+  SendReceipt,
+} from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   asAttachmentApiError,
@@ -16,14 +23,41 @@ import {
   type AttachmentSendMemoryLease,
 } from "@/server/mail/attachment-send-memory-budget";
 import {
+  completeIdempotentSend,
+  failIdempotentSend,
+  prepareIdempotentSend,
+} from "@/server/mail/send-idempotency";
+import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
 import { sendMessageSchema } from "@/transport/http/request-schemas";
+import { ZodError } from "zod";
 
 export const runtime = "nodejs";
+
+const MAX_RECIPIENTS_PER_CONNECTION_PER_MINUTE = 300;
+
+const asSendMessageApiError = (error: unknown): unknown => {
+  if (error instanceof MessageDeliveryRejectedError) {
+    return new ApiError(
+      "The mail provider rejected every recipient. Check the addresses and try again.",
+      "MAIL_RECIPIENTS_REJECTED",
+      422,
+    );
+  }
+  const mapped = asAttachmentApiError(error);
+  return mapped instanceof ApiError || mapped instanceof ZodError
+    ? mapped
+    : new ApiError(
+        "The mail provider could not complete this send.",
+        "MAIL_SEND_FAILED",
+        503,
+      );
+};
 
 export const POST = async (request: Request) => {
   let memoryLease: AttachmentSendMemoryLease | undefined;
@@ -33,82 +67,127 @@ export const POST = async (request: Request) => {
     const connection = await getCurrentConnection();
     assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
     const parsed = sendMessageSchema.parse(await readJsonBody(request));
-    const uploadIds = parsed.attachmentIds;
-    const scope = parsed.draftId
-      ? attachmentScope(connection, parsed.draftId)
-      : null;
-    const quarantine = attachmentService();
-    let attachments: readonly OutgoingAttachment[] = [];
-    if (uploadIds.length > 0 && scope) {
-      const selected = await Promise.all(
-        uploadIds.map((uploadId) => quarantine.inspect(uploadId, scope)),
-      );
-      await assertAttachmentCapability(
-        connection,
-        Math.max(...selected.map(({ contentLength }) => contentLength)),
-      );
-      memoryLease = await attachmentSendMemoryBudget().acquire(
-        selected.reduce((total, { contentLength }) => total + contentLength, 0),
-      );
-      const claimed = await quarantine.claim(uploadIds, scope);
-      const reads = await Promise.allSettled(
-        claimed.map(async (attachment) => {
-          const content = await quarantine.readClaimed(attachment.id, scope);
-          return {
-            content,
-            id: id.attachmentUpload(attachment.id),
-            mimeType: attachment.detectedMimeType ?? "application/octet-stream",
-            name: attachment.fileName,
-            sha256: createHash("sha256").update(content).digest("hex"),
-            size: attachment.contentLength,
-          };
-        }),
-      );
-      const failedRead = reads.find(
-        (result): result is PromiseRejectedResult =>
-          result.status === "rejected",
-      );
-      if (failedRead) {
-        await Promise.allSettled(
-          uploadIds.map((uploadId) => quarantine.release([uploadId], scope)),
-        );
-        throw failedRead.reason;
-      }
-      attachments = reads.flatMap((result) =>
-        result.status === "fulfilled" ? [result.value] : [],
-      );
+    assertSubjectRateLimit(
+      "mail-send-recipient",
+      connection.id,
+      MAX_RECIPIENTS_PER_CONNECTION_PER_MINUTE,
+      60 * 1000,
+      parsed.to.length + parsed.cc.length + parsed.bcc.length,
+    );
+    const prepared = await prepareIdempotentSend(
+      connection,
+      parsed.draftId,
+      {
+        attachmentIds: parsed.attachmentIds,
+        bcc: parsed.bcc,
+        body: parsed.body,
+        cc: parsed.cc,
+        ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
+        subject: parsed.subject,
+        to: parsed.to,
+      },
+    );
+    if (prepared.kind === "replay") {
+      return apiSuccess(prepared.receipt, { status: 201 });
     }
-    const input: SendMessageInput = {
-      attachments,
-      bcc: parsed.bcc,
-      body: parsed.body,
-      cc: parsed.cc,
-      ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
-      subject: parsed.subject,
-      to: parsed.to,
-    };
-    let receipt;
+    const { owner } = prepared;
     try {
-      receipt = await (await getMailService(connection)).sendMessage(input);
-    } catch (error) {
-      if (scope && uploadIds.length > 0) {
-        await quarantine.release(uploadIds, scope).catch(() => {
-          console.error("[veda-mail] Attachment claim release failed.");
+      const uploadIds = parsed.attachmentIds;
+      const scope = attachmentScope(connection, parsed.draftId);
+      const quarantine = attachmentService();
+      let attachments: readonly OutgoingAttachment[] = [];
+      if (uploadIds.length > 0) {
+        const selected = await Promise.all(
+          uploadIds.map((uploadId) => quarantine.inspect(uploadId, scope)),
+        );
+        await assertAttachmentCapability(
+          connection,
+          Math.max(...selected.map(({ contentLength }) => contentLength)),
+        );
+        memoryLease = await attachmentSendMemoryBudget().acquire(
+          selected.reduce(
+            (total, { contentLength }) => total + contentLength,
+            0,
+          ),
+        );
+        const claimed = await quarantine.claim(uploadIds, scope);
+        const reads = await Promise.allSettled(
+          claimed.map(async (attachment) => {
+            const content = await quarantine.readClaimed(attachment.id, scope);
+            return {
+              content,
+              id: id.attachmentUpload(attachment.id),
+              mimeType:
+                attachment.detectedMimeType ?? "application/octet-stream",
+              name: attachment.fileName,
+              sha256: createHash("sha256").update(content).digest("hex"),
+              size: attachment.contentLength,
+            };
+          }),
+        );
+        const failedRead = reads.find(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected",
+        );
+        if (failedRead) {
+          await Promise.allSettled(
+            uploadIds.map((uploadId) =>
+              quarantine.release([uploadId], scope),
+            ),
+          );
+          throw failedRead.reason;
+        }
+        attachments = reads.flatMap((result) =>
+          result.status === "fulfilled" ? [result.value] : [],
+        );
+      }
+      const input: SendMessageInput = {
+        attachments,
+        bcc: parsed.bcc,
+        body: parsed.body,
+        cc: parsed.cc,
+        ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
+        subject: parsed.subject,
+        to: parsed.to,
+      };
+      let receipt: SendReceipt;
+      try {
+        const providerReceipt: unknown = await (
+          await getMailService(connection)
+        ).sendMessage(input);
+        receipt = canonicalizeSendReceipt(input, providerReceipt, {
+          deliveryNoticeId: randomUUID(),
+          id: id.message(`receipt-${randomUUID()}`),
+          submittedAt: new Date().toISOString(),
+        });
+        receipt = completeIdempotentSend(connection, owner, receipt);
+      } catch (error) {
+        if (uploadIds.length > 0) {
+          await quarantine.release(uploadIds, scope).catch(() => {
+            console.error("[veda-mail] Attachment claim release failed.");
+          });
+        }
+        throw error;
+      }
+      try {
+        if (receipt.deliveryStatus !== "accepted") {
+          connectionStore.appendDeliveryNoticeIfActive(connection, receipt);
+        }
+      } catch {
+        console.error("[veda-mail] Delivery notice persistence failed.");
+      }
+      if (uploadIds.length > 0) {
+        await quarantine.consume(uploadIds, scope).catch(() => {
+          console.error("[veda-mail] Sent attachment cleanup failed.");
         });
       }
+      return apiSuccess(receipt, { status: 201 });
+    } catch (error) {
+      failIdempotentSend(connection, owner, error);
       throw error;
     }
-    if (scope && uploadIds.length > 0) {
-      await quarantine.consume(uploadIds, scope).catch(() => {
-        console.error("[veda-mail] Sent attachment cleanup failed.");
-      });
-    }
-    return apiSuccess(receipt, { status: 201 });
   } catch (error) {
-    return apiFailure(
-      asAttachmentApiError(error),
-      "Unable to send this message.",
-    );
+    return apiFailure(asSendMessageApiError(error), "Unable to send this message.");
   } finally {
     memoryLease?.release();
   }

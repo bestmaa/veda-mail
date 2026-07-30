@@ -148,7 +148,10 @@ export interface UploadedAttachment {
 }
 
 export interface SendReceipt {
+  readonly deliveryNoticeId?: string;
+  readonly deliveryStatus: "accepted" | "partial" | "uncertain";
   readonly id: MessageId;
+  readonly rejectedRecipients: readonly string[];
   readonly submittedAt: string;
 }
 

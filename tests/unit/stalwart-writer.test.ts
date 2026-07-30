@@ -90,7 +90,9 @@ const createClient = (submissionFails: boolean) => {
 describe("Stalwart writer", () => {
   it("updates the submitted email using the submission creation reference", async () => {
     const { client, getCalls } = createClient(false);
-    await new StalwartMailWriter(client, reader).sendMessage(input);
+    const receipt = await new StalwartMailWriter(client, reader).sendMessage(
+      input,
+    );
     const created = Object.values(
       (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
     )[0];
@@ -110,6 +112,8 @@ describe("Stalwart writer", () => {
         },
       },
     });
+    expect(receipt.deliveryStatus).toBe("accepted");
+    expect(receipt.rejectedRecipients).toEqual([]);
   });
 
   it("rejects a failed EmailSubmission creation", async () => {
@@ -117,6 +121,21 @@ describe("Stalwart writer", () => {
     await expect(
       new StalwartMailWriter(client, reader).sendMessage(input),
     ).rejects.toThrow("did not create");
+  });
+
+  it("keeps failures before the final submission request retryable", async () => {
+    const setupFailure = new Error("Account setup unavailable.");
+    const failingReader = {
+      ...reader,
+      getAccountId: async () => {
+        throw setupFailure;
+      },
+    } as unknown as StalwartMailReader;
+    const { client } = createClient(false);
+
+    await expect(
+      new StalwartMailWriter(client, failingReader).sendMessage(input),
+    ).rejects.toBe(setupFailure);
   });
 
   it("derives reply headers from the provider-owned source message", async () => {

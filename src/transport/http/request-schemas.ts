@@ -45,7 +45,7 @@ export const attachmentReservationSchema = z
     draftId: z
       .string()
       .uuid("The attachment draft identifier is invalid.")
-      .transform(id.draft),
+      .transform((value) => id.draft(value.toLowerCase())),
     fileName: z.string().trim().min(1).max(255),
     size: z.number().int().positive(),
   })
@@ -56,7 +56,7 @@ export const attachmentImportSchema = z
     draftId: z
       .string()
       .uuid("The attachment draft identifier is invalid.")
-      .transform(id.draft),
+      .transform((value) => id.draft(value.toLowerCase())),
   })
   .strict();
 
@@ -81,9 +81,8 @@ export const sendMessageSchema = z
     cc: recipientListSchema.default([]),
     draftId: z
       .string()
-      .uuid("The attachment draft identifier is invalid.")
-      .transform(id.draft)
-      .optional(),
+      .uuid("The message draft identifier is invalid.")
+      .transform((value) => id.draft(value.toLowerCase())),
     inReplyTo: z
       .string()
       .trim()
@@ -107,13 +106,6 @@ export const sendMessageSchema = z
   })
   .strict()
   .superRefine((message, context) => {
-    if (message.attachmentIds.length > 0 && !message.draftId) {
-      context.addIssue({
-        code: "custom",
-        message: "An attachment draft identifier is required.",
-        path: ["draftId"],
-      });
-    }
     if (new Set(message.attachmentIds).size !== message.attachmentIds.length) {
       context.addIssue({
         code: "custom",

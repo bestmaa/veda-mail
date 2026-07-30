@@ -1,7 +1,9 @@
 # Upgrading Veda Mail
 
-Use tagged releases or pinned commit hashes in production. Do not deploy a
-moving branch without reviewing its changes.
+Use the published immutable `sha-<full-main-commit>` image tag plus its verified
+OCI index or runtime-child digest in production. The project does not currently
+publish GitHub Releases or version tags. Do not deploy a moving branch or the
+`latest` alias without resolving and recording an immutable digest.
 
 ## Before an upgrade
 
@@ -16,8 +18,8 @@ moving branch without reviewing its changes.
 For a source checkout:
 
 ```bash
-git fetch --tags
-git checkout <release-tag>
+git fetch origin main
+git checkout --detach <full-protected-main-commit>
 ./scripts/check-clamav-platform.sh
 docker compose build --pull
 docker compose up -d
@@ -25,7 +27,9 @@ docker compose ps
 docker compose logs --tail=100 veda-mail
 ```
 
-For a published image, update the pinned image tag and run:
+For a published image, update `VEDA_MAIL_IMAGE` to the verified immutable
+`sha-<full-main-commit>@sha256:<index-digest>` reference, or to a verified
+architecture-specific runtime child digest, and run:
 
 ```bash
 ./scripts/check-clamav-platform.sh
@@ -50,6 +54,14 @@ setting. Existing profiles safely default to `0`, which requires a numeric
 authenticated EHLO `SIZE` value before attachments are enabled. Enter a
 documented provider ceiling only when it is authoritative for the mailbox
 plan; the lower server/admin value wins.
+
+The send API now requires `draftId` to be a stable UUID for every message, not
+only messages with attachments. Update custom clients before rollout so every
+retry of the same exact validated intent reuses the same UUID; a changed intent
+must use a new draft UUID. UUID text is canonicalized to lowercase across
+attachment and send routes. Replay protection is process-local, lasts 30
+minutes from terminal completion, and is capped by the connection lifetime.
+No Stalwart configuration or migration is required.
 
 Then verify:
 

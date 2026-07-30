@@ -5,8 +5,10 @@ import { ATTACHMENT_IMPORT_TIMEOUT_MS } from "@/server/mail/attachment-import-op
 
 const mocks = vi.hoisted(() => ({
   assertAttachmentCapability: vi.fn(),
+  downloadAttachment: vi.fn(),
   getMailService: vi.fn(),
   importReceivedAttachment: vi.fn(),
+  listMessageAttachments: vi.fn(),
 }));
 
 vi.mock("@/server/mail/attachment-import", () => ({
@@ -47,9 +49,20 @@ const input = (signal?: AbortSignal) => ({
   messageId: id.message("opaque-preflight-message"),
   ...(signal ? { signal } : {}),
 });
+const attachment = (disposition: "attachment" | "inline") => ({
+  disposition,
+  id: input().attachmentId,
+  mimeType: "image/png",
+  name: "provider-only-name.png",
+  size: 128,
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getMailService.mockResolvedValue({
+    downloadAttachment: mocks.downloadAttachment,
+    listMessageAttachments: mocks.listMessageAttachments,
+  });
   mocks.assertAttachmentCapability.mockImplementation(
     () => new Promise(() => undefined),
   );
@@ -86,5 +99,41 @@ describe("original attachment import preflight deadline", () => {
     await rejection;
     expect(mocks.getMailService).not.toHaveBeenCalled();
     expect(mocks.importReceivedAttachment).not.toHaveBeenCalled();
+  });
+});
+
+describe("original attachment import authorization", () => {
+  it.each([
+    ["unlisted", []],
+    ["inline", [attachment("inline")]],
+  ] as const)(
+    "rejects a well-formed %s ID before download or quarantine",
+    async (_case, originals) => {
+      mocks.assertAttachmentCapability.mockResolvedValue(1_024);
+      mocks.listMessageAttachments.mockResolvedValue(originals);
+
+      await expect(importOriginalAttachment(input())).rejects.toMatchObject({
+        code: "not_found",
+      });
+
+      expect(mocks.listMessageAttachments).toHaveBeenCalledWith({
+        messageId: input().messageId,
+        signal: expect.any(AbortSignal),
+      });
+      expect(mocks.downloadAttachment).not.toHaveBeenCalled();
+      expect(mocks.importReceivedAttachment).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows a currently listed visible attachment into quarantine import", async () => {
+    const imported = { state: "clean" };
+    mocks.assertAttachmentCapability.mockResolvedValue(1_024);
+    mocks.listMessageAttachments.mockResolvedValue([
+      attachment("attachment"),
+    ]);
+    mocks.importReceivedAttachment.mockResolvedValue(imported);
+
+    await expect(importOriginalAttachment(input())).resolves.toBe(imported);
+    expect(mocks.importReceivedAttachment).toHaveBeenCalledOnce();
   });
 });

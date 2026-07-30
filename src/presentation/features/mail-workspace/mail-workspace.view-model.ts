@@ -121,6 +121,23 @@ export interface MemberSessionViewModel {
   readonly onSignOut: () => void;
 }
 
+interface DeliveryNoticeViewModelBase {
+  readonly dismissError: string | null;
+  readonly isDismissing: boolean;
+  readonly onDismiss: () => void;
+  readonly pendingCount: number;
+}
+
+export type DeliveryNoticeViewModel = DeliveryNoticeViewModelBase &
+  (
+    | {
+        readonly kind: "partial";
+        readonly rejectedRecipients: readonly string[];
+      }
+    | { readonly kind: "overflow" }
+    | { readonly kind: "uncertain" }
+  );
+
 export interface MailWorkspaceViewProps {
   readonly account: {
     readonly avatar: string;
@@ -152,6 +169,7 @@ export interface MailWorkspaceViewProps {
   readonly onSearchSubmit: FormEventHandler<HTMLFormElement>;
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
+  readonly deliveryNotice: DeliveryNoticeViewModel | null;
   readonly reader: ReaderViewModel | null;
   readonly searchInput: ChangeEventHandler<HTMLInputElement>;
   readonly searchValue: string;

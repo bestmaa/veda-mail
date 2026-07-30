@@ -203,6 +203,13 @@ const forwardedBody = (message: MessageDetail): string => {
   return `\n\n${headers.join("\n")}\n\n${message.textBody}`;
 };
 
+export const selectForwardableOriginalAttachments = (
+  message: Pick<MessageDetail, "attachments">,
+) =>
+  message.attachments.filter(
+    ({ disposition }) => disposition === "attachment",
+  );
+
 export const createForwardDraft = (message: MessageDetail): ComposeInput => ({
   bcc: [],
   body: forwardedBody(message),
