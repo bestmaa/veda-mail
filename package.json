@@ -64,7 +64,7 @@
     "lexical": "0.44.0",
     "lucide-react": "^1.26.0",
     "mailparser": "^3.9.14",
-    "next": "16.2.11",
+    "next": "16.2.12",
     "nodemailer": "9.0.3",
     "otpauth": "^9.5.1",
     "qrcode": "^1.5.4",
