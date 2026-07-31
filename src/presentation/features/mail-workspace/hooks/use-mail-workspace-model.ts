@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 
 import { createComposerViewModel } from "@/presentation/features/mail-workspace/composer.view-model";
+import { createMailListViewModel } from "@/presentation/features/mail-workspace/mail-list.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/use-composer-model";
 import { useEmailSignatureSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-email-signature-settings-model";
@@ -16,11 +17,7 @@ import { useAttachmentDownload } from "@/presentation/features/mail-workspace/ho
 import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hooks/use-attachment-preview";
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
 import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model";
-import {
-  formatMessageDate,
-  formatSender,
-  initials,
-} from "@/presentation/shared/formatters/mail-formatters";
+import { initials } from "@/presentation/shared/formatters/mail-formatters";
 import {
   createBrandingViewModel,
   type BrandingInput,
@@ -76,6 +73,7 @@ export const useMailWorkspaceModel = ({
     !emailSignatures.isLoading &&
     !emailSignatures.isSaving &&
     !emailSignatures.hasSessionChanged;
+  const draftsEnabled = mail.workspace?.draftCapability.status === "supported";
   const composer = useComposerModel(
     partialDelivery.onSent,
     maxAttachmentBytes,
@@ -84,6 +82,8 @@ export const useMailWorkspaceModel = ({
     isComposerReady,
     initialSessionScope,
     mail.handleSessionFailure,
+    draftsEnabled,
+    mail.refresh,
   );
   const settings = useAccountSettingsModel(
     accountEmail,
@@ -92,43 +92,18 @@ export const useMailWorkspaceModel = ({
     sessionScope,
     mail.handleSessionFailure,
   );
-  const folders = useMemo(
-    () =>
-      (mail.workspace?.mailboxes ?? []).map((mailbox) => ({
-        color: mailbox.color,
-        count: mailbox.unread || mailbox.total,
-        id: mailbox.id,
-        icon: mailbox.role,
-        isActive: mailbox.id === mail.activeMailboxId,
-        label: mailbox.name,
-        onSelect: () => {
-          mail.selectMailbox(mailbox.id);
-          navigation.close();
-        },
-      })),
-    [mail, navigation],
-  );
-
-  const messages = useMemo(
-    () =>
-      (mail.workspace?.messages.items ?? []).map((message) => {
-        const sender = formatSender(message.from);
-        return {
-          avatar: initials(sender),
-          date: formatMessageDate(message.receivedAt),
-          hasAttachment: message.hasAttachment,
-          id: message.id,
-          isActive: message.id === mail.selectedMessage?.id,
-          isStarred: message.isStarred,
-          isUnread: message.isUnread,
-          onSelect: () => mail.selectMessage(message.id),
-          preview: message.preview,
-          sender,
-          subject: message.subject,
-        };
-      }),
-    [mail],
-  );
+  const mailList = useMemo(() => createMailListViewModel({
+    activeMailboxId: mail.activeMailboxId,
+    draftsEnabled,
+    onOpenDraft: composer.openSavedDraft,
+    onSelectMailbox: (mailboxId) => {
+      mail.selectMailbox(mailboxId);
+      navigation.close();
+    },
+    onSelectMessage: mail.selectMessage,
+    ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
+    workspace: mail.workspace,
+  }), [composer.openSavedDraft, draftsEnabled, mail, navigation]);
 
   useEffect(() => {
     closeAttachmentPreview();
@@ -164,10 +139,6 @@ export const useMailWorkspaceModel = ({
     ],
   );
 
-  const activeFolder =
-    mail.workspace?.mailboxes.find(
-      (mailbox) => mailbox.id === mail.activeMailboxId,
-    )?.name ?? "Inbox";
   const accountName = settings.profileName ?? workspaceAccountName;
   const onReply = useCallback(
     () => {
@@ -204,16 +175,16 @@ export const useMailWorkspaceModel = ({
       provider: providerLabel,
     },
     branding: brandingView,
-    activeFolder,
+    activeFolder: mailList.activeFolder,
     composer: createComposerViewModel(composer),
     error:
       mail.error ??
       session.error ??
       (emailSignatures.hasSessionChanged ? emailSignatures.error : null),
-    folders,
+    folders: mailList.folders,
     isComposerReady,
     isLoading: mail.isLoading,
-    messages,
+    messages: mailList.messages,
     navigation: {
       isOpen: navigation.isOpen,
       onClose: navigation.close,

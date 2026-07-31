@@ -23,6 +23,7 @@ import {
   attachmentSendMemoryBudget,
   type AttachmentSendMemoryLease,
 } from "@/server/mail/attachment-send-memory-budget";
+import { asDraftDomainApiError } from "@/server/mail/draft-http";
 import {
   completeIdempotentSend,
   failIdempotentSend,
@@ -51,6 +52,8 @@ const asSendMessageApiError = (error: unknown): unknown => {
       422,
     );
   }
+  const draftError = asDraftDomainApiError(error);
+  if (draftError) return draftError;
   const mapped = asAttachmentApiError(error);
   return mapped instanceof ApiError || mapped instanceof ZodError
     ? mapped
@@ -71,6 +74,14 @@ export const POST = async (request: Request) => {
     assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
     const parsed = sendMessageSchema.parse(await readJsonBody(request));
     const content = canonicalizeOutgoingMailContent(parsed);
+    const providerDraft =
+      parsed.providerDraftId && parsed.expectedDraftRevision
+        ? {
+            composeId: parsed.draftId,
+            expectedRevision: parsed.expectedDraftRevision,
+            id: parsed.providerDraftId,
+          }
+        : undefined;
     assertSubjectRateLimit(
       "mail-send-recipient",
       connection.id,
@@ -88,6 +99,14 @@ export const POST = async (request: Request) => {
         cc: parsed.cc,
         htmlBody: content.htmlBody ?? null,
         ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
+        ...(providerDraft
+          ? {
+              providerDraft: {
+                expectedRevision: providerDraft.expectedRevision,
+                id: providerDraft.id,
+              },
+            }
+          : {}),
         subject: parsed.subject,
         to: parsed.to,
       },
@@ -153,6 +172,7 @@ export const POST = async (request: Request) => {
         cc: parsed.cc,
         ...(content.htmlBody ? { htmlBody: content.htmlBody } : {}),
         ...(parsed.inReplyTo ? { inReplyTo: parsed.inReplyTo } : {}),
+        ...(providerDraft ? { providerDraft } : {}),
         subject: parsed.subject,
         to: parsed.to,
       };

@@ -10,6 +10,7 @@ import type { BrandingViewModel } from "@/presentation/shared/branding/branding.
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+import type { ComposerDraftPhase } from "@/presentation/features/mail-workspace/composer-draft-state";
 
 export type MailboxIconName =
   "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
@@ -33,6 +34,7 @@ export interface MessageItemViewModel {
   readonly isStarred: boolean;
   readonly isUnread: boolean;
   readonly onSelect: () => void;
+  readonly openLabel: string;
   readonly preview: string;
   readonly sender: string;
   readonly subject: string;
@@ -92,9 +94,28 @@ export interface ComposerViewModel {
   readonly body: ComposerBodyViewModel;
   readonly cc: string;
   readonly ccInput: ChangeEventHandler<HTMLInputElement>;
+  readonly closeConfirmation: ComposerConfirmationViewModel;
+  readonly discardConfirmation: ComposerConfirmationViewModel;
+  readonly draft: {
+    readonly canDiscard: boolean;
+    readonly canEdit: boolean;
+    readonly canSave: boolean;
+    readonly canSend: boolean;
+    readonly enabled: boolean;
+    readonly error: string | null;
+    readonly loadFailed: boolean;
+    readonly onReload: (() => void) | null;
+    readonly onRequestDiscard: () => void;
+    readonly onRetry: () => void;
+    readonly onSave: () => void;
+    readonly phase: ComposerDraftPhase;
+    readonly requiresRecovery: boolean;
+    readonly sendBlockedMessage: string | null;
+  };
   readonly error: string | null;
   readonly focusBody: boolean;
   readonly isAttachmentCapabilityRefreshing: boolean;
+  readonly isBusy: boolean;
   readonly isOpen: boolean;
   readonly isSending: boolean;
   readonly isUploading: boolean;
@@ -113,6 +134,12 @@ export interface ComposerViewModel {
   readonly title: string;
 }
 
+export interface ComposerConfirmationViewModel {
+  readonly isOpen: boolean;
+  readonly onCancel: () => void;
+  readonly onConfirm: () => void;
+}
+
 export interface ComposerBodyViewModel {
   readonly cancelPlainMode: () => void;
   readonly confirmPlainMode: () => void;
@@ -124,6 +151,10 @@ export interface ComposerBodyViewModel {
   readonly onPlainInput: ChangeEventHandler<HTMLTextAreaElement>;
   readonly onPlainPaste: ClipboardEventHandler<HTMLTextAreaElement>;
   readonly onRichChange: (snapshot: {
+    readonly html: string;
+    readonly text: string;
+  }) => void;
+  readonly onRichInitialize: (snapshot: {
     readonly html: string;
     readonly text: string;
   }) => void;

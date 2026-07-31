@@ -25,6 +25,8 @@ import {
   JMAP_SUBMISSION,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { submitStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
+import type { StalwartDraftSendSource } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.store";
+import { submitStalwartSavedDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-send";
 
 const addresses = (
   values: SendMessageInput["to"],
@@ -160,6 +162,28 @@ export class StalwartMailWriter {
         ],
       ],
       createId,
+      accountId,
+    );
+  }
+
+  public async sendSavedDraft(
+    input: SendMessageInput,
+    load: () => Promise<StalwartDraftSendSource>,
+  ): Promise<SendReceipt> {
+    const accountId = await this.reader.getAccountId();
+    const account = await this.reader.getAccount();
+    const [identity, draftMailboxId, sentMailboxId] = await Promise.all([
+      this.getIdentity(accountId, account.email),
+      this.getMailboxId("drafts"),
+      this.getMailboxId("sent"),
+    ]);
+    const source = await load();
+    return submitStalwartSavedDraft(
+      this.client,
+      input,
+      source,
+      { accountId, draftMailboxId, identity, sentMailboxId },
+      load,
     );
   }
 

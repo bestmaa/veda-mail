@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { id, type DraftId } from "@/domain/shared/brand";
 import {
@@ -18,9 +13,7 @@ import {
   type RemoveUploadedAttachment,
 } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import { useAttachmentCapability } from "@/presentation/features/mail-workspace/hooks/use-attachment-capability";
-import {
-  MAX_COMPOSER_ATTACHMENT_BYTES,
-} from "@/presentation/features/mail-workspace/hooks/composer-attachment-selection";
+import { MAX_COMPOSER_ATTACHMENT_BYTES } from "@/presentation/features/mail-workspace/hooks/composer-attachment-selection";
 import { useComposerAttachmentSelection } from "@/presentation/features/mail-workspace/hooks/use-composer-attachment-selection";
 import { useComposerOriginalAttachmentImports } from "@/presentation/features/mail-workspace/hooks/use-composer-original-attachment-imports";
 import {
@@ -79,6 +72,11 @@ export const useComposerAttachments = (
     capability.maximum ?? 0,
     MAX_COMPOSER_ATTACHMENT_BYTES,
   );
+
+  const adoptDraftId = useCallback((nextDraftId: DraftId) => {
+    currentDraftId.current = nextDraftId;
+    setDraftId(nextDraftId);
+  }, []);
 
   const expireReady = useCallback(() => {
     const next = expireComposerAttachments(attachments, Date.now());
@@ -210,6 +208,7 @@ export const useComposerAttachments = (
 
   return useMemo(
     () => ({
+      adoptDraftId,
       attachments,
       attachmentIds: ready.map((item) => item.id),
       capabilityUnavailable: capability.unavailable,
@@ -229,6 +228,7 @@ export const useComposerAttachments = (
     }),
     [
       attachments,
+      adoptDraftId,
       capability.isRefreshing,
       capability.refresh,
       capability.unavailable,

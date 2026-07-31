@@ -1,10 +1,74 @@
 import { describe, expect, it } from "vitest";
 
+import { hasCanonicalDraftContent } from "@/domain/mail/draft-content-round-trip";
 import {
+  canonicalizeDraftMailContent,
   canonicalizeOutgoingMailContent,
 } from "@/server/mail/outgoing-mail-content";
 
+const canonicalDraft = {
+  bcc: [],
+  body: "Quoted",
+  cc: [],
+  subject: "Subject",
+  to: [{ email: "reader@example.com", name: null }],
+};
+
 describe("outgoing mail content", () => {
+  it.each([
+    { body: " Quoted " },
+    { body: "Quoted", htmlBody: "<blockquote>Quoted</blockquote>" },
+    { body: "Cell", htmlBody: "<table><tr><td>Cell</td></tr></table>" },
+  ])("marks non-round-tripping provider content read-only", (content) => {
+    expect(hasCanonicalDraftContent({ ...canonicalDraft, ...content })).toBe(
+      false,
+    );
+  });
+
+  it("accepts exact outgoing-canonical provider content", () => {
+    expect(
+      hasCanonicalDraftContent({
+        ...canonicalDraft,
+        htmlBody: "<p>Quoted</p>",
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    { ...canonicalDraft, subject: " Subject " },
+    {
+      ...canonicalDraft,
+      to: [{ email: " reader@example.com ", name: " Reader " }],
+    },
+    {
+      ...canonicalDraft,
+      cc: [{ email: "READER@example.com", name: null }],
+    },
+  ])("marks request-normalized provider metadata read-only", (content) => {
+    expect(hasCanonicalDraftContent(content)).toBe(false);
+  });
+
+  it("canonicalizes blank and partial drafts without weakening rich safety", () => {
+    expect(canonicalizeDraftMailContent({ body: " \n " })).toEqual({
+      body: "",
+    });
+    expect(
+      canonicalizeDraftMailContent({
+        body: "untrusted fallback",
+        htmlBody: "<script>only active content</script>",
+      }),
+    ).toEqual({ body: "" });
+    expect(
+      canonicalizeDraftMailContent({
+        body: "untrusted fallback",
+        htmlBody: "<p>Hello <b>team</b></p><script>private()</script>",
+      }),
+    ).toEqual({
+      body: "Hello team",
+      htmlBody: "<p>Hello <strong>team</strong></p>",
+    });
+  });
+
   it("preserves the existing plain-text-only contract", () => {
     expect(
       canonicalizeOutgoingMailContent({ body: "  Plain message  " }),
@@ -120,8 +184,7 @@ describe("outgoing mail content", () => {
     expect(() =>
       canonicalizeOutgoingMailContent({
         body: "fallback",
-        htmlBody:
-          "<ol>".repeat(33) + "<li>Deep</li>" + "</ol>".repeat(33),
+        htmlBody: "<ol>".repeat(33) + "<li>Deep</li>" + "</ol>".repeat(33),
       }),
     ).toThrow("too complex");
   });
@@ -139,9 +202,12 @@ describe("outgoing mail content", () => {
     "<script>Only active content</script>",
     '<img src="https://tracker.invalid/pixel">',
     "<p><br></p>",
-  ])("rejects rich content without a readable plain alternative", (htmlBody) => {
-    expect(() =>
-      canonicalizeOutgoingMailContent({ body: "fallback", htmlBody }),
-    ).toThrow("invalid or unsupported content");
-  });
+  ])(
+    "rejects rich content without a readable plain alternative",
+    (htmlBody) => {
+      expect(() =>
+        canonicalizeOutgoingMailContent({ body: "fallback", htmlBody }),
+      ).toThrow("invalid or unsupported content");
+    },
+  );
 });

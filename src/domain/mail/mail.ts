@@ -8,6 +8,10 @@ import type {
   ProviderId,
   ThreadId,
 } from "@/domain/shared/brand";
+import type {
+  DraftCapability,
+  SavedProviderDraft,
+} from "@/domain/mail/draft";
 
 export const MAX_OUTGOING_CONTENT_CHARACTERS = 256_000;
 export const MAX_OUTGOING_CONTENT_UTF8_BYTES = 256_000;
@@ -143,6 +147,7 @@ export interface SendMessageInput {
   readonly cc: readonly MailAddress[];
   readonly htmlBody?: string;
   readonly inReplyTo?: MessageId;
+  readonly providerDraft?: SavedProviderDraft;
   readonly subject: string;
   readonly to: readonly MailAddress[];
 }
@@ -177,6 +182,7 @@ export interface MailAccount {
 
 export interface ProviderMailWorkspace {
   readonly account: MailAccount;
+  readonly draftCapability: DraftCapability;
   readonly mailboxes: readonly Mailbox[];
   readonly messages: MessagePage;
 }

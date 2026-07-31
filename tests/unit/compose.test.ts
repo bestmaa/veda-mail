@@ -58,6 +58,7 @@ describe("compose address semantics", () => {
   it("formats names into input that can be parsed without losing data", () => {
     const addresses = [
       address("ada@example.com", "Lovelace, Ada"),
+      address("syntax@example.com", 'A <B>, "C" \\ D'),
       address("plain@example.com"),
     ];
     expect(parseAddressInput(formatAddressInput(addresses))).toEqual(addresses);

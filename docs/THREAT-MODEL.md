@@ -401,13 +401,53 @@ limiter and encrypted shared session repository.
 ### Rich-text extensions
 
 - Stored signatures pass the centralized allowlist before persistence and the
-  complete message passes it again before provider submission. Future
-  templates, quoted HTML, and provider-backed drafts must preserve this
-  boundary.
-- Future draft persistence must store a canonical HTML/plain pair without
-  weakening the current no-remote-media or isolated-link policy.
+  complete message passes it again before provider submission. Templates and
+  quoted HTML must preserve this boundary; provider-backed draft reads and
+  writes already use the same canonical HTML/plain policy.
 - Sanitizer changes must add provider MIME plus mutation-XSS regression cases
   before release.
+
+### Provider-backed drafts
+
+- Draft reads and every write remain scoped to the authenticated connection and
+  mailbox session. Opaque provider IDs never grant cross-account access, and a
+  non-draft or a message outside the resolved Drafts mailbox is enumeration-safe.
+- Create/update/discard require same-origin requests, strict bounded schemas,
+  request and mailbox rate limits, and an expected draft-specific revision.
+  JMAP collection state is refreshed only as an atomic mutation precondition;
+  unrelated incoming mail cannot become the browser's revision token.
+- Veda reconciliation metadata uses bounded non-system JMAP keywords. These are
+  advisory provider-stored values rather than private JMAP data, but they are
+  not written to RFC mail headers, so compose UUIDs, fingerprints, and
+  provider-internal IDs are not transmitted to recipients.
+- Immutable replacements preserve non-Veda keywords and additional mailbox
+  membership, rebuild from a freshness read, create and verify the replacement,
+  and only then destroy the old Email in a separate conditional call. Veda does
+  not assume per-object JMAP `/set` outcomes are atomic. The operation marker
+  binds account, old ID/revision, exact content, authenticated From, Message-ID,
+  In-Reply-To, and References; multiple, mismatched, or incomplete candidates
+  fail closed. Mutable old metadata is revalidated before cleanup so a
+  concurrent client change is not silently lost.
+- Body completeness is proven before editing. Global/per-value truncation,
+  missing referenced body values, provider attachments, and local quarantine
+  attachments block destructive save/send. The same gate requires a complete
+  ordered and unique allowlisted header inventory, equivalent ungrouped address
+  projections, valid Message-ID/reply metadata, and a depth/part-bounded
+  canonical text or text/HTML MIME structure with no unsupported part metadata.
+  The member may close the composer or explicitly discard the exact revision
+  without losing unseen content.
+- Saved-draft send is save-first. After identity and mailbox preflights, the
+  server reloads the exact immutable draft, verifies identity, content,
+  revision, markers, and mailbox role, then conditionally adds a unique send
+  claim. Exact account-global compose membership is rechecked after claiming
+  and every reconciliation. A single ordered JMAP batch creates a fresh Email
+  and submits only its successful RFC creation reference. Acceptance requires
+  the exact submission and implicit Drafts-to-Sent result, including a
+  continuous Email-state chain, before best-effort cleanup of the claimed old
+  draft. Definitive non-submission removes the unsent copy and releases the
+  claim. Any issued ambiguous, partial, contradictory, or cleanup-uncertain
+  outcome keeps the old draft claimed/read-only, directs the member to check
+  Sent, and cannot trigger an automatic duplicate submission.
 
 ### Attachments
 

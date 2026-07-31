@@ -28,6 +28,7 @@ import {
   mockMailboxIds,
 } from "@/infrastructure/providers/mock/mock-seed";
 import { mockArchiveFailureMessageId } from "@/infrastructure/providers/mock/mock-archive-fixture";
+import { MockDraftStore } from "@/infrastructure/providers/mock/mock-draft.store";
 
 const mailboxDefinitions = [
   { color: "#4f46e5", id: mockMailboxIds.inbox, name: "Inbox", role: "inbox" },
@@ -50,6 +51,11 @@ const mailboxDefinitions = [
 
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
+  private readonly drafts = new MockDraftStore();
+  public readonly discardDraft = this.drafts.discard.bind(this.drafts);
+  public readonly getDraft = this.drafts.get.bind(this.drafts);
+  public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
+  public readonly saveDraft = this.drafts.save.bind(this.drafts);
   private archiveFailureLookups = 0;
   private messages = createMockMessages();
   private profile = {
@@ -77,7 +83,6 @@ export class MockMailGateway implements MailGateway {
       providerId: id.provider("mock"),
     };
   }
-
   public async getMaxAttachmentBytes() {
     return 18 * 1024 * 1024;
   }
@@ -113,7 +118,7 @@ export class MockMailGateway implements MailGateway {
 
   public async listMailboxes(): Promise<readonly Mailbox[]> {
     return mailboxDefinitions.map((definition) => {
-      const messages = this.messages.filter((message) =>
+      const messages = [...this.messages, ...this.drafts.messages()].filter((message) =>
         message.mailboxIds.includes(definition.id),
       );
       return {
@@ -126,7 +131,7 @@ export class MockMailGateway implements MailGateway {
 
   public async listMessages(query: MessageListQuery) {
     const needle = query.search?.trim().toLocaleLowerCase();
-    const matching = this.messages
+    const matching = [...this.messages, ...this.drafts.messages()]
       .filter((message) => message.mailboxIds.includes(query.mailboxId))
       .filter((message) => {
         if (!needle) {
@@ -179,6 +184,10 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async sendMessage(input: SendMessageInput) {
+    this.drafts.consumeForSend(
+      input.providerDraft,
+      (input.attachments?.length ?? 0) > 0,
+    );
     const now = new Date().toISOString();
     const messageId = id.message(`sent-${crypto.randomUUID()}`);
     const attachments = (input.attachments ?? []).map((attachment) => ({

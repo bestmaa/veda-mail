@@ -17,7 +17,7 @@ export const createProviderFeatures = (
   },
   {
     detail: availability(capabilities.mail.supportsDrafts),
-    label: "Provider draft sync",
+    label: "Manual provider drafts",
     supported: capabilities.mail.supportsDrafts,
   },
   {

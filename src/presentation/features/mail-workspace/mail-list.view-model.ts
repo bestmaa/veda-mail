@@ -1,0 +1,67 @@
+import type { MailWorkspace } from "@/domain/mail/mail";
+import type { MailboxId } from "@/domain/shared/brand";
+import type { FolderViewModel, MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import { formatMessageDate, formatSender, initials } from "@/presentation/shared/formatters/mail-formatters";
+
+interface MailListOptions {
+  readonly activeMailboxId: MailboxId | null;
+  readonly draftsEnabled: boolean;
+  readonly onOpenDraft: (id: string) => void;
+  readonly onSelectMailbox: (id: string) => void;
+  readonly onSelectMessage: (id: string) => void;
+  readonly selectedMessageId?: string;
+  readonly workspace: MailWorkspace | null;
+}
+
+export const createMailListViewModel = ({
+  activeMailboxId,
+  draftsEnabled,
+  onOpenDraft,
+  onSelectMailbox,
+  onSelectMessage,
+  selectedMessageId,
+  workspace,
+}: MailListOptions): {
+  readonly activeFolder: string;
+  readonly folders: readonly FolderViewModel[];
+  readonly messages: readonly MessageItemViewModel[];
+} => {
+  const activeMailbox = workspace?.mailboxes.find(
+    ({ id }) => id === activeMailboxId,
+  );
+  const opensDrafts = draftsEnabled && activeMailbox?.role === "drafts";
+  return {
+    activeFolder: activeMailbox?.name ?? "Inbox",
+    folders: (workspace?.mailboxes ?? []).map((mailbox) => ({
+      color: mailbox.color,
+      count: mailbox.unread || mailbox.total,
+      id: mailbox.id,
+      icon: mailbox.role,
+      isActive: mailbox.id === activeMailboxId,
+      label: mailbox.name,
+      onSelect: () => onSelectMailbox(mailbox.id),
+    })),
+    messages: (workspace?.messages.items ?? []).map((message) => {
+      const subject = message.subject.trim() || "(No subject)";
+      const sender = opensDrafts
+        ? `To: ${message.to.length ? formatSender(message.to) : "No recipients"}`
+        : formatSender(message.from);
+      return {
+        avatar: initials(sender),
+        date: formatMessageDate(message.receivedAt),
+        hasAttachment: message.hasAttachment,
+        id: message.id,
+        isActive: !opensDrafts && message.id === selectedMessageId,
+        isStarred: message.isStarred,
+        isUnread: message.isUnread,
+        onSelect: () => opensDrafts
+          ? onOpenDraft(message.id)
+          : onSelectMessage(message.id),
+        openLabel: opensDrafts ? `Edit draft ${subject}` : `Open ${subject}`,
+        preview: message.preview,
+        sender,
+        subject,
+      };
+    }),
+  };
+};

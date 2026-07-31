@@ -166,6 +166,7 @@ describe("Stalwart final-request issue boundary", () => {
           new StalwartJmapClient(config),
           [],
           "draft",
+          "account",
         ),
       );
 
@@ -196,6 +197,7 @@ describe("Stalwart final-request issue boundary", () => {
         new StalwartJmapClient(config),
         [],
         "draft",
+        "account",
       );
 
       expect(receipt).toMatchObject({
@@ -219,6 +221,7 @@ describe("Stalwart final-request issue boundary", () => {
       new StalwartJmapClient(config),
       [],
       "draft",
+      "account",
     );
 
     expect(receipt).toMatchObject({

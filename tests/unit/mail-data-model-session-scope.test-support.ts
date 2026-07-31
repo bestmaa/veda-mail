@@ -92,6 +92,7 @@ export const workspace = (sessionScope: string): MailWorkspace => ({
     name: "Member",
     providerId: id.provider("mock"),
   },
+  draftCapability: { status: "supported" },
   mailboxes: [
     {
       color: "#4338ca",

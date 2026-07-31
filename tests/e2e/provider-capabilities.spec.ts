@@ -21,8 +21,8 @@ test("shows provider-supported and unavailable mail features", async ({
     dialog.getByRole("listitem").filter({ hasText: "Server-side search" }),
   ).toContainText("Available");
   await expect(
-    dialog.getByRole("listitem").filter({ hasText: "Provider draft sync" }),
-  ).toContainText("Not available");
+    dialog.getByRole("listitem").filter({ hasText: "Manual provider drafts" }),
+  ).toContainText("Available");
   await expect(
     dialog.getByRole("listitem").filter({ hasText: "Live mailbox updates" }),
   ).toContainText("Manual refresh");

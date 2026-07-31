@@ -19,19 +19,27 @@ import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/sta
 import { maximumJmapUploadBytes } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { StalwartMailWriter } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.writer";
+import { StalwartDraftStore } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.store";
+import { DraftHasAttachmentsError } from "@/domain/mail/draft-errors";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
   private readonly client: StalwartJmapClient;
+  private readonly drafts: StalwartDraftStore;
   private readonly reader: StalwartMailReader;
   private readonly writer: StalwartMailWriter;
 
   public constructor(config: StalwartConfig) {
     this.client = new StalwartJmapClient(config);
     this.reader = new StalwartMailReader(this.client, config);
+    this.drafts = new StalwartDraftStore(this.client, this.reader);
     this.writer = new StalwartMailWriter(this.client, this.reader);
     this.accountManager = new StalwartAccountManager(this.client, this.reader);
+  }
+
+  public discardDraft(...input: Parameters<StalwartDraftStore["discard"]>) {
+    return this.drafts.discard(...input);
   }
 
   public changePassword(input: MemberPasswordChange) {
@@ -40,6 +48,14 @@ export class StalwartMailGateway implements MailGateway {
 
   public getAccount() {
     return this.reader.getAccount();
+  }
+
+  public getDraft(...input: Parameters<StalwartDraftStore["get"]>) {
+    return this.drafts.get(...input);
+  }
+
+  public getDraftCapability() {
+    return this.drafts.capability();
   }
 
   public downloadAttachment(input: AttachmentDownloadInput) {
@@ -78,8 +94,18 @@ export class StalwartMailGateway implements MailGateway {
     return this.writer.mutateMessage(mutation);
   }
 
-  public sendMessage(input: SendMessageInput) {
-    return this.writer.sendMessage(input);
+  public saveDraft(...input: Parameters<StalwartDraftStore["save"]>) {
+    return this.drafts.save(...input);
+  }
+
+  public async sendMessage(input: SendMessageInput) {
+    if (!input.providerDraft) return this.writer.sendMessage(input);
+    if ((input.attachments?.length ?? 0) > 0) {
+      throw new DraftHasAttachmentsError();
+    }
+    return this.writer.sendSavedDraft(input, () =>
+      this.drafts.prepareSend(input.providerDraft!),
+    );
   }
 
   public async testConnection(): Promise<void> {

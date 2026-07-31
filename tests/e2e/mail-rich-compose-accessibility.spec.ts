@@ -69,6 +69,13 @@ test("nested rich controls consume Escape before the composer", async ({
   );
 
   await modeToggle.press("Escape");
+  const closeWarning = dialog.getByRole("alertdialog", {
+    name: "Close with unsaved changes?",
+  });
+  await expect(closeWarning).toBeVisible();
+  await closeWarning
+    .getByRole("button", { name: "Close without saving" })
+    .click();
   await expect(dialog).toBeHidden();
 });
 

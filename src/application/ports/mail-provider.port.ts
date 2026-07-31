@@ -13,6 +13,11 @@ import type {
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type {
+  DraftCapability,
+  DraftDetail,
+  DraftSaveInput,
+} from "@/domain/mail/draft";
+import type {
   MemberAuthenticationResult,
   MemberCredentials,
   ProviderConnection,
@@ -24,15 +29,21 @@ import type {
   MemberProfileUpdate,
   MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
-import type { MessageId } from "@/domain/shared/brand";
+import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
 
 export interface MailGateway {
   changePassword(input: MemberPasswordChange): Promise<void>;
+  discardDraft(
+    providerDraftId: ProviderDraftId,
+    expectedRevision: string,
+  ): Promise<void>;
   downloadAttachment(
     input: AttachmentDownloadInput,
   ): Promise<AttachmentDownload>;
   getMaxAttachmentBytes(): Promise<number>;
   getAccount(): Promise<MailAccount>;
+  getDraft(providerDraftId: ProviderDraftId): Promise<DraftDetail>;
+  getDraftCapability(): Promise<DraftCapability>;
   getMemberProfile(): Promise<MemberProfile>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
@@ -42,6 +53,7 @@ export interface MailGateway {
   listMailboxes(): Promise<readonly Mailbox[]>;
   listMessages(query: MessageListQuery): Promise<MessagePage>;
   mutateMessage(mutation: MessageMutation): Promise<void>;
+  saveDraft(input: DraftSaveInput): Promise<DraftDetail>;
   sendMessage(input: SendMessageInput): Promise<SendReceipt>;
   testConnection(): Promise<void>;
   updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void>;

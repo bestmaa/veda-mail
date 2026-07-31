@@ -7,9 +7,12 @@ import {
   JMAP_CORE,
   MAX_JMAP_BODY_VALUE_CHARACTERS,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import {
+  jmapIdBooleanRecordSchema,
+  jmapKeywordBooleanRecordSchema,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-record.schema";
 
 const stringRecord = z.record(z.string(), z.string());
-const booleanRecord = z.record(z.string(), z.boolean());
 const unknownRecord = z.record(z.string(), z.unknown());
 const jmapCoreCapabilitySchema = z
   .object({
@@ -32,8 +35,7 @@ const addressSchema = z
     ),
     name: z
       .preprocess(
-        (value) =>
-          typeof value === "string" ? value.slice(0, 4_096) : value,
+        (value) => (typeof value === "string" ? value.slice(0, 4_096) : value),
         z.string(),
       )
       .nullable()
@@ -103,8 +105,8 @@ export const jmapEmailSchema = z.preprocess(
       hasAttachment: z.boolean(),
       htmlBody: z.array(bodyPartSchema).max(1_024).optional(),
       id: z.string().min(1),
-      keywords: booleanRecord,
-      mailboxIds: booleanRecord,
+      keywords: jmapKeywordBooleanRecordSchema,
+      mailboxIds: jmapIdBooleanRecordSchema,
       messageId: messageIdentifierListSchema.nullable().optional(),
       preview: z
         .preprocess(
@@ -199,9 +201,15 @@ const createdItemSchema = z.object({ id: z.string().min(1) }).passthrough();
 
 export const jmapSetResultSchema = z
   .object({
-    created: z.record(z.string(), createdItemSchema).optional(),
-    notCreated: unknownRecord.optional(),
-    notUpdated: unknownRecord.optional(),
+    accountId: z.string().min(1).optional(),
+    created: z.record(z.string(), createdItemSchema).nullish(),
+    destroyed: z.array(z.string().min(1)).max(1_024).nullish(),
+    newState: z.string().min(1).optional(),
+    notCreated: unknownRecord.nullish(),
+    notDestroyed: unknownRecord.nullish(),
+    notUpdated: unknownRecord.nullish(),
+    oldState: z.string().min(1).optional(),
+    updated: unknownRecord.nullish(),
   })
   .passthrough();
 

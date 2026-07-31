@@ -67,11 +67,28 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/mail/inline-image-http", new Set(["*"])],
   ["@/server/mail/attachment-import", new Set(["asAttachmentImportApiError"])],
   ["@/server/mail/delivery-notice-store", new Set(["deliveryNoticeStore"])],
+  [
+    "@/server/mail/draft-http",
+    new Set([
+      "asDraftApiError",
+      "asDraftDomainApiError",
+      "canonicalizeDraftRequestContent",
+    ]),
+  ],
   ["@/server/mail/gateway-cache", new Set(["resolveGateway"])],
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
   ["@/server/signatures/email-signature.schema", new Set(["parseEmailSignaturePutOperation"])],
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
   ["@/transport/http/request-schemas", new Set(["*"])],
+  [
+    "@/transport/http/draft-schemas",
+    new Set([
+      "createDraftSchema",
+      "deleteDraftSchema",
+      "providerDraftIdSchema",
+      "updateDraftSchema",
+    ]),
+  ],
   ["@/transport/http/api-error", new Set(["ApiError"])],
 ]);
 
