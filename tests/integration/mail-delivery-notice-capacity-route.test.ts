@@ -21,6 +21,7 @@ vi.mock("@/server/security/rate-limit", () => ({
 
 import { GET } from "@/app/api/v1/mail/delivery-notices/route";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import {
   DELIVERY_NOTICE_OVERFLOW_MESSAGE,
   deliveryNoticeStore,
@@ -41,9 +42,13 @@ const receipt = (index: number): SendReceipt => ({
   submittedAt: "2026-07-30T12:00:00.000Z",
 });
 
-const request = (): Request =>
+const request = (connection: ProviderConnection): Request =>
   new Request(`${origin}/api/v1/mail/delivery-notices`, {
-    headers: { host: "mail.example.com", origin },
+    headers: {
+      host: "mail.example.com",
+      origin,
+      "x-veda-mail-session-scope": mailSessionScope(connection),
+    },
   });
 
 const createConnection = (displayName: string): ProviderConnection =>
@@ -85,8 +90,8 @@ describe("delivery notice connection-scoped capacity warning", () => {
     ).toBe(false);
     mocks.getCurrentConnection.mockResolvedValue(refusedConnection);
 
-    const first = await GET(request());
-    const repeated = await GET(request());
+    const first = await GET(request(refusedConnection));
+    const repeated = await GET(request(refusedConnection));
     const warning = {
       data: {
         notices: [
@@ -104,12 +109,14 @@ describe("delivery notice connection-scoped capacity warning", () => {
       username: "member@example.com",
     });
     mocks.getCurrentConnection.mockResolvedValue(updated);
-    await expect((await GET(request())).json()).resolves.toEqual(warning);
+    await expect((await GET(request(updated))).json()).resolves.toEqual(
+      warning,
+    );
 
     mocks.getCurrentConnection.mockResolvedValue(unrelatedConnection);
-    await expect((await GET(request())).json()).resolves.toEqual({
-      data: { notices: [] },
-    });
+    await expect(
+      (await GET(request(unrelatedConnection))).json(),
+    ).resolves.toEqual({ data: { notices: [] } });
   });
 
   it("clears the warning on removal, reset, and natural session expiry", () => {

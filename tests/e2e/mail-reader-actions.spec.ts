@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import {
   expectNoSeriousAccessibilityViolations,
+  mailSessionScopeHeaders,
   sendComposer,
   useInstalledMailbox,
 } from "./support/mail-fixture";
@@ -27,7 +28,9 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
   await expect(
     reader.getByText("cc owner@example.com", { exact: true }),
   ).toBeVisible();
-  await expect(reader.getByText("Q3-roadmap.pdf", { exact: true })).toBeVisible();
+  await expect(
+    reader.getByText("Q3-roadmap.pdf", { exact: true }),
+  ).toBeVisible();
   await expect(reader.getByText(/application\/pdf.*51 B/)).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 
@@ -74,9 +77,11 @@ test("downloads an attachment byte-identically from the keyboard", async ({
   );
   const expectedHash = createHash("sha256").update(expected).digest("hex");
   await openRoadmapMessage(page);
-  const link = page.getByRole("link", { name: "Download Q3-roadmap.pdf" });
-  await link.focus();
-  await expect(link).toBeFocused();
+  const downloadButton = page.getByRole("button", {
+    name: "Download Q3-roadmap.pdf",
+  });
+  await downloadButton.focus();
+  await expect(downloadButton).toBeFocused();
   const downloadEvent = page.waitForEvent("download");
   await page.keyboard.press("Enter");
   const download = await downloadEvent;
@@ -85,14 +90,18 @@ test("downloads an attachment byte-identically from the keyboard", async ({
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
   const received = await readFile(downloadPath ?? "");
-  expect(createHash("sha256").update(received).digest("hex")).toBe(expectedHash);
-
-  const href = await link.getAttribute("href");
-  expect(href).toBe(
-    "/api/v1/mail/messages/msg-roadmap/attachments/attachment-roadmap",
+  expect(createHash("sha256").update(received).digest("hex")).toBe(
+    expectedHash,
   );
+
+  const href =
+    "/api/v1/mail/messages/msg-roadmap/attachments/attachment-roadmap";
+  const scopeHeaders = await mailSessionScopeHeaders(page);
   const response = await page.request.get(href ?? "", {
-    headers: { origin: "http://127.0.0.1:3101" },
+    headers: {
+      origin: "http://127.0.0.1:3101",
+      ...scopeHeaders,
+    },
   });
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("application/octet-stream");
@@ -101,7 +110,9 @@ test("downloads an attachment byte-identically from the keyboard", async ({
   );
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
   expect(
-    createHash("sha256").update(await response.body()).digest("hex"),
+    createHash("sha256")
+      .update(await response.body())
+      .digest("hex"),
   ).toBe(expectedHash);
 
   const unauthenticated = await request.get(href ?? "", {
@@ -115,7 +126,9 @@ test("submits Reply All and Forward with the correct threading payload", async (
 }) => {
   const sentPayloads: Record<string, unknown>[] = [];
   await page.route("**/api/v1/mail/send", async (route) => {
-    sentPayloads.push(route.request().postDataJSON() as Record<string, unknown>);
+    sentPayloads.push(
+      route.request().postDataJSON() as Record<string, unknown>,
+    );
     await route.fulfill({
       body: JSON.stringify({
         data: {

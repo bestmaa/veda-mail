@@ -17,6 +17,7 @@ import {
 import type { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import type { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import { mailApi } from "@/transport/client/api-client";
+import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 interface ComposerSubmitOptions {
   readonly attachments: ReturnType<typeof useComposerAttachments>;
@@ -24,10 +25,13 @@ interface ComposerSubmitOptions {
   readonly body: ReturnType<typeof useComposerBody>;
   readonly cc: string;
   readonly inReplyTo: ComposeInput["inReplyTo"];
+  readonly handleSessionFailure: MailSessionFailureHandler;
+  readonly isAccountCurrent: (accountKey: string) => boolean;
   readonly onSent: (
     receipt: SendReceipt,
     submittedEmails: readonly string[],
   ) => void;
+  readonly openAccountKey: string;
   readonly resetFields: () => void;
   readonly restoreFocus: () => void;
   readonly setError: Dispatch<SetStateAction<string | null>>;
@@ -43,7 +47,10 @@ export const useComposerSubmit = ({
   body,
   cc,
   inReplyTo,
+  handleSessionFailure,
+  isAccountCurrent,
   onSent,
+  openAccountKey,
   resetFields,
   restoreFocus,
   setError,
@@ -55,6 +62,13 @@ export const useComposerSubmit = ({
   useCallback(
     async (event) => {
       event.preventDefault();
+      const submittedAccountKey = openAccountKey;
+      if (
+        !submittedAccountKey ||
+        !isAccountCurrent(submittedAccountKey)
+      ) {
+        return;
+      }
       const recipients = parseRecipientInputs({ bcc, cc, to });
       const submittedEmails = [
         ...recipients.to,
@@ -84,27 +98,35 @@ export const useComposerSubmit = ({
       setIsSending(true);
       setError(null);
       try {
-        const receipt = await mailApi.sendMessage({
-          attachmentIds: attachments.attachmentIds,
-          bcc: recipients.bcc,
-          ...body.payload,
-          cc: recipients.cc,
-          draftId: attachments.draftId,
-          ...(inReplyTo ? { inReplyTo } : {}),
-          subject,
-          to: recipients.to,
-        });
+        const receipt = await mailApi.sendMessage(
+          {
+            attachmentIds: attachments.attachmentIds,
+            bcc: recipients.bcc,
+            ...body.payload,
+            cc: recipients.cc,
+            draftId: attachments.draftId,
+            ...(inReplyTo ? { inReplyTo } : {}),
+            subject,
+            to: recipients.to,
+          },
+          submittedAccountKey,
+        );
+        if (!isAccountCurrent(submittedAccountKey)) return;
         setIsOpen(false);
         resetFields();
         attachments.discard(false);
         restoreFocus();
         onSent(receipt, submittedEmails);
       } catch (error) {
+        if (!isAccountCurrent(submittedAccountKey)) return;
+        if (handleSessionFailure(error)) return;
         const recovery = attachmentRecoveryMessage(error);
         if (recovery) attachments.invalidateReady(recovery);
         setError(recovery ?? composerSendErrorMessage(error));
       } finally {
-        setIsSending(false);
+        if (isAccountCurrent(submittedAccountKey)) {
+          setIsSending(false);
+        }
       }
     },
     [
@@ -114,7 +136,10 @@ export const useComposerSubmit = ({
       body.text,
       cc,
       inReplyTo,
+      handleSessionFailure,
+      isAccountCurrent,
       onSent,
+      openAccountKey,
       resetFields,
       restoreFocus,
       setError,

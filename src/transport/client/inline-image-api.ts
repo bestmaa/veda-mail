@@ -1,4 +1,6 @@
 import type { AttachmentId, MessageId } from "@/domain/shared/brand";
+import { ApiClientError } from "@/transport/client/api-request";
+import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
 
 export const INLINE_IMAGE_CLIENT_MAX_BYTES = 5 * 1024 * 1024;
 export const INLINE_IMAGE_MAX_ATTEMPTS = 3;
@@ -52,14 +54,14 @@ const failureDetails = async (
   };
 };
 
-class InlineImageHttpError extends Error {
+class InlineImageHttpError extends ApiClientError {
   public constructor(
     message: string,
-    public readonly code: string | null,
+    code: string | null,
     public readonly retryAfterMs: number | null,
-    public readonly status: number,
+    status: number,
   ) {
-    super(message);
+    super(message, status, code ?? "UNKNOWN_ERROR");
     this.name = "InlineImageHttpError";
   }
 }
@@ -171,6 +173,7 @@ const readBoundedInlineImage = async (
 
 const fetchInlineImageOnce = async (
   href: string,
+  sessionScope: string,
   signal?: AbortSignal,
 ): Promise<Blob> => {
   const response = await fetch(href, {
@@ -180,6 +183,7 @@ const fetchInlineImageOnce = async (
     headers: {
       Accept: INLINE_IMAGE_MIME_TYPE,
       "Content-Type": "application/json",
+      ...mailSessionScopeHeaders(sessionScope),
     },
     method: "POST",
     redirect: "error",
@@ -220,13 +224,14 @@ const fetchInlineImageOnce = async (
 
 export const fetchInlineImage = async (
   href: string,
+  sessionScope: string,
   signal?: AbortSignal,
 ): Promise<Blob> => {
   assertInlineImageHref(href);
   for (let attempt = 0; attempt < INLINE_IMAGE_MAX_ATTEMPTS; attempt += 1) {
     if (signal?.aborted) throw abortReason(signal);
     try {
-      return await fetchInlineImageOnce(href, signal);
+      return await fetchInlineImageOnce(href, sessionScope, signal);
     } catch (error) {
       if (
         !(error instanceof InlineImageHttpError) ||

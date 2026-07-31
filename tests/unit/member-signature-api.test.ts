@@ -11,6 +11,7 @@ const emptyBook: EmailSignatureBook = {
   updatedAt: null,
   version: 1,
 };
+const sessionScope = "test-session-scope";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -23,12 +24,17 @@ describe("member signature API", () => {
     );
     vi.stubGlobal("fetch", fetch);
 
-    await expect(memberSignatureApi.get()).resolves.toEqual(emptyBook);
+    await expect(memberSignatureApi.get(sessionScope)).resolves.toEqual(
+      emptyBook,
+    );
     expect(fetch).toHaveBeenCalledWith(
       "/api/v1/member/signatures",
       expect.objectContaining({
         cache: "no-store",
         credentials: "same-origin",
+        headers: expect.objectContaining({
+          "x-veda-mail-session-scope": sessionScope,
+        }),
         method: "GET",
       }),
     );
@@ -46,7 +52,7 @@ describe("member signature API", () => {
       operation: "create" as const,
     };
 
-    await memberSignatureApi.put(operation);
+    await memberSignatureApi.put(operation, sessionScope);
     const init = fetch.mock.calls[0]?.[1] as RequestInit | undefined;
     expect(init?.method).toBe("PUT");
     expect(JSON.parse(String(init?.body))).toEqual(operation);
@@ -68,10 +74,33 @@ describe("member signature API", () => {
       ),
     );
 
-    await expect(memberSignatureApi.get()).rejects.toMatchObject({
+    await expect(memberSignatureApi.get(sessionScope)).rejects.toMatchObject({
       code: "SIGNATURE_REVISION_CONFLICT",
       message: "Signature settings changed.",
       status: 409,
+    });
+  });
+
+  it("preserves an authenticated-session 401 for terminal invalidation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: "MEMBER_SESSION_EXPIRED",
+              message: "Reconnect this mailbox.",
+            },
+          },
+          { status: 401 },
+        ),
+      ),
+    );
+
+    await expect(memberSignatureApi.get(sessionScope)).rejects.toMatchObject({
+      code: "MEMBER_SESSION_EXPIRED",
+      message: "Reconnect this mailbox.",
+      status: 401,
     });
   });
 });

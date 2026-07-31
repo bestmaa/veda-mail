@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
 const mocks = vi.hoisted(() => ({
   connection: { id: "archive-preflight-connection" },
@@ -42,11 +43,17 @@ const metadata = [
     size: 2,
   },
 ];
-const request = (): Request =>
+const request = (
+  sessionScope = mailSessionScope(mocks.connection),
+): Request =>
   new Request(
     `${origin}/api/v1/mail/messages/${messageId}/attachments/archive`,
     {
-      headers: { host: "mail.example.com", origin },
+      headers: {
+        host: "mail.example.com",
+        origin,
+        "x-veda-mail-session-scope": sessionScope,
+      },
       method: "HEAD",
     },
   );
@@ -64,6 +71,16 @@ beforeEach(() => {
 });
 
 describe("attachment archive HEAD preflight", () => {
+  it("rejects a stale scope before opening the mail service", async () => {
+    const response = await HEAD(request("stale-scope"), context());
+
+    expect(response.status).toBe(409);
+    expect(response.body).toBeNull();
+    expect(mocks.getMailService).not.toHaveBeenCalled();
+    expect(mocks.listMessageAttachments).not.toHaveBeenCalled();
+    expect(mocks.downloadAttachment).not.toHaveBeenCalled();
+  });
+
   it("validates authoritative metadata without opening attachment bodies", async () => {
     const response = await HEAD(request(), context());
 

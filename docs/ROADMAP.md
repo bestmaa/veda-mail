@@ -138,7 +138,9 @@ malicious-file tests pass.
   browser spellcheck, and an explicit plain-text mode. The server creates the
   readable plain alternative and removes scripts, event handlers, remote
   embeds, and arbitrary styles before either included provider sees content
-- [ ] Per-identity signatures with plain-text and sanitized-rich variants
+- [x] Per-identity signatures with multiple named plain-text and
+  sanitized-rich variants, explicit new/reply-forward defaults, and exact-once
+  composer insertion
 - [ ] Reusable templates with explicit insert/replace behavior
 - [ ] Send confirmation preference and an undo-send delay backed by a durable
   queue
@@ -150,8 +152,8 @@ the MIME message has equivalent readable HTML and plain-text parts.
 
 Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
 Completing this milestone still requires durable drafts, autosave/restore,
-signatures, templates, delayed send, and the broader shortcut/accessibility
-audit listed above.
+templates, delayed send, and the broader shortcut/accessibility audit listed
+above.
 
 ## M4 — Fast mailbox management
 

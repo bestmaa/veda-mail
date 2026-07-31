@@ -9,6 +9,7 @@ import type {
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
+import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 export type MailboxIconName =
   "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
@@ -40,9 +41,11 @@ export interface MessageItemViewModel {
 export interface AttachmentViewModel {
   readonly href: string;
   readonly id: string;
+  readonly isDownloading: boolean;
   readonly isPreviewing: boolean;
   readonly meta: string;
   readonly name: string;
+  readonly onDownload: () => void;
   readonly onPreview: ((trigger: HTMLButtonElement) => void) | null;
 }
 
@@ -70,10 +73,12 @@ export interface ReaderViewModel {
   readonly from: string;
   readonly fromEmail: string;
   readonly htmlBody: string | null;
+  readonly handleSessionFailure: MailSessionFailureHandler;
   readonly isLoading: boolean;
   readonly isStarred: boolean;
   readonly isUnread: boolean;
   readonly messageId: string;
+  readonly sessionScope: string;
   readonly subject: string;
   readonly to: string;
 }
@@ -176,6 +181,7 @@ export interface MailWorkspaceViewProps {
   readonly composer: ComposerViewModel;
   readonly error: string | null;
   readonly folders: readonly FolderViewModel[];
+  readonly isComposerReady: boolean;
   readonly isLoading: boolean;
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: {

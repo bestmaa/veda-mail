@@ -1,26 +1,17 @@
 import type {
-  ComposeInput,
-  MailWorkspace,
-  MessageDetail,
-  MessageMutation,
-  SendReceipt,
-} from "@/domain/mail/mail";
-import type {
   ProviderCapabilities,
   ProviderManifest,
 } from "@/domain/provider/provider";
 import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
-import type { DraftId, MailboxId, MessageId } from "@/domain/shared/brand";
-import { attachmentApi } from "@/transport/client/attachment-api";
+import {
+  deleteResource,
+  fetchData,
+} from "@/transport/client/api-request";
+import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
 
-interface ApiEnvelope<TData> {
-  readonly data: TData;
-}
-
-interface ApiErrorEnvelope {
-  readonly error?: { readonly code?: string; readonly message?: string };
-}
+export { ApiClientError } from "@/transport/client/api-request";
+export { mailApi } from "@/transport/client/mail-api";
 
 export interface MemberSignInInput {
   readonly email: string;
@@ -69,91 +60,6 @@ export interface AdminMailServiceSnapshot {
   readonly providers: readonly ProviderManifest[];
 }
 
-export class ApiClientError extends Error {
-  public constructor(
-    message: string,
-    public readonly status: number,
-    public readonly code = "UNKNOWN_ERROR",
-  ) {
-    super(message);
-    this.name = "ApiClientError";
-  }
-}
-
-const fetchData = async <TData>(
-  input: string,
-  init?: RequestInit,
-): Promise<TData> => {
-  const response = await fetch(input, {
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  if (!response.ok) {
-    const failure = (await response
-      .json()
-      .catch(() => ({}))) as ApiErrorEnvelope;
-    throw new ApiClientError(
-      failure.error?.message ??
-        `Request failed with status ${response.status}.`,
-      response.status,
-      failure.error?.code,
-    );
-  }
-  return ((await response.json()) as ApiEnvelope<TData>).data;
-};
-
-const deleteResource = async (
-  input: string,
-  message: string,
-): Promise<void> => {
-  const response = await fetch(input, { method: "DELETE" });
-  if (!response.ok) {
-    throw new ApiClientError(message, response.status);
-  }
-};
-
-export const mailApi = {
-  ...attachmentApi,
-
-  getMessage(messageId: MessageId) {
-    return fetchData<MessageDetail>(
-      `/api/v1/mail/messages/${encodeURIComponent(messageId)}`,
-    );
-  },
-
-  getWorkspace(input: {
-    readonly mailboxId?: MailboxId;
-    readonly search?: string;
-  }) {
-    const params = new URLSearchParams();
-    if (input.mailboxId) {
-      params.set("mailboxId", input.mailboxId);
-    }
-    if (input.search) {
-      params.set("search", input.search);
-    }
-    const query = params.size ? `?${params.toString()}` : "";
-    return fetchData<MailWorkspace>(`/api/v1/mail/workspace${query}`);
-  },
-
-  mutateMessage(mutation: MessageMutation) {
-    return fetchData<{ readonly updated: boolean }>(
-      `/api/v1/mail/messages/${encodeURIComponent(mutation.messageId)}`,
-      { body: JSON.stringify(mutation), method: "PATCH" },
-    );
-  },
-
-  sendMessage(input: ComposeInput & { readonly draftId: DraftId }) {
-    return fetchData<SendReceipt>("/api/v1/mail/send", {
-      body: JSON.stringify(input),
-      method: "POST",
-    });
-  },
-};
-
 export const memberSessionApi = {
   signIn(input: MemberSignInInput) {
     return fetchData<SessionResult>("/api/v1/member/session", {
@@ -162,34 +68,39 @@ export const memberSessionApi = {
     });
   },
 
-  signOut() {
+  signOut(sessionScope: string) {
     return deleteResource(
       "/api/v1/member/session",
       "Unable to sign out of this mailbox.",
+      { headers: mailSessionScopeHeaders(sessionScope) },
     );
   },
 };
 
 export const memberSettingsApi = {
-  changePassword(input: MemberPasswordInput) {
+  changePassword(input: MemberPasswordInput, sessionScope: string) {
     return fetchData<{
       readonly changed: boolean;
       readonly sessionActive: boolean;
     }>("/api/v1/member/settings", {
       body: JSON.stringify(input),
+      headers: mailSessionScopeHeaders(sessionScope),
       method: "PUT",
     });
   },
 
-  get() {
-    return fetchData<MemberSettingsSnapshot>("/api/v1/member/settings");
+  get(sessionScope: string) {
+    return fetchData<MemberSettingsSnapshot>("/api/v1/member/settings", {
+      headers: mailSessionScopeHeaders(sessionScope),
+    });
   },
 
-  updateProfile(displayName: string) {
+  updateProfile(displayName: string, sessionScope: string) {
     return fetchData<{ readonly profile: MemberProfile }>(
       "/api/v1/member/settings",
       {
         body: JSON.stringify({ displayName }),
+        headers: mailSessionScopeHeaders(sessionScope),
         method: "PATCH",
       },
     );
@@ -197,31 +108,36 @@ export const memberSettingsApi = {
 };
 
 export const memberTwoFactorApi = {
-  confirm(currentPassword: string, otpCode: string) {
+  confirm(currentPassword: string, otpCode: string, sessionScope: string) {
     return fetchData<{
       readonly enabled: true;
       readonly recoveryCodes: readonly string[];
       readonly sessionActive: boolean;
     }>("/api/v1/member/two-factor", {
       body: JSON.stringify({ currentPassword, otpCode }),
+      headers: mailSessionScopeHeaders(sessionScope),
       method: "PUT",
     });
   },
 
-  disable(currentPassword: string, otpCode: string) {
+  disable(currentPassword: string, otpCode: string, sessionScope: string) {
     return fetchData<{
       readonly enabled: false;
       readonly sessionActive: boolean;
     }>("/api/v1/member/two-factor", {
       body: JSON.stringify({ currentPassword, otpCode }),
+      headers: mailSessionScopeHeaders(sessionScope),
       method: "DELETE",
     });
   },
 
-  start() {
+  start(sessionScope: string) {
     return fetchData<{ readonly enrollment: MemberTwoFactorEnrollment }>(
       "/api/v1/member/two-factor",
-      { method: "POST" },
+      {
+        headers: mailSessionScopeHeaders(sessionScope),
+        method: "POST",
+      },
     );
   },
 };

@@ -84,6 +84,13 @@ contains encrypted owner books and must be backed up together with
 `installation.json`; its keys derive from that installation's session secret.
 Do not copy either file independently between installations.
 
+Signature owner keys now lowercase only the provider ID and email domain while
+preserving the email local-part. This feature was not shipped with a supported
+v1 signature format, so only v2 owner buckets are accepted. Any case-collapsed
+v1 bucket created by a pre-release build is ignored and is not automatically
+adopted, migrated, or deleted. Recreate those pre-release signatures through the
+v2 UI instead of moving encrypted buckets between owner keys.
+
 The signature writer is process-serialized and supports exactly one Veda Mail
 process for a writable `/data` volume. Do not start old and new application
 versions concurrently or attach multiple replicas to the same signature file.

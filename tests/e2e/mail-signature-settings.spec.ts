@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  expectNoSeriousAccessibilityViolations,
-} from "./support/mail-fixture";
+import { expectNoSeriousAccessibilityViolations } from "./support/mail-fixture";
 import {
   openSignatureSettings,
   signatureEndpoint,
@@ -78,7 +76,35 @@ test("creates a named rich signature and persists explicit defaults accessibly",
     dialog.getByRole("textbox", { name: "Signature content" }),
   ).toContainText(signatureText);
   await expect(newDefault.locator("option:checked")).toHaveText(signatureName);
-  await expect(replyDefault.locator("option:checked")).toHaveText(signatureName);
+  await expect(replyDefault.locator("option:checked")).toHaveText(
+    signatureName,
+  );
+
+  const reopenedRichEditor = dialog.getByRole("textbox", {
+    name: "Signature content",
+  });
+  await reopenedRichEditor.press("End");
+  await reopenedRichEditor.press("!");
+  await expect(
+    dialog.getByRole("button", { name: "Save signature" }),
+  ).toBeEnabled();
+  await dialog.getByRole("button", { name: "Discard changes" }).click();
+  await expect(
+    dialog.getByRole("button", { name: "Save signature" }),
+  ).toBeDisabled();
+
+  await dialog.getByRole("button", { name: "Plain text" }).click();
+  const modeConfirmation = page.getByRole("alertdialog", {
+    name: "Remove signature formatting?",
+  });
+  await modeConfirmation
+    .getByRole("button", { name: "Switch to plain text" })
+    .click();
+  await expect(saveSignature).toBeEnabled();
+  await dialog.getByRole("button", { name: "Rich text" }).click();
+  await expect(saveSignature).toBeEnabled();
+  await dialog.getByRole("button", { name: "Discard changes" }).click();
+  await expect(saveSignature).toBeDisabled();
 
   await expectNoSeriousAccessibilityViolations(page);
   await page.setViewportSize({ height: 600, width: 390 });
@@ -119,9 +145,7 @@ test("guards dirty signature changes when account settings closes", async ({
   await expect(nameInput).toHaveValue(`${testSignaturePrefix} · unsaved`);
 
   await dialog.locator("[data-settings-initial-focus]").click();
-  await confirmation
-    .getByRole("button", { name: "Discard and close" })
-    .click();
+  await confirmation.getByRole("button", { name: "Discard and close" }).click();
   await expect(dialog).toBeHidden();
   dialog = await openSignatureSettings(page);
   await expect(dialog.getByText("No signatures yet")).toBeVisible();

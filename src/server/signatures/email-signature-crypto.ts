@@ -16,11 +16,20 @@ import {
   type StoredEmailSignatureBook,
 } from "@/server/signatures/email-signature-record";
 
-const OWNER_CONTEXT = "veda-mail/member-signatures/owner/v1";
+const OWNER_CONTEXT = "veda-mail/member-signatures/owner/v2";
 const ENCRYPTION_CONTEXT = "veda-mail/member-signatures/encryption/v1";
 
+const normalizedEmail = (email: string): string => {
+  const trimmed = email.trim();
+  const separator = trimmed.lastIndexOf("@");
+  if (separator < 1) return trimmed;
+  return `${trimmed.slice(0, separator)}@${trimmed
+    .slice(separator + 1)
+    .toLowerCase()}`;
+};
+
 const normalizedOwner = (owner: EmailSignatureOwner): string =>
-  `${owner.providerId.trim().toLowerCase()}\0${owner.email.trim().toLowerCase()}`;
+  `${owner.providerId.trim().toLowerCase()}\0${normalizedEmail(owner.email)}`;
 
 export const emailSignatureOwnerKey = (
   owner: EmailSignatureOwner,

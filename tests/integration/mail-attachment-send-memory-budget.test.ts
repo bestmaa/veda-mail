@@ -32,6 +32,7 @@ import { POST as send } from "@/app/api/v1/mail/send/route";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 
 const origin = "https://mail.example.com";
@@ -51,7 +52,11 @@ const sendDraft = (draftId: string, attachmentId: string) =>
         subject: "Memory",
         to: [{ email: "recipient@example.com", name: null }],
       }),
-      headers: { ...headers, "content-type": "application/json" },
+      headers: {
+        ...headers,
+        "content-type": "application/json",
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
+      },
       method: "POST",
     }),
   );
@@ -68,7 +73,11 @@ const uploadAttachment = async (
         fileName: "memory.txt",
         size: Buffer.byteLength(content),
       }),
-      headers: { ...headers, "content-type": "application/json" },
+      headers: {
+        ...headers,
+        "content-type": "application/json",
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
+      },
       method: "POST",
     }),
   );
@@ -81,6 +90,7 @@ const uploadAttachment = async (
         "content-length": String(Buffer.byteLength(content)),
         "content-type": "text/plain",
         "x-veda-draft-id": draftId,
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
       },
       method: "PUT",
     }),

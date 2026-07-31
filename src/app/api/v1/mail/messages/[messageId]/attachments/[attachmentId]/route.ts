@@ -2,6 +2,7 @@ import { id } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type { AttachmentDownload } from "@/domain/mail/mail";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   acquireAttachmentDownloadLease,
@@ -51,6 +52,7 @@ export const GET = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "attachment-download",
       connection.id,

@@ -1,65 +1,31 @@
 import type { UploadedAttachment } from "@/domain/mail/mail";
-import { MAX_RECEIVED_ATTACHMENT_TEXT_PREVIEW_BYTES } from "@/domain/mail/received-attachment";
 import type {
   AttachmentId,
   AttachmentUploadId,
   DraftId,
   MessageId,
 } from "@/domain/shared/brand";
+import { saveAttachmentResponse } from "@/transport/client/attachment-download-client";
+import { readAttachmentPreviewResponse } from "@/transport/client/attachment-preview-client";
+import { apiClientErrorFromResponse } from "@/transport/client/api-request";
 import { fetchInlineImage } from "@/transport/client/inline-image-api";
+import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
+import { API_ERROR_CODE_HEADER } from "@/transport/http/api-error";
 
 interface ApiEnvelope<TData> {
   readonly data: TData;
 }
 
-const failureMessage = async (response: Response): Promise<string> => {
-  const payload = (await response.json().catch(() => ({}))) as {
-    readonly error?: { readonly message?: string };
-  };
-  return (
-    payload.error?.message ?? `Request failed with status ${response.status}.`
-  );
-};
-
 const assertOk = async (response: Response): Promise<void> => {
-  if (!response.ok) throw new Error(await failureMessage(response));
+  if (!response.ok) throw await apiClientErrorFromResponse(response);
 };
 
-const readBoundedPreviewText = async (
-  response: Response,
-  declaredLength: number,
-): Promise<string> => {
-  if (!response.body) {
-    throw new Error("The attachment preview returned no content.");
+const archivePreflightFailure = (response: Response): string => {
+  if (
+    response.headers.get(API_ERROR_CODE_HEADER) === "MAIL_SESSION_CHANGED"
+  ) {
+    return "Mailbox session changed. Reload this page and try again.";
   }
-  const reader = response.body.getReader();
-  const bytes = new Uint8Array(declaredLength);
-  let offset = 0;
-  try {
-    while (true) {
-      const result = await reader.read();
-      if (result.done) break;
-      if (result.value.byteLength > declaredLength - offset) {
-        await reader.cancel().catch(() => undefined);
-        throw new Error("The attachment preview exceeded its safe size.");
-      }
-      bytes.set(result.value, offset);
-      offset += result.value.byteLength;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  if (offset !== declaredLength) {
-    throw new Error("The attachment preview was incomplete.");
-  }
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    throw new Error("The attachment preview returned invalid text.");
-  }
-};
-
-const archivePreflightFailure = (status: number): string => {
   const messages: Readonly<Record<number, string>> = {
     401: "Please sign in again before downloading attachments.",
     404: "The message or one of its attachments is no longer available.",
@@ -69,7 +35,10 @@ const archivePreflightFailure = (status: number): string => {
     502: "The mail provider could not prepare these attachments.",
     504: "The mail provider took too long. Please try again.",
   };
-  return messages[status] ?? `Unable to prepare this ZIP (status ${status}).`;
+  return (
+    messages[response.status] ??
+    `Unable to prepare this ZIP (status ${response.status}).`
+  );
 };
 
 export const attachmentApi = {
@@ -77,6 +46,7 @@ export const attachmentApi = {
 
   async previewAttachment(
     href: string,
+    sessionScope: string,
     signal?: AbortSignal,
   ): Promise<string> {
     const response = await fetch(href, {
@@ -85,52 +55,60 @@ export const attachmentApi = {
       headers: {
         Accept: "text/plain",
         "Content-Type": "application/json",
+        ...mailSessionScopeHeaders(sessionScope),
       },
       method: "POST",
       ...(signal ? { signal } : {}),
     });
     await assertOk(response);
-    if (
-      response.headers.get("content-type")?.toLowerCase() !==
-      "text/plain; charset=utf-8"
-    ) {
-      const error = new Error(
-        "The attachment preview returned an unsafe type.",
-      );
-      await response.body?.cancel(error).catch(() => undefined);
-      throw error;
-    }
-    const declaredLength = Number(response.headers.get("content-length"));
-    if (
-      !Number.isSafeInteger(declaredLength) ||
-      declaredLength < 1 ||
-      declaredLength > MAX_RECEIVED_ATTACHMENT_TEXT_PREVIEW_BYTES
-    ) {
-      const error = new Error(
-        "The attachment preview returned an invalid size.",
-      );
-      await response.body?.cancel(error).catch(() => undefined);
-      throw error;
-    }
-    return readBoundedPreviewText(response, declaredLength);
+    return readAttachmentPreviewResponse(response);
   },
 
   async preflightAttachmentArchive(
     href: string,
+    sessionScope: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const response = await fetch(href, {
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "HEAD",
+      referrerPolicy: "no-referrer",
+      ...(signal ? { signal } : {}),
+    });
+    if (!response.ok) {
+      throw await apiClientErrorFromResponse(
+        response,
+        archivePreflightFailure(response),
+      );
+    }
+    return `${href}?sessionScope=${encodeURIComponent(sessionScope)}`;
+  },
+
+  async downloadAttachment(
+    href: string,
+    fileName: string,
+    sessionScope: string,
     signal?: AbortSignal,
   ): Promise<void> {
     const response = await fetch(href, {
-      method: "HEAD",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: mailSessionScopeHeaders(sessionScope),
+      redirect: "error",
+      referrerPolicy: "no-referrer",
       ...(signal ? { signal } : {}),
     });
-    if (!response.ok) throw new Error(archivePreflightFailure(response.status));
+    await assertOk(response);
+    await saveAttachmentResponse(response, fileName);
   },
 
-  async getAttachmentCapability(): Promise<{
+  async getAttachmentCapability(sessionScope: string): Promise<{
     readonly maxAttachmentBytes: number | null;
     readonly status: "available" | "unavailable" | "unsupported";
   }> {
-    const response = await fetch("/api/v1/mail/attachments/capability");
+    const response = await fetch("/api/v1/mail/attachments/capability", {
+      headers: mailSessionScopeHeaders(sessionScope),
+    });
     await assertOk(response);
     return (
       (await response.json()) as ApiEnvelope<{
@@ -143,6 +121,7 @@ export const attachmentApi = {
   async addAttachment(
     draftId: DraftId,
     file: File,
+    sessionScope: string,
     signal?: AbortSignal,
   ): Promise<UploadedAttachment> {
     const reserved = await fetch("/api/v1/mail/attachments", {
@@ -152,7 +131,10 @@ export const attachmentApi = {
         fileName: file.name,
         size: file.size,
       }),
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...mailSessionScopeHeaders(sessionScope),
+      },
       method: "POST",
       ...(signal ? { signal } : {}),
     });
@@ -167,6 +149,7 @@ export const attachmentApi = {
         headers: {
           "Content-Type": file.type || "application/octet-stream",
           "X-Veda-Draft-Id": draftId,
+          ...mailSessionScopeHeaders(sessionScope),
         },
         method: "PUT",
         ...(signal ? { signal } : {}),
@@ -175,7 +158,10 @@ export const attachmentApi = {
       return ((await response.json()) as ApiEnvelope<UploadedAttachment>).data;
     } catch (error) {
       await fetch(reservation.data.uploadUrl, {
-        headers: { "X-Veda-Draft-Id": draftId },
+        headers: {
+          "X-Veda-Draft-Id": draftId,
+          ...mailSessionScopeHeaders(sessionScope),
+        },
         method: "DELETE",
       }).catch(() => undefined);
       throw error;
@@ -186,6 +172,7 @@ export const attachmentApi = {
     draftId: DraftId,
     messageId: MessageId,
     attachmentId: AttachmentId,
+    sessionScope: string,
     signal?: AbortSignal,
   ): Promise<UploadedAttachment> {
     const response = await fetch(
@@ -194,7 +181,10 @@ export const attachmentApi = {
       )}/attachments/${encodeURIComponent(attachmentId)}/imports`,
       {
         body: JSON.stringify({ draftId }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...mailSessionScopeHeaders(sessionScope),
+        },
         method: "POST",
         ...(signal ? { signal } : {}),
       },
@@ -206,12 +196,16 @@ export const attachmentApi = {
   async removeAttachment(
     draftId: DraftId,
     attachmentId: AttachmentUploadId,
+    sessionScope: string,
   ): Promise<void> {
     const response = await fetch(
       `/api/v1/mail/attachments/${encodeURIComponent(
         attachmentId,
       )}?draftId=${encodeURIComponent(draftId)}`,
-      { method: "DELETE" },
+      {
+        headers: mailSessionScopeHeaders(sessionScope),
+        method: "DELETE",
+      },
     );
     await assertOk(response);
   },

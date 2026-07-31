@@ -97,6 +97,7 @@ export const EmailSignatureEditorView = ({
             label="Signature content"
             namespace="VedaMailSignatureSettings"
             onChange={editor.onRichChange}
+            onInitialize={editor.onRichInitialize}
             placeholder="Name, role, and contact details"
             required
           />

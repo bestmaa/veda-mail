@@ -1,6 +1,7 @@
 import type { EmailSignatureOwner } from "@/domain/member/email-signature";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import {
@@ -32,6 +33,7 @@ export const GET = async (request: Request) => {
       60 * 1000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "member-signature-read",
       connection.id,
@@ -57,6 +59,7 @@ export const PUT = async (request: Request) => {
       60 * 1000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "member-signature-write",
       connection.id,

@@ -2,9 +2,9 @@ import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
   AttachmentDownloadInput,
   Mailbox,
-  MailWorkspace,
   MessageAttachmentListInput,
   MessageMutation,
+  ProviderMailWorkspace,
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
@@ -19,7 +19,9 @@ export interface WorkspaceQuery {
 export class MailApplicationService {
   public constructor(private readonly gateway: MailGateway) {}
 
-  public async getWorkspace(query: WorkspaceQuery): Promise<MailWorkspace> {
+  public async getWorkspace(
+    query: WorkspaceQuery,
+  ): Promise<ProviderMailWorkspace> {
     const mailboxes = await this.gateway.listMailboxes();
     const mailboxId = query.mailboxId ?? this.getDefaultMailbox(mailboxes).id;
     const [account, messages] = await Promise.all([

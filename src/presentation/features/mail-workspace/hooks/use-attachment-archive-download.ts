@@ -1,8 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { mailApi } from "@/transport/client/api-client";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 interface ArchiveDownloadState {
   readonly error: string | null;
@@ -21,34 +30,44 @@ const startNativeDownload = (href: string): void => {
   anchor.download = "";
   anchor.href = href;
   anchor.hidden = true;
+  anchor.referrerPolicy = "no-referrer";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
 };
 
-export const useAttachmentArchiveDownload = () => {
+export const useAttachmentArchiveDownload = (
+  sessionScope: string,
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+) => {
   const active = useRef<AbortController | null>(null);
   const [state, setState] = useState(initialState);
 
-  useEffect(
-    () => () => {
-      active.current?.abort();
-    },
-    [],
-  );
+  useLayoutEffect(() => {
+    active.current?.abort();
+    active.current = null;
+    setState(initialState);
+    return () => active.current?.abort();
+  }, [sessionScope]);
 
   const download = useCallback(async (href: string): Promise<void> => {
+    if (!sessionScope) return;
     active.current?.abort();
     const controller = new AbortController();
     active.current = controller;
     setState({ error: null, href, isPreparing: true });
     try {
-      await mailApi.preflightAttachmentArchive(href, controller.signal);
+      const downloadHref = await mailApi.preflightAttachmentArchive(
+        href,
+        sessionScope,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
       setState({ error: null, href, isPreparing: false });
-      startNativeDownload(href);
+      startNativeDownload(downloadHref);
     } catch (error) {
       if (controller.signal.aborted) return;
+      if (handleSessionFailure(error)) return;
       setState({
         error:
           error instanceof Error
@@ -60,7 +79,7 @@ export const useAttachmentArchiveDownload = () => {
     } finally {
       if (active.current === controller) active.current = null;
     }
-  }, []);
+  }, [handleSessionFailure, sessionScope]);
 
   return { ...state, download };
 };

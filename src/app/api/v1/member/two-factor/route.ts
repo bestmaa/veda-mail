@@ -4,6 +4,7 @@ import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { getCurrentConnection } from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
@@ -64,6 +65,7 @@ export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "member-two-factor-start",
       connection.id,
@@ -93,6 +95,7 @@ export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "member-two-factor-confirm",
       connection.id,
@@ -135,6 +138,7 @@ export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "member-two-factor-disable",
       connection.id,

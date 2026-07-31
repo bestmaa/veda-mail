@@ -10,11 +10,30 @@ import { useInstalledMailbox } from "./mail-fixture";
 export const signatureEndpoint = "/api/v1/member/signatures";
 export const testSignaturePrefix = "E2E signature workflow";
 export const signatureAttribute = "data-veda-signature-id";
+const sessionScopeHeader = "x-veda-mail-session-scope";
+const sessionScopes = new WeakMap<Page, string>();
+
+const signatureSessionScope = async (page: Page): Promise<string> => {
+  const cached = sessionScopes.get(page);
+  if (cached) return cached;
+  const response = await page.request.get("/api/v1/mail/workspace");
+  expect(response.ok()).toBe(true);
+  const scope = (
+    (await response.json()) as { data: { sessionScope: string } }
+  ).data.sessionScope;
+  expect(scope).toBeTruthy();
+  sessionScopes.set(page, scope);
+  return scope;
+};
 
 export const readSignatureBook = async (
   page: Page,
 ): Promise<EmailSignatureBook> => {
-  const response = await page.request.get(signatureEndpoint);
+  const response = await page.request.get(signatureEndpoint, {
+    headers: {
+      [sessionScopeHeader]: await signatureSessionScope(page),
+    },
+  });
   expect(response.ok()).toBe(true);
   return ((await response.json()) as { data: EmailSignatureBook }).data;
 };
@@ -25,7 +44,10 @@ const putSignatureBook = async (
 ): Promise<EmailSignatureBook> => {
   const response = await page.request.put(signatureEndpoint, {
     data: operation,
-    headers: { origin: new URL(page.url()).origin },
+    headers: {
+      origin: new URL(page.url()).origin,
+      [sessionScopeHeader]: await signatureSessionScope(page),
+    },
   });
   expect(response.ok()).toBe(true);
   return ((await response.json()) as { data: EmailSignatureBook }).data;
@@ -78,9 +100,9 @@ const removeTestSignatures = async (page: Page): Promise<void> => {
 
 export const reloadMailbox = async (page: Page): Promise<void> => {
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "New message" }),
-  ).toBeVisible();
+  const compose = page.getByRole("button", { name: "New message" });
+  await expect(compose).toBeVisible();
+  await expect(compose).toBeEnabled();
 };
 
 export const openSignatureSettings = async (page: Page) => {

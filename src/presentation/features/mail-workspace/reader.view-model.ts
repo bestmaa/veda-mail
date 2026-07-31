@@ -1,5 +1,6 @@
 import type { MessageDetail } from "@/domain/mail/mail";
 import type { ReaderViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import {
   createAttachmentArchiveViewModel,
   createReceivedAttachmentViewModels,
@@ -33,13 +34,23 @@ interface ReaderArchiveDownloadModel {
   readonly isPreparing: boolean;
 }
 
+interface ReaderAttachmentDownloadModel {
+  readonly download: (href: string, name: string) => Promise<void>;
+  readonly error: string | null;
+  readonly href: string | null;
+  readonly isDownloading: boolean;
+}
+
 export const createReaderViewModel = (input: {
   readonly archiveDownload: ReaderArchiveDownloadModel;
+  readonly attachmentDownload: ReaderAttachmentDownloadModel;
   readonly attachmentPreview: ReaderAttachmentPreviewModel;
   readonly canArchive: boolean;
   readonly isLoading: boolean;
   readonly message: MessageDetail | null;
+  readonly handleSessionFailure: MailSessionFailureHandler;
   readonly readerError: string | null;
+  readonly sessionScope: string;
 }): ReaderViewModel | null => {
   if (!input.message && !input.isLoading) return null;
   if (!input.message) {
@@ -64,10 +75,12 @@ export const createReaderViewModel = (input: {
       from: "",
       fromEmail: "",
       htmlBody: null,
+      handleSessionFailure: input.handleSessionFailure,
       isLoading: true,
       isStarred: false,
       isUnread: false,
       messageId: "",
+      sessionScope: input.sessionScope,
       subject: "Opening message…",
       to: "",
     };
@@ -86,11 +99,17 @@ export const createReaderViewModel = (input: {
       `/api/v1/mail/messages/${encodeURIComponent(message.id)}/attachments/`,
     ),
   );
+  const downloadBelongsToMessage = Boolean(
+    input.attachmentDownload.href?.startsWith(
+      `/api/v1/mail/messages/${encodeURIComponent(message.id)}/attachments/`,
+    ),
+  );
   return {
     attachments: createReceivedAttachmentViewModels(
       message.id,
       visibleAttachments,
       input.attachmentPreview,
+      input.attachmentDownload,
     ),
     attachmentPreview: {
       error: previewBelongsToMessage ? input.attachmentPreview.error : null,
@@ -108,14 +127,19 @@ export const createReaderViewModel = (input: {
     cc: message.cc.map((address) => address.email).join(", "),
     date: formatFullDate(message.receivedAt),
     downloadAll: archive.downloadAll,
-    error: archive.error ?? input.readerError,
+    error:
+      archive.error ??
+      (downloadBelongsToMessage ? input.attachmentDownload.error : null) ??
+      input.readerError,
     from: formatSender(message.from),
     fromEmail: message.from[0]?.email ?? "",
     htmlBody: message.htmlBody,
+    handleSessionFailure: input.handleSessionFailure,
     isLoading: input.isLoading,
     isStarred: message.isStarred,
     isUnread: message.isUnread,
     messageId: message.id,
+    sessionScope: input.sessionScope,
     subject: message.subject,
     to: message.to.map((address) => address.email).join(", "),
   };

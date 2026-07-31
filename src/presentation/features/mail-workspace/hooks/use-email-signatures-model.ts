@@ -11,6 +11,10 @@ import {
   MemberSignatureApiError,
   memberSignatureApi,
 } from "@/transport/client/member-signature-api";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 type WithoutExpectedRevision<T> = T extends unknown
   ? Omit<T, "expectedRevision">
@@ -28,6 +32,7 @@ export interface EmailSignaturesModel {
   readonly error: string | null;
   readonly isLoading: boolean;
   readonly isSaving: boolean;
+  readonly hasSessionChanged: boolean;
   readonly mutate: (
     mutation: EmailSignatureMutation,
   ) => Promise<EmailSignatureBook | null>;
@@ -43,11 +48,13 @@ const failureMessage = (error: unknown): string =>
 
 export const useEmailSignaturesModel = (
   accountKey: string,
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ): EmailSignaturesModel => {
   const [book, setBook] = useState<EmailSignatureBook | null>(null);
   const [bookAccountKey, setBookAccountKey] = useState("");
   const [phase, setPhase] = useState<EmailSignaturesPhase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [hasSessionChanged, setHasSessionChanged] = useState(false);
   const accountRef = useRef(accountKey);
   const bookRef = useRef<EmailSignatureBook | null>(null);
   const bookAccountKeyRef = useRef("");
@@ -77,13 +84,18 @@ export const useEmailSignaturesModel = (
       if (clearCurrent) commitBook(null, expectedAccount);
       if (!expectedAccount) {
         setError(null);
+        setHasSessionChanged(false);
         setPhase("idle");
         return null;
       }
       setError(null);
+      setHasSessionChanged(false);
       setPhase("loading");
       try {
-        const next = await memberSignatureApi.get(controller.signal);
+        const next = await memberSignatureApi.get(
+          expectedAccount,
+          controller.signal,
+        );
         if (
           generation !== generationRef.current ||
           expectedAccount !== accountRef.current
@@ -97,12 +109,17 @@ export const useEmailSignaturesModel = (
         if (aborted(nextError) || generation !== generationRef.current) {
           return null;
         }
+        if (handleSessionFailure(nextError)) return null;
         setError(failureMessage(nextError));
+        setHasSessionChanged(
+          nextError instanceof MemberSignatureApiError &&
+            nextError.code === "MAIL_SESSION_CHANGED",
+        );
         setPhase("error");
         return null;
       }
     },
-    [accountKey, commitBook],
+    [accountKey, commitBook, handleSessionFailure],
   );
 
   useEffect(() => {
@@ -135,7 +152,8 @@ export const useEmailSignaturesModel = (
         expectedRevision: base.revision,
       } as EmailSignaturePutOperation;
       const expectedAccount = accountKey;
-      const expectedGeneration = generationRef.current;
+      loadAbortRef.current?.abort();
+      const expectedGeneration = ++generationRef.current;
       const sequence = ++mutationSequenceRef.current;
       const controller = new AbortController();
       mutationAbortRef.current?.abort();
@@ -143,10 +161,12 @@ export const useEmailSignaturesModel = (
       mutationInFlightRef.current = true;
       commitBook(optimisticEmailSignatureBook(base, operation), expectedAccount);
       setError(null);
+      setHasSessionChanged(false);
       setPhase("saving");
       try {
         const next = await memberSignatureApi.put(
           operation,
+          expectedAccount,
           controller.signal,
         );
         if (
@@ -167,6 +187,11 @@ export const useEmailSignaturesModel = (
           return null;
         }
         commitBook(base, expectedAccount);
+        if (handleSessionFailure(nextError)) return null;
+        setHasSessionChanged(
+          nextError instanceof MemberSignatureApiError &&
+            nextError.code === "MAIL_SESSION_CHANGED",
+        );
         if (
           nextError instanceof MemberSignatureApiError &&
           nextError.status === 409
@@ -188,7 +213,7 @@ export const useEmailSignaturesModel = (
         }
       }
     },
-    [accountKey, commitBook, requestBook],
+    [accountKey, commitBook, handleSessionFailure, requestBook],
   );
 
   const isCurrentAccount = bookAccountKey === accountKey;
@@ -199,10 +224,13 @@ export const useEmailSignaturesModel = (
       : "loading";
   return {
     book: isCurrentAccount ? book : null,
-    clearError: () => setError(null),
+    clearError: () => {
+      if (!hasSessionChanged) setError(null);
+    },
     error: isCurrentAccount ? error : null,
     isLoading: visiblePhase === "loading",
     isSaving: visiblePhase === "saving",
+    hasSessionChanged: isCurrentAccount && hasSessionChanged,
     mutate,
     phase: visiblePhase,
     retry: () => {

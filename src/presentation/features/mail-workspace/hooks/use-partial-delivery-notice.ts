@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { SendReceipt } from "@/domain/mail/mail";
 import { parseDeliveryNoticeSnapshot } from "@/presentation/features/mail-workspace/delivery-notice-snapshot";
@@ -14,11 +19,19 @@ import {
   type DeliveryNotice,
 } from "@/presentation/features/mail-workspace/partial-delivery-notice";
 import { deliveryNoticeApi } from "@/transport/client/delivery-notice-api";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 const DISMISS_FAILURE =
   "This delivery notice could not be dismissed. Try again.";
 
-export const usePartialDeliveryNotice = (onRefresh: () => void) => {
+export const usePartialDeliveryNotice = (
+  onRefresh: () => void,
+  sessionScope: string,
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+) => {
   const [queue, setQueue] = useState<readonly DeliveryNotice[]>([]);
   const [dismissError, setDismissError] = useState<string | null>(null);
   const [isDismissing, setIsDismissing] = useState(false);
@@ -27,14 +40,18 @@ export const usePartialDeliveryNotice = (onRefresh: () => void) => {
   const dismissedIds = useRef(new Set<string>());
   const dismissInFlight = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    setQueue([]);
+    setDismissError(null);
+    setIsDismissing(false);
+    if (!sessionScope) return;
     const generation = ++lifecycle.current;
     const controller = new AbortController();
     const activeRequests = requests.current;
     const activeDismissedIds = dismissedIds.current;
     activeRequests.add(controller);
     void deliveryNoticeApi
-      .list(controller.signal)
+      .list(sessionScope, controller.signal)
       .then((snapshot) => {
         if (
           controller.signal.aborted ||
@@ -48,15 +65,17 @@ export const usePartialDeliveryNotice = (onRefresh: () => void) => {
         );
         setQueue((current) => mergeDeliveryNotices(hydrated, current));
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (
-          !controller.signal.aborted &&
-          generation === lifecycle.current
+          controller.signal.aborted ||
+          generation !== lifecycle.current
         ) {
-          setQueue((current) =>
-            mergeDeliveryNotices(current, [{ kind: "overflow" }]),
-          );
+          return;
         }
+        if (handleSessionFailure(error)) return;
+        setQueue((current) =>
+          mergeDeliveryNotices(current, [{ kind: "overflow" }]),
+        );
       })
       .finally(() => activeRequests.delete(controller));
     return () => {
@@ -66,10 +85,10 @@ export const usePartialDeliveryNotice = (onRefresh: () => void) => {
       activeDismissedIds.clear();
       dismissInFlight.current = false;
     };
-  }, []);
+  }, [handleSessionFailure, sessionScope]);
 
   const dismiss = useCallback(() => {
-    if (dismissInFlight.current) return;
+    if (!sessionScope || dismissInFlight.current) return;
     const current = queue[0];
     if (!current) return;
     setDismissError(null);
@@ -84,14 +103,15 @@ export const usePartialDeliveryNotice = (onRefresh: () => void) => {
     const controller = new AbortController();
     requests.current.add(controller);
     void deliveryNoticeApi
-      .dismiss(noticeId, controller.signal)
-      .catch(() => {
+      .dismiss(noticeId, sessionScope, controller.signal)
+      .catch((error: unknown) => {
         if (
           controller.signal.aborted ||
           generation !== lifecycle.current
         ) {
           return;
         }
+        if (handleSessionFailure(error)) return;
         dismissedIds.current.delete(noticeId);
         setQueue((notices) => restoreDeliveryNotice(notices, current));
         setDismissError(DISMISS_FAILURE);
@@ -106,7 +126,7 @@ export const usePartialDeliveryNotice = (onRefresh: () => void) => {
           setIsDismissing(false);
         }
       });
-  }, [queue]);
+  }, [handleSessionFailure, queue, sessionScope]);
 
   const onSent = useCallback(
     (receipt: SendReceipt, submittedEmails: readonly string[]) => {

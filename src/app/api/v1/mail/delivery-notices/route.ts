@@ -1,4 +1,5 @@
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { connectionStore } from "@/server/connections/connection-store";
 import {
   DELIVERY_NOTICE_OVERFLOW_MESSAGE,
@@ -22,6 +23,7 @@ export const GET = async (request: Request) => {
       60 * 1000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "mail-delivery-notice-read",
       connection.id,

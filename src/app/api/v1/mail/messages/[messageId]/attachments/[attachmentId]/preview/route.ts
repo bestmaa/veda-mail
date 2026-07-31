@@ -1,5 +1,6 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { asAttachmentDownloadApiError } from "@/server/mail/attachment-download-http";
 import { prepareTextAttachmentPreview } from "@/server/mail/attachment-preview";
@@ -63,6 +64,7 @@ export const POST = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "attachment-preview",
       connection.id,

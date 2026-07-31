@@ -1,7 +1,4 @@
-import type {
-  ChangeEventHandler,
-  FormEventHandler,
-} from "react";
+import type { ChangeEventHandler, FormEventHandler } from "react";
 
 import type { SignatureId } from "@/domain/shared/brand";
 import type { RichComposerSnapshot } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
@@ -28,6 +25,7 @@ export interface EmailSignatureEditorViewModel {
   readonly onDelete: () => void;
   readonly onDiscard: () => void;
   readonly onRichChange: (snapshot: RichComposerSnapshot) => void;
+  readonly onRichInitialize: (snapshot: RichComposerSnapshot) => void;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
   readonly selectPlainMode: () => void;
   readonly selectRichMode: () => void;
@@ -63,6 +61,7 @@ export interface EmailSignatureSettingsViewModel {
   readonly error: string | null;
   readonly hasUnsavedChanges: boolean;
   readonly isLoading: boolean;
+  readonly isReady: boolean;
   readonly isSaving: boolean;
   readonly items: readonly EmailSignatureSettingsListItem[];
   readonly maximumSignatures: number;

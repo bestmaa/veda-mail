@@ -2,6 +2,7 @@ import type {
   EmailSignatureBook,
   EmailSignaturePutOperation,
 } from "@/domain/member/email-signature";
+import { ApiClientError } from "@/transport/client/api-request";
 
 interface ApiEnvelope<TData> {
   readonly data: TData;
@@ -14,26 +15,32 @@ interface ApiErrorEnvelope {
   };
 }
 
-export class MemberSignatureApiError extends Error {
+export class MemberSignatureApiError extends ApiClientError {
   public constructor(
     message: string,
-    public readonly status: number,
-    public readonly code = "UNKNOWN_ERROR",
+    status: number,
+    code = "UNKNOWN_ERROR",
   ) {
-    super(message);
+    super(message, status, code);
     this.name = "MemberSignatureApiError";
   }
 }
 
 const endpoint = "/api/v1/member/signatures";
+const sessionScopeHeader = "x-veda-mail-session-scope";
 
 const signatureBook = async (
+  sessionScope: string,
   init: RequestInit,
 ): Promise<EmailSignatureBook> => {
   const response = await fetch(endpoint, {
     cache: "no-store",
     credentials: "same-origin",
     ...init,
+    headers: {
+      [sessionScopeHeader]: sessionScope,
+      ...init.headers,
+    },
   });
   if (!response.ok) {
     const failure = (await response
@@ -50,15 +57,19 @@ const signatureBook = async (
 };
 
 export const memberSignatureApi = {
-  get(signal?: AbortSignal) {
-    return signatureBook({
+  get(sessionScope: string, signal?: AbortSignal) {
+    return signatureBook(sessionScope, {
       method: "GET",
       ...(signal ? { signal } : {}),
     });
   },
 
-  put(operation: EmailSignaturePutOperation, signal?: AbortSignal) {
-    return signatureBook({
+  put(
+    operation: EmailSignaturePutOperation,
+    sessionScope: string,
+    signal?: AbortSignal,
+  ) {
+    return signatureBook(sessionScope, {
       body: JSON.stringify(operation),
       headers: { "Content-Type": "application/json" },
       method: "PUT",

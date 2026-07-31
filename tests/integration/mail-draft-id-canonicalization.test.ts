@@ -29,6 +29,7 @@ import { PUT as upload } from "@/app/api/v1/mail/attachments/[attachmentId]/rout
 import { POST as reserve } from "@/app/api/v1/mail/attachments/route";
 import { POST as send } from "@/app/api/v1/mail/send/route";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { attachmentService } from "@/server/mail/attachment-service";
 
 const origin = "https://mail.example.com";
@@ -51,7 +52,11 @@ const sendDraft = (draftId: string, attachmentId: string) =>
         subject: "Canonical UUID",
         to: [{ email: "recipient@example.com", name: null }],
       }),
-      headers: { ...headers, "content-type": "application/json" },
+      headers: {
+        ...headers,
+        "content-type": "application/json",
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
+      },
       method: "POST",
     }),
   );
@@ -83,7 +88,11 @@ describe("draft UUID route canonicalization", () => {
           fileName: "canonical.txt",
           size: Buffer.byteLength(content),
         }),
-        headers: { ...headers, "content-type": "application/json" },
+        headers: {
+          ...headers,
+          "content-type": "application/json",
+          "x-veda-mail-session-scope": mailSessionScope(activeConnection),
+        },
         method: "POST",
       }),
     );
@@ -99,6 +108,7 @@ describe("draft UUID route canonicalization", () => {
             "content-length": String(Buffer.byteLength(content)),
             "content-type": "text/plain",
             "x-veda-draft-id": lowercaseDraft,
+            "x-veda-mail-session-scope": mailSessionScope(activeConnection),
           },
           method: "PUT",
         },

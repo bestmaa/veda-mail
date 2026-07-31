@@ -31,11 +31,37 @@ test("keeps one new-message signature through picker changes and plain conversio
     betaText,
   );
   await saveSignatureDefaults(page, beta.book, alpha.signature.id, null);
-  await reloadMailbox(page);
+  let releaseSignatureLoad: () => void = () => {};
+  let markSignatureLoadStarted: () => void = () => {};
+  const signatureLoadGate = new Promise<void>((resolve) => {
+    releaseSignatureLoad = resolve;
+  });
+  const signatureLoadStarted = new Promise<void>((resolve) => {
+    markSignatureLoadStarted = resolve;
+  });
+  await page.route("**/api/v1/member/signatures", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    markSignatureLoadStarted();
+    await signatureLoadGate;
+    await route.continue();
+  });
+  await page.reload();
+  await signatureLoadStarted;
+  const composeButton = page.getByRole("button", { name: "New message" });
+  await expect(composeButton).toBeVisible();
+  await expect(composeButton).toBeDisabled();
+  releaseSignatureLoad();
+  await expect(composeButton).toBeEnabled();
 
   let submitted: Record<string, unknown> | null = null;
+  let submittedSessionScope = "";
   await page.route("**/api/v1/mail/send", async (route) => {
     submitted = route.request().postDataJSON() as Record<string, unknown>;
+    submittedSessionScope =
+      route.request().headers()["x-veda-mail-session-scope"] ?? "";
     await route.fulfill({
       body: JSON.stringify({
         data: {
@@ -50,7 +76,7 @@ test("keeps one new-message signature through picker changes and plain conversio
     });
   });
 
-  await page.getByRole("button", { name: "New message" }).click();
+  await composeButton.click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   let body = dialog.getByRole("textbox", {
     exact: true,
@@ -127,8 +153,44 @@ test("keeps one new-message signature through picker changes and plain conversio
   await dialog.getByRole("button", { name: /^Send$/ }).click();
   await expect(dialog).toBeHidden();
   expect(submitted).not.toBeNull();
+  expect(submittedSessionScope).toMatch(/^[A-Za-z0-9_-]{43}$/u);
   expect(occurrences(String(submitted?.["body"] ?? ""), alphaText)).toBe(1);
   expect(submitted).not.toHaveProperty("htmlBody");
+});
+
+test("keeps signature-free compose available when loading fails", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/member/signatures", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      body: JSON.stringify({
+        error: {
+          code: "SIGNATURES_UNAVAILABLE",
+          message: "Email signatures are temporarily unavailable.",
+        },
+      }),
+      contentType: "application/json",
+      status: 503,
+    });
+  });
+  await page.reload();
+  const composeButton = page.getByRole("button", { name: "New message" });
+  await expect(composeButton).toBeEnabled();
+  await composeButton.click();
+
+  const dialog = page.getByRole("dialog", { name: "Compose message" });
+  await expect(
+    dialog.getByRole("combobox", { name: "Email signature" }),
+  ).toHaveCount(0);
+  await expect(
+    dialog
+      .getByRole("textbox", { exact: true, name: "Message body" })
+      .locator(`[${signatureAttribute}]`),
+  ).toHaveCount(0);
 });
 
 test("places the reply-forward default once before quoted content", async ({

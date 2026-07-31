@@ -26,6 +26,7 @@ vi.mock("@/server/mail/attachment-service", () => ({
 }));
 
 import { PUT } from "@/app/api/v1/mail/attachments/[attachmentId]/route";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
 const origin = "https://mail.example.com";
 const route = {
@@ -50,6 +51,9 @@ const trackedRequest = () => {
       host: "mail.example.com",
       origin,
       "x-veda-draft-id": "2ecef714-3585-49b5-94bb-94495c881ca7",
+      "x-veda-mail-session-scope": mailSessionScope({
+        id: "attachment-cancel-connection",
+      }),
     },
     method: "PUT",
   } as RequestInit & { duplex: "half" });

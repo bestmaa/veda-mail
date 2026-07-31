@@ -1,6 +1,6 @@
 "use client";
 
-import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
+import { $generateNodesFromDOM } from "@lexical/html";
 import { LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
@@ -10,9 +10,7 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import {
   $createParagraphNode,
@@ -20,8 +18,9 @@ import {
   type EditorThemeClasses,
   type LexicalEditor,
 } from "lexical";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
+import { ComposerEditorStateBridgeConnector } from "@/presentation/features/mail-workspace/connectors/composer-editor-state-bridge.connector";
 import { ComposerPlainTransferConnector } from "@/presentation/features/mail-workspace/connectors/composer-plain-transfer.connector";
 import { ComposerSignatureControlsConnector } from "@/presentation/features/mail-workspace/connectors/composer-signature-controls.connector";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
@@ -51,30 +50,6 @@ const theme: EditorThemeClasses = {
     italic: "italic",
     underline: "underline",
   },
-};
-
-const EditorStateBridge = ({
-  disabled,
-  onChange,
-}: {
-  readonly disabled: boolean;
-  readonly onChange: (snapshot: RichComposerSnapshot) => void;
-}) => {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => editor.setEditable(!disabled), [disabled, editor]);
-  return (
-    <OnChangePlugin
-      ignoreSelectionChange
-      onChange={(editorState) => {
-        editorState.read(() =>
-          onChange({
-            html: $generateHtmlFromNodes(editor),
-            text: $getRoot().getTextContent(),
-          }),
-        );
-      }}
-    />
-  );
 };
 
 const FormattingConnector = ({ disabled }: { readonly disabled: boolean }) => {
@@ -131,6 +106,7 @@ export const ComposerRichTextEditorConnector = ({
   label = "Message body",
   namespace = "VedaMailComposer",
   onChange,
+  onInitialize,
   placeholder = "Write a clear message…",
   required = true,
   signature,
@@ -141,6 +117,7 @@ export const ComposerRichTextEditorConnector = ({
   readonly label?: string;
   readonly namespace?: string;
   readonly onChange: (snapshot: RichComposerSnapshot) => void;
+  readonly onInitialize?: (snapshot: RichComposerSnapshot) => void;
   readonly placeholder?: string;
   readonly required?: boolean;
   readonly signature?: ComposerSignatureEditorConfiguration;
@@ -177,12 +154,7 @@ export const ComposerRichTextEditorConnector = ({
       },
       theme,
     }),
-    [
-      disabled,
-      initialHtml,
-      namespace,
-      signaturePlacement,
-    ],
+    [disabled, initialHtml, namespace, signaturePlacement],
   );
 
   return (
@@ -220,7 +192,11 @@ export const ComposerRichTextEditorConnector = ({
         attributes={{ rel: "noopener noreferrer", target: "_blank" }}
       />
       <ComposerPlainTransferConnector />
-      <EditorStateBridge disabled={disabled} onChange={onChange} />
+      <ComposerEditorStateBridgeConnector
+        disabled={disabled}
+        onChange={onChange}
+        {...(onInitialize ? { onInitialize } : {})}
+      />
       {autoFocus ? <AutoFocusPlugin defaultSelection="rootStart" /> : null}
     </LexicalComposer>
   );

@@ -20,6 +20,7 @@ import { ReceivedAttachmentListView } from "@/presentation/features/mail-workspa
 import { ReaderActionView } from "@/presentation/features/mail-workspace/ui/reader-action.view";
 
 interface MessageReaderViewProps {
+  readonly isComposerReady: boolean;
   readonly onArchive: () => void;
   readonly onClose: () => void;
   readonly onDelete: () => void;
@@ -32,6 +33,7 @@ interface MessageReaderViewProps {
 }
 
 export const MessageReaderView = ({
+  isComposerReady,
   onArchive,
   onClose,
   onDelete,
@@ -134,8 +136,10 @@ export const MessageReaderView = ({
           <div className="mail-body py-7 text-[15px] leading-7 text-slate-700">
             {reader.htmlBody ? (
               <MessageFrameConnector
+                handleSessionFailure={reader.handleSessionFailure}
                 messageId={reader.messageId}
                 sanitizedHtml={reader.htmlBody}
+                sessionScope={reader.sessionScope}
               />
             ) : (
               <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
@@ -152,24 +156,33 @@ export const MessageReaderView = ({
 
           <div className="mt-8 flex flex-wrap gap-2">
             <button
-              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              aria-busy={!isComposerReady}
+              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-70"
+              disabled={!isComposerReady}
               onClick={onReply}
+              title={isComposerReady ? undefined : "Loading account settings"}
               type="button"
             >
               <Reply aria-hidden size={17} />
               Reply
             </button>
             <button
-              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              aria-busy={!isComposerReady}
+              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-70"
+              disabled={!isComposerReady}
               onClick={onReplyAll}
+              title={isComposerReady ? undefined : "Loading account settings"}
               type="button"
             >
               <ReplyAll aria-hidden size={17} />
               Reply all
             </button>
             <button
-              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+              aria-busy={!isComposerReady}
+              className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-70"
+              disabled={!isComposerReady}
               onClick={onForward}
+              title={isComposerReady ? undefined : "Loading account settings"}
               type="button"
             >
               <Forward aria-hidden size={17} />

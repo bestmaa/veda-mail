@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 import { registerInlineCidImageCases } from "./support/inline-cid-image.cases";
-import { useInstalledMailbox } from "./support/mail-fixture";
+import {
+  mailSessionScopeHeaders,
+  useInstalledMailbox,
+} from "./support/mail-fixture";
 
 useInstalledMailbox();
 registerInlineCidImageCases();
@@ -82,9 +85,7 @@ test("enforces a fresh nonce CSP without breaking the mailbox frame", async ({
   const messageFrame = page.getByTitle("Email content");
   await expect(messageFrame).toBeVisible();
   await expect(messageFrame).not.toHaveCSS("height", "160px");
-  const sandbox = (await messageFrame.getAttribute("sandbox"))?.split(
-    /\s+/u,
-  );
+  const sandbox = (await messageFrame.getAttribute("sandbox"))?.split(/\s+/u);
   expect(sandbox).toContain("allow-scripts");
   expect(sandbox).not.toContain("allow-same-origin");
   const frame = messageFrame.contentFrame();
@@ -96,9 +97,9 @@ test("enforces a fresh nonce CSP without breaking the mailbox frame", async ({
   expect(directiveSources(framePolicy, "connect-src")).toEqual(["'none'"]);
   expect(childImageSources).toEqual(["blob:"]);
   expect(childImageSources).not.toContain("data:");
-  expect(
-    childImageSources.some((source) => /^https?:/u.test(source)),
-  ).toBe(false);
+  expect(childImageSources.some((source) => /^https?:/u.test(source))).toBe(
+    false,
+  );
   const frameBody = frame.locator("body");
   await expect(frameBody).toHaveCSS("color", "rgb(51, 65, 85)");
   expect(
@@ -127,13 +128,14 @@ test("preserves route-owned attachment isolation headers end to end", async ({
   page,
 }) => {
   const origin = new URL(page.url()).origin;
+  const scopeHeaders = await mailSessionScopeHeaders(page);
   const direct = await page.request.get(
     "/api/v1/mail/messages/msg-archive-fixtures/attachments/attachment-archive-one",
-    { headers: { origin } },
+    { headers: { origin, ...scopeHeaders } },
   );
   const archive = await page.request.get(
     "/api/v1/mail/messages/msg-archive-fixtures/attachments/archive",
-    { headers: { origin } },
+    { headers: { origin, ...scopeHeaders } },
   );
 
   for (const response of [direct, archive]) {
@@ -151,7 +153,7 @@ test("preserves route-owned attachment isolation headers end to end", async ({
     "/api/v1/mail/messages/msg-archive-fixtures/attachments/attachment-missing/inline-image",
     {
       data: { renderer: "inline-image" },
-      headers: { origin },
+      headers: { origin, ...scopeHeaders },
     },
   );
   expect(inline.ok()).toBe(false);
@@ -161,9 +163,7 @@ test("preserves route-owned attachment isolation headers end to end", async ({
   expect(inline.headers()["content-security-policy"]).not.toContain(
     "allow-same-origin",
   );
-  expect(inline.headers()["cross-origin-resource-policy"]).toBe(
-    "same-origin",
-  );
+  expect(inline.headers()["cross-origin-resource-policy"]).toBe("same-origin");
   expect(inline.headers()["x-content-type-options"]).toBe("nosniff");
   expect(inline.headers()["referrer-policy"]).toBe("no-referrer");
 });

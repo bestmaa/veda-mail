@@ -80,6 +80,7 @@ vi.mock("react", async (importOriginal) => {
     ...actual,
     useCallback: <T,>(callback: T): T => callback,
     useEffect: () => undefined,
+    useLayoutEffect: () => undefined,
     useMemo: <T,>(factory: () => T): T => factory(),
     useRef: hooks.useRef,
     useState: hooks.useState,
@@ -163,7 +164,7 @@ describe("composer model signature integration", () => {
   it("seeds, clears, and reseeds signatures for new and reply contexts", () => {
     const render = () => {
       hooks.begin();
-      return useComposerModel(vi.fn(), 1_000, book);
+      return useComposerModel(vi.fn(), 1_000, book, "account-a");
     };
 
     let composer = render();
@@ -200,5 +201,22 @@ describe("composer model signature integration", () => {
     expect(createComposerViewModel(composer).body.signature).toBe(
       composer.signatures.configuration,
     );
+  });
+
+  it("hides an open draft immediately when its account scope changes", () => {
+    let accountKey = "account-a";
+    const render = () => {
+      hooks.begin();
+      return useComposerModel(vi.fn(), 1_000, book, accountKey);
+    };
+
+    let composer = render();
+    composer.open();
+    composer = render();
+    expect(composer.isOpen).toBe(true);
+
+    accountKey = "account-b";
+    composer = render();
+    expect(composer.isOpen).toBe(false);
   });
 });

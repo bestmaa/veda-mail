@@ -23,7 +23,10 @@ const routeParamsSchema = z
 export const parseAttachmentArchiveRouteParams = (input: unknown) =>
   routeParamsSchema.parse(input);
 
-export const assertAttachmentArchiveRequest = (request: Request): void => {
+export const assertAttachmentArchiveRequest = (
+  request: Request,
+  allowedQueryParameter?: string,
+): void => {
   if (request.headers.has("range")) {
     throw new ApiError(
       "Attachment archive byte ranges are not supported.",
@@ -31,7 +34,15 @@ export const assertAttachmentArchiveRequest = (request: Request): void => {
       416,
     );
   }
-  if (new URL(request.url).search !== "") {
+  const searchParams = new URL(request.url).searchParams;
+  if (
+    searchParams.size > 0 &&
+    !(
+      allowedQueryParameter &&
+      searchParams.size === 1 &&
+      searchParams.has(allowedQueryParameter)
+    )
+  ) {
     throw new ApiError(
       "Attachment archive query parameters are not supported.",
       "INVALID_ATTACHMENT_ARCHIVE",

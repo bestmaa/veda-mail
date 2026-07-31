@@ -1,7 +1,27 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { verifySessionScopeRouteChecker } from "./architecture/session-scope-route-check.self-test.mjs";
+import { sessionScopeHandlerViolations } from "./architecture/session-scope-route-check.mjs";
+
 const sourceRoot = path.resolve("src");
+const routeSuffix = `${path.sep}route.ts`;
+const scopedRouteRoots = [
+  `${path.sep}app${path.sep}api${path.sep}v1${path.sep}mail${path.sep}`,
+  `${path.sep}app${path.sep}api${path.sep}v1${path.sep}member${path.sep}`,
+];
+const unscopedBootstrapHandlers = new Map([
+  ["src/app/api/v1/mail/workspace/route.ts", new Set(["GET"])],
+  ["src/app/api/v1/member/session/route.ts", new Set(["GET", "POST"])],
+  [
+    "src/app/api/v1/mail/messages/[messageId]/attachments/[attachmentId]/inline-image/route.ts",
+    new Set(["GET", "HEAD"]),
+  ],
+  [
+    "src/app/api/v1/mail/messages/[messageId]/attachments/[attachmentId]/preview/route.ts",
+    new Set(["GET", "HEAD"]),
+  ],
+]);
 
 const collectFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -57,14 +77,31 @@ const rules = [
   },
 ];
 
+verifySessionScopeRouteChecker();
 const files = await collectFiles(sourceRoot);
 const violations = [];
 for (const file of files) {
   const content = await readFile(file, "utf8");
+  const relative = path.relative(process.cwd(), file);
+  const portableRelative = relative.split(path.sep).join("/");
   for (const rule of rules) {
     if (rule.applies(file) && rule.pattern.test(content)) {
+      violations.push(`${relative} — ${rule.message}`);
+    }
+  }
+  if (
+    file.endsWith(routeSuffix) &&
+    scopedRouteRoots.some((root) => file.includes(root))
+  ) {
+    const allowed =
+      unscopedBootstrapHandlers.get(portableRelative) ?? new Set();
+    for (const handler of sessionScopeHandlerViolations(
+      relative,
+      content,
+      allowed,
+    )) {
       violations.push(
-        `${path.relative(process.cwd(), file)} — ${rule.message}`,
+        `${relative}#${handler} — Authenticated route handler must enforce the browser session scope`,
       );
     }
   }

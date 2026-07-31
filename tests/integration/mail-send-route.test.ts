@@ -29,6 +29,7 @@ import { POST } from "@/app/api/v1/mail/send/route";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 
 const endpoint = "https://mail.example.com/api/v1/mail/send";
@@ -57,6 +58,7 @@ const request = (
       "content-type": "application/json",
       host: "mail.example.com",
       origin: "https://mail.example.com",
+      "x-veda-mail-session-scope": mailSessionScope(activeConnection),
       ...headers,
     },
     method: "POST",

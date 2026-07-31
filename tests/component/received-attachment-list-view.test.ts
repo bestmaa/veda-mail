@@ -11,9 +11,11 @@ const attachment = (
 ): AttachmentViewModel => ({
   href: `/api/v1/mail/messages/message-one/attachments/${id}`,
   id,
+  isDownloading: false,
   isPreviewing: false,
   meta: "text/plain · 12 B",
   name,
+  onDownload: () => undefined,
   onPreview: () => undefined,
 });
 

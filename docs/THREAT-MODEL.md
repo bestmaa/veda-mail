@@ -57,6 +57,13 @@ URLs, analytics, or client-readable cookies.
   backup codes are stored as salted digests.
 - Member provider credentials live only in server process memory. Opaque
   HttpOnly, SameSite cookies identify sessions.
+- The workspace exposes a non-authenticating hash scoped to the exact
+  connection. All later account-derived mail, attachment, signature,
+  profile/password/2FA, and sign-out requests require it as a server-validated
+  precondition, so a tab holding stale account state fails closed after another
+  tab replaces the shared member cookie. Client settings and security state is
+  cleared before paint on a scope change, and stale async completions are
+  ignored.
 - State-changing routes enforce same-origin requests and reject suspicious
   cross-site fetch metadata. Authentication and sensitive actions are
   rate-limited by request source and subject.
@@ -214,15 +221,63 @@ Residual risk: IMAP Sent copies currently omit original BCC metadata. Preserving
 that information requires a separate private Sent representation, never a
 delivered BCC header.
 
+### Cross-tab mailbox session replacement
+
+- The first workspace load returns a one-way scope derived from the exact
+  authenticated in-memory connection. It is not the HttpOnly cookie and is not
+  accepted as authentication.
+- Every later account-derived workspace, message, delivery-notice, signature,
+  profile, password, 2FA, sign-out, send, and attachment request must echo the
+  scope. The check runs after cookie authentication and before subject-scoped
+  work, body parsing, account stores, or provider access. A missing or stale
+  scope returns `MAIL_SESSION_CHANGED` with HTTP 409.
+- Workspace refreshes send their previously accepted scope. A tab therefore
+  cannot silently adopt a different account after another tab replaces the
+  shared cookie. When the workspace or message model sees HTTP 409 or an
+  authenticated 401, it invalidates pending reads and clears workspace, reader,
+  mailbox, and search state. The mounted model then refuses every automatic or
+  manual workspace reload, preventing its scope-clearing render from silently
+  bootstrapping the replacement account. A full page reload is required to
+  create a fresh bootstrap model. Removing the accepted scope also resets
+  composer, attachment, delivery-notice, and signature models.
+- Attachment capability resets during layout whenever the session scope
+  changes. A monotonically invalidated request generation prevents a delayed
+  capability response for the previous account from publishing its upload
+  limit under the replacement account. The SSR limit is paired with its exact
+  server-derived initial scope and is reused only if the client workspace
+  accepts that same scope; otherwise it clears until a scoped refresh succeeds.
+- Custom-header checks protect normal requests. A native streaming ZIP
+  navigation cannot add that header, so its scoped HEAD preflight returns
+  control to a GET whose only accepted query parameter is the same non-auth
+  scope. The response is same-origin, private, non-cacheable, sandboxed, and
+  `no-referrer`; the query value grants no access without the current cookie.
+- The architecture check fails if a mail route authenticates a connection but
+  omits the scope guard. The same invariant covers authenticated member routes,
+  preventing newly added provider or account-settings paths from silently
+  bypassing this boundary.
+
+Residual risk: browser and reverse-proxy access logs can observe the ZIP query
+scope. It is intentionally non-authenticating and useful only alongside the
+already authenticated current connection. Operators should still apply normal
+access-log retention and redaction controls.
+
 ### Stored email signatures
 
 - Signature ownership is derived only after member authentication from the
   current gateway account email and provider ID. Owner identity is not accepted
   from request JSON.
+- Reads and writes inherit the cross-tab mailbox scope boundary above. The
+  server rejects a missing or stale scope before resolving an owner, which
+  prevents one tab from mislabeling another tab's newly authenticated mailbox
+  data.
 - The fixed `/data/member-signatures.json` store uses HMAC-SHA-256 owner keys,
   so its outer index does not disclose mailbox addresses. Each owner book is
   AES-256-GCM encrypted with an HKDF-derived key tied to the installation
   session secret and authenticated additional data tied to its owner key.
+- Owner-key v2 normalizes the provider ID and email domain to lowercase but
+  preserves the email local-part. Reads accept only v2. Case-collapsed
+  pre-release v1 buckets are ignored and never automatically adopted, migrated,
+  or deleted, preventing ambiguous data from crossing case-distinct accounts.
 - Strict outer and decrypted schemas, canonical-content revalidation, and GCM
   authentication make malformed, noncanonical, swapped, or tampered records
   fail closed. Writes use a mode-0600 temporary file and atomic replacement.
@@ -241,6 +296,11 @@ delivered BCC header.
   reloads current state and requires an exact expected revision, returning a
   safe HTTP 409 conflict for stale clients. Deletion clears defaults that
   target the removed signature.
+- The settings UI keeps create, mutation, and default controls disabled until
+  the authoritative book loads, while the submit path separately rejects an
+  absent book. A dedicated rich-editor initialization event establishes the
+  baseline before ordinary change events, so the first user edit remains dirty
+  and cannot be silently discarded as initialization.
 - The complete composer message crosses the ordinary outbound canonicalization
   boundary again before provider submission. The feature stores no provider
   credential and requires no Stalwart-side configuration or data migration.

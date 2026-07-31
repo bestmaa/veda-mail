@@ -1,16 +1,7 @@
 "use client";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import {
-  MAX_EMAIL_SIGNATURES,
-  type EmailSignature,
-} from "@/domain/member/email-signature";
+import { MAX_EMAIL_SIGNATURES, type EmailSignature } from "@/domain/member/email-signature";
 import type { SignatureId } from "@/domain/shared/brand";
 import {
   applyEmailSignatureRichSnapshot,
@@ -27,8 +18,10 @@ import {
   plainTextToComposerHtml,
 } from "@/presentation/features/mail-workspace/composer-body-content";
 import type { EmailSignaturesModel } from "@/presentation/features/mail-workspace/hooks/use-email-signatures-model";
+import type { RichComposerSnapshot } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import { useEmailSignatureDefaultsModel } from "@/presentation/features/mail-workspace/hooks/use-email-signature-defaults-model";
 import { useEmailSignatureDeleteModel } from "@/presentation/features/mail-workspace/hooks/use-email-signature-delete-model";
+import { useEmailSignatureRichInitialization } from "@/presentation/features/mail-workspace/hooks/use-email-signature-rich-initialization";
 const signatureById = (
   signatures: readonly EmailSignature[],
   signatureId: SignatureId | null,
@@ -41,30 +34,28 @@ export const useEmailSignatureSettingsModel = (
 ): EmailSignatureSettingsViewModel => {
   const [editor, setEditor] = useState<EmailSignatureEditorDraft | null>(null);
   const [baseline, setBaseline] = useState<EmailSignature | null>(null);
-  const [editorVersion, setEditorVersion] = useState(0);
   const [isModeConfirmationOpen, setIsModeConfirmationOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const normalizeRichBridgeRef = useRef<SignatureId | null>(null);
+  const {
+    consume: consumeRichInitialization,
+    remount: remountRichEditor,
+    version: editorVersion,
+  } = useEmailSignatureRichInitialization();
   const defaults = useEmailSignatureDefaultsModel(signatures, setStatus);
   const book = signatures.book;
-  const editorDirty = editor
-    ? emailSignatureEditorIsDirty(editor, baseline)
-    : false;
+  const editorDirty = editor ? emailSignatureEditorIsDirty(editor, baseline) : false;
 
   const select = useCallback((signature: EmailSignature | null) => {
-    normalizeRichBridgeRef.current =
-      signature?.htmlBody ? signature.id : null;
     setBaseline(signature);
     setEditor(signature ? emailSignatureEditorDraft(signature) : null);
-    setEditorVersion((version) => version + 1);
+    remountRichEditor(signature);
     setStatus(null);
-  }, []);
+  }, [remountRichEditor]);
   const deletion = useEmailSignatureDeleteModel(signatures, select, setStatus);
 
   useEffect(() => {
     setEditor(null);
     setBaseline(null);
-    normalizeRichBridgeRef.current = null;
     deletion.reset();
     setIsModeConfirmationOpen(false);
     setStatus(null);
@@ -102,15 +93,20 @@ export const useEmailSignatureSettingsModel = (
           }
         : current,
     );
-    setEditorVersion((version) => version + 1);
+    remountRichEditor(null);
     setIsModeConfirmationOpen(false);
     window.requestAnimationFrame(() =>
-      document.getElementById("email-signature-plain-content")?.focus());
-  }, []);
+      document.getElementById("email-signature-plain-content")?.focus(),
+    );
+  }, [remountRichEditor]);
 
   const saveEditor = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      if (!book) {
+        setStatus("Reload signatures before saving changes.");
+        return;
+      }
       if (!editor || !emailSignatureEditorIsValid(editor)) {
         setStatus("Add a name and non-blank signature content.");
         return;
@@ -130,29 +126,49 @@ export const useEmailSignatureSettingsModel = (
       if (!result) return;
       const saved = editor.signatureId
         ? signatureById(result.signatures, editor.signatureId)
-        : result.signatures.find(({ id: value }) => !before.has(value)) ?? null;
+        : (result.signatures.find(({ id: value }) => !before.has(value)) ??
+          null);
       select(saved);
-      setStatus(saved ? `Signature “${saved.name}” saved.` : "Signature saved.");
+      setStatus(
+        saved ? `Signature “${saved.name}” saved.` : "Signature saved.",
+      );
     },
-    [book?.signatures, editor, select, signatures],
+    [book, editor, select, signatures],
   );
 
   const cancelMode = useCallback(() => {
     setIsModeConfirmationOpen(false);
     window.requestAnimationFrame(() =>
-      document.getElementById("email-signature-mode-plain")?.focus());
+      document.getElementById("email-signature-mode-plain")?.focus(),
+    );
   }, []);
-
   const busy = signatures.isLoading || signatures.isSaving;
+  const canMutate = Boolean(book) && !busy;
+  const updateRich = (
+    snapshot: RichComposerSnapshot,
+    initialize: boolean,
+  ): void => {
+    if (!editor) return;
+    const next = applyEmailSignatureRichSnapshot(
+      editor,
+      baseline,
+      snapshot,
+      initialize,
+    );
+    setEditor(next.draft);
+    if (initialize) setBaseline(next.source);
+  };
   return {
     accountEmail,
     canCreate:
-      !busy && !editorDirty && (book?.signatures.length ?? 0) < MAX_EMAIL_SIGNATURES,
+      canMutate &&
+      !editorDirty &&
+      (book?.signatures.length ?? 0) < MAX_EMAIL_SIGNATURES,
     create: () =>
       requireCleanEditor(() => {
         setBaseline(null);
         setEditor(emptyEmailSignatureEditorDraft());
-        setEditorVersion((version) => version + 1);
+        remountRichEditor(null);
       }),
     defaults,
     deleteConfirmation: deletion.confirmation,
@@ -174,7 +190,7 @@ export const useEmailSignatureSettingsModel = (
           canDelete: Boolean(editor.signatureId) && !busy,
           canDiscard: editorDirty && !busy,
           canSave:
-            editorDirty && emailSignatureEditorIsValid(editor) && !busy,
+            canMutate && editorDirty && emailSignatureEditorIsValid(editor),
           editorVersion,
           htmlBody: editor.htmlBody,
           isNew: editor.signatureId === null,
@@ -184,19 +200,9 @@ export const useEmailSignatureSettingsModel = (
             setEditor({ ...editor, name: event.target.value }),
           onDelete: () => baseline && deletion.request(baseline),
           onDiscard: () => select(baseline),
-          onRichChange: (snapshot) => {
-            const initial =
-              normalizeRichBridgeRef.current === editor.signatureId;
-            const next = applyEmailSignatureRichSnapshot(
-              editor,
-              baseline,
-              snapshot,
-              initial,
-            );
-            normalizeRichBridgeRef.current = null;
-            setEditor(next.draft);
-            if (initial) setBaseline(next.source);
-          },
+          onRichChange: (snapshot) => updateRich(snapshot, false),
+          onRichInitialize: (snapshot) =>
+            updateRich(snapshot, consumeRichInitialization(editor, baseline)),
           onSubmit: (event) => void saveEditor(event),
           selectPlainMode: () => {
             if (composerHtmlHasFormatting(editor.htmlBody)) {
@@ -206,20 +212,20 @@ export const useEmailSignatureSettingsModel = (
             }
           },
           selectRichMode: () => {
-            normalizeRichBridgeRef.current = null;
             setEditor({
               ...editor,
               htmlBody: plainTextToComposerHtml(editor.body),
               mode: "rich",
               richText: editor.body,
             });
-            setEditorVersion((version) => version + 1);
+            remountRichEditor(null);
           },
         }
       : null,
     error: signatures.error,
     hasUnsavedChanges: editorDirty || defaults.isDirty,
     isLoading: signatures.isLoading,
+    isReady: Boolean(book),
     isSaving: signatures.isSaving,
     items: (book?.signatures ?? []).map((signature) => ({
       id: signature.id,

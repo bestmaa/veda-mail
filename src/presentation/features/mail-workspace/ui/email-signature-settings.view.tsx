@@ -71,13 +71,14 @@ export const EmailSignatureSettingsView = ({
     <div className="mt-4">
       <EmailSignatureDefaultsView
         defaults={settings.defaults}
-        isSaving={settings.isSaving}
+        isSaving={settings.isSaving || !settings.isReady}
         signatures={settings.items}
       />
     </div>
 
     <span aria-live="polite" className="sr-only" role="status">
-      {settings.status ?? (settings.isSaving ? "Saving signature settings" : "")}
+      {settings.status ??
+        (settings.isSaving ? "Saving signature settings" : "")}
     </span>
     <EmailSignatureConfirmationConnector
       confirmation={settings.deleteConfirmation}

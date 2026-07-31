@@ -17,7 +17,12 @@ const render = (failedCount: number, isRetrying = false): string =>
 describe("inline image retry control", () => {
   it("remounts retry state across an A to B to same-A revisit", () => {
     const render = (messageId: string, sanitizedHtml: string) =>
-      MessageFrameConnector({ messageId, sanitizedHtml });
+      MessageFrameConnector({
+        handleSessionFailure: () => false,
+        messageId,
+        sanitizedHtml,
+        sessionScope: "scope-a",
+      });
     const firstA = render("message-a", "<p>Message A</p>");
     const messageB = render("message-b", "<p>Message B</p>");
     const revisitedA = render("message-a", "<p>Message A</p>");

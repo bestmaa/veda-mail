@@ -76,7 +76,7 @@ test("renders a verified CID image through the isolated WebP pipeline", async ({
     0,
   );
   await expect(
-    page.getByRole("link", { name: "Download all attachments" }),
+    page.getByRole("button", { name: "Download all attachments" }),
   ).toHaveCount(0);
 });
 

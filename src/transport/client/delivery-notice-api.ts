@@ -1,4 +1,5 @@
 import { ApiClientError } from "@/transport/client/api-client";
+import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
 
 const DELIVERY_NOTICE_ROUTE = "/api/v1/mail/delivery-notices";
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -80,29 +81,42 @@ const failure = async (response: Response): Promise<ApiClientError> => {
   return new ApiClientError(message, response.status, code);
 };
 
-const requestOptions = (signal?: AbortSignal): RequestInit => ({
+const requestOptions = (
+  sessionScope: string,
+  signal?: AbortSignal,
+): RequestInit => ({
   cache: "no-store",
   credentials: "same-origin",
-  headers: { Accept: "application/json" },
+  headers: {
+    Accept: "application/json",
+    ...mailSessionScopeHeaders(sessionScope),
+  },
   redirect: "error",
   referrerPolicy: "no-referrer",
   ...(signal ? { signal } : {}),
 });
 
 export const deliveryNoticeApi = {
-  async dismiss(noticeId: string, signal?: AbortSignal): Promise<void> {
+  async dismiss(
+    noticeId: string,
+    sessionScope: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     if (!DELIVERY_NOTICE_ID.test(noticeId)) {
       throw new Error("The delivery notice reference is invalid.");
     }
     const response = await fetch(
       `${DELIVERY_NOTICE_ROUTE}/${encodeURIComponent(noticeId)}`,
-      { ...requestOptions(signal), method: "DELETE" },
+      { ...requestOptions(sessionScope, signal), method: "DELETE" },
     );
     if (!response.ok) throw await failure(response);
   },
 
-  async list(signal?: AbortSignal): Promise<unknown> {
-    const response = await fetch(DELIVERY_NOTICE_ROUTE, requestOptions(signal));
+  async list(sessionScope: string, signal?: AbortSignal): Promise<unknown> {
+    const response = await fetch(
+      DELIVERY_NOTICE_ROUTE,
+      requestOptions(sessionScope, signal),
+    );
     if (!response.ok) throw await failure(response);
     const envelope = object(await readBoundedJson(response));
     return object(envelope?.["data"])?.["notices"];

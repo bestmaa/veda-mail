@@ -32,6 +32,7 @@ import {
   GET,
   PUT,
 } from "@/app/api/v1/member/signatures/route";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 
 const origin = "https://mail.example.com";
@@ -55,6 +56,7 @@ const request = (
   method: "GET" | "PUT",
   body?: unknown,
   requestOrigin = origin,
+  sessionScope = mailSessionScope(connection),
 ) =>
   new Request(`${origin}/api/v1/member/signatures`, {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -62,6 +64,7 @@ const request = (
       ...(body === undefined ? {} : { "content-type": "application/json" }),
       host: "mail.example.com",
       origin: requestOrigin,
+      "x-veda-mail-session-scope": sessionScope,
     },
     method,
   });
@@ -131,6 +134,38 @@ describe("member email signature routes", () => {
       20,
       15 * 60 * 1000,
     );
+  });
+
+  it("rejects a stale browser session before owner data is loaded", async () => {
+    const readResponse = await GET(
+      request("GET", undefined, origin, "stale-session-scope"),
+    );
+    const writeResponse = await PUT(
+      request(
+        "PUT",
+        {
+          content: { body: "Regards", mode: "plain" },
+          expectedRevision: null,
+          name: "Work",
+          operation: "create",
+        },
+        origin,
+        "stale-session-scope",
+      ),
+    );
+
+    for (const response of [readResponse, writeResponse]) {
+      expect(response.status).toBe(409);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: "MAIL_SESSION_CHANGED",
+          message: "Mailbox session changed. Reload this page and try again.",
+        },
+      });
+    }
+    expect(mocks.getAccount).not.toHaveBeenCalled();
+    expect(mocks.get).not.toHaveBeenCalled();
+    expect(mocks.put).not.toHaveBeenCalled();
   });
 
   it("rejects cross-origin writes before authentication or rate charging", async () => {

@@ -14,6 +14,7 @@ import {
   type MessageFrameInlineImageFailures,
 } from "@/presentation/features/mail-workspace/message-frame";
 import { InlineImageRetryControlView } from "@/presentation/features/mail-workspace/ui/inline-image-retry-control.view";
+import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { attachmentApi } from "@/transport/client/attachment-api";
 import { createInlineImageHref } from "@/transport/client/inline-image-api";
 
@@ -22,35 +23,31 @@ const MIN_HEIGHT = 48;
 const MAX_HEIGHT = 100_000;
 const INLINE_IMAGE_ATTRIBUTE = "data-veda-inline-image";
 const INLINE_IMAGE_CONCURRENCY = 2;
-
-interface FrameSize {
-  readonly height: number;
-  readonly source: string;
-}
+interface FrameSize { readonly height: number; readonly source: string }
 interface InlineImageRetryBatch {
-  readonly attachmentIds: readonly string[];
-  readonly renderId: string;
+  readonly attachmentIds: readonly string[]; readonly renderId: string;
 }
-const EMPTY_INLINE_IMAGE_FAILURES: MessageFrameInlineImageFailures = {
-  attachmentIds: [],
-  renderId: "",
-};
+const EMPTY_INLINE_IMAGE_FAILURES: MessageFrameInlineImageFailures =
+  { attachmentIds: [], renderId: "" };
 const boundedHeight = (height: number): number =>
   Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(height)));
 
 interface MessageFrameConnectorProps {
+  readonly handleSessionFailure: MailSessionFailureHandler;
   readonly messageId: string;
   readonly sanitizedHtml: string;
+  readonly sessionScope: string;
 }
-
 interface MessageFrameRenderProps extends MessageFrameConnectorProps {
   readonly frameSource: string;
 }
 
 const MessageFrameRender = ({
   frameSource,
+  handleSessionFailure,
   messageId,
   sanitizedHtml,
+  sessionScope,
 }: MessageFrameRenderProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const renderId = useMemo(
@@ -63,11 +60,8 @@ const MessageFrameRender = ({
   });
   const [loadedRenderId, setLoadedRenderId] = useState("");
   const [inlineImageFailures, setInlineImageFailures] =
-    useState<MessageFrameInlineImageFailures>(
-      EMPTY_INLINE_IMAGE_FAILURES,
-    );
-  const [inlineImageRequestRevision, setInlineImageRequestRevision] =
-    useState(0);
+    useState<MessageFrameInlineImageFailures>(EMPTY_INLINE_IMAGE_FAILURES);
+  const [inlineImageRequestRevision, setInlineImageRequestRevision] = useState(0);
   const [retryingRenderId, setRetryingRenderId] = useState("");
   const retryBatchRef = useRef<InlineImageRetryBatch | null>(null);
   const srcDoc = useMemo(
@@ -147,6 +141,7 @@ const MessageFrameRender = ({
               id.message(messageId),
               id.attachment(attachmentId),
             ),
+            sessionScope,
             controller.signal,
           );
           if (cancelled) return;
@@ -159,10 +154,14 @@ const MessageFrameRender = ({
             },
             "*",
           );
-        } catch {
-          if (!cancelled && !controller.signal.aborted) {
-            failedIds.add(attachmentId);
+        } catch (error) {
+          if (cancelled || controller.signal.aborted) return;
+          if (handleSessionFailure(error)) {
+            cancelled = true;
+            controller.abort();
+            return;
           }
+          failedIds.add(attachmentId);
         }
       }
     };
@@ -195,10 +194,12 @@ const MessageFrameRender = ({
     };
   }, [
     inlineImageRequestRevision,
+    handleSessionFailure,
     loadedRenderId,
     messageId,
     renderId,
     sanitizedHtml,
+    sessionScope,
   ]);
 
   const height =
