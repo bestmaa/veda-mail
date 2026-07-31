@@ -99,6 +99,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Original-attachment forwarding now excludes rendered or hidden inline parts
   both when the client creates import jobs and when the server independently
   authorizes each opaque attachment ID
+- Composer attachment cleanup now keeps a synchronous active-draft identity and
+  removes every completed upload through the draft that originally reserved it,
+  preventing rapid close/reopen or forward rotation from leaving quarantine
+  records behind or targeting the next draft
 - Signature settings now record the rich editor's initial snapshot separately
   from user changes, so the first edit is never absorbed into the saved
   baseline. Create, save, delete, and default controls remain unavailable until

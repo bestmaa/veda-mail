@@ -10,6 +10,7 @@ import {
 import { id, type DraftId } from "@/domain/shared/brand";
 import {
   ComposerAttachmentUploadRegistry,
+  cleanupComposerAttachmentOperations,
   expireComposerAttachments,
   invalidateReadyComposerAttachments,
   markComposerAttachmentReady,
@@ -48,6 +49,7 @@ export const useComposerAttachments = (
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ) => {
   const [draftId, setDraftId] = useState(freshDraftId);
+  const currentDraftId = useRef(draftId);
   const [attachments, setAttachments] = useState<readonly ComposerAttachment[]>(
     [],
   );
@@ -100,53 +102,52 @@ export const useComposerAttachments = (
       if (upload) {
         void mailApi
           .removeAttachment(
-            operation?.draftId ?? draftId,
+            operation?.draftId ?? currentDraftId.current,
             upload.id,
             sessionScope,
           )
           .catch((error: unknown) => void handleSessionFailure(error));
       }
     },
-    [attachments, draftId, handleSessionFailure, sessionScope],
+    [attachments, handleSessionFailure, sessionScope],
   );
 
   const discard = useCallback(
     (cleanup: boolean) => {
       const operations = uploads.current.cancelAll();
       if (cleanup) {
-        const completed = operations.flatMap((operation) =>
-          operation.upload ? [operation.upload] : [],
+        const completedIds = cleanupComposerAttachmentOperations(
+          operations,
+          removeUpload,
         );
-        const completedIds = new Set(completed.map((upload) => upload.id));
-        for (const upload of [
-          ...completed,
-          ...ready.filter((upload) => !completedIds.has(upload.id)),
-        ]) {
-          void mailApi
-            .removeAttachment(draftId, upload.id, sessionScope)
-            .catch((error: unknown) => void handleSessionFailure(error));
+        for (const upload of ready) {
+          if (completedIds.has(upload.id)) continue;
+          void removeUpload(currentDraftId.current, upload.id).catch(
+            () => undefined,
+          );
         }
       }
       setAttachments([]);
       const nextDraftId = freshDraftId();
+      currentDraftId.current = nextDraftId;
       setDraftId(nextDraftId);
       return nextDraftId;
     },
-    [draftId, handleSessionFailure, ready, sessionScope],
+    [ready, removeUpload],
   );
 
   const retry = useCallback(
     (key: string) => {
       const target = attachments.find((item) => item.key === key);
-      if (target) retryOriginalAttachment(target, draftId);
+      if (target) retryOriginalAttachment(target, currentDraftId.current);
     },
-    [attachments, draftId, retryOriginalAttachment],
+    [attachments, retryOriginalAttachment],
   );
 
   const uploadFile = useCallback(
     async (file: File) => {
       const key = crypto.randomUUID();
-      const operation = uploads.current.begin(key, draftId);
+      const operation = uploads.current.begin(key, currentDraftId.current);
       setAttachments((current) => [
         ...current,
         {
@@ -160,7 +161,7 @@ export const useComposerAttachments = (
       ]);
       try {
         const upload = await mailApi.addAttachment(
-          draftId,
+          operation.draftId,
           file,
           sessionScope,
           operation.controller.signal,
@@ -195,7 +196,7 @@ export const useComposerAttachments = (
         );
       }
     },
-    [draftId, handleSessionFailure, removeUpload, sessionScope],
+    [handleSessionFailure, removeUpload, sessionScope],
   );
 
   const onFiles = useComposerAttachmentSelection({
