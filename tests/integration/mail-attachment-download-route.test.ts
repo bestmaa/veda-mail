@@ -107,7 +107,7 @@ describe("received attachment download route", () => {
       /[\r\n]/u,
     );
     expect(response.headers.get("cache-control")).toBe(
-      "private, no-store, max-age=0",
+      "private, no-store, no-transform, max-age=0",
     );
     expect(response.headers.get("pragma")).toBe("no-cache");
     expect(response.headers.get("expires")).toBe("0");
@@ -241,7 +241,7 @@ describe("received attachment download route", () => {
     expect(response.status).toBe(413);
     expect(cancelled).toBe(true);
     expect(response.headers.get("cache-control")).toBe(
-      "private, no-store, max-age=0",
+      "private, no-store, no-transform, max-age=0",
     );
   });
 });

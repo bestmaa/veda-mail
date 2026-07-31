@@ -138,9 +138,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Keep provider attachment identifiers server-only; require opaque upload IDs,
   AES-256-GCM integrity, SHA-256 verification, dynamic provider limits, and
   strict fail-closed scan verdicts
-- Force received attachments to download as non-cacheable octet streams with
-  sanitized `Content-Disposition`, `nosniff`, sandbox CSP, same-origin resource
-  policy, range rejection, and a 50 MiB decoded-byte ceiling
+- Force received attachments to download as non-cacheable, non-transformable
+  octet streams with sanitized `Content-Disposition`, `nosniff`, sandbox CSP,
+  same-origin resource policy, range rejection, and a 50 MiB decoded-byte
+  ceiling. The browser rejects malformed, oversized, dishonest, or truncated
+  streams and cleans up failed download handoffs
 - Generate multi-attachment archives only from server-resolved opaque IDs;
   stream entries sequentially without expansion or plaintext temporary files,
   and omit the ZIP directory on any incomplete or dishonest provider stream

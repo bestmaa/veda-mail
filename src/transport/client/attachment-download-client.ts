@@ -20,7 +20,13 @@ const declaredDownloadBytes = (response: Response): number | null => {
 };
 
 const readBoundedDownload = async (response: Response): Promise<Blob> => {
-  const declared = declaredDownloadBytes(response);
+  let declared: number | null;
+  try {
+    declared = declaredDownloadBytes(response);
+  } catch (error) {
+    void response.body?.cancel(error).catch(() => undefined);
+    throw error;
+  }
   if (!response.body) throw new Error("The attachment returned no content.");
   const reader = response.body.getReader();
   const chunks: ArrayBuffer[] = [];
@@ -34,13 +40,15 @@ const readBoundedDownload = async (response: Response): Promise<Blob> => {
         received > MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES ||
         (declared !== null && received > declared)
       ) {
-        await reader.cancel().catch(() => undefined);
         throw new Error("The attachment exceeded its declared safe size.");
       }
       const chunk = new Uint8Array(result.value.byteLength);
       chunk.set(result.value);
       chunks.push(chunk.buffer);
     }
+  } catch (error) {
+    void reader.cancel(error).catch(() => undefined);
+    throw error;
   } finally {
     reader.releaseLock();
   }
@@ -56,12 +64,37 @@ export const saveAttachmentResponse = async (
 ): Promise<void> => {
   const blob = await readBoundedDownload(response);
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.download = sanitizeReceivedAttachmentName(fileName);
-  anchor.href = url;
-  anchor.hidden = true;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const revoke = (): void => {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // Browser cleanup is best-effort and must not replace the real failure.
+    }
+  };
+  let anchor: HTMLAnchorElement | null = null;
+  let handedToBrowser = false;
+  try {
+    anchor = document.createElement("a");
+    anchor.download = sanitizeReceivedAttachmentName(fileName);
+    anchor.href = url;
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    handedToBrowser = true;
+  } finally {
+    try {
+      anchor?.remove();
+    } catch {
+      // The download result must not be hidden by DOM cleanup failures.
+    }
+    if (handedToBrowser) {
+      try {
+        window.setTimeout(revoke, 60_000);
+      } catch {
+        revoke();
+      }
+    } else {
+      revoke();
+    }
+  }
 };

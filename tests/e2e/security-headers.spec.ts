@@ -145,7 +145,7 @@ test("preserves route-owned attachment isolation headers end to end", async ({
       "sandbox; default-src 'none'",
     );
     expect(response.headers()["cache-control"]).toBe(
-      "private, no-store, max-age=0",
+      "private, no-store, no-transform, max-age=0",
     );
   }
 

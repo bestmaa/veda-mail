@@ -106,7 +106,7 @@ test("downloads an attachment byte-identically from the keyboard", async ({
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("application/octet-stream");
   expect(response.headers()["cache-control"]).toBe(
-    "private, no-store, max-age=0",
+    "private, no-store, no-transform, max-age=0",
   );
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
   expect(

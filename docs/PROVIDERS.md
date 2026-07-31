@@ -136,8 +136,10 @@ The browser receives only an opaque attachment ID scoped to its message. JMAP
 downloads require and verify the provider's exact content length while
 streaming. IMAP downloads revalidate `UIDVALIDITY` and `BODYSTRUCTURE`, resolve
 the server-only MIME part, and stream without claiming a `Content-Length`.
-Veda Mail forces both paths to a non-cacheable attachment response. Download
-all first performs a signal-aware provider classification lookup that may
+Veda Mail forces both paths to a non-cacheable, non-transformable attachment
+response; the browser rejects malformed, oversized, dishonest, or truncated
+streams before handing bytes to its download manager. Download all first
+performs a signal-aware provider classification lookup that may
 inspect bounded message presentation data so it returns exactly the current
 visible/downloadable file-card metadata. It then streams each revalidated
 attachment sequentially into one STORE-mode ZIP. The browser supplies only the

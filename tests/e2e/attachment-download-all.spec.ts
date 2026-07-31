@@ -86,7 +86,7 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
   expect(authenticated.status()).toBe(200);
   expect(authenticated.headers()["content-type"]).toBe("application/zip");
   expect(authenticated.headers()["cache-control"]).toBe(
-    "private, no-store, max-age=0",
+    "private, no-store, no-transform, max-age=0",
   );
   expect(authenticated.headers()["accept-ranges"]).toBe("none");
   expect(parseStoreZip(await authenticated.body())).toHaveLength(3);

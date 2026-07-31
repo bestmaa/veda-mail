@@ -87,7 +87,7 @@ describe("attachment archive HEAD preflight", () => {
     expect(response.status).toBe(204);
     expect(response.body).toBeNull();
     expect(response.headers.get("cache-control")).toBe(
-      "private, no-store, max-age=0",
+      "private, no-store, no-transform, max-age=0",
     );
     expect(mocks.listMessageAttachments).toHaveBeenCalledWith({
       messageId,

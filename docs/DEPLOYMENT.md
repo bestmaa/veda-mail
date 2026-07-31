@@ -171,10 +171,12 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
   connections; no Stalwart change or new public port is required.
 - Stream attachment `GET` responses without proxy buffering or transformation;
   the application enforces a 50 MiB decoded-byte ceiling for one file and a
-  200 MiB decoded-payload ceiling for Download all ZIPs. Set the proxy timeout
-  above the application's exact ten-minute deadline (eleven or twelve minutes
-  is suitable). Do not add range handling: Veda Mail intentionally rejects
-  partial attachment requests.
+  200 MiB decoded-payload ceiling for Download all ZIPs. A single-file stream
+  through either included provider has a 20-second first-byte timeout, a
+  30-second idle timeout, and a five-minute absolute deadline; Download all has
+  a ten-minute absolute deadline. Set the proxy timeout above the longer archive
+  deadline (eleven or twelve minutes is suitable). Do not add range handling:
+  Veda Mail intentionally rejects partial attachment requests.
 - Do not cache any application document or `/api/*`, including `/`, `/setup`,
   and `/admin`; preserve Veda Mail's private no-store response policy.
 - Do not automatically retry `POST /api/v1/mail/send` with a newly generated
