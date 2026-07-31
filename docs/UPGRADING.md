@@ -13,6 +13,16 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+The administrator mailbox-user release adds the optional server-only
+`VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` and its required exact HTTPS
+`VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding. Without both, the new Users
+section reports **unconfigured** and ordinary webmail remains available. When
+enabling it, create a dedicated least-privilege Stalwart API key as documented in
+[mail-server setup](MAIL-SERVER-SETUP.md#stalwart-mailbox-user-management).
+The feature adds a bounded `/data/mail-user-provisioning-idempotency.json`
+file on first creation attempt; older versions ignore it. Back it up with the
+matching installation and do not delete a pending entry to force a retry.
+
 ## Compose upgrade
 
 For a source checkout:

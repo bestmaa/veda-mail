@@ -43,6 +43,8 @@ A roadmap item is complete only when all of the following are true:
 - [x] Separate administrator and mailbox-member authentication
 - [x] Administrator and member authenticator-app 2FA
 - [x] Stalwart JMAP and standard IMAP/SMTP adapters
+- [x] Least-privilege Stalwart administrator user list/detail/create with
+  allowed-domain isolation, step-up authentication, and durable idempotency
 - [x] Inbox/mailbox list, message reader, simple search, compose, single reply
 - [x] Read/unread, star, archive, trash, restore, and move provider operations
 - [x] Sanitized HTML reader with scripts and remote images blocked, plus bounded

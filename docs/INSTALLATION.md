@@ -11,7 +11,8 @@ You need:
 - A Linux server or development machine
 - Docker Engine 26+ with Docker Compose v2, or Node.js 24+ and npm 11.16+
 - A public HTTPS hostname for production, such as `webmail.example.com`
-- A supported mail server with existing users
+- A supported mail server with configured domains and existing users, or an
+  internal-directory Stalwart server whose users will be provisioned later
 - For Stalwart, a public JMAP HTTPS URL such as `mail.example.com`
 - For standard hosting, public secure IMAP and SMTP hostnames
 - A durable directory or Docker volume for `/data`
@@ -45,12 +46,16 @@ VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_DATA_DIR=/data
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
+VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
+VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 ```
 
 `VEDA_MAIL_ALLOWED_PROVIDER_HOSTS` is required in production and contains
 provider hostnames only, without schemes, paths, or ports.
+When the optional management key is set, its management origin is also
+required and must be the exact HTTPS origin of the configured Stalwart URL.
 `VEDA_MAIL_PUBLIC_URL` is the public Veda Mail origin, not the provider URL,
 and must use HTTPS without a trailing slash. Do not quote values or commit
 `.env`.
@@ -177,11 +182,16 @@ Then:
 7. Open account settings, enroll member authenticator 2FA, save all backup
    codes, sign out, and verify the two-step login.
 
+For an internal Stalwart directory, the administrator may instead open
+**Mailbox users**, create a dedicated test account, and then perform steps 3–7.
+
 ## What setup does not do
 
-Veda Mail does not create provider domains, DNS records, or mailbox users.
-Create those in the mail server first. It also does not migrate messages; use
-the mail provider's supported migration tooling.
+Veda Mail does not create provider domains or DNS records. Its optional
+Stalwart workflow creates ordinary users only after setup and only for an
+already-existing allowed internal-directory domain. Other provider users are
+created in their provider. Veda Mail does not migrate messages; use the mail
+provider's supported migration tooling.
 
 ## Setup lock
 

@@ -68,8 +68,10 @@ The mail-service settings contain:
 - Allowed member email domains
 
 An allowed domain only permits login attempts for that suffix. The mailbox
-must already exist at the provider. Add every intended domain explicitly and
-remove domains that are no longer authorized.
+must exist at the provider before a member can sign in; for an internal
+Stalwart directory it may be created from **Mailbox users** as described below.
+Add every intended domain explicitly and remove domains that are no longer
+authorized.
 
 Use an exact HTTPS provider endpoint. In production,
 `VEDA_MAIL_ALLOWED_PROVIDER_HOSTS` is required and the endpoint hostname must
@@ -79,19 +81,46 @@ For Standard IMAP + SMTP, allowlist both incoming and outgoing hostnames and
 use only TLS or STARTTLS. Provider password resets and profile changes are not
 available through these protocols. See [mail providers](PROVIDERS.md).
 
-## Member lifecycle
+## Mailbox users
 
-Veda Mail does not create, suspend, delete, or reset provider mailboxes.
-Perform those actions in Stalwart or the configured provider:
+When the active provider is Stalwart JMAP and
+`VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` plus its exact HTTPS
+`VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding are configured, **Mailbox users**
+can:
 
-1. Create the provider mailbox and password.
-2. Confirm its domain is allowed in Veda Mail.
-3. Give the member the Veda Mail URL.
-4. The member signs in using the full email address and mailbox password.
+- List users inside one configured allowed domain at a time
+- Search and page through a bounded provider-backed result
+- View safe account details without credentials, roles, or raw permissions
+- Create an ordinary user with an initial password
 
-To revoke access, disable/reset the provider mailbox or remove its domain from
-the allowed list. Restarting Veda Mail signs out all members because member
-sessions are process-local.
+Creating a user requires the current Veda administrator password and, when
+enabled, an authenticator or unused backup code. Veda Mail hard-codes the
+ordinary Stalwart `User` role and inherited permissions; the browser cannot
+supply a Stalwart account ID, role, permission, group, alias, or directory ID.
+The initial mailbox password is sent once to Stalwart over HTTPS and is never
+returned, logged, or stored. A durable UUID idempotency record prevents a
+double click or safe replay from provisioning the same intent twice. When an
+administrator retries an identical request after losing its response, Veda
+reports that the result was replayed: the password from the first attempt
+remains authoritative and the newly re-entered password was not applied.
+
+The selected domain must exist, be enabled in Stalwart, and appear in Veda
+Mail's allowed-domain list. Creation is disabled when the domain or global
+authentication configuration uses LDAP, SQL, OIDC, or another external
+directory; create the identity in that source directory instead.
+
+The current feature does not suspend, delete, reset, or change roles/quotas.
+Those actions and all lifecycle operations for Standard IMAP + SMTP remain in
+the provider's own administration surface. To revoke access, disable/reset the
+provider mailbox or remove its domain from the allowed list. Restarting Veda
+Mail signs out all members because member sessions are process-local.
+
+See [mail-server setup](MAIL-SERVER-SETUP.md#stalwart-mailbox-user-management)
+for least-privilege API-key permissions and rotation.
+
+After provisioning, give the member the Veda Mail URL. The member signs in
+using the full email address and initial mailbox password and should change it
+through a provider-supported account workflow.
 
 ## Member two-factor authentication
 

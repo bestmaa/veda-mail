@@ -17,10 +17,19 @@ the supplied Compose deployment.
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
   atomic installation record
+- Bounded `mail-user-provisioning-idempotency.json` safe results and keyed
+  intent fingerprints; it contains no initial mailbox password
 
 It does not contain mailbox messages or durable copies of member passwords.
 Messages remain on the configured mail server. Active member sessions are
 process-memory only and disappear on restart.
+
+The optional `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` is a deployment secret,
+and `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binds its destination. Neither is
+`/data` state; manage them through the platform secret manager. Restoring
+`/data` does not undo any mailbox already created in
+Stalwart. Preserve the idempotency ledger with the installation so a restored
+service does not blindly repeat a recent provisioning intent.
 
 Always back up the entire volume as one unit. `installation.json` contains the
 session secret required to decrypt both `member-security.json` and

@@ -17,6 +17,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Profile/password/provider 2FA management      | Yes             | No                   |
+| Admin user list/detail/create                 | Yes, optional   | Unsupported          |
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
@@ -331,7 +332,9 @@ offer either:
 
 Provider-side mailbox creation, password resets, aliases, quotas, retention,
 and direct-provider login remain controlled by that provider unless its
-adapter explicitly implements them.
+adapter explicitly implements them. The Stalwart adapter implements bounded
+user list/detail/create behind a separate server-only management key; it does
+not expose a generic administrative JMAP passthrough.
 
 ## Official references
 

@@ -7,8 +7,9 @@ mail server, and let members sign in with their existing mailbox credentials.
 Veda Mail is built with Next.js, React, strict TypeScript, and a server-side
 provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 
-> Veda Mail is a webmail client, not an SMTP/IMAP server. Create domains and
-> mailboxes in Stalwart (or another supported provider) before users sign in.
+> Veda Mail is a webmail client, not an SMTP/IMAP server. Domains, DNS, and
+> message storage remain provider-owned. With an optional least-privilege API
+> key, administrators can list and create internal-directory Stalwart users.
 
 ## Highlights
 
@@ -18,6 +19,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Provider-independent member authenticator 2FA with backup codes
 - Organization name, product name, logo, colors, and repository link
 - Allowed-domain controls and a protected provider configuration
+- Secure Stalwart mailbox-user listing, details, and creation with admin
+  password/2FA step-up, durable idempotency, and a server-only management key
 - Inbox, reader, search, To/CC/BCC compose, Reply, Reply All, Forward, star,
   archive, and delete flows
 - Safe rich-text composing with headings, emphasis, lists, isolated links,
@@ -88,6 +91,15 @@ VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
+```
+
+To enable `/admin` mailbox-user management for Stalwart, also set the dedicated
+least-privilege key described in the
+[mail-server setup guide](docs/MAIL-SERVER-SETUP.md#stalwart-mailbox-user-management):
+
+```dotenv
+VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=one-time-displayed-api-key
+VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 ```
 
 Provider allowlist entries are hostnames only—no scheme, path, or port. Then:
@@ -169,6 +181,12 @@ VEDA_MAIL_CLAMAV_HOST=clamav
 VEDA_MAIL_CLAMAV_PORT=3310
 ```
 
+`VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` and its exact HTTPS
+`VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding are optional and enable only the
+Stalwart admin mailbox-user feature. Keep the key in the deployment secret
+manager; it is never part of the provider profile or returned to browser
+JavaScript. Veda refuses to send it when the active provider origin differs.
+
 `VEDA_MAIL_PUBLIC_URL` is the browser-facing Veda Mail origin, not the mail
 provider URL, and must not have a trailing slash. The supplied Compose file
 uses `http://localhost:3000` only as its local default.
@@ -194,9 +212,11 @@ it is never accepted by a public HTTP endpoint.
 The `/data` volume contains installation state, the scrypt administrator
 password hash, a random session-signing secret, organization branding, and
 provider configuration. It also contains encrypted per-identity signature
-books and defaults. Enabled administrator and member authenticator secrets are
-encrypted and backup codes are stored only as salted digests. `/data` does not
-contain mailbox messages or member passwords.
+books and defaults plus a bounded mailbox-provisioning idempotency ledger.
+Enabled administrator and member authenticator secrets are encrypted and
+backup codes are stored only as salted digests. The ledger contains safe
+results and keyed fingerprints, never initial mailbox passwords or the
+Stalwart management key. `/data` does not contain mailbox messages.
 
 Member provider credentials are process-memory only. A restart signs members
 out. Run one replica unless you add a shared encrypted session repository and
