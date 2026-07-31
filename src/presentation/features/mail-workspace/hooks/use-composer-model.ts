@@ -1,34 +1,31 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ChangeEventHandler,
-} from "react";
-import {
-  createForwardDraft,
-  createReplyAllDraft,
-  createReplyDraft,
-  formatAddressInput,
-} from "@/domain/mail/compose";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+import { createForwardDraft, createReplyAllDraft, createReplyDraft, parseRecipientInputs } from "@/domain/mail/compose";
+import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import type { ComposeInput, MessageDetail, SendReceipt } from "@/domain/mail/mail";
 import type { EmailSignatureBook } from "@/domain/member/email-signature";
+import { id } from "@/domain/shared/brand";
 import { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
-import {
-  useComposerFocusTrap,
-  useComposerReturnFocus,
-} from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
+import { useComposerDraft } from "@/presentation/features/mail-workspace/hooks/use-composer-draft";
+import { useComposerFields, type ComposerTitle } from "@/presentation/features/mail-workspace/hooks/use-composer-fields";
+import { useComposerFocusTrap, useComposerReturnFocus } from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
 import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
 import { useComposerSignatures } from "@/presentation/features/mail-workspace/hooks/use-composer-signatures";
-import {
-  ignoreMailSessionFailure,
-  type MailSessionFailureHandler,
-} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
-type ComposerTitle = "Forward message" | "New message" | "Reply all" | "Reply";
+import { ignoreMailSessionFailure, type MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+
+const focusById = (elementId: string) => {
+  if (typeof window === "undefined") return;
+  window.requestAnimationFrame(() => document.getElementById(elementId)?.focus());
+};
+const hasDefaultSignature = (
+  book: EmailSignatureBook | null,
+  context: "newMessageId" | "replyForwardId",
+) => Boolean(book?.signatures.some(({ id: signatureId }) =>
+  signatureId === book.defaults[context]));
+
 export const useComposerModel = (
   onSent: (receipt: SendReceipt, submittedEmails: readonly string[]) => void,
   maxAttachmentBytes: number | null,
@@ -37,21 +34,20 @@ export const useComposerModel = (
   isComposerReady = true,
   initialAttachmentSessionScope = "",
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+  draftsEnabled = false,
+  onDraftChanged: () => void = () => undefined,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openAccountKey, setOpenAccountKey] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [to, setTo] = useState("");
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
-  const [showCc, setShowCc] = useState(false);
-  const [showBcc, setShowBcc] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [inReplyTo, setInReplyTo] = useState<ComposeInput["inReplyTo"]>();
-  const [title, setTitle] = useState<ComposerTitle>("New message");
   const [error, setError] = useState<string | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const accountKeyRef = useRef(accountKey);
+  const markUnsavedRef = useRef<() => void>(() => undefined);
+  const markUnsaved = useCallback(() => markUnsavedRef.current(), []);
   useLayoutEffect(() => { accountKeyRef.current = accountKey; }, [accountKey]);
+
   const attachments = useComposerAttachments(
     maxAttachmentBytes,
     accountKey,
@@ -59,190 +55,171 @@ export const useComposerModel = (
     handleSessionFailure,
   );
   const signatures = useComposerSignatures(signatureBook);
-  const {
-    detach: detachSignature,
-    prepare: prepareSignatures,
-    reset: resetSignatures,
-  } = signatures;
-  const body = useComposerBody(isSending, detachSignature);
-  const { loadPlainDraft, reset: resetBody } = body;
-  const returnFocus = useComposerReturnFocus();
-  const resetFields = useCallback(() => {
-    setTo("");
-    setCc("");
-    setBcc("");
-    setShowCc(false);
-    setShowBcc(false);
-    setSubject("");
-    resetBody();
-    resetSignatures();
-    setOpenAccountKey("");
-    setInReplyTo(undefined);
-    setTitle("New message");
-    setError(null);
-  }, [resetBody, resetSignatures]);
+  const fields = useComposerFields(markUnsaved);
+  const body = useComposerBody(isSending, signatures.detach, markUnsaved);
+  const draftContent = useMemo<DraftContent>(() => ({
+    ...parseRecipientInputs({ bcc: fields.bcc, cc: fields.cc, to: fields.to }),
+    ...body.payload,
+    ...(fields.inReplyTo ? { inReplyTo: fields.inReplyTo } : {}),
+    subject: fields.subject,
+  }), [body.payload, fields.bcc, fields.cc, fields.inReplyTo, fields.subject, fields.to]);
 
-  const open = useCallback(() => {
-    if (!accountKey || !isComposerReady) return;
+  const hydrateSavedDraft = useCallback((savedDraft: DraftDetail) => {
+    fields.hydrate(savedDraft.content, "Edit draft");
+    body.loadSavedDraft(
+      savedDraft.content,
+      !savedDraft.hasUncertainSubmission &&
+        !savedDraft.hasAttachments && !savedDraft.hasTruncatedContent,
+    );
+    signatures.reset();
+    if (savedDraft.composeId) attachments.adoptDraftId(savedDraft.composeId);
+    setError(null);
+  }, [attachments, body, fields, signatures]);
+  const draft = useComposerDraft({
+    accountKey,
+    composeId: attachments.draftId,
+    content: draftContent,
+    enabled: draftsEnabled,
+    handleSessionFailure,
+    hasLocalAttachments: attachments.attachments.length > 0,
+    onDiscarded: onDraftChanged,
+    onHydrate: hydrateSavedDraft,
+    onSaved: onDraftChanged,
+  });
+  useLayoutEffect(() => { markUnsavedRef.current = draft.markUnsaved; }, [draft.markUnsaved]);
+
+  const returnFocus = useComposerReturnFocus();
+  const resetEditor = useCallback(() => {
+    fields.reset();
+    body.reset();
+    signatures.reset();
+    setOpenAccountKey("");
+    setConfirmClose(false);
+    setConfirmDiscard(false);
+    setError(null);
+  }, [body, fields, signatures]);
+  const beginOpen = useCallback((title: ComposerTitle) => {
+    if (!accountKey || !isComposerReady) return null;
     returnFocus.remember();
-    resetFields();
-    prepareSignatures("new");
-    attachments.discard(true);
+    draft.reset();
+    resetEditor();
+    fields.setTitle(title);
+    const composeId = attachments.discard(true);
     void attachments.refreshCapability();
     setOpenAccountKey(accountKey);
     setIsOpen(true);
-  }, [
-    accountKey,
-    attachments,
-    isComposerReady,
-    prepareSignatures,
-    resetFields,
-    returnFocus,
-  ]);
+    return composeId;
+  }, [accountKey, attachments, draft, fields, isComposerReady, resetEditor, returnFocus]);
+  const open = useCallback(() => {
+    if (!beginOpen("New message")) return;
+    signatures.prepare("new");
+    if (hasDefaultSignature(signatureBook, "newMessageId")) draft.markUnsaved();
+  }, [beginOpen, draft, signatureBook, signatures]);
+  const openPrepared = useCallback((input: ComposeInput, title: ComposerTitle) => {
+    const composeId = beginOpen(title);
+    if (!composeId) return null;
+    fields.hydrate(input, title);
+    body.loadPlainDraft(input.body);
+    signatures.prepare("reply-forward");
+    draft.markUnsaved();
+    return composeId;
+  }, [beginOpen, body, draft, fields, signatures]);
+  const openReply = useCallback((message: MessageDetail | null) =>
+    message && openPrepared(createReplyDraft(message), "Reply"), [openPrepared]);
+  const openReplyAll = useCallback((message: MessageDetail | null, email: string) =>
+    message && openPrepared(createReplyAllDraft(message, email), "Reply all"), [openPrepared]);
+  const openForward = useCallback((message: MessageDetail | null) => {
+    if (!message) return;
+    const composeId = openPrepared(createForwardDraft(message), "Forward message");
+    if (composeId) attachments.importOriginalAttachments(message, composeId);
+  }, [attachments, openPrepared]);
+  const openSavedDraft = useCallback((providerDraftId: string) => {
+    if (!beginOpen("Edit draft")) return;
+    void draft.load(id.providerDraft(providerDraftId));
+  }, [beginOpen, draft]);
 
-  const openDraft = useCallback(
-    (draft: ComposeInput, nextTitle: ComposerTitle) => {
-      if (!accountKey || !isComposerReady) return null;
-      returnFocus.remember();
-      const draftId = attachments.discard(true);
-      void attachments.refreshCapability();
-      setTo(formatAddressInput(draft.to));
-      setCc(formatAddressInput(draft.cc));
-      setBcc(formatAddressInput(draft.bcc));
-      setShowCc(draft.cc.length > 0);
-      setShowBcc(draft.bcc.length > 0);
-      setSubject(draft.subject);
-      loadPlainDraft(draft.body);
-      prepareSignatures("reply-forward");
-      setInReplyTo(draft.inReplyTo);
-      setTitle(nextTitle);
-      setError(null);
-      setOpenAccountKey(accountKey);
-      setIsOpen(true);
-      return draftId;
-    },
-    [
-      accountKey,
-      attachments,
-      isComposerReady,
-      loadPlainDraft,
-      prepareSignatures,
-      returnFocus,
-    ],
-  );
-
-  const openReply = useCallback(
-    (message: MessageDetail | null) =>
-      message && openDraft(createReplyDraft(message), "Reply"),
-    [openDraft],
-  );
-
-  const openReplyAll = useCallback(
-    (message: MessageDetail | null, signedInEmail: string) =>
-      message &&
-      openDraft(createReplyAllDraft(message, signedInEmail), "Reply all"),
-    [openDraft],
-  );
-  const openForward = useCallback(
-    (message: MessageDetail | null) => {
-      if (message) {
-        const draftId = openDraft(createForwardDraft(message), "Forward message");
-        if (draftId) {
-          attachments.importOriginalAttachments(message, draftId);
-        }
-      }
-    },
-    [attachments, openDraft],
-  );
-
-  const close = useCallback(() => {
-    if (isSending) return;
+  const finishClose = useCallback(() => {
     setIsOpen(false);
-    setOpenAccountKey("");
-    setError(null);
+    draft.reset();
+    resetEditor();
     attachments.discard(true);
-    resetSignatures();
     returnFocus.restore();
-  }, [attachments, isSending, resetSignatures, returnFocus]);
-
+  }, [attachments, draft, resetEditor, returnFocus]);
+  const requestClose = useCallback(() => {
+    if (isSending || draft.isDiscarding || draft.isLoading || draft.phase === "saving") return;
+    if (attachments.attachments.some((item) =>
+      item.source && item.state === "uploading")) {
+      finishClose();
+      return;
+    }
+    if (confirmDiscard) {
+      setConfirmDiscard(false);
+      focusById("composer-discard");
+    } else if (confirmClose) {
+      setConfirmClose(false);
+      focusById("composer-close");
+    } else if (draft.hasUnsavedChanges) {
+      setConfirmClose(true);
+      focusById("composer-close-without-saving");
+    } else finishClose();
+  }, [attachments.attachments, confirmClose, confirmDiscard, draft,
+    finishClose, isSending]);
+  const discard = useCallback(async () => {
+    if (await draft.discard()) finishClose();
+  }, [draft, finishClose]);
+  const requestDiscard = useCallback(() => {
+    if (!draft.canDiscard || isSending || draft.isDiscarding || draft.isLoading || draft.phase === "saving") return;
+    if (!draft.requiresDiscardConfirmation) {
+      void discard();
+      return;
+    }
+    setConfirmDiscard(true);
+    focusById("composer-discard-confirm");
+  }, [discard, draft, isSending]);
+  const cancelClose = useCallback(() => {
+    setConfirmClose(false);
+    focusById("composer-close");
+  }, []);
+  const cancelDiscard = useCallback(() => {
+    setConfirmDiscard(false);
+    focusById("composer-discard");
+  }, []);
   const isOpenForAccount = isOpen && openAccountKey === accountKey;
   useEffect(() => {
     if (!isOpen || openAccountKey === accountKey) return;
     setIsOpen(false);
-    setOpenAccountKey("");
     setIsSending(false);
-    setError(null);
+    draft.reset();
     attachments.discard(true);
-    resetFields();
-  }, [accountKey, attachments, isOpen, openAccountKey, resetFields]);
-
-  useComposerFocusTrap(isOpenForAccount, isSending, close);
-  const onToInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setTo(event.target.value), []);
-  const onCcInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setCc(event.target.value), []);
-  const onBccInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setBcc(event.target.value), []);
-  const onSubjectInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setSubject(event.target.value), []);
-  const onToggleBcc = useCallback(
-    () => setShowBcc((isVisible) => (bcc.trim() ? true : !isVisible)),
-    [bcc],
-  );
-  const onToggleCc = useCallback(
-    () => setShowCc((isVisible) => (cc.trim() ? true : !isVisible)),
-    [cc],
-  );
+    resetEditor();
+  }, [accountKey, attachments, draft, isOpen, openAccountKey, resetEditor]);
+  const isBusy = isSending || draft.isDiscarding || draft.isLoading || draft.phase === "saving";
+  useComposerFocusTrap(isOpenForAccount, isBusy, requestClose);
 
   const onSubmit = useComposerSubmit({
-    attachments,
-    bcc,
-    body,
-    cc,
-    inReplyTo,
-    handleSessionFailure,
-    isAccountCurrent: (submittedAccountKey) =>
-      accountKeyRef.current === submittedAccountKey,
-    onSent,
-    openAccountKey,
-    resetFields,
-    restoreFocus: returnFocus.restore,
-    setError,
-    setIsOpen,
-    setIsSending,
-    subject,
-    to,
+    attachments, body, fields, handleSessionFailure,
+    draftSendBlockedMessage: draft.sendBlockedMessage,
+    isAccountCurrent: (key) => accountKeyRef.current === key,
+    isDraftBusy: draft.isDiscarding || draft.isLoading || draft.phase === "saving",
+    isDraftReadOnly: !draft.canEdit,
+    onDraftSent: () => { draft.markSent(); onDraftChanged(); },
+    onSent, openAccountKey, providerDraft: draft.providerDraft,
+    resetFields: resetEditor, restoreFocus: returnFocus.restore,
+    setError, setIsOpen, setIsSending,
   });
 
   return {
-    attachmentCapabilityUnavailable: attachments.capabilityUnavailable,
-    attachments: attachments.attachments,
-    bcc,
-    body,
-    cc,
-    close,
-    error,
-    isAttachmentCapabilityRefreshing: attachments.isCapabilityRefreshing,
-    isOpen: isOpenForAccount,
-    isSending,
-    isUploading: attachments.isUploading,
+    ...fields, attachmentCapabilityUnavailable: attachments.capabilityUnavailable,
+    attachments: attachments.attachments, body, close: requestClose,
+    closeConfirmationOpen: confirmClose, discardConfirmationOpen: confirmDiscard,
+    draft, error, isAttachmentCapabilityRefreshing: attachments.isCapabilityRefreshing,
+    isBusy, isOpen: isOpenForAccount, isSending, isUploading: attachments.isUploading,
     maxAttachmentBytes: attachments.maxFileBytes,
-    onBccInput,
-    onAttachmentInput: attachments.onFiles,
-    onCcInput,
+    onAttachmentInput: attachments.onFiles, onCancelClose: cancelClose,
+    onCancelDiscard: cancelDiscard, onConfirmClose: finishClose,
+    onConfirmDiscard: discard, onRequestDiscard: requestDiscard,
     onRetryAttachmentCapability: attachments.refreshCapability,
-    onToggleBcc,
-    onToggleCc,
-    removeAttachment: attachments.remove,
-    retryAttachment: attachments.retry,
-    onSubjectInput,
-    onSubmit,
-    onToInput,
-    open,
-    openForward,
-    openReply,
-    openReplyAll,
-    showBcc,
-    showCc,
-    signatures,
-    subject,
-    title,
-    to,
+    onSubmit, open, openForward, openReply, openReplyAll, openSavedDraft,
+    removeAttachment: attachments.remove, retryAttachment: attachments.retry, signatures,
   };
 };

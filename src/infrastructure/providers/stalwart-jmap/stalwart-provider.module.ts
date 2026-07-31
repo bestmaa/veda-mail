@@ -63,7 +63,7 @@ export class StalwartProviderModule implements ProviderModule {
       maxAttachmentBytes: 18 * 1024 * 1024,
       maxAttachmentDownloadBytes: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
       supportsAttachmentDownload: true,
-      supportsDrafts: false,
+      supportsDrafts: true,
       supportsPasswordChange: true,
       supportsProfileSettings: true,
       supportsPush: false,

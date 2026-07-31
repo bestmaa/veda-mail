@@ -96,4 +96,25 @@ describe("send intent fingerprint", () => {
       sendIntentFingerprint(rich),
     );
   });
+
+  it("binds a saved provider draft and its optimistic revision", () => {
+    const plain = intent();
+    const saved = {
+      ...plain,
+      providerDraft: {
+        expectedRevision: "state-1",
+        id: "provider-draft-1",
+      },
+    };
+
+    expect(sendIntentFingerprint(saved)).not.toBe(
+      sendIntentFingerprint(plain),
+    );
+    expect(
+      sendIntentFingerprint({
+        ...saved,
+        providerDraft: { ...saved.providerDraft, expectedRevision: "state-2" },
+      }),
+    ).not.toBe(sendIntentFingerprint(saved));
+  });
 });

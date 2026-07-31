@@ -9,6 +9,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Runtime-gated Stalwart JMAP manual drafts: provider-backed create, Drafts
+  list/open, create-first immutable update, explicit discard, visible
+  save/recovery state, and claim-gated save-first submission. Bounded
+  non-transmitted JMAP markers reconcile lost responses; uncertain sends remain
+  visibly locked against duplicates, while incomplete bodies, attachments,
+  unsupported raw headers/address groups, and non-canonical MIME structures
+  remain non-destructively read-only in this first slice
 - Stalwart administrator mailbox-user list, safe detail, search/pagination,
   and ordinary-user creation with a server-only least-privilege management
   key, allowed-domain isolation, admin password/2FA step-up, negative-cache
@@ -56,6 +63,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Stalwart submission now validates the exact implicit Drafts-to-Sent update;
+  malformed, partial, wrong-account, or issued ambiguous cleanup outcomes are
+  terminal uncertain rather than accepted or blindly retried
 - JSON request bodies, recipient fields, and mailbox read/mutation rates are
   now bounded
 - SMTP send receipts now distinguish full acceptance from partial delivery.

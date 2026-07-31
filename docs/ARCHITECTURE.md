@@ -226,6 +226,64 @@ The idempotency ledger is also process-local. A restart signs out the member,
 and independent replicas must not be used as interchangeable send targets
 without a shared encrypted session and atomic idempotency implementation.
 
+## Provider draft boundary
+
+`MailGateway` exposes runtime draft capability plus create/get/update/discard
+operations over provider-independent `DraftContent`. The ordinary workspace
+message page remains the list contract, so a provider draft appears in the
+normal Drafts mailbox while its opaque provider ID becomes editable only after
+the dedicated authenticated detail route proves `$draft` and Drafts membership.
+The Standard IMAP/SMTP adapter reports `unsupported`; Stalwart JMAP reports
+`supported`, `read-only`, or transient `unavailable` from its live session and
+mailbox state.
+
+The browser owns one stable compose UUID, distinct from the provider's immutable
+Email ID. Stalwart stores the UUID and canonical-content fingerprint as bounded
+non-system JMAP keywords, not RFC headers. These are provider-stored advisory
+metadata, not a private JMAP extension. Create is idempotently reconciled by the
+UUID and exact content. An update first creates and verifies one replacement,
+then destroys the old Email in a separate conditional `Email/set`; JMAP `/set`
+per-object results are never treated as transactionally atomic. Its operation
+marker binds the account, old ID and revision, compose/content intent, sender,
+and raw Message-ID/In-Reply-To/References values. The browser's revision is a
+draft-specific digest of account and immutable Email IDs, so unrelated incoming
+mail cannot create a false stale edit. Issued create, update, and discard
+requests reconcile their exact provider outcome before Veda reports success.
+
+Replacement construction occurs after the final freshness read. It preserves
+enabled non-Veda keywords, additional mailbox membership, and the existing
+`$seen` value; it forces Drafts and `$draft`, replaces only Veda reconciliation
+markers, authenticates the From address, and preserves its validated display
+name. Before old-draft cleanup, the server reloads and compares mutable
+metadata; a concurrent external edit conflicts rather than being discarded.
+
+Imported content is editable only when the provider returns a complete ordered
+header inventory, equivalent ungrouped address projections, and a bounded
+canonical plain-text or plain/HTML MIME structure. Duplicate or unknown
+behavior-bearing headers, named address groups, malformed reply metadata,
+unsupported MIME parameters/part metadata, excessive nesting, missing or
+truncated body values, and provider or local attachments all fail closed as
+non-editable. Provider HTML still crosses the existing sanitized presentation
+and outgoing canonicalization boundaries, so unsupported content is never
+partially rewritten.
+
+Sending a provider draft is manual-save-first. Identity and mailbox preflights
+complete before a final reload validates the exact draft ID, revision, compose
+marker, visible content, sender identity, body completeness, and attachment
+absence. Veda first conditionally claims that old Email so concurrent clients
+cannot both send it. Account-global compose-marker membership is then required
+to contain exactly that claimed Email, including after every reconciliation or
+retry. One JMAP batch creates a fresh send copy and submits it through the RFC
+creation reference `#createId`; submission therefore cannot run if creation
+failed. Acceptance requires the exact submission result, its one implicit
+Drafts-to-Sent update, and a continuous Email-state chain from creation to that
+update. Only then is the claimed old draft removed best-effort. A definitive
+rejection removes the unsent copy and releases the claim. Any issued ambiguous,
+partial, contradictory, or cleanup-uncertain result leaves the old draft
+claimed and read-only, tells the member to check Sent, and is never submitted
+again automatically; the member may explicitly discard that exact revision
+after checking.
+
 ## Email signature boundary
 
 Email signatures are durable Veda Mail preferences, not provider-side identity

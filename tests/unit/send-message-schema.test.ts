@@ -212,4 +212,27 @@ describe("send message validation", () => {
       sendMessageSchema.parse(message({ subject: "a".repeat(999) })),
     ).toThrow("Subject cannot exceed 998 characters");
   });
+
+  it("requires the saved draft ID and expected revision as a pair", () => {
+    const saved = {
+      expectedDraftRevision: "state-42",
+      providerDraftId: "provider-draft-42",
+    };
+    expect(sendMessageSchema.parse(message(saved))).toMatchObject(saved);
+    expect(() =>
+      sendMessageSchema.parse(
+        message({ providerDraftId: saved.providerDraftId }),
+      ),
+    ).toThrow("must be provided together");
+    expect(() =>
+      sendMessageSchema.parse(
+        message({ expectedDraftRevision: saved.expectedDraftRevision }),
+      ),
+    ).toThrow("must be provided together");
+    expect(() =>
+      sendMessageSchema.parse(
+        message({ ...saved, attachmentIds: ["A".repeat(32)] }),
+      ),
+    ).toThrow("Local attachments cannot be added");
+  });
 });

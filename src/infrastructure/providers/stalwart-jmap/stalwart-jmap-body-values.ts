@@ -24,8 +24,7 @@ export const boundJmapBodyValues = (
   let remaining = MAX_JMAP_BODY_VALUE_CHARACTERS;
   let truncated = false;
   let inspectedParts = 0;
-  outer:
-  for (const property of partProperties) {
+  outer: for (const property of partProperties) {
     const parts = email[property];
     if (!Array.isArray(parts)) continue;
     for (const rawPart of parts) {
@@ -45,9 +44,10 @@ export const boundJmapBodyValues = (
       }
       seen.add(partId);
       const text = rawText.slice(0, remaining);
+      const isEncodingProblem = rawBodyValue?.["isEncodingProblem"] === true;
       const isTruncated =
         rawBodyValue?.["isTruncated"] === true || text.length < rawText.length;
-      bounded[partId] = { isTruncated, value: text };
+      bounded[partId] = { isEncodingProblem, isTruncated, value: text };
       remaining -= text.length;
       truncated ||= isTruncated;
     }

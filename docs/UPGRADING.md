@@ -23,6 +23,31 @@ The feature adds a bounded `/data/mail-user-provisioning-idempotency.json`
 file on first creation attempt; older versions ignore it. Back it up with the
 matching installation and do not delete a pending entry to force a retry.
 
+Manual provider-backed drafts require no new environment variable, Stalwart
+API key, mailbox migration, database/schema migration, or port. The feature is
+runtime-enabled only when the authenticated JMAP account is writable and has a
+Drafts mailbox. Standard IMAP/SMTP profiles continue to compose and send as
+before but report provider draft persistence as unsupported. Custom clients can
+use the new same-origin `/api/v1/mail/drafts` endpoints with the returned opaque
+provider ID plus expected revision; a provider draft must be saved and current
+before its optional ID/revision pair is attached to `/api/v1/mail/send`.
+
+This release stores Veda reconciliation markers as advisory non-system JMAP
+keywords, not mail headers or `/data` records. They may be visible to another
+JMAP client; they are not transmitted in the RFC message. Older Veda Mail images
+ignore those keywords. Keep the whole provider mailbox intact during rollback:
+the draft remains a normal `$draft` Email and can be edited by another client,
+although that client may not preserve Veda's retry markers. A draft carrying an
+uncertain-send claim remains deliberately read-only in this release until the
+member checks Sent and explicitly discards it. Draft bodies or attachments are
+never migrated into the Veda Mail application volume.
+
+Imported drafts with duplicate/custom behavior headers, named RFC address
+groups, unsupported MIME structure or parameters, incomplete body values, or
+provider attachments are intentionally read-only. Veda Mail does not silently
+normalize and overwrite metadata it cannot reproduce exactly. Local quarantine
+attachments also cannot be added to a saved provider draft in this release.
+
 ## Compose upgrade
 
 For a source checkout:

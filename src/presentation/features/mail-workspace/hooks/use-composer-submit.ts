@@ -7,8 +7,10 @@ import {
   type SetStateAction,
 } from "react";
 
-import type { ComposeInput, SendReceipt } from "@/domain/mail/mail";
+import type { SavedProviderDraft } from "@/domain/mail/draft";
+import type { SendReceipt } from "@/domain/mail/mail";
 import { parseRecipientInputs } from "@/domain/mail/compose";
+import { SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE } from "@/presentation/features/mail-workspace/composer-draft-state";
 import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import {
   attachmentRecoveryMessage,
@@ -16,48 +18,51 @@ import {
 } from "@/presentation/features/mail-workspace/hooks/composer-send-error";
 import type { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import type { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
+import type { useComposerFields } from "@/presentation/features/mail-workspace/hooks/use-composer-fields";
 import { mailApi } from "@/transport/client/api-client";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 interface ComposerSubmitOptions {
   readonly attachments: ReturnType<typeof useComposerAttachments>;
-  readonly bcc: string;
   readonly body: ReturnType<typeof useComposerBody>;
-  readonly cc: string;
-  readonly inReplyTo: ComposeInput["inReplyTo"];
+  readonly draftSendBlockedMessage: string | null;
+  readonly fields: ReturnType<typeof useComposerFields>;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly isAccountCurrent: (accountKey: string) => boolean;
+  readonly isDraftBusy: boolean;
+  readonly isDraftReadOnly: boolean;
+  readonly onDraftSent: () => void;
   readonly onSent: (
     receipt: SendReceipt,
     submittedEmails: readonly string[],
   ) => void;
   readonly openAccountKey: string;
+  readonly providerDraft: SavedProviderDraft | null;
   readonly resetFields: () => void;
   readonly restoreFocus: () => void;
   readonly setError: Dispatch<SetStateAction<string | null>>;
   readonly setIsOpen: Dispatch<SetStateAction<boolean>>;
   readonly setIsSending: Dispatch<SetStateAction<boolean>>;
-  readonly subject: string;
-  readonly to: string;
 }
 
 export const useComposerSubmit = ({
   attachments,
-  bcc,
   body,
-  cc,
-  inReplyTo,
+  draftSendBlockedMessage,
+  fields,
   handleSessionFailure,
   isAccountCurrent,
+  isDraftBusy,
+  isDraftReadOnly,
+  onDraftSent,
   onSent,
   openAccountKey,
+  providerDraft,
   resetFields,
   restoreFocus,
   setError,
   setIsOpen,
   setIsSending,
-  subject,
-  to,
 }: ComposerSubmitOptions): FormEventHandler<HTMLFormElement> =>
   useCallback(
     async (event) => {
@@ -65,11 +70,17 @@ export const useComposerSubmit = ({
       const submittedAccountKey = openAccountKey;
       if (
         !submittedAccountKey ||
-        !isAccountCurrent(submittedAccountKey)
+        !isAccountCurrent(submittedAccountKey) ||
+        isDraftBusy ||
+        isDraftReadOnly
       ) {
         return;
       }
-      const recipients = parseRecipientInputs({ bcc, cc, to });
+      if (draftSendBlockedMessage) {
+        setError(draftSendBlockedMessage);
+        return;
+      }
+      const recipients = parseRecipientInputs(fields);
       const submittedEmails = [
         ...recipients.to,
         ...recipients.cc,
@@ -95,6 +106,10 @@ export const useComposerSubmit = ({
         setError(EXPIRED_ATTACHMENT_MESSAGE);
         return;
       }
+      if (providerDraft && attachments.attachmentIds.length > 0) {
+        setError(SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE);
+        return;
+      }
       setIsSending(true);
       setError(null);
       try {
@@ -104,15 +119,20 @@ export const useComposerSubmit = ({
             bcc: recipients.bcc,
             ...body.payload,
             cc: recipients.cc,
-            draftId: attachments.draftId,
-            ...(inReplyTo ? { inReplyTo } : {}),
-            subject,
+            draftId: providerDraft?.composeId ?? attachments.draftId,
+            ...(fields.inReplyTo ? { inReplyTo: fields.inReplyTo } : {}),
+            ...(providerDraft ? {
+              expectedDraftRevision: providerDraft.expectedRevision,
+              providerDraftId: providerDraft.id,
+            } : {}),
+            subject: fields.subject,
             to: recipients.to,
           },
           submittedAccountKey,
         );
         if (!isAccountCurrent(submittedAccountKey)) return;
         setIsOpen(false);
+        onDraftSent();
         resetFields();
         attachments.discard(false);
         restoreFocus();
@@ -131,21 +151,22 @@ export const useComposerSubmit = ({
     },
     [
       attachments,
-      bcc,
       body.payload,
       body.text,
-      cc,
-      inReplyTo,
+      draftSendBlockedMessage,
+      fields,
       handleSessionFailure,
       isAccountCurrent,
+      isDraftBusy,
+      isDraftReadOnly,
+      onDraftSent,
       onSent,
       openAccountKey,
+      providerDraft,
       resetFields,
       restoreFocus,
       setError,
       setIsOpen,
       setIsSending,
-      subject,
-      to,
     ],
   );

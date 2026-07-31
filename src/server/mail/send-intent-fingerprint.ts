@@ -11,6 +11,10 @@ export interface CanonicalSendIntent {
   readonly cc: readonly MailAddress[];
   readonly htmlBody: string | null;
   readonly inReplyTo?: string;
+  readonly providerDraft?: {
+    readonly id: string;
+    readonly expectedRevision: string;
+  };
   readonly subject: string;
   readonly to: readonly MailAddress[];
 }
@@ -30,6 +34,7 @@ export const sendIntentFingerprint = (
         cc: addresses(input.cc),
         htmlBody: input.htmlBody,
         inReplyTo: input.inReplyTo ?? null,
+        providerDraft: input.providerDraft ?? null,
         subject: input.subject,
         to: addresses(input.to),
       }),

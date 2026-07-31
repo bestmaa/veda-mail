@@ -59,6 +59,7 @@ export const useComposerFocusTrap = (
       ].filter(
         (element) =>
           !element.closest("[hidden]") &&
+          !element.closest("[inert]") &&
           !element.matches(":disabled, [aria-disabled='true']") &&
           element.getAttribute("contenteditable") !== "false" &&
           element.getClientRects().length > 0,

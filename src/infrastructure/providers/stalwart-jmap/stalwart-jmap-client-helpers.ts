@@ -53,11 +53,13 @@ const methodErrorType = (payload: unknown): string | null => {
 
 export class StalwartJmapMethodError extends Error {
   public readonly kind: StalwartJmapMethodErrorKind;
+  public readonly type: string | null;
 
   public constructor(payload: unknown) {
     super("The JMAP provider rejected the request.");
     this.name = "StalwartJmapMethodError";
     const type = methodErrorType(payload);
+    this.type = type;
     this.kind =
       type === null
         ? "malformed"

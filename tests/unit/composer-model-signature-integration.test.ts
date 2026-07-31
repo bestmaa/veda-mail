@@ -187,6 +187,9 @@ describe("composer model signature integration", () => {
 
     composer.close();
     composer = render();
+    expect(composer.closeConfirmationOpen).toBe(true);
+    composer.onConfirmClose();
+    composer = render();
     expect(composer.isOpen).toBe(false);
     expect(composer.signatures.configuration).toBeNull();
 
@@ -201,6 +204,26 @@ describe("composer model signature integration", () => {
     expect(createComposerViewModel(composer).body.signature).toBe(
       composer.signatures.configuration,
     );
+
+    composer.close();
+    composer = render();
+    expect(composer.closeConfirmationOpen).toBe(true);
+    expect(composer.isOpen).toBe(true);
+  });
+
+  it("closes a genuinely blank new composer without a dirty confirmation", () => {
+    const render = () => {
+      hooks.begin();
+      return useComposerModel(vi.fn(), 1_000, null, "account-a");
+    };
+    let composer = render();
+    composer.open();
+    composer = render();
+    composer.close();
+    composer = render();
+
+    expect(composer.closeConfirmationOpen).toBe(false);
+    expect(composer.isOpen).toBe(false);
   });
 
   it("hides an open draft immediately when its account scope changes", () => {

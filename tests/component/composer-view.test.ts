@@ -24,6 +24,7 @@ const composer = (
     onPlainInput: vi.fn(),
     onPlainPaste: vi.fn(),
     onRichChange: vi.fn(),
+    onRichInitialize: vi.fn(),
     onToggleMode: vi.fn(),
     onWarningKeyDown: vi.fn(),
     plainTransferStatus: "",
@@ -34,9 +35,28 @@ const composer = (
   },
   cc: "",
   ccInput: vi.fn(),
+  closeConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
+  discardConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
+  draft: {
+    canDiscard: true,
+    canEdit: true,
+    canSave: false,
+    canSend: true,
+    enabled: false,
+    error: null,
+    loadFailed: false,
+    onReload: null,
+    onRequestDiscard: vi.fn(),
+    onRetry: vi.fn(),
+    onSave: vi.fn(),
+    phase: "unsaved",
+    requiresRecovery: false,
+    sendBlockedMessage: null,
+  },
   error: null,
   focusBody: false,
   isAttachmentCapabilityRefreshing: false,
+  isBusy: false,
   isOpen: true,
   isSending: false,
   isUploading: false,
@@ -172,6 +192,7 @@ describe("composer component", () => {
         bcc: "hidden@example.com",
         cc: "copy@example.com",
         isSending: true,
+        isBusy: true,
         showBcc: true,
         showCc: true,
       }),
@@ -210,6 +231,7 @@ describe("composer component", () => {
       composer({
         body: { ...base.body, isPlainModeWarningOpen: true },
         isSending: true,
+        isBusy: true,
       }),
     );
     const warningButton = (id: string) =>
@@ -222,4 +244,5 @@ describe("composer component", () => {
       'disabled=""',
     );
   });
+
 });

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   expectNoSeriousAccessibilityViolations,
   mailSessionScopeHeaders,
@@ -15,6 +15,16 @@ const openRoadmapMessage = async (page: Page) => {
   await page
     .getByRole("button", { name: "Open Revised product roadmap · Q3" })
     .click();
+};
+
+const closeUnsavedComposer = async (page: Page, dialog: Locator) => {
+  await page.keyboard.press("Escape");
+  const warning = dialog.getByRole("alertdialog", {
+    name: "Close with unsaved changes?",
+  });
+  await expect(warning).toBeVisible();
+  await warning.getByRole("button", { name: "Close without saving" }).click();
+  await expect(dialog).toBeHidden();
 };
 
 test("shows message metadata and derives Reply All and Forward drafts", async ({
@@ -49,8 +59,7 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
   await expect(
     dialog.getByRole("textbox", { exact: true, name: "To" }),
   ).not.toHaveValue(/member@example.com/);
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
+  await closeUnsavedComposer(page, dialog);
   await expect(replyAll).toBeFocused();
 
   const forward = page.getByRole("button", { name: "Forward" });
@@ -65,6 +74,7 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
     dialog.getByRole("textbox", { exact: true, name: "Message body" }),
   ).toContainText(/---------- Forwarded message ----------/);
   await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
   await expect(forward).toBeFocused();
 });
 

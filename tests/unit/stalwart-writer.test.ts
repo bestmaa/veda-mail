@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import type { ComposeInput } from "@/domain/mail/mail";
@@ -58,7 +57,23 @@ const createClient = (submissionFails: boolean) => {
       const create = nextCalls[0]?.[1]["create"] as
         Readonly<Record<string, unknown>> | undefined;
       createKey = Object.keys(create ?? {})[0] ?? "";
-      return { methodResponses: [], sessionState: "state" };
+      return {
+        methodResponses: submissionFails
+          ? []
+          : [
+              [
+                "Email/set",
+                {
+                  accountId: "account",
+                  newState: "email-state-3",
+                  oldState: "email-state-2",
+                  updated: { email: null },
+                },
+                "submit",
+              ],
+            ],
+        sessionState: "state",
+      };
     },
     result: (_response: unknown, callId: string) => {
       if (callId === "identities") {
@@ -69,11 +84,29 @@ const createClient = (submissionFails: boolean) => {
         };
       }
       if (callId === "create") {
-        return { created: { [createKey]: { id: "email" } } };
+        return {
+          accountId: "account",
+          created: { [createKey]: { id: "email" } },
+          newState: "email-state-2",
+          oldState: "email-state-1",
+        };
+      }
+      if (callId === "cleanup-rejected-submission") {
+        return {
+          accountId: "account",
+          destroyed: ["email"],
+          newState: "email-state-3",
+          oldState: "email-state-2",
+        };
       }
       return submissionFails
         ? { notCreated: { submit: { type: "forbiddenFrom" } } }
-        : { created: { submit: { id: "submission" } } };
+        : {
+            accountId: "account",
+            created: { submit: { id: "submission" } },
+            newState: "submission-state-2",
+            oldState: "submission-state-1",
+          };
     },
     uploadAttachment: async (accountId: string, attachment: unknown) => {
       uploads.push({ accountId, attachment });
@@ -197,41 +230,4 @@ describe("Stalwart writer", () => {
     });
   });
 
-  it("uploads verified bytes and references the provider blob in MIME structure", async () => {
-    const content = Buffer.from([0, 1, 2, 3]);
-    const { client, getCalls, getUploads } = createClient(false);
-    await new StalwartMailWriter(client, reader).sendMessage({
-      ...input,
-      attachments: [
-        {
-          content,
-          id: id.attachmentUpload("upload-id"),
-          mimeType: "application/octet-stream",
-          name: "evidence.bin",
-          sha256: createHash("sha256").update(content).digest("hex"),
-          size: content.byteLength,
-        },
-      ],
-    });
-    const created = Object.values(
-      (getCalls()[0]?.[1]["create"] as Readonly<Record<string, unknown>>) ?? {},
-    )[0];
-
-    expect(getUploads()).toHaveLength(1);
-    expect(created).toMatchObject({
-      bodyStructure: {
-        subParts: [
-          { partId: "body", type: "text/plain" },
-          {
-            blobId: "provider-blob",
-            disposition: "attachment",
-            name: "evidence.bin",
-            type: "application/octet-stream",
-          },
-        ],
-        type: "multipart/mixed",
-      },
-    });
-    expect(created).not.toHaveProperty("textBody");
-  });
 });

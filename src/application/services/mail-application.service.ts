@@ -1,4 +1,5 @@
 import type { MailGateway } from "@/application/ports/mail-provider.port";
+import type { DraftSaveInput } from "@/domain/mail/draft";
 import type {
   AttachmentDownloadInput,
   Mailbox,
@@ -7,7 +8,11 @@ import type {
   ProviderMailWorkspace,
   SendMessageInput,
 } from "@/domain/mail/mail";
-import type { MailboxId, MessageId } from "@/domain/shared/brand";
+import type {
+  MailboxId,
+  MessageId,
+  ProviderDraftId,
+} from "@/domain/shared/brand";
 
 export interface WorkspaceQuery {
   readonly cursor?: string;
@@ -24,12 +29,13 @@ export class MailApplicationService {
   ): Promise<ProviderMailWorkspace> {
     const mailboxes = await this.gateway.listMailboxes();
     const mailboxId = query.mailboxId ?? this.getDefaultMailbox(mailboxes).id;
-    const [account, messages] = await Promise.all([
+    const [account, draftCapability, messages] = await Promise.all([
       this.gateway.getAccount(),
+      this.gateway.getDraftCapability(),
       this.gateway.listMessages({ ...query, mailboxId }),
     ]);
 
-    return { account, mailboxes, messages };
+    return { account, draftCapability, mailboxes, messages };
   }
 
   public getMessage(messageId: MessageId) {
@@ -44,12 +50,31 @@ export class MailApplicationService {
     return this.gateway.downloadAttachment(input);
   }
 
+  public discardDraft(
+    providerDraftId: ProviderDraftId,
+    expectedRevision: string,
+  ) {
+    return this.gateway.discardDraft(providerDraftId, expectedRevision);
+  }
+
+  public getDraft(providerDraftId: ProviderDraftId) {
+    return this.gateway.getDraft(providerDraftId);
+  }
+
+  public getDraftCapability() {
+    return this.gateway.getDraftCapability();
+  }
+
   public getMaxAttachmentBytes() {
     return this.gateway.getMaxAttachmentBytes();
   }
 
   public mutateMessage(mutation: MessageMutation) {
     return this.gateway.mutateMessage(mutation);
+  }
+
+  public saveDraft(input: DraftSaveInput) {
+    return this.gateway.saveDraft(input);
   }
 
   public sendMessage(input: SendMessageInput) {

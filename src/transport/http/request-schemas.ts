@@ -4,9 +4,13 @@ import {
   combinedOutgoingContentWithinLimit,
   outgoingContentString,
 } from "@/transport/http/outgoing-content-schema";
+import {
+  draftRevisionSchema,
+  providerDraftIdSchema,
+} from "@/transport/http/draft-reference-schemas";
 import { z } from "zod";
 
-const addressSchema = z
+export const mailAddressSchema = z
   .object({
     email: z
       .string()
@@ -26,14 +30,14 @@ const addressSchema = z
   })
   .strict();
 
-const recipientListSchema = z
-  .array(addressSchema)
+export const recipientListSchema = z
+  .array(mailAddressSchema)
   .max(100, "Each recipient field can contain at most 100 addresses.");
 
-const uniqueAddresses = (
-  addresses: readonly z.infer<typeof addressSchema>[],
+export const uniqueMailAddresses = (
+  addresses: readonly z.infer<typeof mailAddressSchema>[],
   seen: Set<string>,
-): z.infer<typeof addressSchema>[] =>
+): z.infer<typeof mailAddressSchema>[] =>
   addresses.filter((address) => {
     const key = address.email.toLowerCase();
     if (seen.has(key)) {
@@ -70,6 +74,26 @@ export const connectionRequestSchema = z.object({
   providerId: z.string().trim().min(1).transform(id.provider),
 });
 
+export const replyMessageIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2_048, "Reply message identifiers cannot exceed 2,048 characters.")
+  .refine(
+    (value) => !hasHeaderControlCharacter(value),
+    "Reply message identifiers cannot contain control characters.",
+  )
+  .transform(id.message);
+
+export const mailSubjectSchema = z
+  .string()
+  .trim()
+  .max(998, "Subject cannot exceed 998 characters.")
+  .refine(
+    (subject) => !hasHeaderControlCharacter(subject),
+    "Subject cannot contain control characters.",
+  );
+
 export const sendMessageSchema = z
   .object({
     attachmentIds: z
@@ -85,26 +109,11 @@ export const sendMessageSchema = z
       .string()
       .uuid("The message draft identifier is invalid.")
       .transform((value) => id.draft(value.toLowerCase())),
-    inReplyTo: z
-      .string()
-      .trim()
-      .min(1)
-      .max(2_048, "Reply message identifiers cannot exceed 2,048 characters.")
-      .refine(
-        (value) => !hasHeaderControlCharacter(value),
-        "Reply message identifiers cannot contain control characters.",
-      )
-      .transform(id.message)
-      .optional(),
+    expectedDraftRevision: draftRevisionSchema.optional(),
+    inReplyTo: replyMessageIdSchema.optional(),
     htmlBody: outgoingContentString("Rich message body").optional(),
-    subject: z
-      .string()
-      .trim()
-      .max(998, "Subject cannot exceed 998 characters.")
-      .refine(
-        (subject) => !hasHeaderControlCharacter(subject),
-        "Subject cannot contain control characters.",
-      ),
+    providerDraftId: providerDraftIdSchema.optional(),
+    subject: mailSubjectSchema,
     to: recipientListSchema,
   })
   .strict()
@@ -126,6 +135,28 @@ export const sendMessageSchema = z
         path: ["attachmentIds"],
       });
     }
+    if (
+      (message.providerDraftId === undefined) !==
+      (message.expectedDraftRevision === undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "The saved draft identifier and expected revision must be provided together.",
+        path: [
+          message.providerDraftId === undefined
+            ? "providerDraftId"
+            : "expectedDraftRevision",
+        ],
+      });
+    }
+    if (message.providerDraftId && message.attachmentIds.length > 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Local attachments cannot be added to a saved provider draft.",
+        path: ["attachmentIds"],
+      });
+    }
     const recipientCount =
       message.to.length + message.cc.length + message.bcc.length;
     if (recipientCount > 100) {
@@ -141,9 +172,9 @@ export const sendMessageSchema = z
     const seen = new Set<string>();
     return {
       ...message,
-      to: uniqueAddresses(message.to, seen),
-      cc: uniqueAddresses(message.cc, seen),
-      bcc: uniqueAddresses(message.bcc, seen),
+      to: uniqueMailAddresses(message.to, seen),
+      cc: uniqueMailAddresses(message.cc, seen),
+      bcc: uniqueMailAddresses(message.bcc, seen),
     };
   })
   .refine(

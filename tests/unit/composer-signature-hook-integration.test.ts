@@ -217,4 +217,27 @@ describe("composer signature hook integration", () => {
     expect(signatures.configuration?.selectedId).toBe("Reply");
     expect(signatures.configuration?.initialContentPlacement).toBe("tail");
   });
+
+  it.each([
+    { expectedCalls: 1, trackNormalization: true },
+    { expectedCalls: 0, trackNormalization: false },
+  ])("tracks provider normalization only for editable content", ({ expectedCalls, trackNormalization }) => {
+    const onContentChange = vi.fn();
+    hooks.begin();
+    const body = useComposerBody(false, vi.fn(), onContentChange);
+    body.loadSavedDraft({
+      body: "Saved body",
+      htmlBody: "<p><b>Saved body</b></p>",
+    }, trackNormalization);
+    body.onRichInitialize({
+      html: "<p><strong>Saved body</strong></p>",
+      text: "Saved body",
+    });
+    body.onRichChange({
+      html: "<p><strong>Saved body</strong></p>",
+      text: "Saved body",
+    });
+
+    expect(onContentChange).toHaveBeenCalledTimes(expectedCalls);
+  });
 });

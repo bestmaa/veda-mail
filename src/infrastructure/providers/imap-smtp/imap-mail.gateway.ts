@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
+import type { DraftSaveInput } from "@/domain/mail/draft";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -14,7 +15,7 @@ import type {
   MemberProfileUpdate,
   MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
-import type { MessageId } from "@/domain/shared/brand";
+import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
 import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
@@ -40,8 +41,26 @@ export class ImapSmtpMailGateway implements MailGateway {
     unsupported("Password changes");
   }
 
+  public async discardDraft(
+    _providerDraftId: ProviderDraftId,
+    _expectedRevision: string,
+  ): Promise<void> {
+    void _providerDraftId;
+    void _expectedRevision;
+    unsupported("Provider-backed drafts");
+  }
+
   public getAccount() {
     return this.reader.getAccount();
+  }
+
+  public async getDraft(_providerDraftId: ProviderDraftId): Promise<never> {
+    void _providerDraftId;
+    return unsupported("Provider-backed drafts");
+  }
+
+  public async getDraftCapability() {
+    return { status: "unsupported" as const };
   }
 
   public downloadAttachment(
@@ -81,6 +100,11 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public mutateMessage(mutation: MessageMutation) {
     return this.writer.mutateMessage(mutation);
+  }
+
+  public async saveDraft(_input: DraftSaveInput): Promise<never> {
+    void _input;
+    return unsupported("Provider-backed drafts");
   }
 
   public sendMessage(input: SendMessageInput) {

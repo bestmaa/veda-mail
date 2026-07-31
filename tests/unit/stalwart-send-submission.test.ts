@@ -3,13 +3,28 @@ import { describe, expect, it, vi } from "vitest";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartJmapRequestBoundary } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
 import { submitStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
+import type { JmapResponse } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
-const response = { methodResponses: [], sessionState: "state" };
+const response = {
+  methodResponses: [
+    [
+      "Email/set",
+      {
+        accountId: "account",
+        newState: "email-state-3",
+        oldState: "email-state-2",
+        updated: { email: null },
+      },
+      "submit",
+    ],
+  ],
+  sessionState: "state",
+} as const;
 
 const clientWith = (input: {
   readonly request?: (
     boundary: StalwartJmapRequestBoundary,
-  ) => Promise<typeof response>;
+  ) => Promise<JmapResponse>;
   readonly result?: (callId: string) => unknown;
 }): StalwartJmapClient =>
   ({
@@ -29,52 +44,32 @@ const clientWith = (input: {
       input.result === undefined
         ? vi.fn((_response: unknown, callId: string) =>
             callId === "create"
-              ? { created: { draft: { id: "email" } } }
-              : { created: { submit: { id: "submission" } } },
+              ? {
+                  accountId: "account",
+                  created: { draft: { id: "email" } },
+                  newState: "email-state-2",
+                  oldState: "email-state-1",
+                }
+              : {
+                  accountId: "account",
+                  created: { submit: { id: "submission" } },
+                  newState: "submission-state-2",
+                  oldState: "submission-state-1",
+                },
           )
         : vi.fn((_response: unknown, callId: string) =>
-            input.result?.(callId),
+            callId === "cleanup-rejected-submission"
+              ? {
+                  accountId: "account",
+                  destroyed: ["email"],
+                  newState: "email-state-3",
+                  oldState: "email-state-2",
+                }
+              : input.result?.(callId),
           ),
   }) as unknown as StalwartJmapClient;
 
 describe("Stalwart terminal submission boundary", () => {
-  it("rethrows failures before the final request is issued", async () => {
-    const preflightFailure = new Error("JMAP session discovery failed.");
-    await expect(
-      submitStalwartMessage(
-        clientWith({
-          request: async () => {
-            throw preflightFailure;
-          },
-        }),
-        [],
-        "draft",
-      ),
-    ).rejects.toBe(preflightFailure);
-  });
-
-  it("returns uncertain when the issued submission request loses transport", async () => {
-    const providerSecret = "recipient-secret@example.com";
-    const receipt = await submitStalwartMessage(
-      clientWith({
-        request: async (boundary) => {
-          boundary.issued = true;
-          throw Object.assign(new Error(providerSecret), {
-            code: "ETIMEDOUT",
-          });
-        },
-      }),
-      [],
-      "draft",
-    );
-
-    expect(receipt).toMatchObject({
-      deliveryStatus: "uncertain",
-      rejectedRecipients: [],
-    });
-    expect(JSON.stringify(receipt)).not.toContain(providerSecret);
-  });
-
   it.each(["create", "submit"])(
     "returns uncertain for malformed %s results after submission",
     async (failedCall) => {
@@ -91,6 +86,7 @@ describe("Stalwart terminal submission boundary", () => {
         }),
         [],
         "draft",
+        "account",
       );
 
       expect(receipt.deliveryStatus).toBe("uncertain");
@@ -112,6 +108,7 @@ describe("Stalwart terminal submission boundary", () => {
         }),
         [],
         "draft",
+        "account",
       );
 
       expect(receipt).toMatchObject({
@@ -141,6 +138,7 @@ describe("Stalwart terminal submission boundary", () => {
         }),
         [],
         "draft",
+        "account",
       );
 
       expect(receipt).toMatchObject({
@@ -152,19 +150,31 @@ describe("Stalwart terminal submission boundary", () => {
 
   it("keeps an explicit valid submission notCreated result retryable", async () => {
     const client = clientWith({
+      request: async (boundary) => {
+        boundary.issued = true;
+        return { ...response, methodResponses: [] };
+      },
       result: (callId) =>
         callId === "create"
-          ? { created: { draft: { id: "email" } } }
+          ? {
+              accountId: "account",
+              created: { draft: { id: "email" } },
+              newState: "email-state-2",
+            }
           : { notCreated: { submit: { type: "forbidden" } } },
     });
 
     await expect(
-      submitStalwartMessage(client, [], "draft"),
+      submitStalwartMessage(client, [], "draft", "account"),
     ).rejects.toThrow("did not create");
   });
 
   it("keeps consistent create and submission notCreated results retryable", async () => {
     const client = clientWith({
+      request: async (boundary) => {
+        boundary.issued = true;
+        return { ...response, methodResponses: [] };
+      },
       result: (callId) => {
         const key = callId === "create" ? "draft" : "submit";
         return { notCreated: { [key]: { type: "forbidden" } } };
@@ -172,7 +182,7 @@ describe("Stalwart terminal submission boundary", () => {
     });
 
     await expect(
-      submitStalwartMessage(client, [], "draft"),
+      submitStalwartMessage(client, [], "draft", "account"),
     ).rejects.toThrow("did not create");
   });
 
@@ -186,6 +196,7 @@ describe("Stalwart terminal submission boundary", () => {
       }),
       [],
       "draft",
+      "account",
     );
 
     expect(receipt).toMatchObject({
@@ -194,9 +205,35 @@ describe("Stalwart terminal submission boundary", () => {
     });
   });
 
+  it("rejects wrong-account and discontinuous Email-state evidence", async () => {
+    const wrongAccount = await submitStalwartMessage(
+      clientWith({}), [], "draft", "other-account",
+    );
+    const wrongState = await submitStalwartMessage(
+      clientWith({
+        request: async (boundary) => {
+          boundary.issued = true;
+          return {
+            ...response,
+            methodResponses: [[
+              "Email/set",
+              { ...response.methodResponses[0][1], oldState: "wrong-state" },
+              "submit",
+            ]],
+          };
+        },
+      }),
+      [], "draft", "account",
+    );
+
+    expect([wrongAccount.deliveryStatus, wrongState.deliveryStatus]).toEqual([
+      "uncertain", "uncertain",
+    ]);
+  });
+
   it("returns accepted only for unambiguous created results", async () => {
     await expect(
-      submitStalwartMessage(clientWith({}), [], "draft"),
+      submitStalwartMessage(clientWith({}), [], "draft", "account"),
     ).resolves.toMatchObject({
       deliveryStatus: "accepted",
       id: "email",

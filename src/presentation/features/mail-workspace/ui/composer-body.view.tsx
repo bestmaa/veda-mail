@@ -6,10 +6,12 @@ import type { ComposerBodyViewModel } from "@/presentation/features/mail-workspa
 export const ComposerBodyView = ({
   body,
   focusBody,
+  isReadOnly = false,
   isSending,
 }: {
   readonly body: ComposerBodyViewModel;
   readonly focusBody: boolean;
+  readonly isReadOnly?: boolean;
   readonly isSending: boolean;
 }) => (
   <div className="flex min-h-56 flex-1 flex-col">
@@ -28,7 +30,7 @@ export const ComposerBodyView = ({
               : "Switch to rich text"
           }
           className="flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-800 focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-50"
-          disabled={isSending}
+          disabled={isSending || isReadOnly}
           id="composer-body-mode-toggle"
           onClick={body.onToggleMode}
           type="button"
@@ -59,7 +61,7 @@ export const ComposerBodyView = ({
           <div className="mt-2 flex gap-2">
             <button
               className="h-9 rounded-lg bg-amber-900 px-3 font-bold text-white"
-              disabled={isSending}
+              disabled={isSending || isReadOnly}
               id="composer-formatting-loss-confirm"
               onClick={body.confirmPlainMode}
               type="button"
@@ -68,7 +70,7 @@ export const ComposerBodyView = ({
             </button>
             <button
               className="h-9 rounded-lg px-3 font-bold hover:bg-amber-100"
-              disabled={isSending}
+              disabled={isSending || isReadOnly}
               id="composer-formatting-loss-cancel"
               onClick={body.cancelPlainMode}
               type="button"
@@ -89,6 +91,7 @@ export const ComposerBodyView = ({
           onDrop={body.onPlainDrop}
           onPaste={body.onPlainPaste}
           placeholder="Write a clear message…"
+          readOnly={isReadOnly}
           required
           value={body.text}
         />
@@ -97,8 +100,10 @@ export const ComposerBodyView = ({
           autoFocus={focusBody}
           disabled={isSending}
           initialHtml={body.html}
+          readOnly={isReadOnly}
           key={body.editorVersion}
           onChange={body.onRichChange}
+          onInitialize={body.onRichInitialize}
           {...(body.signature ? { signature: body.signature } : {})}
         />
       )}

@@ -18,7 +18,8 @@ today, not every feature the upstream server protocol could eventually supply.
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Admin user list/detail/create                 | Yes, optional   | Unsupported          |
-| Provider-backed drafts/autosave               | Not implemented | Not implemented      |
+| Manual provider-backed drafts                 | Yes             | Unsupported          |
+| Draft autosave / draft attachments            | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
 | Download all ZIP (100 files / 200 MiB)        | Yes             | Yes                  |
@@ -65,6 +66,30 @@ No Stalwart configuration, database/schema change, mailbox migration, API
 extension, or new port is required. Because these are Veda-local preferences,
 they do not automatically appear in Stalwart's own webmail, a desktop client,
 or another Veda Mail deployment unless the matching `/data` state is restored.
+
+Stalwart accounts also expose a runtime-gated manual draft workflow. Veda Mail
+can create, open, update, discard, and send simple provider-backed drafts in the
+account's JMAP Drafts mailbox. A stable compose UUID and canonical-content
+fingerprint are stored as advisory non-system JMAP keywords, never as
+transmitted mail headers. Updating creates and verifies an immutable replacement
+before destroying the prior draft in a separate conditional `Email/set`; retry
+reconciliation prevents a lost HTTP response from creating duplicate drafts
+without assuming a multi-object `/set` is atomic. Sending is deliberately
+save-first: the server reloads and verifies the exact immutable draft, claims it
+against concurrent senders, then creates a fresh copy and submits its RFC
+creation reference in one ordered batch. It accepts only an exact submission
+and implicit Drafts-to-Sent result, then cleans up the claimed old draft. An
+ambiguous issued outcome remains visibly locked, instructs the member to check
+Sent, and is never blindly retried.
+
+Provider-supplied HTML still crosses the normal presentation sanitizer before
+the composer sees it. BCC remains in the private provider draft. Drafts with
+provider attachments, local quarantine attachments, incomplete/truncated body
+values, duplicate or unsupported top-level headers, named address groups, or a
+non-canonical MIME tree are not destructively rewritten or sent; bounded
+unsupported drafts remain closeable, copyable, and explicitly discardable.
+Standard IMAP/SMTP, automatic autosave, offline restore, and draft attachments
+remain roadmap work.
 
 The Standard IMAP + SMTP adapter omits BCC from delivered MIME while retaining
 it in the SMTP envelope. If SMTP immediately rejects only some recipients, Veda

@@ -108,6 +108,7 @@ export const ComposerRichTextEditorConnector = ({
   onChange,
   onInitialize,
   placeholder = "Write a clear message…",
+  readOnly = false,
   required = true,
   signature,
 }: {
@@ -119,6 +120,7 @@ export const ComposerRichTextEditorConnector = ({
   readonly onChange: (snapshot: RichComposerSnapshot) => void;
   readonly onInitialize?: (snapshot: RichComposerSnapshot) => void;
   readonly placeholder?: string;
+  readonly readOnly?: boolean;
   readonly required?: boolean;
   readonly signature?: ComposerSignatureEditorConfiguration;
 }) => {
@@ -139,7 +141,7 @@ export const ComposerRichTextEditorConnector = ({
           $initializeComposerSignatureSlot(signaturePlacement);
         }
       },
-      editable: !disabled,
+      editable: !disabled && !readOnly,
       namespace,
       nodes: [
         HeadingNode,
@@ -154,16 +156,16 @@ export const ComposerRichTextEditorConnector = ({
       },
       theme,
     }),
-    [disabled, initialHtml, namespace, signaturePlacement],
+    [disabled, initialHtml, namespace, readOnly, signaturePlacement],
   );
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <FormattingConnector disabled={disabled} />
+      <FormattingConnector disabled={disabled || readOnly} />
       {signature ? (
         <ComposerSignatureControlsConnector
           configuration={signature}
-          disabled={disabled}
+          disabled={disabled || readOnly}
         />
       ) : null}
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -173,9 +175,11 @@ export const ComposerRichTextEditorConnector = ({
               aria-disabled={disabled}
               aria-label={label}
               aria-multiline="true"
+              aria-readonly={readOnly}
               aria-required={required}
               className="composer-rich-editor h-full min-h-0 overflow-y-auto px-4 py-4 text-sm leading-6 text-slate-700 outline-none focus-visible:outline-2 focus-visible:outline-indigo-600"
               spellCheck
+              tabIndex={readOnly ? 0 : undefined}
             />
           }
           ErrorBoundary={LexicalErrorBoundary}
@@ -193,7 +197,7 @@ export const ComposerRichTextEditorConnector = ({
       />
       <ComposerPlainTransferConnector />
       <ComposerEditorStateBridgeConnector
-        disabled={disabled}
+        disabled={disabled || readOnly}
         onChange={onChange}
         {...(onInitialize ? { onInitialize } : {})}
       />

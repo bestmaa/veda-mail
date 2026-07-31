@@ -33,6 +33,7 @@ const body = (
   onPlainInput: vi.fn(),
   onPlainPaste: vi.fn(),
   onRichChange: vi.fn(),
+  onRichInitialize: vi.fn(),
   onToggleMode: vi.fn(),
   onWarningKeyDown: vi.fn(),
   plainTransferStatus: "",

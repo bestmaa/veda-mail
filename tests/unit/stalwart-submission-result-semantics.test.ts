@@ -1,18 +1,30 @@
 import { describe, expect, it } from "vitest";
-
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartJmapRequestBoundary } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
 import { submitStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
-import type { JmapMethodResponse } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import type {
+  JmapMethodCall,
+  JmapMethodResponse,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 const createdEmail: JmapMethodResponse = [
   "Email/set",
-  { created: { draft: { id: "email" } } },
+  {
+    accountId: "account",
+    created: { draft: { id: "email" } },
+    newState: "email-state-2",
+    oldState: "email-state-1",
+  },
   "create",
 ];
 const createdSubmission: JmapMethodResponse = [
   "EmailSubmission/set",
-  { created: { submit: { id: "submission" } } },
+  {
+    accountId: "account",
+    created: { submit: { id: "submission" } },
+    newState: "submission-state-2",
+    oldState: "submission-state-1",
+  },
   "submit",
 ];
 
@@ -21,12 +33,32 @@ const clientWithResponses = (
 ): StalwartJmapClient =>
   ({
     request: async (
-      _calls: unknown,
+      calls: unknown,
       _using: unknown,
       _signal: unknown,
       boundary: StalwartJmapRequestBoundary,
     ) => {
       boundary.issued = true;
+      if (
+        (calls as readonly JmapMethodCall[])[0]?.[2] ===
+        "cleanup-rejected-submission"
+      ) {
+        return {
+          methodResponses: [
+            [
+              "Email/set",
+              {
+                accountId: "account",
+                destroyed: ["email"],
+                newState: "email-state-3",
+                oldState: "email-state-2",
+              },
+              "cleanup-rejected-submission",
+            ],
+          ] as const,
+          sessionState: "state",
+        };
+      }
       return { methodResponses, sessionState: "state" };
     },
     result: StalwartJmapClient.prototype.result,
@@ -89,6 +121,7 @@ describe("Stalwart submission result semantics", () => {
           ]),
           [],
           "draft",
+          "account",
         ),
       );
 
@@ -116,6 +149,7 @@ describe("Stalwart submission result semantics", () => {
         ]),
         [],
         "draft",
+        "account",
       ),
     );
 
@@ -135,6 +169,7 @@ describe("Stalwart submission result semantics", () => {
       clientWithResponses([["error", error, "submit"]]),
       [],
       "draft",
+      "account",
     );
 
     expect(receipt).toMatchObject({
@@ -160,6 +195,7 @@ describe("Stalwart submission result semantics", () => {
         clientWithResponses([createdEmail, ...duplicate]),
         [],
         "draft",
+        "account",
       );
 
       expect(receipt.deliveryStatus).toBe("uncertain");
@@ -176,6 +212,7 @@ describe("Stalwart submission result semantics", () => {
       ]),
       [],
       "draft",
+      "account",
     );
 
     expect(receipt.deliveryStatus).toBe("uncertain");
@@ -188,10 +225,20 @@ describe("Stalwart submission result semantics", () => {
         clientWithResponses([
           createdEmail,
           createdSubmission,
-          ["Email/set", { updated: { email: null } }, "submit"],
+          [
+            "Email/set",
+            {
+              accountId: "account",
+              newState: "email-state-3",
+              oldState: "email-state-2",
+              updated: { email: null },
+            },
+            "submit",
+          ],
         ]),
         [],
         "draft",
+        "account",
       ),
     ).resolves.toMatchObject({
       deliveryStatus: "accepted",

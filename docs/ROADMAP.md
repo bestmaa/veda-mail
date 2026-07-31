@@ -158,9 +158,14 @@ Acceptance: reloading or losing the network cannot silently lose a draft, and
 the MIME message has equivalent readable HTML and plain-text parts.
 
 Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
-Completing this milestone still requires durable drafts, autosave/restore,
-templates, delayed send, and the broader shortcut/accessibility audit listed
-above.
+Stalwart JMAP now has a security-reviewed manual provider-draft vertical slice:
+create, update, Drafts-list/open, discard, save-first send, lost-response
+reconciliation, visible state, and non-destructive guards for attachments and
+incomplete bodies plus unsupported imported headers/MIME. The provider-backed
+checkbox remains open because Standard IMAP/SMTP parity, draft attachments, and
+automatic restore are not complete.
+Completing this milestone still requires autosave/restore, templates, delayed
+send, and the broader shortcut/accessibility audit listed above.
 
 ## M4 — Fast mailbox management
 
