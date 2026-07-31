@@ -1,7 +1,7 @@
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
 import type { ReactNode } from "react";
 
-export type AdminSection = "mail" | "organization" | "security";
+export type AdminSection = "mail" | "organization" | "security" | "users";
 export type AdminDashboardContent = ReactNode;
 
 export interface AdminNavigationItem {

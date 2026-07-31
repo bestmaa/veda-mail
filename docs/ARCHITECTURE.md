@@ -81,6 +81,34 @@ the current administrator a replacement token.
 It then creates a normalized `MailGateway`. This keeps login and admin routes
 free of Stalwart-specific field names.
 
+Mailbox provisioning uses a separate optional
+`MailUserAdministrationPort`; it is never added to the member `MailGateway`.
+Only the Stalwart adapter implements this port. A server resolver reads
+`VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` from the process environment and
+requires its exact `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding to match the
+active profile before the key reaches any request. It returns only an
+available/unconfigured/unsupported status to the browser. The key is not part
+of `installation.json`.
+
+The adapter discovers `/.well-known/jmap`, revalidates the configured HTTPS
+origin and advertised same-origin `apiUrl`, requires `urn:stalwart:jmap`, and
+uses only typed Domain, Account, Authentication, and Action calls. Every
+operation re-resolves a browser-selected domain against the profile's
+normalized allowed-domain set. Provider records are projected into a safe DTO;
+credentials, roles, permissions, groups, and unknown fields never cross the
+infrastructure boundary.
+
+Account creation requires Veda administrator password/2FA step-up. A durable,
+bounded, atomic `0600` idempotency ledger records a keyed intent fingerprint
+and safe terminal result for 24 hours. It never records the initial mailbox
+password or a password-derived verifier. Expired safe metadata is removed on
+the next provisioning access. A persisted pending entry after a crash is
+treated as an uncertain outcome and blocks a blind provider retry. The
+API distinguishes a replay from a fresh creation so the UI never claims that
+a newly re-entered password replaced the first attempt's password. The
+profile revision verified during step-up is checked again before constructing
+the adapter, so a concurrent provider edit aborts before any secret is sent.
+
 The deterministic demo provider is registered only in development and test.
 Production registries contain deployable providers only.
 The included Standard IMAP + SMTP adapter covers providers that expose secure
@@ -484,8 +512,9 @@ npm run check:lines
 
 ## Runtime model
 
-- Installation, branding, service profile, member 2FA, and encrypted member
-  signatures are durable on `/data`.
+- Installation, branding, service profile, member 2FA, encrypted member
+  signatures, and the secret-free mailbox-provisioning idempotency ledger are
+  durable on `/data`.
 - Pending attachment uploads are encrypted, process-local quarantine data with
   a 30-minute TTL; a one-minute background sweep expires them without another
   request, and production startup removes bounded orphan quarantine

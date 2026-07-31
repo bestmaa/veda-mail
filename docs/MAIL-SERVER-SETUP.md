@@ -8,8 +8,9 @@ your SMTP server, mailbox directory, spam filtering, DNS, or message storage.
 For the included adapter:
 
 - Stalwart is already installed and healthy.
-- Each member has a real mailbox account and password.
 - Every allowed email domain exists in Stalwart.
+- Each member has a real mailbox account and password before sign-in, created
+  in Stalwart or through Veda Mail's optional administrator workflow.
 - JMAP is available on a public HTTPS URL.
 - Its TLS certificate matches the hostname.
 - Veda Mail can resolve and reach that hostname over TCP `443`.
@@ -22,8 +23,42 @@ webmail.example.com  -> Veda Mail
 mail.example.com     -> Stalwart HTTPS/JMAP and mail protocols
 ```
 
-Do not enter Stalwart administrator credentials into Veda Mail. Members
-authenticate with their own full email address and mailbox password.
+Do not enter a Stalwart administrator username/password into Veda Mail.
+Members authenticate with their own full email address and mailbox password.
+
+### Stalwart mailbox-user management
+
+The optional `/admin` mailbox-user feature uses Stalwart's management JMAP
+capability. Create a dedicated API key in Stalwart, select **Replace**
+permission mode, and grant only:
+
+```text
+sysAuthenticationGet
+sysDomainQuery
+sysDomainGet
+sysAccountQuery
+sysAccountGet
+sysAccountCreate
+sysActionCreate
+actionInvalidateNegativeCaches
+```
+
+Set an expiry and `allowedIps` restriction when the deployment topology makes
+that practical. Store the one-time-displayed secret only in the deployment
+secret manager as `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY`. Never put it in the
+Veda provider configuration: that profile is persisted and returned to the
+admin settings browser. The key cannot log in to mail protocols, but it can
+provision accounts, so rotate/revoke it like a production credential.
+
+Also set `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` to the exact HTTPS origin of
+that Stalwart server, for example `https://mail.example.com` (no path). Veda
+Mail refuses to attach the key when the active provider points at a different
+origin, preventing an old key from leaking during a provider migration.
+
+Veda discovers `/.well-known/jmap`, validates the advertised same-origin JMAP
+URL and `urn:stalwart:jmap` capability, then uses typed Domain, Account,
+Authentication, and Action methods. No new public port or Stalwart source-code
+change is required.
 
 ## Domains and member access
 
@@ -36,8 +71,9 @@ example.org
 ```
 
 then `person@example.com` and `person@example.org` may authenticate, provided
-those accounts exist at the configured provider. A domain in this list does
-not create the domain or any mailbox.
+those accounts exist at the configured provider. A domain in this list never
+creates the provider domain; an administrator may create an internal Stalwart
+user for an already-existing allowed domain when the optional key is enabled.
 
 ## DNS checklist
 

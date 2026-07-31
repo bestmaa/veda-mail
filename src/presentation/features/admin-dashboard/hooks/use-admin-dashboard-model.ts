@@ -16,6 +16,7 @@ const labels: Readonly<Record<AdminSection, string>> = {
   mail: "Mail service",
   organization: "Organization",
   security: "Security",
+  users: "Mailbox users",
 };
 
 export const useAdminDashboardModel = (

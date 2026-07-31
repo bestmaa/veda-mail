@@ -3,6 +3,7 @@
 import { useAdminDashboardModel } from "@/presentation/features/admin-dashboard/hooks/use-admin-dashboard-model";
 import { AdminDashboardView } from "@/presentation/features/admin-dashboard/ui/admin-dashboard.view";
 import { AdminMailServiceConnector } from "@/presentation/features/admin-mail-service/connectors/admin-mail-service.connector";
+import { AdminMailUsersConnector } from "@/presentation/features/admin-mail-users/connectors/admin-mail-users.connector";
 import { AdminOrganizationConnector } from "@/presentation/features/admin-organization/connectors/admin-organization.connector";
 import { AdminSecurityConnector } from "@/presentation/features/admin-security/connectors/admin-security.connector";
 import type { BrandingInput } from "@/presentation/shared/branding/branding.view-model";
@@ -16,6 +17,8 @@ export const AdminDashboardConnector = ({
   const content =
     model.activeSection === "mail" ? (
       <AdminMailServiceConnector />
+    ) : model.activeSection === "users" ? (
+      <AdminMailUsersConnector />
     ) : model.activeSection === "security" ? (
       <AdminSecurityConnector />
     ) : (

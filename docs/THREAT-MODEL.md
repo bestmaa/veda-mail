@@ -9,6 +9,7 @@ the system of record for messages.
 
 - Administrator credentials, recovery token, sessions, and authenticator
   secrets
+- Optional Stalwart management API key and mailbox-provisioning authority
 - Member mailbox credentials, sessions, and provider access tokens
 - Message content, recipient metadata, attachments, contacts, and calendar data
 - Locally stored member signature content, defaults, and revision tokens
@@ -72,6 +73,42 @@ URLs, analytics, or client-readable cookies.
 
 Residual risk: member sessions are memory-local. A restart signs members out,
 and multiple replicas do not share sessions or rate-limit state.
+
+### Stalwart mailbox provisioning
+
+- The management credential is a dedicated server-only API key supplied by
+  the deployment environment. An independent exact-origin environment binding
+  must match the active provider before any Authorization request. The key is
+  never stored in the provider profile, returned to browser JavaScript, or
+  included in an error.
+- Operators grant only account/domain reads, account create, authentication
+  read, and negative-cache invalidation. The key cannot update/destroy
+  accounts, read mail, impersonate users, or authenticate to mail protocols.
+- Every route requires an administrator session. Creation additionally checks
+  same origin, strict request/subject rate limits, a bounded body, current
+  administrator password, and configured Veda administrator 2FA.
+- The browser cannot control Stalwart roles, permissions, groups, aliases,
+  quotas, tenant IDs, directory IDs, or raw JMAP methods. The adapter creates
+  only an ordinary `User` with inherited permissions.
+- Every list/detail/create operation is scoped to the intersection of the
+  active profile's allowed domains and a re-resolved enabled Stalwart domain.
+  External-directory domains fail closed and must be managed at their source.
+- Responses contain only bounded identity/quota metadata. Password credentials,
+  API keys, roles, permissions, and groups are never requested for presentation.
+- A UUID idempotency key, keyed non-secret intent fingerprint, and serialized durable
+  ledger prevent duplicate creation within the supported single-replica
+  deployment. A crash or indeterminate upstream mutation is reported as
+  uncertain and is never blindly retried. Completed replays are explicitly
+  labeled; the UI warns that the first attempt's password remains active.
+
+Residual risk: the management key can create accounts within its Stalwart and
+tenant scope. A compromised Veda process or deployment secret manager can use
+that authority. Restrict key permissions, expiry, source IP, and egress;
+rotate it after suspected exposure. Creation changes the upstream system of
+record and cannot be rolled back by restoring Veda's `/data` volume.
+The file-backed provisioning ledger is not a distributed lock; keep Veda Mail
+at one replica until a shared session, rate-limit, and idempotency backend is
+implemented.
 
 ### Browser response isolation
 

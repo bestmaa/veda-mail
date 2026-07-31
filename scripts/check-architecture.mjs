@@ -1,6 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { adminRouteHandlerViolations } from "./architecture/admin-route-check.mjs";
+import { verifyAdminRouteChecker } from "./architecture/admin-route-check.self-test.mjs";
 import { verifySessionScopeRouteChecker } from "./architecture/session-scope-route-check.self-test.mjs";
 import { sessionScopeHandlerViolations } from "./architecture/session-scope-route-check.mjs";
 
@@ -10,6 +12,14 @@ const scopedRouteRoots = [
   `${path.sep}app${path.sep}api${path.sep}v1${path.sep}mail${path.sep}`,
   `${path.sep}app${path.sep}api${path.sep}v1${path.sep}member${path.sep}`,
 ];
+const adminRouteRoot =
+  `${path.sep}app${path.sep}api${path.sep}v1${path.sep}admin${path.sep}`;
+const unauthenticatedAdminHandlers = new Map([
+  [
+    "src/app/api/v1/admin/auth/route.ts",
+    new Set(["DELETE", "GET", "POST"]),
+  ],
+]);
 const unscopedBootstrapHandlers = new Map([
   ["src/app/api/v1/mail/workspace/route.ts", new Set(["GET"])],
   ["src/app/api/v1/member/session/route.ts", new Set(["GET", "POST"])],
@@ -77,6 +87,7 @@ const rules = [
   },
 ];
 
+verifyAdminRouteChecker();
 verifySessionScopeRouteChecker();
 const files = await collectFiles(sourceRoot);
 const violations = [];
@@ -102,6 +113,26 @@ for (const file of files) {
     )) {
       violations.push(
         `${relative}#${handler} — Authenticated route handler must enforce the browser session scope`,
+      );
+    }
+  }
+  if (file.endsWith(routeSuffix) && file.includes(adminRouteRoot)) {
+    const allowed =
+      unauthenticatedAdminHandlers.get(portableRelative) ?? new Set();
+    for (const violation of adminRouteHandlerViolations(
+      relative,
+      content,
+      allowed,
+    )) {
+      const [handler, requirement] = violation.split(":");
+      violations.push(
+        `${relative}#${handler} — Admin route is missing ${
+          requirement === "same-origin"
+            ? "same-origin mutation protection"
+            : requirement === "admin-access"
+              ? "administrator access enforcement"
+              : "a statically analyzable handler"
+        }`,
       );
     }
   }

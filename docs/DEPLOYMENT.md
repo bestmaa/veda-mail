@@ -54,6 +54,8 @@ Set the generated token and deployment-specific production values in `.env`:
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
+VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
+VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 VEDA_MAIL_CLAMAV_HOST=clamav
@@ -123,6 +125,8 @@ VEDA_MAIL_SETUP_TOKEN=<openssl rand -hex 32>
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=<a separate openssl rand -hex 32 value>
 VEDA_MAIL_DATA_DIR=/data
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
+VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=<optional dedicated Stalwart API key>
+VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_CLAMAV_HOST=clamav
@@ -137,6 +141,8 @@ VEDA_MAIL_CLAMAV_PORT=3310
 10. Complete the [first-run wizard](INSTALLATION.md#the-setup-wizard).
 11. Enable administrator 2FA under `/admin` → **Security**, and store its
     one-time backup codes safely.
+12. If the Stalwart management key is configured, open **Mailbox users** and
+    verify list/detail plus one dedicated non-production account creation.
 
 Do not expose SMTP, IMAP, Submission, or ManageSieve ports from Veda Mail.
 Those belong to the mail-server deployment, not this webmail container.

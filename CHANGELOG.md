@@ -9,6 +9,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Stalwart administrator mailbox-user list, safe detail, search/pagination,
+  and ordinary-user creation with a server-only least-privilege management
+  key, allowed-domain isolation, admin password/2FA step-up, negative-cache
+  invalidation, and durable secret-free idempotency
 - Encrypted, session/draft-bound attachment quarantine with safe names, exact
   byte quotas plus global capacity ceilings, magic-number MIME detection,
   ClamAV scanning, idle/absolute/verdict deadlines, scheduled expiry,
