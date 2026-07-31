@@ -1,5 +1,6 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { asAttachmentDownloadApiError } from "@/server/mail/attachment-download-http";
 import { prepareInlineImage } from "@/server/mail/inline-image";
@@ -63,6 +64,7 @@ export const POST = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "inline-image",
       connection.id,

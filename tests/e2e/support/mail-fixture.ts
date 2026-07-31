@@ -60,9 +60,19 @@ export const signIn = async (page: Page) => {
   await page.getByLabel("Email address").fill("member@example.com");
   await page.getByLabel("Password").fill("local-test-password");
   await page.getByRole("button", { name: "Open mailbox" }).click();
-  await expect(
-    page.getByRole("button", { name: "New message" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "New message" })).toBeVisible();
+};
+
+export const mailSessionScopeHeaders = async (
+  page: Page,
+): Promise<Readonly<Record<string, string>>> => {
+  const response = await page.request.get("/api/v1/mail/workspace");
+  expect(response.ok()).toBe(true);
+  const payload = (await response.json()) as {
+    readonly data: { readonly sessionScope: string };
+  };
+  expect(payload.data.sessionScope).toBeTruthy();
+  return { "x-veda-mail-session-scope": payload.data.sessionScope };
 };
 
 export const useInstalledMailbox = () => {

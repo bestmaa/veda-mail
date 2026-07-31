@@ -1,5 +1,6 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
 import {
@@ -20,6 +21,7 @@ export const GET = async (request: Request, context: RouteContext) => {
   try {
     assertRequestRateLimit(request, "mail-read", 20_000, 1_000, 60 * 1000);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit("mail-read", connection.id, 300, 60 * 1000);
     const { messageId } = await context.params;
     const message = await (
@@ -36,6 +38,7 @@ export const PATCH = async (request: Request, context: RouteContext) => {
     assertSameOrigin(request);
     assertRequestRateLimit(request, "mail-mutation", 5_000, 300, 60 * 1000);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit("mail-mutation", connection.id, 120, 60 * 1000);
     const { messageId } = await context.params;
     const payload = await readJsonBody(request, 32 * 1024);

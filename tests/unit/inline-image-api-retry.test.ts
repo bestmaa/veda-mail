@@ -7,6 +7,7 @@ import {
 
 const href =
   "/api/v1/mail/messages/message/attachments/attachment/inline-image";
+const sessionScope = "test-session-scope";
 
 const failureResponse = (
   status: number,
@@ -45,7 +46,7 @@ describe("inline image client retry policy", () => {
         }),
       );
     vi.stubGlobal("fetch", fetchMock);
-    const result = fetchInlineImage(href);
+    const result = fetchInlineImage(href, sessionScope);
     await vi.runAllTimersAsync();
     const blob = await result;
 
@@ -61,7 +62,7 @@ describe("inline image client retry policy", () => {
       failureResponse(503, "Image processing is temporarily unavailable."),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const result = expect(fetchInlineImage(href)).rejects.toThrow(
+    const result = expect(fetchInlineImage(href, sessionScope)).rejects.toThrow(
       "Image processing is temporarily unavailable.",
     );
     await vi.runAllTimersAsync();
@@ -92,7 +93,7 @@ describe("inline image client retry policy", () => {
         }),
       );
     vi.stubGlobal("fetch", fetchMock);
-    const result = fetchInlineImage(href);
+    const result = fetchInlineImage(href, sessionScope);
     await vi.advanceTimersByTimeAsync(999);
     expect(fetchMock).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(1);
@@ -116,9 +117,9 @@ describe("inline image client retry policy", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(fetchInlineImage(href)).rejects.toThrow("Sign in again.");
-    await expect(fetchInlineImage(href)).rejects.toThrow("Unsupported image.");
-    await expect(fetchInlineImage(href)).rejects.toThrow("Try much later.");
+    await expect(fetchInlineImage(href, sessionScope)).rejects.toThrow("Sign in again.");
+    await expect(fetchInlineImage(href, sessionScope)).rejects.toThrow("Unsupported image.");
+    await expect(fetchInlineImage(href, sessionScope)).rejects.toThrow("Try much later.");
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
@@ -136,10 +137,10 @@ describe("inline image client retry policy", () => {
       .mockResolvedValueOnce(failureResponse(429, "Please wait."));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(fetchInlineImage(href)).rejects.toThrow(
+    await expect(fetchInlineImage(href, sessionScope)).rejects.toThrow(
       "Too many requests.",
     );
-    await expect(fetchInlineImage(href)).rejects.toThrow("Please wait.");
+    await expect(fetchInlineImage(href, sessionScope)).rejects.toThrow("Please wait.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -151,7 +152,11 @@ describe("inline image client retry policy", () => {
     vi.stubGlobal("fetch", fetchMock);
     const controller = new AbortController();
 
-    const result = fetchInlineImage(href, controller.signal).catch(
+    const result = fetchInlineImage(
+      href,
+      sessionScope,
+      controller.signal,
+    ).catch(
       (error: unknown) => error,
     );
     expect(fetchMock).toHaveBeenCalledOnce();

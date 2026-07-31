@@ -10,6 +10,7 @@ import type {
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
@@ -66,6 +67,7 @@ export const POST = async (request: Request) => {
     assertSameOrigin(request);
     assertRequestRateLimit(request, "mail-send", 5_000, 300, 60 * 1000);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
     const parsed = sendMessageSchema.parse(await readJsonBody(request));
     const content = canonicalizeOutgoingMailContent(parsed);

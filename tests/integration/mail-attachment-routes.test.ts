@@ -1,19 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 const mocks = vi.hoisted(() => {
   const getMaxAttachmentBytes = vi.fn(async () => 18 * 1024 * 1024);
-  const sendMessage = vi.fn(async (input: unknown) => {
-    void input;
-    return {
-      id: "sent-with-attachment",
-      submittedAt: "2026-07-29T00:00:00.000Z",
-    };
-  });
   return {
     connection: vi.fn(),
     getMaxAttachmentBytes,
-    mailService: vi.fn(async () => ({ getMaxAttachmentBytes, sendMessage })),
-    sendMessage,
+    mailService: vi.fn(async () => ({ getMaxAttachmentBytes })),
   };
 });
 
@@ -29,10 +20,10 @@ import {
   DELETE as remove,
   PUT as upload,
 } from "@/app/api/v1/mail/attachments/[attachmentId]/route";
-import { POST as send } from "@/app/api/v1/mail/send/route";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 const origin = "https://mail.example.com";
 let activeConnection: ProviderConnection;
 const draftId = () => crypto.randomUUID();
@@ -61,6 +52,7 @@ const reserveAttachment = async (
       headers: {
         ...mutationHeaders,
         "content-type": "application/json",
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
       },
       method: "POST",
     }),
@@ -86,6 +78,7 @@ const uploadAttachment = (
         "content-length": String(size),
         "content-type": "text/plain",
         "x-veda-draft-id": draft,
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
       },
       method: "PUT",
     }),
@@ -107,11 +100,6 @@ beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockReset();
   mocks.getMaxAttachmentBytes.mockResolvedValue(18 * 1024 * 1024);
   mocks.mailService.mockClear();
-  mocks.sendMessage.mockReset();
-  mocks.sendMessage.mockResolvedValue({
-    id: "sent-with-attachment",
-    submittedAt: "2026-07-29T00:00:00.000Z",
-  });
 });
 
 describe("secure attachment routes", () => {
@@ -152,7 +140,13 @@ describe("secure attachment routes", () => {
     const deleted = await remove(
       new Request(
         `${origin}${reservation.uploadUrl}?draftId=${encodeURIComponent(draft)}`,
-        { headers: mutationHeaders, method: "DELETE" },
+        {
+          headers: {
+            ...mutationHeaders,
+            "x-veda-mail-session-scope": mailSessionScope(activeConnection),
+          },
+          method: "DELETE",
+        },
       ),
       route(reservation.id),
     );
@@ -167,7 +161,13 @@ describe("secure attachment routes", () => {
         `${origin}${reservation.uploadUrl}?draftId=${encodeURIComponent(
           draftId(),
         )}`,
-        { headers: mutationHeaders, method: "DELETE" },
+        {
+          headers: {
+            ...mutationHeaders,
+            "x-veda-mail-session-scope": mailSessionScope(activeConnection),
+          },
+          method: "DELETE",
+        },
       ),
       route(reservation.id),
     );
@@ -197,53 +197,28 @@ describe("secure attachment routes", () => {
     });
   });
 
-  it("delivers clean bytes to the provider and consumes the quarantine record", async () => {
-    const draft = draftId();
-    const reservation = await reserveAttachment(draft);
-    expect(
-      (
-        await uploadAttachment(
-          reservation.id,
-          draft,
-          reservation.content,
-          reservation.size,
-        )
-      ).status,
-    ).toBe(200);
-
-    const response = await send(
-      new Request(`${origin}/api/v1/mail/send`, {
+  it("rejects a stale mailbox scope before attachment reservation work", async () => {
+    const response = await reserve(
+      new Request(`${origin}/api/v1/mail/attachments`, {
         body: JSON.stringify({
-          attachmentIds: [reservation.id],
-          body: "See attachment.",
-          draftId: draft,
-          subject: "Attachment",
-          to: [{ email: "recipient@example.com", name: null }],
+          declaredMimeType: "text/plain",
+          draftId: draftId(),
+          fileName: "stale.txt",
+          size: 5,
         }),
         headers: {
           ...mutationHeaders,
           "content-type": "application/json",
+          "x-veda-mail-session-scope": "stale-session-scope",
         },
         method: "POST",
       }),
     );
-    expect(response.status).toBe(201);
-    const input = mocks.sendMessage.mock.calls[0]?.[0] as {
-      attachments: readonly {
-        content: Uint8Array;
-        id: string;
-        mimeType: string;
-        size: number;
-      }[];
-    };
-    expect(input.attachments).toHaveLength(1);
-    const delivered = input.attachments[0];
-    if (!delivered) throw new Error("Attachment was not delivered.");
-    expect(Buffer.from(delivered.content).toString()).toBe(reservation.content);
-    expect(delivered).toMatchObject({
-      id: reservation.id,
-      mimeType: "text/plain",
-      size: reservation.size,
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "MAIL_SESSION_CHANGED" },
     });
+    expect(mocks.mailService).not.toHaveBeenCalled();
   });
 });

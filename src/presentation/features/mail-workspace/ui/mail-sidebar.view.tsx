@@ -10,6 +10,7 @@ interface MailSidebarViewProps {
   readonly account: MailWorkspaceViewProps["account"];
   readonly branding: MailWorkspaceViewProps["branding"];
   readonly folders: readonly FolderViewModel[];
+  readonly isComposerReady: boolean;
   readonly isMobileOpen: boolean;
   readonly onCloseNavigation: () => void;
   readonly onCompose: () => void;
@@ -21,6 +22,7 @@ export const MailSidebarView = ({
   account,
   branding,
   folders,
+  isComposerReady,
   isMobileOpen,
   onCloseNavigation,
   onCompose,
@@ -58,8 +60,11 @@ export const MailSidebarView = ({
     </div>
 
     <button
-      className="mx-4 mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-accent)] px-4 text-sm font-bold text-[var(--brand-accent-foreground)] shadow-lg transition hover:-translate-y-0.5"
+      aria-busy={!isComposerReady}
+      className="mx-4 mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-accent)] px-4 text-sm font-bold text-[var(--brand-accent-foreground)] shadow-lg transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
+      disabled={!isComposerReady}
       onClick={onCompose}
+      title={isComposerReady ? undefined : "Loading account settings"}
       type="button"
     >
       <PenLine aria-hidden size={18} />

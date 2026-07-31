@@ -13,6 +13,7 @@ afterEach(() => {
 });
 
 const href = "/api/v1/mail/messages/message/attachments/attachment/inline-image";
+const sessionScope = "test-session-scope";
 
 describe("inline image client API", () => {
   it("builds an encoded message-scoped route and fetches exact bounded WebP", async () => {
@@ -34,7 +35,7 @@ describe("inline image client API", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const blob = await fetchInlineImage(href, signal);
+    const blob = await fetchInlineImage(href, sessionScope, signal);
 
     expect(blob.type).toBe("image/webp");
     expect(new Uint8Array(await blob.arrayBuffer())).toEqual(
@@ -47,6 +48,7 @@ describe("inline image client API", () => {
       headers: {
         Accept: "image/webp",
         "Content-Type": "application/json",
+        "x-veda-mail-session-scope": sessionScope,
       },
       method: "POST",
       redirect: "error",
@@ -59,7 +61,7 @@ describe("inline image client API", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     await expect(
-      fetchInlineImage("https://evil.example/tracker.webp"),
+      fetchInlineImage("https://evil.example/tracker.webp", sessionScope),
     ).rejects.toThrow("reference is invalid");
     expect(fetchMock).not.toHaveBeenCalled();
 
@@ -76,7 +78,7 @@ describe("inline image client API", () => {
       ),
     );
     await expect(
-      fetchInlineImage(href),
+      fetchInlineImage(href, sessionScope),
     ).rejects.toThrow("unsafe type");
     expect(unsafeTypeCancel).toHaveBeenCalledOnce();
 
@@ -93,7 +95,7 @@ describe("inline image client API", () => {
       ),
     );
     await expect(
-      fetchInlineImage(href),
+      fetchInlineImage(href, sessionScope),
     ).rejects.toThrow("invalid size");
     expect(unsafeLengthCancel).toHaveBeenCalledOnce();
   });
@@ -111,7 +113,7 @@ describe("inline image client API", () => {
       ),
     );
     await expect(
-      fetchInlineImage(href),
+      fetchInlineImage(href, sessionScope),
     ).rejects.toThrow("incomplete");
 
     vi.stubGlobal(
@@ -126,7 +128,7 @@ describe("inline image client API", () => {
       ),
     );
     await expect(
-      fetchInlineImage(href),
+      fetchInlineImage(href, sessionScope),
     ).rejects.toThrow("exceeded its safe size");
   });
 

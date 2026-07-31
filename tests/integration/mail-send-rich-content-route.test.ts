@@ -17,6 +17,7 @@ import { POST } from "@/app/api/v1/mail/send/route";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
 const origin = "https://mail.example.com";
 let activeConnection: ProviderConnection;
@@ -34,6 +35,7 @@ const request = (overrides: Readonly<Record<string, unknown>> = {}) =>
       "content-type": "application/json",
       host: "mail.example.com",
       origin,
+      "x-veda-mail-session-scope": mailSessionScope(activeConnection),
     },
     method: "POST",
   });

@@ -34,6 +34,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
   ordered and unordered lists, isolated links, undo/redo, plain-text mode, and
   browser spellcheck. The client editor uses version-pinned, MIT-licensed
   Lexical 0.44.0 and accepts pasted or dropped content as plain text only
+- Multiple named plain or sanitized-rich signatures with explicit save,
+  separate new-message and reply/forward defaults, conflict-safe settings,
+  exact-once new/reply/forward placement, and a None/change composer picker
 - Provider capability matrix and public Gmail-class product roadmap
 - Member-visible provider capability status with unsupported features called out
 - Coverage thresholds, route/component harnesses, and Playwright browser
@@ -92,6 +95,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Original-attachment forwarding now excludes rendered or hidden inline parts
   both when the client creates import jobs and when the server independently
   authorizes each opaque attachment ID
+- Signature settings now record the rich editor's initial snapshot separately
+  from user changes, so the first edit is never absorbed into the saved
+  baseline. Create, save, delete, and default controls remain unavailable until
+  the authoritative signature book has loaded
 - Dependency auditing now covers the complete production and development tree
 - Runtime images pin the Node base digest and exclude unused package managers
 - Provider attachment streams now reject cumulative zero-byte chunk floods
@@ -99,6 +106,26 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Derive signature ownership from the authenticated gateway account, encrypt
+  each canonical signature book with an owner-bound AES-256-GCM key, hide raw
+  identities behind HMAC keys, and persist only through bounded, atomic
+  mode-0600 writes. Same-origin checks, verified-session rate limits, strict
+  schemas, stale-revision conflicts, server-validated connection scopes, and
+  the outbound sanitizer apply before provider submission
+- Version signature owner keys so provider IDs and email domains remain
+  case-insensitive while the email local-part remains case-sensitive. Only v2
+  owner buckets are accepted; case-collapsed pre-release v1 buckets are ignored
+  without automatic adoption or migration
+- Require the workspace-issued connection scope on every later account-derived
+  mail, signature, profile/password/2FA, sign-out, delivery-notice, send, and
+  attachment operation; reject cross-tab cookie replacement before provider
+  work, terminally invalidate the mounted mail model on 409/401 until a full
+  reload, and enforce the route invariant in the architecture gate
+- Reset attachment capability state at layout time whenever the accepted
+  session scope changes. Pair the SSR upload limit with its exact server-derived
+  initial scope, reuse it only when the client accepts that same scope, and
+  otherwise clear it until a scoped refresh; discard an earlier account's late
+  capability response instead of exposing it in the replacement session
 - Enforce a per-document nonce Content Security Policy, retain only the reviewed
   message-frame script hash and React style-attribute exception, and emit
   production host-only HSTS

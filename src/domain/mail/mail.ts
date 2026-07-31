@@ -175,8 +175,12 @@ export interface MailAccount {
   readonly providerId: ProviderId;
 }
 
-export interface MailWorkspace {
+export interface ProviderMailWorkspace {
   readonly account: MailAccount;
   readonly mailboxes: readonly Mailbox[];
   readonly messages: MessagePage;
+}
+
+export interface MailWorkspace extends ProviderMailWorkspace {
+  readonly sessionScope: string;
 }

@@ -36,6 +36,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
         account={props.account}
         branding={props.branding}
         folders={props.folders}
+        isComposerReady={props.isComposerReady}
         isMobileOpen={props.navigation.isOpen}
         onCloseNavigation={props.navigation.onClose}
         onCompose={props.onCompose}
@@ -58,6 +59,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
       >
         {props.reader ? (
           <MessageReaderView
+            isComposerReady={props.isComposerReady}
             onArchive={props.onArchive}
             onClose={props.onCloseReader}
             onDelete={props.onDelete}
@@ -69,15 +71,21 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
             reader={props.reader}
           />
         ) : (
-          <EmptyReaderView onCompose={props.onCompose} />
+          <EmptyReaderView
+            isComposerReady={props.isComposerReady}
+            onCompose={props.onCompose}
+          />
         )}
       </div>
     </div>
 
     <button
       aria-label="Compose a new message"
-      className="fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-2xl bg-[var(--brand-accent)] text-[var(--brand-accent-foreground)] shadow-xl md:hidden"
+      aria-busy={!props.isComposerReady}
+      className="fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-2xl bg-[var(--brand-accent)] text-[var(--brand-accent-foreground)] shadow-xl disabled:cursor-wait disabled:opacity-70 md:hidden"
+      disabled={!props.isComposerReady}
       onClick={props.onCompose}
+      title={props.isComposerReady ? undefined : "Loading account settings"}
       type="button"
     >
       <PenLine aria-hidden size={21} />

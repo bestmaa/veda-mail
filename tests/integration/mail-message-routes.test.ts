@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const getMessage = vi.fn();
-  const getWorkspace = vi.fn();
   const mutateMessage = vi.fn();
   return {
     assertRequestRateLimit: vi.fn(),
@@ -11,7 +10,6 @@ const mocks = vi.hoisted(() => {
     getCurrentConnection: vi.fn(),
     getMailService: vi.fn(),
     getMessage,
-    getWorkspace,
     mutateMessage,
   };
 });
@@ -33,7 +31,7 @@ import {
   GET as getMessage,
   PATCH as patchMessage,
 } from "@/app/api/v1/mail/messages/[messageId]/route";
-import { GET as getWorkspace } from "@/app/api/v1/mail/workspace/route";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 
 const origin = "https://mail.example.com";
@@ -45,6 +43,7 @@ const request = (path: string, init?: RequestInit): Request =>
       "content-type": "application/json",
       host: "mail.example.com",
       origin,
+      "x-veda-mail-session-scope": mailSessionScope(mocks.connection),
       ...init?.headers,
     },
   });
@@ -61,58 +60,13 @@ beforeEach(() => {
   mocks.getMailService.mockReset();
   mocks.getMailService.mockResolvedValue({
     getMessage: mocks.getMessage,
-    getWorkspace: mocks.getWorkspace,
     mutateMessage: mocks.mutateMessage,
   });
   mocks.getMessage.mockReset();
-  mocks.getWorkspace.mockReset();
   mocks.mutateMessage.mockReset();
 });
 
 describe("mail read and mutation routes", () => {
-  it("loads a filtered workspace through the authenticated mail service", async () => {
-    const workspace = {
-      account: {
-        email: "member@example.com",
-        id: "account-1",
-        name: "Member",
-        providerId: "provider-1",
-      },
-      mailboxes: [],
-      messages: { items: [], nextCursor: null, total: 0 },
-    };
-    mocks.getWorkspace.mockResolvedValue(workspace);
-    const routeRequest = request(
-      "/api/v1/mail/workspace?mailboxId=inbox-1&cursor=cursor-2&search=quarterly",
-    );
-
-    const response = await getWorkspace(routeRequest);
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
-    await expect(response.json()).resolves.toEqual({ data: workspace });
-    expect(mocks.assertRequestRateLimit).toHaveBeenCalledWith(
-      routeRequest,
-      "mail-read",
-      20_000,
-      1_000,
-      60 * 1_000,
-    );
-    expect(mocks.assertSubjectRateLimit).toHaveBeenCalledWith(
-      "mail-read",
-      mocks.connection.id,
-      300,
-      60 * 1_000,
-    );
-    expect(mocks.getMailService).toHaveBeenCalledWith(mocks.connection);
-    expect(mocks.getWorkspace).toHaveBeenCalledWith({
-      cursor: "cursor-2",
-      limit: 50,
-      mailboxId: "inbox-1",
-      search: "quarterly",
-    });
-  });
-
   it("loads one message by its route identifier", async () => {
     const message = {
       attachments: [],
@@ -192,6 +146,41 @@ describe("mail read and mutation routes", () => {
       value: true,
     });
   });
+
+  it.each([
+    ["GET", getMessage],
+    ["PATCH", patchMessage],
+  ] as const)(
+    "rejects a stale mailbox scope before the provider on %s",
+    async (method, handler) => {
+      const routeRequest = request("/api/v1/mail/messages/message-42", {
+        ...(method === "PATCH"
+          ? {
+              body: JSON.stringify({
+                type: "set-starred",
+                value: true,
+              }),
+            }
+          : {}),
+        headers: { "x-veda-mail-session-scope": "stale-session-scope" },
+        method,
+      });
+
+      const response = await handler(routeRequest, context("message-42"));
+
+      expect(response.status).toBe(409);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: "MAIL_SESSION_CHANGED",
+          message: "Mailbox session changed. Reload this page and try again.",
+        },
+      });
+      expect(mocks.assertSubjectRateLimit).not.toHaveBeenCalled();
+      expect(mocks.getMailService).not.toHaveBeenCalled();
+      expect(mocks.getMessage).not.toHaveBeenCalled();
+      expect(mocks.mutateMessage).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns an authenticated subject rate limit before provider lookup", async () => {
     mocks.assertSubjectRateLimit.mockImplementationOnce(() => {

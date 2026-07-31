@@ -58,6 +58,7 @@ vi.mock("@/server/auth/member-two-factor", () => ({
 }));
 
 import { GET } from "@/app/api/v1/member/settings/route";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
 beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockReset();
@@ -65,7 +66,15 @@ beforeEach(() => {
 });
 
 const settings = async () => {
-  const response = await GET();
+  const response = await GET(
+    new Request("https://mail.example.com/api/v1/member/settings", {
+      headers: {
+        "x-veda-mail-session-scope": mailSessionScope({
+          id: "settings-capability-connection",
+        }),
+      },
+    }),
+  );
   expect(response.status).toBe(200);
   return (await response.json()) as {
     data: {

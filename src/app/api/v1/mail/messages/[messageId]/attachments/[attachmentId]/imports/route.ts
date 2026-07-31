@@ -1,5 +1,6 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   asAttachmentImportApiError,
@@ -34,6 +35,7 @@ export const POST = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit("attachment-import", connection.id, 20, 60 * 1_000);
     const input = attachmentImportSchema.parse(
       await readJsonBody(request, 4 * 1_024),

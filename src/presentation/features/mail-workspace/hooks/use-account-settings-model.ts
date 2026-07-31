@@ -1,38 +1,38 @@
 "use client";
 
-import { type FormEvent, useCallback, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
+import { DEFAULT_MEMBER_CAPABILITIES } from "@/presentation/features/mail-workspace/account-settings-default-capabilities";
+import { createProviderFeatures } from "@/presentation/features/mail-workspace/account-settings-provider-features";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
+import type { EmailSignatureSettingsViewModel } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
-import { formatFileSize } from "@/presentation/shared/formatters/mail-formatters";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+import { useModalDialogFocus } from "@/presentation/shared/hooks/use-modal-dialog-focus";
 import {
   memberSettingsApi,
   type MemberSettingsSnapshot,
 } from "@/transport/client/api-client";
 
-const defaultCapabilities = {
-  mail: {
-    maxAttachmentBytes: 0,
-    maxAttachmentDownloadBytes: 0,
-    supportsAttachmentDownload: false,
-    supportsDrafts: false,
-    supportsPasswordChange: false,
-    supportsProfileSettings: false,
-    supportsPush: false,
-    supportsServerSearch: false,
-    supportsThreads: false,
-    supportsTwoFactorAuthentication: false,
-  },
-  passwordChange: false,
-  profileSettings: false,
-  twoFactorAuthentication: false,
-};
-
 export const useAccountSettingsModel = (
   fallbackEmail: string,
   fallbackName: string,
+  signatures: EmailSignatureSettingsViewModel,
+  sessionScope: string,
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ): AccountSettingsViewModel => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] =
+    useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<MemberSettingsSnapshot | null>(null);
   const [displayName, setDisplayName] = useState(fallbackName);
@@ -46,41 +46,89 @@ export const useAccountSettingsModel = (
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+  const scopeRef = useRef(sessionScope);
   const {
     reset: resetTwoFactor,
     view: twoFactorView,
-  } = useTwoFactorSettingsModel();
+  } = useTwoFactorSettingsModel(sessionScope, handleSessionFailure);
+  useLayoutEffect(() => {
+    scopeRef.current = sessionScope;
+    setIsOpen(false);
+    setIsCloseConfirmationOpen(false);
+    setIsLoading(false);
+    setSnapshot(null);
+    setDisplayName(fallbackName);
+    setProfileError(null);
+    setProfileSuccess(null);
+    setIsProfileSaving(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setOtpCode("");
+    setPasswordError(null);
+    setPasswordSuccess(null);
+    setIsPasswordSaving(false);
+    resetTwoFactor(false);
+  }, [fallbackName, handleSessionFailure, resetTwoFactor, sessionScope]);
+  const close = useCallback(() => {
+    if (signatures.hasUnsavedChanges) {
+      setIsCloseConfirmationOpen(true);
+      return;
+    }
+    setIsOpen(false);
+  }, [signatures.hasUnsavedChanges]);
+  useModalDialogFocus(
+    isOpen,
+    "#account-settings-dialog",
+    close,
+    "[data-settings-initial-focus]",
+  );
 
   const open = useCallback(() => {
+    setIsCloseConfirmationOpen(false);
     setIsOpen(true);
     setIsLoading(true);
     setDisplayName(fallbackName);
     setProfileError(null);
     resetTwoFactor(false);
+    const requestScope = sessionScope;
+    if (!requestScope) {
+      setIsLoading(false);
+      setProfileError("Mailbox settings are still loading.");
+      return;
+    }
     void memberSettingsApi
-      .get()
+      .get(requestScope)
       .then((next) => {
+        if (scopeRef.current !== requestScope) return;
         setSnapshot(next);
         setDisplayName(next.profile.displayName);
         resetTwoFactor(next.security.twoFactorEnabled);
       })
       .catch((error: unknown) => {
+        if (scopeRef.current !== requestScope) return;
+        if (handleSessionFailure(error)) return;
         setProfileError(
           error instanceof Error ? error.message : "Unable to load settings.",
         );
       })
-      .finally(() => setIsLoading(false));
-  }, [fallbackName, resetTwoFactor]);
+      .finally(() => {
+        if (scopeRef.current === requestScope) setIsLoading(false);
+      });
+  }, [fallbackName, handleSessionFailure, resetTwoFactor, sessionScope]);
 
   const onProfileSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      const requestScope = sessionScope;
+      if (!requestScope) return;
       setIsProfileSaving(true);
       setProfileError(null);
       setProfileSuccess(null);
       void memberSettingsApi
-        .updateProfile(displayName)
+        .updateProfile(displayName, requestScope)
         .then(({ profile }) => {
+          if (scopeRef.current !== requestScope) return;
           setSnapshot((current) =>
             current ? { ...current, profile } : current,
           );
@@ -88,18 +136,24 @@ export const useAccountSettingsModel = (
           setProfileSuccess("Profile name updated.");
         })
         .catch((error: unknown) => {
+          if (scopeRef.current !== requestScope) return;
+          if (handleSessionFailure(error)) return;
           setProfileError(
             error instanceof Error ? error.message : "Profile update failed.",
           );
         })
-        .finally(() => setIsProfileSaving(false));
+        .finally(() => {
+          if (scopeRef.current === requestScope) setIsProfileSaving(false);
+        });
     },
-    [displayName],
+    [displayName, handleSessionFailure, sessionScope],
   );
 
   const onPasswordSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      const requestScope = sessionScope;
+      if (!requestScope) return;
       setIsPasswordSaving(true);
       setPasswordError(null);
       setPasswordSuccess(null);
@@ -109,8 +163,9 @@ export const useAccountSettingsModel = (
           currentPassword,
           newPassword,
           ...(otpCode ? { otpCode } : {}),
-        })
+        }, requestScope)
         .then(({ sessionActive }) => {
+          if (scopeRef.current !== requestScope) return;
           if (!sessionActive) {
             window.location.assign("/");
             return;
@@ -122,20 +177,37 @@ export const useAccountSettingsModel = (
           setPasswordSuccess("Password changed successfully.");
         })
         .catch((error: unknown) => {
+          if (scopeRef.current !== requestScope) return;
+          if (handleSessionFailure(error)) return;
           setPasswordError(
             error instanceof Error ? error.message : "Password change failed.",
           );
         })
-        .finally(() => setIsPasswordSaving(false));
+        .finally(() => {
+          if (scopeRef.current === requestScope) setIsPasswordSaving(false);
+        });
     },
-    [confirmPassword, currentPassword, newPassword, otpCode],
+    [confirmPassword, currentPassword, handleSessionFailure, newPassword, otpCode, sessionScope],
   );
 
-  const capabilities = snapshot?.capabilities ?? defaultCapabilities;
+  const capabilities =
+    snapshot?.capabilities ?? DEFAULT_MEMBER_CAPABILITIES;
   return {
     canChangePassword: capabilities.passwordChange,
     canEditProfile: capabilities.profileSettings,
-    close: () => setIsOpen(false),
+    close,
+    closeConfirmation: {
+      description:
+        "Closing account settings will discard unsaved signature changes.",
+      isOpen: isCloseConfirmationOpen,
+      onCancel: () => setIsCloseConfirmationOpen(false),
+      onConfirm: () => {
+        signatures.discardAll();
+        setIsCloseConfirmationOpen(false);
+        setIsOpen(false);
+      },
+      title: "Discard signature changes?",
+    },
     displayName,
     email: snapshot?.profile.email ?? fallbackEmail,
     isLoading,
@@ -163,59 +235,11 @@ export const useAccountSettingsModel = (
       success: profileSuccess,
     },
     profileName: snapshot?.profile.displayName ?? null,
-    providerFeatures: [
-      {
-        detail: capabilities.mail.supportsServerSearch
-          ? "Available"
-          : "Not available",
-        label: "Server-side search",
-        supported: capabilities.mail.supportsServerSearch,
-      },
-      {
-        detail: capabilities.mail.supportsDrafts
-          ? "Available"
-          : "Not available",
-        label: "Provider draft sync",
-        supported: capabilities.mail.supportsDrafts,
-      },
-      {
-        detail: capabilities.mail.supportsThreads
-          ? "Available"
-          : "Not available",
-        label: "Conversation threads",
-        supported: capabilities.mail.supportsThreads,
-      },
-      {
-        detail: capabilities.mail.supportsPush
-          ? "Available"
-          : "Manual refresh",
-        label: "Live mailbox updates",
-        supported: capabilities.mail.supportsPush,
-      },
-      {
-        detail:
-          snapshot?.attachmentCapability.status === "unavailable"
-            ? "Temporarily unavailable"
-            : capabilities.mail.maxAttachmentBytes > 0
-            ? `Up to ${formatFileSize(capabilities.mail.maxAttachmentBytes)}`
-            : "Not available",
-        label: "Attachment upload & send",
-        supported: capabilities.mail.maxAttachmentBytes > 0,
-      },
-      {
-        detail:
-          capabilities.mail.supportsAttachmentDownload &&
-          capabilities.mail.maxAttachmentDownloadBytes > 0
-            ? `Up to ${formatFileSize(
-                capabilities.mail.maxAttachmentDownloadBytes,
-              )}`
-            : "Not available",
-        label: "Received attachment downloads",
-        supported:
-          capabilities.mail.supportsAttachmentDownload &&
-          capabilities.mail.maxAttachmentDownloadBytes > 0,
-      },
-    ],
+    providerFeatures: createProviderFeatures(
+      capabilities,
+      snapshot?.attachmentCapability.status,
+    ),
+    signatures,
     twoFactor: {
       ...twoFactorView,
       canManage: capabilities.twoFactorAuthentication,

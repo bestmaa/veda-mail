@@ -2,37 +2,44 @@
 
 import {
   useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
   type ChangeEventHandler,
-  type FormEventHandler,
 } from "react";
 import {
   createForwardDraft,
   createReplyAllDraft,
   createReplyDraft,
   formatAddressInput,
-  parseRecipientInputs,
 } from "@/domain/mail/compose";
 import type { ComposeInput, MessageDetail, SendReceipt } from "@/domain/mail/mail";
-import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
-import {
-  attachmentRecoveryMessage,
-  composerSendErrorMessage,
-} from "@/presentation/features/mail-workspace/hooks/composer-send-error";
+import type { EmailSignatureBook } from "@/domain/member/email-signature";
 import { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import {
   useComposerFocusTrap,
   useComposerReturnFocus,
 } from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
-import { mailApi } from "@/transport/client/api-client";
-
+import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
+import { useComposerSignatures } from "@/presentation/features/mail-workspace/hooks/use-composer-signatures";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 type ComposerTitle = "Forward message" | "New message" | "Reply all" | "Reply";
 export const useComposerModel = (
   onSent: (receipt: SendReceipt, submittedEmails: readonly string[]) => void,
   maxAttachmentBytes: number | null,
+  signatureBook: EmailSignatureBook | null = null,
+  accountKey = "",
+  isComposerReady = true,
+  initialAttachmentSessionScope = "",
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openAccountKey, setOpenAccountKey] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [to, setTo] = useState("");
   const [cc, setCc] = useState("");
@@ -43,8 +50,21 @@ export const useComposerModel = (
   const [inReplyTo, setInReplyTo] = useState<ComposeInput["inReplyTo"]>();
   const [title, setTitle] = useState<ComposerTitle>("New message");
   const [error, setError] = useState<string | null>(null);
-  const attachments = useComposerAttachments(maxAttachmentBytes);
-  const body = useComposerBody(isSending);
+  const accountKeyRef = useRef(accountKey);
+  useLayoutEffect(() => { accountKeyRef.current = accountKey; }, [accountKey]);
+  const attachments = useComposerAttachments(
+    maxAttachmentBytes,
+    accountKey,
+    initialAttachmentSessionScope,
+    handleSessionFailure,
+  );
+  const signatures = useComposerSignatures(signatureBook);
+  const {
+    detach: detachSignature,
+    prepare: prepareSignatures,
+    reset: resetSignatures,
+  } = signatures;
+  const body = useComposerBody(isSending, detachSignature);
   const { loadPlainDraft, reset: resetBody } = body;
   const returnFocus = useComposerReturnFocus();
   const resetFields = useCallback(() => {
@@ -55,21 +75,34 @@ export const useComposerModel = (
     setShowBcc(false);
     setSubject("");
     resetBody();
+    resetSignatures();
+    setOpenAccountKey("");
     setInReplyTo(undefined);
     setTitle("New message");
     setError(null);
-  }, [resetBody]);
+  }, [resetBody, resetSignatures]);
 
   const open = useCallback(() => {
+    if (!accountKey || !isComposerReady) return;
     returnFocus.remember();
     resetFields();
+    prepareSignatures("new");
     attachments.discard(true);
     void attachments.refreshCapability();
+    setOpenAccountKey(accountKey);
     setIsOpen(true);
-  }, [attachments, resetFields, returnFocus]);
+  }, [
+    accountKey,
+    attachments,
+    isComposerReady,
+    prepareSignatures,
+    resetFields,
+    returnFocus,
+  ]);
 
   const openDraft = useCallback(
     (draft: ComposeInput, nextTitle: ComposerTitle) => {
+      if (!accountKey || !isComposerReady) return null;
       returnFocus.remember();
       const draftId = attachments.discard(true);
       void attachments.refreshCapability();
@@ -80,13 +113,22 @@ export const useComposerModel = (
       setShowBcc(draft.bcc.length > 0);
       setSubject(draft.subject);
       loadPlainDraft(draft.body);
+      prepareSignatures("reply-forward");
       setInReplyTo(draft.inReplyTo);
       setTitle(nextTitle);
       setError(null);
+      setOpenAccountKey(accountKey);
       setIsOpen(true);
       return draftId;
     },
-    [attachments, loadPlainDraft, returnFocus],
+    [
+      accountKey,
+      attachments,
+      isComposerReady,
+      loadPlainDraft,
+      prepareSignatures,
+      returnFocus,
+    ],
   );
 
   const openReply = useCallback(
@@ -105,7 +147,9 @@ export const useComposerModel = (
     (message: MessageDetail | null) => {
       if (message) {
         const draftId = openDraft(createForwardDraft(message), "Forward message");
-        attachments.importOriginalAttachments(message, draftId);
+        if (draftId) {
+          attachments.importOriginalAttachments(message, draftId);
+        }
       }
     },
     [attachments, openDraft],
@@ -114,29 +158,29 @@ export const useComposerModel = (
   const close = useCallback(() => {
     if (isSending) return;
     setIsOpen(false);
+    setOpenAccountKey("");
     setError(null);
     attachments.discard(true);
+    resetSignatures();
     returnFocus.restore();
-  }, [attachments, isSending, returnFocus]);
+  }, [attachments, isSending, resetSignatures, returnFocus]);
 
-  useComposerFocusTrap(isOpen, isSending, close);
+  const isOpenForAccount = isOpen && openAccountKey === accountKey;
+  useEffect(() => {
+    if (!isOpen || openAccountKey === accountKey) return;
+    setIsOpen(false);
+    setOpenAccountKey("");
+    setIsSending(false);
+    setError(null);
+    attachments.discard(true);
+    resetFields();
+  }, [accountKey, attachments, isOpen, openAccountKey, resetFields]);
 
-  const onToInput: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (event) => setTo(event.target.value),
-    [],
-  );
-  const onCcInput: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (event) => setCc(event.target.value),
-    [],
-  );
-  const onBccInput: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (event) => setBcc(event.target.value),
-    [],
-  );
-  const onSubjectInput: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (event) => setSubject(event.target.value),
-    [],
-  );
+  useComposerFocusTrap(isOpenForAccount, isSending, close);
+  const onToInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setTo(event.target.value), []);
+  const onCcInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setCc(event.target.value), []);
+  const onBccInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setBcc(event.target.value), []);
+  const onSubjectInput: ChangeEventHandler<HTMLInputElement> = useCallback((event) => setSubject(event.target.value), []);
   const onToggleBcc = useCallback(
     () => setShowBcc((isVisible) => (bcc.trim() ? true : !isVisible)),
     [bcc],
@@ -146,71 +190,25 @@ export const useComposerModel = (
     [cc],
   );
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = useCallback(
-    async (event) => {
-      event.preventDefault();
-      const recipients = parseRecipientInputs({ bcc, cc, to });
-      if (
-        recipients.to.length + recipients.cc.length + recipients.bcc.length ===
-        0
-      ) {
-        setError("Add at least one recipient.");
-        return;
-      }
-      if (!body.text.trim()) {
-        setError("Message body cannot be blank.");
-        return;
-      }
-      if (attachments.isUploading || attachments.hasError) {
-        setError(
-          attachments.isUploading
-            ? "Wait for attachment uploads to finish."
-            : "Remove failed attachments before sending.",
-        );
-        return;
-      }
-      if (attachments.expireReady())
-        return setError(EXPIRED_ATTACHMENT_MESSAGE);
-      setIsSending(true);
-      setError(null);
-      try {
-        const receipt = await mailApi.sendMessage({
-          attachmentIds: attachments.attachmentIds,
-          bcc: recipients.bcc,
-          ...body.payload,
-          cc: recipients.cc,
-          draftId: attachments.draftId,
-          ...(inReplyTo ? { inReplyTo } : {}),
-          subject,
-          to: recipients.to,
-        });
-        setIsOpen(false);
-        resetFields();
-        attachments.discard(false);
-        returnFocus.restore();
-        onSent(receipt, [...recipients.to, ...recipients.cc, ...recipients.bcc].map(({ email }) => email));
-      } catch (nextError) {
-        const recovery = attachmentRecoveryMessage(nextError);
-        if (recovery) attachments.invalidateReady(recovery);
-        setError(recovery ?? composerSendErrorMessage(nextError));
-      } finally {
-        setIsSending(false);
-      }
-    },
-    [
-      attachments,
-      bcc,
-      body.payload,
-      body.text,
-      cc,
-      inReplyTo,
-      onSent,
-      resetFields,
-      returnFocus,
-      subject,
-      to,
-    ],
-  );
+  const onSubmit = useComposerSubmit({
+    attachments,
+    bcc,
+    body,
+    cc,
+    inReplyTo,
+    handleSessionFailure,
+    isAccountCurrent: (submittedAccountKey) =>
+      accountKeyRef.current === submittedAccountKey,
+    onSent,
+    openAccountKey,
+    resetFields,
+    restoreFocus: returnFocus.restore,
+    setError,
+    setIsOpen,
+    setIsSending,
+    subject,
+    to,
+  });
 
   return {
     attachmentCapabilityUnavailable: attachments.capabilityUnavailable,
@@ -221,7 +219,7 @@ export const useComposerModel = (
     close,
     error,
     isAttachmentCapabilityRefreshing: attachments.isCapabilityRefreshing,
-    isOpen,
+    isOpen: isOpenForAccount,
     isSending,
     isUploading: attachments.isUploading,
     maxAttachmentBytes: attachments.maxFileBytes,
@@ -242,6 +240,7 @@ export const useComposerModel = (
     openReplyAll,
     showBcc,
     showCc,
+    signatures,
     subject,
     title,
     to,

@@ -53,9 +53,11 @@ describe("attachment download link", () => {
         href:
           "/api/v1/mail/messages/message-one/attachments/opaque-attachment",
         id: "opaque-attachment",
+        isDownloading: false,
         isPreviewing: false,
         meta: "application/pdf · 1 KB",
         name: "report.pdf",
+        onDownload: expect.any(Function),
         onPreview: null,
       },
     ]);

@@ -1,5 +1,9 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import {
+  assertMailSessionScope,
+  assertMailSessionScopeValue,
+} from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   acquireAttachmentArchiveLease,
@@ -23,6 +27,7 @@ import {
 } from "@/server/security/rate-limit";
 
 export const runtime = "nodejs";
+const ARCHIVE_SESSION_SCOPE_QUERY = "sessionScope";
 
 interface RouteContext {
   readonly params: Promise<{ readonly messageId: string }>;
@@ -41,13 +46,21 @@ export const GET = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
+    assertAttachmentArchiveRequest(request, ARCHIVE_SESSION_SCOPE_QUERY);
+    const queryScope = new URL(request.url).searchParams.get(
+      ARCHIVE_SESSION_SCOPE_QUERY,
+    );
+    if (queryScope === null) {
+      assertMailSessionScope(request, connection);
+    } else {
+      assertMailSessionScopeValue(queryScope, connection);
+    }
     assertSubjectRateLimit(
       "attachment-archive",
       connection.id,
       5,
       60 * 1_000,
     );
-    assertAttachmentArchiveRequest(request);
     const params = parseAttachmentArchiveRouteParams(await context.params);
     const mail = await getMailService(connection);
     lease = acquireAttachmentArchiveLease(connection.id);
@@ -80,6 +93,7 @@ export const HEAD = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "attachment-archive-preflight",
       connection.id,

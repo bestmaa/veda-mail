@@ -18,6 +18,10 @@ import type {
   ComposerAttachmentUploadOperation,
 } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import { mailApi } from "@/transport/client/api-client";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 interface OriginalAttachmentImportJob {
   readonly item: ComposerAttachment & {
@@ -31,9 +35,10 @@ type SetAttachments = Dispatch<
 >;
 
 const removeImportedAttachment = (
+  sessionScope: string,
   draftId: DraftId,
   attachmentId: UploadedAttachment["id"],
-) => mailApi.removeAttachment(draftId, attachmentId);
+) => mailApi.removeAttachment(draftId, attachmentId, sessionScope);
 
 const importErrorMessage = (error: unknown): string =>
   error instanceof Error
@@ -43,20 +48,33 @@ const importErrorMessage = (error: unknown): string =>
 export const useComposerOriginalAttachmentImports = (
   registry: ComposerAttachmentUploadRegistry,
   setAttachments: SetAttachments,
+  sessionScope: string,
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ) => {
   const queue = useRef<Promise<void>>(Promise.resolve());
+  const removeImport = useCallback(
+    async (draftId: DraftId, attachmentId: UploadedAttachment["id"]) => {
+      try {
+        await removeImportedAttachment(sessionScope, draftId, attachmentId);
+      } catch (error) {
+        handleSessionFailure(error);
+        throw error;
+      }
+    },
+    [handleSessionFailure, sessionScope],
+  );
   useEffect(
     () => () => {
       for (const operation of registry.cancelAll()) {
         if (operation.upload) {
-          void removeImportedAttachment(
+          void removeImport(
             operation.draftId,
             operation.upload.id,
           ).catch(() => undefined);
         }
       }
     },
-    [registry],
+    [registry, removeImport],
   );
 
   const execute = useCallback(
@@ -66,13 +84,14 @@ export const useComposerOriginalAttachmentImports = (
           operation.draftId,
           item.source.messageId,
           item.source.attachmentId,
+          sessionScope,
           operation.controller.signal,
         );
         const isActive = await registry.complete(
           item.key,
           operation,
           upload,
-          removeImportedAttachment,
+          removeImport,
         );
         if (!isActive) return;
         setAttachments((current) =>
@@ -81,6 +100,7 @@ export const useComposerOriginalAttachmentImports = (
       } catch (error) {
         registry.fail(item.key, operation);
         if (operation.controller.signal.aborted) return;
+        if (handleSessionFailure(error)) return;
         setAttachments((current) =>
           current.map((candidate) =>
             candidate.key === item.key
@@ -94,7 +114,7 @@ export const useComposerOriginalAttachmentImports = (
         );
       }
     },
-    [registry, setAttachments],
+    [handleSessionFailure, registry, removeImport, sessionScope, setAttachments],
   );
 
   const enqueue = useCallback(
@@ -161,14 +181,14 @@ export const useComposerOriginalAttachmentImports = (
         ),
       );
       if (previousUpload) {
-        void removeImportedAttachment(
+        void removeImport(
           previous?.draftId ?? draftId,
           previousUpload.id,
         ).catch(() => undefined);
       }
       enqueue(job);
     },
-    [enqueue, registry, setAttachments],
+    [enqueue, registry, removeImport, setAttachments],
   );
 
   return { importOriginalAttachments, retryOriginalAttachment };

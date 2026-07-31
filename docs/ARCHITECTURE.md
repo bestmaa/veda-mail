@@ -198,6 +198,89 @@ The idempotency ledger is also process-local. A restart signs out the member,
 and independent replicas must not be used as interchangeable send targets
 without a shared encrypted session and atomic idempotency implementation.
 
+## Email signature boundary
+
+Email signatures are durable Veda Mail preferences, not provider-side identity
+objects. The member route first authenticates the current provider connection,
+resolves its account through `MailGateway`, and derives the owner from that
+gateway-owned email address plus the connection's provider ID. The browser
+cannot supply or override an owner address.
+
+The initial workspace response also carries a non-authenticating, one-way scope
+for the exact in-memory connection. Every later account-derived request echoes
+that scope: workspace refreshes, message reads and mutations, delivery notices,
+signature reads and writes, profile/password/2FA settings, sign-out, message
+submission, and attachment capability, upload, import, preview, inline-image,
+download, and archive operations. The server compares it with the current
+HttpOnly-cookie connection before reading account state or contacting a
+provider. A stale tab therefore fails with HTTP 409 if another tab replaces the
+shared member session. When the workspace or message model observes that 409,
+or an authenticated 401, it clears the workspace, reader, mailbox, search, and
+pending request state and latches that mounted mail model as invalid. Effects
+and manual refreshes cannot bootstrap an unscoped replacement account; only a
+full page reload creates a fresh model that may bootstrap without a scope.
+Settings and security hooks reset at layout time and ignore completions from
+their previous scope. Attachment capability state follows the same rule: a
+scope change invalidates the request generation and prevents a late response
+for the former account from committing. The server-rendered upload limit is
+paired with the exact server-derived initial scope and is reused only when the
+client workspace accepts that same scope. Otherwise the limit clears until a
+scoped capability refresh succeeds.
+
+Normal scoped requests use the `X-Veda-Mail-Session-Scope` header. Native ZIP
+downloads cannot attach a custom header, so only the archive GET accepts the
+same scope as its single query parameter after a scoped HEAD preflight. Archive
+responses remain private, non-cacheable, same-origin, and `no-referrer`. The
+scope is neither the connection cookie nor an authentication credential and
+cannot authorize a request without the current member cookie.
+
+With the supplied Compose layout, signature books live in
+`/data/member-signatures.json`. The outer file contains keyed owner buckets but
+no raw email addresses or signature plaintext. An HMAC-SHA-256 of the
+normalized provider/email identity and installation session secret selects the
+bucket. Owner-key v2 lowercases the provider ID and email domain but preserves
+the email local-part. Reads accept only this v2 key. Case-collapsed pre-release
+v1 buckets are ignored and are never automatically adopted, migrated, or
+deleted, preventing ambiguous data from crossing case-distinct identities.
+Each book is independently encrypted with AES-256-GCM under an HKDF-derived key;
+authenticated additional data binds its ciphertext to that owner key. Strict
+schemas are applied outside and after decryption. Invalid, noncanonical,
+corrupted, or authentication-failing records fail closed.
+
+Writes create a mode-0600 temporary file, sync it, and atomically replace the
+fixed store. A member may keep at most 20 case-insensitively named signatures.
+Each successful create, update, delete, or default change rotates an opaque
+book revision. A mutation supplies the revision it read; a stale revision
+returns a conflict instead of silently replacing another browser's change.
+Deleting a signature also clears either default that referenced it.
+
+The settings model does not treat an absent book as an empty authoritative
+book. Mutation and default controls stay disabled until loading succeeds, and
+the save handler independently refuses a missing book. Rich Lexical editors
+publish one explicit layout-time initialization snapshot to establish the
+canonical baseline; normal change events are always edits, so the first user
+keystroke cannot be mistaken for editor initialization.
+
+Signature writes require same-origin validation before authentication, a
+bounded 128 KiB JSON body, strict discriminated operation schemas, and
+request/verified-connection rate limits. Names are single-line and capped at
+80 characters and 256 UTF-8 bytes. Plain or rich source fields are capped at
+16 KiB characters and bytes. The canonical plain/HTML pair is capped at
+32 KiB combined, with rich input limited to 256 elements and nesting depth 16.
+Rich content passes the centralized outbound sanitizer, which removes active
+content, remote media, arbitrary styles, and unsafe links and derives the
+plain variant from the sanitized HTML.
+
+The composer inserts only that canonical pair. The ordinary send boundary
+canonicalizes the complete message again before either provider receives it,
+so signatures do not add a provider-specific MIME or API shape. No Stalwart
+configuration, schema, migration, or additional endpoint is required.
+
+Revision compare-and-write serialization is process-local. Exactly one Veda
+Mail process may write a given signature file. Multiple replicas sharing a
+writable `/data` volume can race and are unsupported until this file store is
+replaced by a shared transactional implementation.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never
@@ -401,8 +484,8 @@ npm run check:lines
 
 ## Runtime model
 
-- Installation, branding, service profile, and member 2FA are durable on
-  `/data`.
+- Installation, branding, service profile, member 2FA, and encrypted member
+  signatures are durable on `/data`.
 - Pending attachment uploads are encrypted, process-local quarantine data with
   a 30-minute TTL; a one-minute background sweep expires them without another
   request, and production startup removes bounded orphan quarantine
@@ -410,7 +493,8 @@ npm run check:lines
 - Member connections and gateway credentials are memory-only for 12 hours.
 - Restarting the process intentionally signs every member out.
 - A multi-replica deployment needs a shared encrypted session repository and
-  coordinated rate limiter behind the existing server boundary.
+  coordinated rate limiter, plus a transactional replacement for the
+  process-serialized signature file, behind the existing server boundary.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

@@ -13,7 +13,14 @@ export const ComposerBodyView = ({
   readonly isSending: boolean;
 }) => (
   <div className="flex min-h-56 flex-1 flex-col">
-      <div className="flex min-h-11 items-center justify-end border-b border-slate-100 px-3">
+      <div className="flex min-h-11 items-center gap-2 border-b border-slate-100 px-3">
+        {body.signatureDetached ? (
+          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-slate-500">
+            Signature is now editable message text
+          </span>
+        ) : (
+          <span className="flex-1" />
+        )}
         <button
           aria-label={
             body.mode === "rich"
@@ -92,6 +99,7 @@ export const ComposerBodyView = ({
           initialHtml={body.html}
           key={body.editorVersion}
           onChange={body.onRichChange}
+          {...(body.signature ? { signature: body.signature } : {})}
         />
       )}
       {body.mode === "plain" ? (
@@ -99,5 +107,8 @@ export const ComposerBodyView = ({
           {body.plainTransferStatus}
         </span>
       ) : null}
+      <span aria-live="polite" className="sr-only" role="status">
+        {body.signatureAnnouncement}
+      </span>
     </div>
 );

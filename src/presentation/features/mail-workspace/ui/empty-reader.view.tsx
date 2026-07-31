@@ -1,8 +1,10 @@
 import { Mail } from "lucide-react";
 
 export const EmptyReaderView = ({
+  isComposerReady,
   onCompose,
 }: {
+  readonly isComposerReady: boolean;
   readonly onCompose: () => void;
 }) => (
   <section className="hidden min-h-0 place-items-center bg-white p-10 lg:grid">
@@ -17,8 +19,11 @@ export const EmptyReaderView = ({
         Select a message to read it here, or start a focused new conversation.
       </p>
       <button
-        className="mt-5 rounded-xl bg-[#2f3274] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#25285f]"
+        aria-busy={!isComposerReady}
+        className="mt-5 rounded-xl bg-[#2f3274] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#25285f] disabled:cursor-wait disabled:opacity-70"
+        disabled={!isComposerReady}
         onClick={onCompose}
+        title={isComposerReady ? undefined : "Loading account settings"}
         type="button"
       >
         Compose message

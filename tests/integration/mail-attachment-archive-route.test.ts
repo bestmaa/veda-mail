@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Attachment } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 import { parseStoreZip } from "@/../tests/support/store-zip";
 
@@ -61,6 +62,7 @@ const request = (path = "", init?: RequestInit): Request =>
       headers: {
         host: "mail.example.com",
         origin,
+        "x-veda-mail-session-scope": mailSessionScope(mocks.connection),
         ...init?.headers,
       },
     },

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { deliveryNoticeApi } from "@/transport/client/delivery-notice-api";
 
 const noticeId = "00000000-0000-4000-8000-000000000001";
+const sessionScope = "test-session-scope";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -23,13 +24,18 @@ describe("delivery notice client API", () => {
     vi.stubGlobal("fetch", fetchMock);
     const signal = new AbortController().signal;
 
-    await expect(deliveryNoticeApi.list(signal)).resolves.toEqual(notices);
+    await expect(
+      deliveryNoticeApi.list(sessionScope, signal),
+    ).resolves.toEqual(notices);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/mail/delivery-notices",
       {
         cache: "no-store",
         credentials: "same-origin",
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          "x-veda-mail-session-scope": sessionScope,
+        },
         redirect: "error",
         referrerPolicy: "no-referrer",
         signal,
@@ -42,14 +48,17 @@ describe("delivery notice client API", () => {
     vi.stubGlobal("fetch", fetchMock);
     const signal = new AbortController().signal;
 
-    await deliveryNoticeApi.dismiss(noticeId, signal);
+    await deliveryNoticeApi.dismiss(noticeId, sessionScope, signal);
 
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/v1/mail/delivery-notices/${noticeId}`,
       {
         cache: "no-store",
         credentials: "same-origin",
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          "x-veda-mail-session-scope": sessionScope,
+        },
         method: "DELETE",
         redirect: "error",
         referrerPolicy: "no-referrer",
@@ -64,7 +73,7 @@ describe("delivery notice client API", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      deliveryNoticeApi.dismiss("../../other-account"),
+      deliveryNoticeApi.dismiss("../../other-account", sessionScope),
     ).rejects.toThrow("reference is invalid");
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -92,12 +101,12 @@ describe("delivery notice client API", () => {
         ),
     );
 
-    await expect(deliveryNoticeApi.list()).rejects.toMatchObject({
+    await expect(deliveryNoticeApi.list(sessionScope)).rejects.toMatchObject({
       code: "MEMBER_SESSION_EXPIRED",
       message: "Sign in again.",
       status: 401,
     });
-    await expect(deliveryNoticeApi.list()).rejects.toThrow(
+    await expect(deliveryNoticeApi.list(sessionScope)).rejects.toThrow(
       "response was too large",
     );
   });

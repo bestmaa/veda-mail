@@ -83,7 +83,7 @@ export const MailHeaderView = ({
         <RefreshCw aria-hidden size={18} />
       </button>
       <button
-        aria-label={`Open profile settings for ${account.email}`}
+        aria-label={`Open account settings for ${account.email}`}
         className="group ml-1 grid size-10 place-items-center rounded-xl bg-[#e8e8ff] text-xs font-extrabold text-[#4f46a5] transition hover:bg-indigo-200"
         onClick={settings.open}
         type="button"

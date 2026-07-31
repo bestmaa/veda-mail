@@ -23,9 +23,6 @@ vi.mock("@/server/mail/mail-service", () => ({
   getMailService: mocks.mailService,
 }));
 
-import { POST as reserve } from "@/app/api/v1/mail/attachments/route";
-import { PUT as upload } from "@/app/api/v1/mail/attachments/[attachmentId]/route";
-import { POST as send } from "@/app/api/v1/mail/send/route";
 import {
   MessageDeliveryRejectedError,
   OutgoingMessageSizeError,
@@ -34,66 +31,20 @@ import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { connectionStore } from "@/server/connections/connection-store";
 import { attachmentService } from "@/server/mail/attachment-service";
+import {
+  reserveAndUpload as reserveAndUploadForConnection,
+  sendDraft as sendDraftForConnection,
+} from "./mail-attachment-send-test-support";
 
-const origin = "https://mail.example.com";
 let activeConnection: ProviderConnection;
-const headers = { host: "mail.example.com", origin };
-const route = (attachmentId: string) => ({
-  params: Promise.resolve({ attachmentId }),
-});
 
 const sendDraft = (
   draftId: string,
   attachmentId: string,
   to = [{ email: "recipient@example.com", name: null }],
-) =>
-  send(
-    new Request(`${origin}/api/v1/mail/send`, {
-      body: JSON.stringify({
-        attachmentIds: [attachmentId],
-        body: "Retry-safe attachment.",
-        draftId,
-        subject: "Retry",
-        to,
-      }),
-      headers: { ...headers, "content-type": "application/json" },
-      method: "POST",
-    }),
-  );
+) => sendDraftForConnection(activeConnection, draftId, attachmentId, to);
 
-const reserveAndUpload = async () => {
-  const draftId = crypto.randomUUID();
-  const content = "retryable bytes";
-  const reserved = await reserve(
-    new Request(`${origin}/api/v1/mail/attachments`, {
-      body: JSON.stringify({
-        declaredMimeType: "text/plain",
-        draftId,
-        fileName: "retry.txt",
-        size: Buffer.byteLength(content),
-      }),
-      headers: { ...headers, "content-type": "application/json" },
-      method: "POST",
-    }),
-  );
-  expect(reserved.status).toBe(201);
-  const payload = (await reserved.json()) as { data: { id: string } };
-  const uploaded = await upload(
-    new Request(`${origin}/api/v1/mail/attachments/${payload.data.id}`, {
-      body: content,
-      headers: {
-        ...headers,
-        "content-length": String(Buffer.byteLength(content)),
-        "content-type": "text/plain",
-        "x-veda-draft-id": draftId,
-      },
-      method: "PUT",
-    }),
-    route(payload.data.id),
-  );
-  expect(uploaded.status).toBe(200);
-  return { attachmentId: payload.data.id, draftId };
-};
+const reserveAndUpload = () => reserveAndUploadForConnection(activeConnection);
 
 beforeEach(() => {
   connectionStore.clearAll();
@@ -190,60 +141,5 @@ describe("attachment send retry", () => {
     const retry = await sendDraft(draftId, attachmentId);
     expect(retry.status).toBe(201);
     expect(mocks.sendMessage).toHaveBeenCalledTimes(2);
-  });
-
-  it("consumes the attachment after terminal partial delivery", async () => {
-    const { attachmentId, draftId } = await reserveAndUpload();
-    const claim = vi.spyOn(attachmentService(), "claim");
-    mocks.sendMessage.mockResolvedValueOnce({
-      deliveryStatus: "partial",
-      id: "partially-sent",
-      rejectedRecipients: ["recipient@example.com"],
-      submittedAt: "2026-07-30T00:00:00.000Z",
-    });
-
-    const recipients = [
-      { email: "accepted@example.com", name: null },
-      { email: "recipient@example.com", name: null },
-    ];
-    const partial = await sendDraft(draftId, attachmentId, recipients);
-    expect(partial.status).toBe(201);
-
-    const duplicate = await sendDraft(draftId, attachmentId, recipients);
-    expect(duplicate.status).toBe(201);
-    await expect(duplicate.json()).resolves.toEqual(await partial.clone().json());
-    expect(mocks.sendMessage).toHaveBeenCalledOnce();
-    expect(claim).toHaveBeenCalledOnce();
-    claim.mockRestore();
-  });
-
-  it("consumes the attachment after an uncertain provider receipt", async () => {
-    const { attachmentId, draftId } = await reserveAndUpload();
-    const claim = vi.spyOn(attachmentService(), "claim");
-    const providerSecret = "provider-secret@example.com";
-    mocks.sendMessage.mockResolvedValueOnce({
-      deliveryStatus: "partial",
-      id: providerSecret,
-      rejectedRecipients: [providerSecret],
-      submittedAt: "invalid",
-    });
-
-    const uncertain = await sendDraft(draftId, attachmentId);
-    expect(uncertain.status).toBe(201);
-    const payload = await uncertain.json();
-    expect(payload).toMatchObject({
-      data: {
-        deliveryStatus: "uncertain",
-        rejectedRecipients: [],
-      },
-    });
-    expect(JSON.stringify(payload)).not.toContain(providerSecret);
-
-    const duplicate = await sendDraft(draftId, attachmentId);
-    expect(duplicate.status).toBe(201);
-    await expect(duplicate.json()).resolves.toEqual(payload);
-    expect(mocks.sendMessage).toHaveBeenCalledOnce();
-    expect(claim).toHaveBeenCalledOnce();
-    claim.mockRestore();
   });
 });

@@ -14,6 +14,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Mailbox/message read                          | Yes             | Yes                  |
 | Server-side text search                       | Yes             | Yes                  |
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
+| Per-identity email signatures                 | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Provider-backed drafts/autosave               | Not implemented | Not implemented      |
@@ -50,6 +51,19 @@ Plain messages remain text-only in both adapters.
 Rich-text send is a Veda Mail application feature. It requires no provider
 profile change, Stalwart configuration change, mailbox data migration, or new
 mail-server port.
+
+Email signatures are also a provider-independent Veda Mail feature. They are
+stored as encrypted per-provider/mailbox preferences on the Veda Mail `/data`
+volume, not as Stalwart identities or IMAP/SMTP provider settings. Selecting a
+signature inserts its already canonical plain/rich pair into the composer; the
+complete message then passes the ordinary server sanitizer before either
+adapter sees it. Stalwart receives normal JMAP message body values and Standard
+SMTP receives normal MIME alternatives.
+
+No Stalwart configuration, database/schema change, mailbox migration, API
+extension, or new port is required. Because these are Veda-local preferences,
+they do not automatically appear in Stalwart's own webmail, a desktop client,
+or another Veda Mail deployment unless the matching `/data` state is restored.
 
 The Standard IMAP + SMTP adapter omits BCC from delivered MIME while retaining
 it in the SMTP envelope. If SMTP immediately rejects only some recipients, Veda
@@ -305,9 +319,9 @@ adapter is therefore required for a dependable Microsoft 365 integration.
 
 ## What “provider-independent” means
 
-Veda Mail is not dependent on Stalwart in its domain, UI, sessions, or member
-2FA. Any new adapter can implement the stable `ProviderModule` and
-`MailGateway` contracts.
+Veda Mail is not dependent on Stalwart in its domain, UI, sessions, member 2FA,
+or local email signatures. Any new adapter can implement the stable
+`ProviderModule` and `MailGateway` contracts.
 
 It does not mean every vendor is automatically compatible. A service must
 offer either:

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
-import { ApiError } from "@/transport/http/api-error";
+import {
+  API_ERROR_CODE_HEADER,
+  ApiError,
+} from "@/transport/http/api-error";
 
 export interface ApiFailure {
   readonly error: {
@@ -43,19 +46,23 @@ export const apiFailure = (
     : isApiError
       ? error.message
       : fallback;
+  const code = isValidation
+    ? "VALIDATION_ERROR"
+    : isApiError
+      ? error.code
+      : "REQUEST_FAILED";
   return NextResponse.json(
     {
       error: {
-        code: isValidation
-          ? "VALIDATION_ERROR"
-          : isApiError
-            ? error.code
-            : "REQUEST_FAILED",
+        code,
         message,
       },
     },
     {
-      headers: { "Cache-Control": "private, no-store" },
+      headers: {
+        "Cache-Control": "private, no-store",
+        [API_ERROR_CODE_HEADER]: code,
+      },
       status: isValidation ? 400 : isApiError ? error.status : 500,
     },
   );

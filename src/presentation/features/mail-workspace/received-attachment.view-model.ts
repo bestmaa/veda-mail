@@ -56,8 +56,14 @@ export const createReceivedAttachmentViewModels = (
       trigger: HTMLButtonElement,
     ) => Promise<void>;
   },
+  download?: {
+    readonly download: (href: string, name: string) => Promise<void>;
+    readonly href: string | null;
+    readonly isDownloading: boolean;
+  },
 ): readonly AttachmentViewModel[] =>
   attachments.map((attachment) => {
+    const href = createAttachmentDownloadHref(messageId, attachment.id);
     const previewHref = createAttachmentPreviewHref(
       messageId,
       attachment.id,
@@ -66,8 +72,11 @@ export const createReceivedAttachmentViewModels = (
       preview && canPreviewReceivedAttachment(attachment),
     );
     return {
-      href: createAttachmentDownloadHref(messageId, attachment.id),
+      href,
       id: attachment.id,
+      isDownloading: Boolean(
+        download && download.href === href && download.isDownloading,
+      ),
       isPreviewing:
         canPreview &&
         preview?.href === previewHref &&
@@ -78,6 +87,7 @@ export const createReceivedAttachmentViewModels = (
           : formatFileSize(attachment.size)
       }`,
       name: attachment.name,
+      onDownload: () => void download?.download(href, attachment.name),
       onPreview:
         canPreview && preview
           ? (trigger) =>

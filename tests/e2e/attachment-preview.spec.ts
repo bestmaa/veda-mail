@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   expectNoSeriousAccessibilityViolations,
+  mailSessionScopeHeaders,
   useInstalledMailbox,
 } from "./support/mail-fixture";
 
@@ -65,9 +66,7 @@ test("scans and renders plain text in a sandbox without active content", async (
     expect(
       await page.evaluate(() =>
         Boolean(
-          document
-            .querySelector("dialog")
-            ?.contains(document.activeElement),
+          document.querySelector("dialog")?.contains(document.activeElement),
         ),
       ),
     ).toBe(true);
@@ -109,6 +108,7 @@ test("keeps preview POST-only, authenticated, same-origin, and range-free", asyn
 }) => {
   const origin = new URL(page.url()).origin;
   const body = { renderer: "text" };
+  const scopeHeaders = await mailSessionScopeHeaders(page);
 
   const unauthenticated = await request.post(previewPath, {
     data: body,
@@ -124,7 +124,7 @@ test("keeps preview POST-only, authenticated, same-origin, and range-free", asyn
 
   const ranged = await page.request.post(previewPath, {
     data: body,
-    headers: { origin, range: "bytes=0-10" },
+    headers: { origin, range: "bytes=0-10", ...scopeHeaders },
   });
   expect(ranged.status()).toBe(416);
 
@@ -134,7 +134,7 @@ test("keeps preview POST-only, authenticated, same-origin, and range-free", asyn
     (
       await page.request.post(`${previewPath}?renderer=text`, {
         data: body,
-        headers: { origin },
+        headers: { origin, ...scopeHeaders },
       })
     ).status(),
   ).toBe(400);
@@ -149,7 +149,7 @@ test("does not offer raw preview for PDF attachments", async ({ page }) => {
     page.getByRole("button", { name: "Preview Q3-roadmap.pdf" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("link", { name: "Download Q3-roadmap.pdf" }),
+    page.getByRole("button", { name: "Download Q3-roadmap.pdf" }),
   ).toBeVisible();
 });
 
@@ -182,6 +182,6 @@ test("shows a safe actionable failure without replacing Download", async ({
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Download security-notes.txt" }),
+    page.getByRole("button", { name: "Download security-notes.txt" }),
   ).toBeVisible();
 });

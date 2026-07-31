@@ -7,6 +7,7 @@ import { unzipSync } from "fflate";
 import { parseStoreZip } from "../support/store-zip";
 import {
   expectNoSeriousAccessibilityViolations,
+  mailSessionScopeHeaders,
   useInstalledMailbox,
 } from "./support/mail-fixture";
 
@@ -41,7 +42,7 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
 
   await expect(downloadAll).toBeVisible();
   await expect(
-    reader.getByRole("link", { name: /^Download /u }),
+    reader.getByRole("button", { name: /^Download (?!all\b)/u }),
   ).toHaveCount(3);
   const box = await downloadAll.boundingBox();
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -71,14 +72,16 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
   for (const entry of entries) {
     expect(entry.method).toBe(0);
     expect(entry.name).not.toMatch(/[\\/]/u);
-    expect(hash(entry.bytes)).toBe(hash(expected.get(entry.name) ?? new Uint8Array()));
+    expect(hash(entry.bytes)).toBe(
+      hash(expected.get(entry.name) ?? new Uint8Array()),
+    );
   }
 
-  const href =
-    "/api/v1/mail/messages/msg-archive-fixtures/attachments/archive";
+  const href = "/api/v1/mail/messages/msg-archive-fixtures/attachments/archive";
   const origin = new URL(page.url()).origin;
+  const scopeHeaders = await mailSessionScopeHeaders(page);
   const authenticated = await page.request.get(href ?? "", {
-    headers: { origin },
+    headers: { origin, ...scopeHeaders },
   });
   expect(authenticated.status()).toBe(200);
   expect(authenticated.headers()["content-type"]).toBe("application/zip");
@@ -100,6 +103,7 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
     headers: {
       origin,
       range: "bytes=0-10",
+      ...scopeHeaders,
     },
   });
   expect(ranged.status()).toBe(416);
@@ -112,9 +116,9 @@ test("does not show Download all for a message without attachments", async ({
     .getByRole("button", { name: "Open Your Stalwart workspace is ready" })
     .click();
 
-  await expect(
-    page.getByRole("button", { name: /Download all/u }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Download all/u })).toHaveCount(
+    0,
+  );
 });
 
 test("shows an actionable error when ZIP preflight fails", async ({ page }) => {

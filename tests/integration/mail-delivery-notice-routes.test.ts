@@ -21,6 +21,7 @@ vi.mock("@/server/security/rate-limit", () => ({
 
 import { DELETE } from "@/app/api/v1/mail/delivery-notices/[deliveryNoticeId]/route";
 import { GET } from "@/app/api/v1/mail/delivery-notices/route";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
 
 const origin = "https://mail.example.com";
@@ -47,7 +48,11 @@ const request = (
   requestOrigin = origin,
 ): Request =>
   new Request(`${origin}${path}`, {
-    headers: { host: "mail.example.com", origin: requestOrigin },
+    headers: {
+      host: "mail.example.com",
+      origin: requestOrigin,
+      "x-veda-mail-session-scope": mailSessionScope({ id: connectionA }),
+    },
     method,
   });
 
@@ -137,6 +142,32 @@ describe("delivery notice routes", () => {
       },
     });
     expect(mocks.assertSubjectRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale mailbox scope before notice access", async () => {
+    deliveryNoticeStore.append(
+      connectionA,
+      receipt(partialNoticeId, "partial"),
+    );
+    const routeRequest = new Request(
+      `${origin}/api/v1/mail/delivery-notices`,
+      {
+        headers: {
+          host: "mail.example.com",
+          origin,
+          "x-veda-mail-session-scope": "stale-session-scope",
+        },
+      },
+    );
+
+    const response = await GET(routeRequest);
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "MAIL_SESSION_CHANGED" },
+    });
+    expect(mocks.assertSubjectRateLimit).not.toHaveBeenCalled();
+    expect(deliveryNoticeStore.list(connectionA)).toHaveLength(1);
   });
 
   it("dismisses idempotently without crossing connection scope", async () => {

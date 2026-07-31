@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { StalwartProviderModule } from "@/infrastructure/providers/stalwart-jmap/stalwart-provider.module";
 import {
@@ -20,6 +20,12 @@ const restore = (name: string, value: string | undefined): void => {
     process.env[name] = value;
   }
 };
+
+beforeEach(() => {
+  delete process.env["VEDA_MAIL_ALLOWED_PROVIDER_HOSTS"];
+  Reflect.set(process.env, "NODE_ENV", "test");
+  delete process.env["VEDA_MAIL_TRUST_PROXY_HEADERS"];
+});
 
 afterEach(() => {
   restore("VEDA_MAIL_ALLOWED_PROVIDER_HOSTS", original.allowedHosts);

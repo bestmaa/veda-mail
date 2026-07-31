@@ -17,6 +17,16 @@ vi.mock("@/server/mail/mail-service", () => ({
 }));
 
 import { GET } from "@/app/api/v1/mail/attachments/capability/route";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
+
+const request = () =>
+  new Request("https://mail.example.com/api/v1/mail/attachments/capability", {
+    headers: {
+      "x-veda-mail-session-scope": mailSessionScope({
+        id: "attachment-capability-connection",
+      }),
+    },
+  });
 
 beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockReset();
@@ -29,10 +39,10 @@ describe("attachment capability route", () => {
       new Error("provider unavailable"),
     );
 
-    await expect(GET().then((response) => response.json())).resolves.toEqual({
+    await expect(GET(request()).then((response) => response.json())).resolves.toEqual({
       data: { maxAttachmentBytes: null, status: "unavailable" },
     });
-    await expect(GET().then((response) => response.json())).resolves.toEqual({
+    await expect(GET(request()).then((response) => response.json())).resolves.toEqual({
       data: {
         maxAttachmentBytes: 18 * 1024 * 1024,
         status: "available",

@@ -2,6 +2,7 @@ import { getProviderRegistry } from "@/bootstrap/provider-registry";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { getCurrentConnection } from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { loadAttachmentCapability } from "@/server/mail/attachment-service";
@@ -45,9 +46,10 @@ const context = async (connection: ProviderConnection) => {
   };
 };
 
-export const GET = async () => {
+export const GET = async (request: Request) => {
   try {
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "member-settings-read",
       connection.id,
@@ -83,6 +85,7 @@ export const PATCH = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit("member-profile", connection.id, 20, 15 * 60 * 1000);
     const input = memberProfileUpdateSchema.parse(
       await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
@@ -108,6 +111,7 @@ export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const verifiedConnection = await getCurrentConnection();
+    assertMailSessionScope(request, verifiedConnection);
     assertSubjectRateLimit(
       "member-password",
       verifiedConnection.id,

@@ -1,5 +1,6 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   asAttachmentApiError,
@@ -28,6 +29,7 @@ export const POST = async (request: Request) => {
       60 * 1000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit("attachment-reserve", connection.id, 30, 60 * 1000);
     const input = attachmentReservationSchema.parse(
       await readJsonBody(request, 16 * 1024),

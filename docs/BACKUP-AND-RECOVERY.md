@@ -11,6 +11,8 @@ the supplied Compose deployment.
 - Encrypted administrator TOTP secret and salted backup-code digests, if enabled
 - Encrypted member TOTP secrets and salted backup-code digests in
   `member-security.json`, if members enabled Veda 2FA
+- Per-provider/mailbox signature books, defaults, and revisions encrypted in
+  `member-signatures.json`
 - Organization and product branding
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
@@ -21,8 +23,17 @@ Messages remain on the configured mail server. Active member sessions are
 process-memory only and disappear on restart.
 
 Always back up the entire volume as one unit. `installation.json` contains the
-key material required to decrypt `member-security.json`; mismatched copies can
-make member TOTP records unrecoverable.
+session secret required to decrypt both `member-security.json` and
+`member-signatures.json`; mismatched copies can make member TOTP and signature
+records unrecoverable. Although the signature file contains encrypted owner
+buckets rather than raw addresses or content, the same backup also contains
+its decryption key. Protect the archive as sensitive mailbox-adjacent data.
+
+Signature revision compare-and-write serialization is process-local. Keep
+exactly one Veda Mail process writing the volume, and stop that writer or use
+an operator-verified atomic whole-volume snapshot. Never mount one writable
+`/data` directory into multiple application replicas or merge individual
+signature files from different snapshots.
 
 ## Compose volume backup
 
@@ -98,8 +109,11 @@ verified restored project, and preserve the old volume until validation is
 complete.
 
 Restoring an older backup also restores its administrator credentials,
-branding, provider profile, and setup lock. Existing member sessions are not
-restored.
+branding, provider profile, setup lock, and the signature books/defaults as of
+that snapshot. Existing member sessions are not restored. Do not restore
+`member-signatures.json` without its matching `installation.json`; an
+authentication or decryption failure is intentionally reported as an
+unavailable signature store rather than falling back to untrusted plaintext.
 
 ## Administrator recovery
 
@@ -140,6 +154,8 @@ At least quarterly:
 3. Confirm administrator login.
 4. Confirm branding and provider configuration.
 5. Test a dedicated non-production mailbox.
-6. Delete the isolated environment after recording the result.
+6. Confirm that mailbox's saved signatures and defaults were restored, then
+   insert one into a test compose without sending to a real recipient.
+7. Delete the isolated environment after recording the result.
 
 Never test a restore by overwriting the only production volume.

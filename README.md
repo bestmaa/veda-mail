@@ -22,6 +22,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   archive, and delete flows
 - Safe rich-text composing with headings, emphasis, lists, isolated links,
   plain-text mode, and a server-derived readable text alternative
+- Multiple named plain or sanitized-rich signatures per mailbox identity, with
+  separate new-message and reply/forward defaults plus an exact-once composer
+  picker
 - Encrypted, ClamAV-scanned attachment upload and byte-identical send through
   JMAP or IMAP/SMTP, with safe names, MIME detection, quotas, and cancellation
 - Authenticated, message-scoped received-attachment downloads streamed through
@@ -190,13 +193,14 @@ it is never accepted by a public HTTP endpoint.
 
 The `/data` volume contains installation state, the scrypt administrator
 password hash, a random session-signing secret, organization branding, and
-provider configuration. Enabled administrator and member authenticator secrets
-are encrypted and backup codes are stored only as salted digests. `/data` does
-not contain mailbox messages or member passwords.
+provider configuration. It also contains encrypted per-identity signature
+books and defaults. Enabled administrator and member authenticator secrets are
+encrypted and backup codes are stored only as salted digests. `/data` does not
+contain mailbox messages or member passwords.
 
 Member provider credentials are process-memory only. A restart signs members
 out. Run one replica unless you add a shared encrypted session repository and
-distributed rate limiter.
+distributed rate limiter plus a transactional signature store.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

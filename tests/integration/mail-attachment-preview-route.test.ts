@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 
 const mocks = vi.hoisted(() => ({
@@ -49,6 +50,7 @@ const request = (
         "content-type": "application/json",
         host: "mail.example.com",
         origin,
+        "x-veda-mail-session-scope": mailSessionScope(mocks.connection),
         ...input.headers,
       },
       method: "POST",

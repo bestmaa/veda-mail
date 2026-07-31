@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { mailApi } from "@/transport/client/api-client";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 interface AttachmentPreviewState {
   readonly error: string | null;
@@ -22,7 +32,10 @@ const initialState: AttachmentPreviewState = {
   url: null,
 };
 
-export const useAttachmentPreview = () => {
+export const useAttachmentPreview = (
+  sessionScope: string,
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+) => {
   const active = useRef<AbortController | null>(null);
   const activeUrl = useRef<string | null>(null);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
@@ -48,6 +61,10 @@ export const useAttachmentPreview = () => {
     setState(initialState);
   }, [revokeUrl]);
 
+  useLayoutEffect(() => {
+    close();
+  }, [close, sessionScope]);
+
   const restoreFocus = useCallback(() => {
     if (returnFocus.current?.isConnected) returnFocus.current.focus();
     returnFocus.current = null;
@@ -58,6 +75,7 @@ export const useAttachmentPreview = () => {
     name: string,
     trigger: HTMLButtonElement,
   ) => {
+    if (!sessionScope) return;
     active.current?.abort();
     revokeUrl();
     returnFocus.current = trigger;
@@ -72,7 +90,11 @@ export const useAttachmentPreview = () => {
       url: null,
     });
     try {
-      const text = await mailApi.previewAttachment(href, controller.signal);
+      const text = await mailApi.previewAttachment(
+        href,
+        sessionScope,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
       const url = URL.createObjectURL(
         new Blob([text], { type: "text/plain;charset=utf-8" }),
@@ -88,6 +110,7 @@ export const useAttachmentPreview = () => {
       });
     } catch (error) {
       if (controller.signal.aborted) return;
+      if (handleSessionFailure(error)) return;
       setState({
         error:
           error instanceof Error
@@ -102,7 +125,7 @@ export const useAttachmentPreview = () => {
     } finally {
       if (active.current === controller) active.current = null;
     }
-  }, [revokeUrl]);
+  }, [handleSessionFailure, revokeUrl, sessionScope]);
 
   return { ...state, close, open, restoreFocus };
 };

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { ApiError } from "@/transport/http/api-error";
 
 const mocks = vi.hoisted(() => ({
@@ -35,6 +36,7 @@ const request = (init?: RequestInit): Request =>
       headers: {
         host: "mail.example.com",
         origin,
+        "x-veda-mail-session-scope": mailSessionScope(mocks.connection),
         ...init?.headers,
       },
     },
@@ -67,6 +69,22 @@ beforeEach(() => {
 });
 
 describe("received attachment download route", () => {
+  it("rejects a stale scope before invoking the provider", async () => {
+    const response = await GET(
+      request({
+        headers: { "x-veda-mail-session-scope": "stale-scope" },
+      }),
+      context(),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "MAIL_SESSION_CHANGED" },
+    });
+    expect(mocks.getMailService).not.toHaveBeenCalled();
+    expect(mocks.downloadAttachment).not.toHaveBeenCalled();
+  });
+
   it("streams authenticated bytes with hardened non-cacheable headers", async () => {
     const routeRequest = request();
     const response = await GET(routeRequest, context());

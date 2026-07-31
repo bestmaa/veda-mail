@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   asAttachmentApiError,
@@ -35,6 +36,7 @@ const draftIdFrom = (request: Request) =>
 
 const context = async (request: Request, route: RouteContext) => {
   const connection = await getCurrentConnection();
+  assertMailSessionScope(request, connection);
   assertSubjectRateLimit("attachment-transfer", connection.id, 120, 60 * 1000);
   const { attachmentId } = await route.params;
   return {

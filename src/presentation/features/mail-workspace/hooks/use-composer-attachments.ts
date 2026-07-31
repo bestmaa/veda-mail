@@ -5,10 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEventHandler,
 } from "react";
 
-import type { UploadedAttachment } from "@/domain/mail/mail";
 import { id, type DraftId } from "@/domain/shared/brand";
 import {
   ComposerAttachmentUploadRegistry,
@@ -16,21 +14,38 @@ import {
   invalidateReadyComposerAttachments,
   markComposerAttachmentReady,
   type ComposerAttachment,
+  type RemoveUploadedAttachment,
 } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import { useAttachmentCapability } from "@/presentation/features/mail-workspace/hooks/use-attachment-capability";
+import {
+  MAX_COMPOSER_ATTACHMENT_BYTES,
+} from "@/presentation/features/mail-workspace/hooks/composer-attachment-selection";
+import { useComposerAttachmentSelection } from "@/presentation/features/mail-workspace/hooks/use-composer-attachment-selection";
 import { useComposerOriginalAttachmentImports } from "@/presentation/features/mail-workspace/hooks/use-composer-original-attachment-imports";
+import {
+  ignoreMailSessionFailure,
+  type MailSessionFailureHandler,
+} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { mailApi } from "@/transport/client/api-client";
 
-const MAX_ATTACHMENT_COUNT = 10;
-const MAX_TOTAL_BYTES = 18 * 1024 * 1024;
 const freshDraftId = (): DraftId => id.draft(crypto.randomUUID());
 const removeUploadedAttachment = (
-  draftId: DraftId,
-  attachmentId: UploadedAttachment["id"],
-) => mailApi.removeAttachment(draftId, attachmentId);
+  sessionScope: string,
+  handleSessionFailure: MailSessionFailureHandler,
+): RemoveUploadedAttachment => async (draftId, attachmentId) => {
+  try {
+    await mailApi.removeAttachment(draftId, attachmentId, sessionScope);
+  } catch (error) {
+    handleSessionFailure(error);
+    throw error;
+  }
+};
 
 export const useComposerAttachments = (
   initialProviderMaxBytes: number | null,
+  sessionScope: string,
+  initialSessionScope = "",
+  handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ) => {
   const [draftId, setDraftId] = useState(freshDraftId);
   const [attachments, setAttachments] = useState<readonly ComposerAttachment[]>(
@@ -38,13 +53,30 @@ export const useComposerAttachments = (
   );
   const uploads = useRef(new ComposerAttachmentUploadRegistry());
   const { importOriginalAttachments, retryOriginalAttachment } =
-    useComposerOriginalAttachmentImports(uploads.current, setAttachments);
-  const capability = useAttachmentCapability(initialProviderMaxBytes);
+    useComposerOriginalAttachmentImports(
+      uploads.current,
+      setAttachments,
+      sessionScope,
+      handleSessionFailure,
+    );
+  const capability = useAttachmentCapability(
+    initialProviderMaxBytes,
+    sessionScope,
+    initialSessionScope,
+    handleSessionFailure,
+  );
+  const removeUpload = useMemo(
+    () => removeUploadedAttachment(sessionScope, handleSessionFailure),
+    [handleSessionFailure, sessionScope],
+  );
   const ready = attachments.flatMap((item) =>
     item.state === "ready" && item.upload ? [item.upload] : [],
   );
   const totalBytes = attachments.reduce((total, item) => total + (item.size ?? 0), 0);
-  const maxFileBytes = Math.min(capability.maximum ?? 0, MAX_TOTAL_BYTES);
+  const maxFileBytes = Math.min(
+    capability.maximum ?? 0,
+    MAX_COMPOSER_ATTACHMENT_BYTES,
+  );
 
   const expireReady = useCallback(() => {
     const next = expireComposerAttachments(attachments, Date.now());
@@ -67,11 +99,15 @@ export const useComposerAttachments = (
       const upload = operation?.upload ?? target?.upload;
       if (upload) {
         void mailApi
-          .removeAttachment(operation?.draftId ?? draftId, upload.id)
-          .catch(() => undefined);
+          .removeAttachment(
+            operation?.draftId ?? draftId,
+            upload.id,
+            sessionScope,
+          )
+          .catch((error: unknown) => void handleSessionFailure(error));
       }
     },
-    [attachments, draftId],
+    [attachments, draftId, handleSessionFailure, sessionScope],
   );
 
   const discard = useCallback(
@@ -87,8 +123,8 @@ export const useComposerAttachments = (
           ...ready.filter((upload) => !completedIds.has(upload.id)),
         ]) {
           void mailApi
-            .removeAttachment(draftId, upload.id)
-            .catch(() => undefined);
+            .removeAttachment(draftId, upload.id, sessionScope)
+            .catch((error: unknown) => void handleSessionFailure(error));
         }
       }
       setAttachments([]);
@@ -96,7 +132,7 @@ export const useComposerAttachments = (
       setDraftId(nextDraftId);
       return nextDraftId;
     },
-    [draftId, ready],
+    [draftId, handleSessionFailure, ready, sessionScope],
   );
 
   const retry = useCallback(
@@ -126,13 +162,14 @@ export const useComposerAttachments = (
         const upload = await mailApi.addAttachment(
           draftId,
           file,
+          sessionScope,
           operation.controller.signal,
         );
         const isActive = await uploads.current.complete(
           key,
           operation,
           upload,
-          removeUploadedAttachment,
+          removeUpload,
         );
         if (!isActive) return;
         setAttachments((current) =>
@@ -141,6 +178,7 @@ export const useComposerAttachments = (
       } catch (error) {
         uploads.current.fail(key, operation);
         if (operation.controller.signal.aborted) return;
+        if (handleSessionFailure(error)) return;
         setAttachments((current) =>
           current.map((item) =>
             item.key === key
@@ -157,58 +195,17 @@ export const useComposerAttachments = (
         );
       }
     },
-    [draftId],
+    [draftId, handleSessionFailure, removeUpload, sessionScope],
   );
 
-  const onFiles: ChangeEventHandler<HTMLInputElement> = useCallback(
-    (event) => {
-      const files = [...(event.currentTarget.files ?? [])];
-      event.currentTarget.value = "";
-      let selectedCount = attachments.length;
-      let selectedBytes = totalBytes;
-      for (const file of files) {
-        const invalid =
-          capability.maximum === null
-            ? "The provider attachment limit is temporarily unavailable."
-            : capability.maximum <= 0
-              ? "Attachments are not available for this provider."
-              : selectedCount >= MAX_ATTACHMENT_COUNT
-                ? `A message can contain at most ${MAX_ATTACHMENT_COUNT} attachments.`
-                : file.size <= 0
-                  ? "Empty files cannot be attached."
-                  : file.size > maxFileBytes
-                    ? "This file exceeds the attachment size limit."
-                    : selectedBytes + file.size > MAX_TOTAL_BYTES
-                      ? "Attachments cannot exceed 18 MiB in total."
-                      : null;
-        if (invalid) {
-          const key = crypto.randomUUID();
-          setAttachments((current) => [
-            ...current,
-            {
-              error: invalid,
-              key,
-              name: file.name,
-              size: file.size,
-              state: "error",
-              upload: null,
-            },
-          ]);
-          continue;
-        }
-        selectedCount += 1;
-        selectedBytes += file.size;
-        void uploadFile(file);
-      }
-    },
-    [
-      attachments.length,
-      capability.maximum,
-      maxFileBytes,
-      totalBytes,
-      uploadFile,
-    ],
-  );
+  const onFiles = useComposerAttachmentSelection({
+    attachments,
+    capabilityMaximum: capability.maximum,
+    maxFileBytes,
+    setAttachments,
+    totalBytes,
+    uploadFile,
+  });
 
   return useMemo(
     () => ({

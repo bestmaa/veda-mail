@@ -243,8 +243,12 @@ service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
 Keep one replica. Member sessions, rate limits, delivery notices, and the send
-idempotency ledger are process-local. Scaling requires a shared encrypted
-session repository, distributed limiter, and atomic shared send ledger.
+idempotency ledger are process-local. The encrypted
+`/data/member-signatures.json` store also uses a process-local serialized
+revision compare-and-write path; multiple replicas sharing that writable file
+can lose updates. Scaling requires a shared encrypted session repository,
+distributed limiter, atomic shared send ledger, and transactional replacement
+for the signature file store.
 
 ## Post-deployment checks
 
@@ -262,6 +266,9 @@ Verify:
 - `/` accepts only allowed-domain mailbox users.
 - The provider endpoint is HTTPS and on the hostname allowlist.
 - A member can receive, send, archive, and delete.
+- A member can save plain and rich signatures, choose new-message and
+  reply/forward defaults, reload without losing them, and send the expected
+  sanitized plain/HTML content through the configured provider.
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
 - The received attachment downloads byte-identically, is not cached by the
   proxy, and is served with attachment disposition and `nosniff`.

@@ -19,6 +19,7 @@ vi.mock("@/server/mail/mail-service", () => ({
 
 import { POST } from "@/app/api/v1/mail/send/route";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
 
 let activeConnection: ProviderConnection;
@@ -31,6 +32,7 @@ const sendRequest = (body: Record<string, unknown>) =>
         "content-type": "application/json",
         host: "mail.example.com",
         origin: "https://mail.example.com",
+        "x-veda-mail-session-scope": mailSessionScope(activeConnection),
       },
       method: "POST",
     }),

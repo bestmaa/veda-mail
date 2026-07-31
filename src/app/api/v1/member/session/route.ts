@@ -12,6 +12,7 @@ import {
   getCurrentConnection,
 } from "@/server/connections/connection-session";
 import { connectionStore } from "@/server/connections/connection-store";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import {
@@ -218,6 +219,7 @@ export const DELETE = async (request: Request) => {
     assertSameOrigin(request);
     const connection = await getCurrentConnection().catch(() => null);
     if (connection) {
+      assertMailSessionScope(request, connection);
       twoFactorEnrollmentStore.remove(connection.id);
       connectionStore.remove(connection.id);
     }

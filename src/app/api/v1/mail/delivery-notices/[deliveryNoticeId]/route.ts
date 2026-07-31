@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getCurrentConnection } from "@/server/connections/connection-session";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
 import {
@@ -31,6 +32,7 @@ export const DELETE = async (
       60 * 1000,
     );
     const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
     assertSubjectRateLimit(
       "mail-delivery-notice-dismiss",
       connection.id,

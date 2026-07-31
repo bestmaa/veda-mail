@@ -18,6 +18,7 @@ vi.mock("@/server/mail/mail-service", () => ({
 
 import { POST } from "@/app/api/v1/mail/send/route";
 import { connectionStore } from "@/server/connections/connection-store";
+import { mailSessionScope } from "@/server/connections/mail-session-scope";
 import {
   MAX_SEND_IDEMPOTENCY_PER_CONNECTION,
   sendIdempotencyStore,
@@ -38,6 +39,7 @@ const request = (draftId: string): Request =>
       "content-type": "application/json",
       host: "mail.example.com",
       origin,
+      "x-veda-mail-session-scope": mailSessionScope(activeConnection),
     },
     method: "POST",
   });

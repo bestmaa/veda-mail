@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
 import { attachmentApi } from "@/transport/client/attachment-api";
+import { API_ERROR_CODE_HEADER } from "@/transport/http/api-error";
 
+const sessionScope = "test-session-scope";
 const upload = {
   expiresAt: "2099-01-01T00:00:00.000Z",
   id: id.attachmentUpload("q".repeat(32)),
@@ -31,6 +33,7 @@ describe("attachment client API", () => {
     await expect(
       attachmentApi.previewAttachment(
         "/api/v1/mail/messages/message/attachments/attachment/preview",
+        sessionScope,
         signal,
       ),
     ).resolves.toBe("safe text");
@@ -42,6 +45,7 @@ describe("attachment client API", () => {
         headers: {
           Accept: "text/plain",
           "Content-Type": "application/json",
+          "x-veda-mail-session-scope": sessionScope,
         },
         method: "POST",
         signal,
@@ -66,7 +70,7 @@ describe("attachment client API", () => {
       ),
     );
     await expect(
-      attachmentApi.previewAttachment("/preview"),
+      attachmentApi.previewAttachment("/preview", sessionScope),
     ).rejects.toThrow("unsafe type");
     expect(unsafeTypeCancel).toHaveBeenCalledOnce();
 
@@ -86,7 +90,7 @@ describe("attachment client API", () => {
       ),
     );
     await expect(
-      attachmentApi.previewAttachment("/preview"),
+      attachmentApi.previewAttachment("/preview", sessionScope),
     ).rejects.toThrow("invalid size");
     expect(unsafeLengthCancel).toHaveBeenCalledOnce();
   });
@@ -103,6 +107,7 @@ describe("attachment client API", () => {
         id.draft("4ec09418-1b33-4d57-97c4-f2858fbcbca1"),
         id.message("message/opaque"),
         id.attachment("attachment?opaque"),
+        sessionScope,
         signal,
       ),
     ).resolves.toEqual(upload);
@@ -114,7 +119,10 @@ describe("attachment client API", () => {
         body: JSON.stringify({
           draftId: "4ec09418-1b33-4d57-97c4-f2858fbcbca1",
         }),
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-veda-mail-session-scope": sessionScope,
+        },
         method: "POST",
         signal,
       },
@@ -144,7 +152,65 @@ describe("attachment client API", () => {
         id.draft("4ec09418-1b33-4d57-97c4-f2858fbcbca1"),
         id.message("message"),
         id.attachment("attachment"),
+        sessionScope,
       ),
     ).rejects.toThrow("Forwarded attachments cannot exceed 18 MiB.");
+  });
+
+  it("preserves a scoped attachment 409 as a terminal client error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          {
+            error: {
+              code: "MAIL_SESSION_CHANGED",
+              message: "Mailbox session changed. Reload this page and try again.",
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    await expect(
+      attachmentApi.previewAttachment("/preview", sessionScope),
+    ).rejects.toMatchObject({
+      code: "MAIL_SESSION_CHANGED",
+      status: 409,
+    });
+  });
+
+  it("distinguishes an empty ZIP from a terminal session-scope 409", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          headers: { [API_ERROR_CODE_HEADER]: "ATTACHMENT_ARCHIVE_EMPTY" },
+          status: 409,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          headers: { [API_ERROR_CODE_HEADER]: "MAIL_SESSION_CHANGED" },
+          status: 409,
+        }),
+      );
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(
+      attachmentApi.preflightAttachmentArchive("/archive", sessionScope),
+    ).rejects.toMatchObject({
+      code: "ATTACHMENT_ARCHIVE_EMPTY",
+      message: "This message does not have attachments to download.",
+      status: 409,
+    });
+    await expect(
+      attachmentApi.preflightAttachmentArchive("/archive", sessionScope),
+    ).rejects.toMatchObject({
+      code: "MAIL_SESSION_CHANGED",
+      message: "Mailbox session changed. Reload this page and try again.",
+      status: 409,
+    });
   });
 });

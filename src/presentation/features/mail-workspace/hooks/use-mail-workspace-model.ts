@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useMemo } from "react";
 
-import { createComposerAttachmentViewModel } from "@/presentation/features/mail-workspace/composer-attachment.view-model";
+import { createComposerViewModel } from "@/presentation/features/mail-workspace/composer.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/use-composer-model";
+import { useEmailSignatureSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-email-signature-settings-model";
+import { useEmailSignaturesModel } from "@/presentation/features/mail-workspace/hooks/use-email-signatures-model";
 import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/use-mail-data-model";
 import { useMemberSessionModel } from "@/presentation/features/mail-workspace/hooks/use-member-session-model";
 import { useMobileNavigationModel } from "@/presentation/features/mail-workspace/hooks/use-mobile-navigation-model";
 import { usePartialDeliveryNotice } from "@/presentation/features/mail-workspace/hooks/use-partial-delivery-notice";
 import { useAttachmentArchiveDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-archive-download";
+import { useAttachmentDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-download";
 import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hooks/use-attachment-preview";
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
 import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model";
@@ -26,6 +29,7 @@ import {
 interface MailWorkspaceModelOptions {
   readonly branding: BrandingInput;
   readonly canSignOut: boolean;
+  readonly initialSessionScope: string;
   readonly maxAttachmentBytes: number | null;
   readonly providerLabel: string;
   readonly signOutPath: string;
@@ -34,23 +38,60 @@ interface MailWorkspaceModelOptions {
 export const useMailWorkspaceModel = ({
   branding,
   canSignOut,
+  initialSessionScope,
   maxAttachmentBytes,
   providerLabel,
   signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
   const mail = useMailDataModel();
-  const partialDelivery = usePartialDeliveryNotice(mail.refresh);
-  const composer = useComposerModel(partialDelivery.onSent, maxAttachmentBytes);
+  const sessionScope = mail.workspace?.sessionScope ?? "";
+  const partialDelivery = usePartialDeliveryNotice(
+    mail.refresh,
+    sessionScope,
+    mail.handleSessionFailure,
+  );
   const navigation = useMobileNavigationModel();
-  const archiveDownload = useAttachmentArchiveDownload();
-  const attachmentPreview = useAttachmentPreview();
+  const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure);
+  const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
+  const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure);
   const closeAttachmentPreview = attachmentPreview.close;
-  const session = useMemberSessionModel(canSignOut, signOutPath);
+  const session = useMemberSessionModel(
+    canSignOut,
+    signOutPath,
+    sessionScope,
+    mail.handleSessionFailure,
+  );
   const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName =
     mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
-  const settings = useAccountSettingsModel(accountEmail, workspaceAccountName);
+  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure);
+  const signatureSettings = useEmailSignatureSettingsModel(
+    accountEmail,
+    emailSignatures,
+    sessionScope,
+  );
+  const isComposerReady =
+    Boolean(sessionScope) &&
+    !emailSignatures.isLoading &&
+    !emailSignatures.isSaving &&
+    !emailSignatures.hasSessionChanged;
+  const composer = useComposerModel(
+    partialDelivery.onSent,
+    maxAttachmentBytes,
+    emailSignatures.book,
+    sessionScope,
+    isComposerReady,
+    initialSessionScope,
+    mail.handleSessionFailure,
+  );
+  const settings = useAccountSettingsModel(
+    accountEmail,
+    workspaceAccountName,
+    signatureSettings,
+    sessionScope,
+    mail.handleSessionFailure,
+  );
   const folders = useMemo(
     () =>
       (mail.workspace?.mailboxes ?? []).map((mailbox) => ({
@@ -97,23 +138,29 @@ export const useMailWorkspaceModel = ({
     () =>
       createReaderViewModel({
         archiveDownload,
+        attachmentDownload,
         attachmentPreview,
         canArchive: Boolean(
           mail.workspace?.mailboxes.some(
             (mailbox) => mailbox.role === "archive",
           ),
         ),
+        handleSessionFailure: mail.handleSessionFailure,
         isLoading: mail.isReaderLoading,
         message: mail.selectedMessage,
         readerError: mail.readerError,
+        sessionScope,
       }),
     [
       mail.isReaderLoading,
       mail.readerError,
       mail.selectedMessage,
+      mail.handleSessionFailure,
       mail.workspace?.mailboxes,
       archiveDownload,
+      attachmentDownload,
       attachmentPreview,
+      sessionScope,
     ],
   );
 
@@ -123,16 +170,30 @@ export const useMailWorkspaceModel = ({
     )?.name ?? "Inbox";
   const accountName = settings.profileName ?? workspaceAccountName;
   const onReply = useCallback(
-    () => composer.openReply(mail.selectedMessage),
-    [composer, mail.selectedMessage],
+    () => {
+      if (isComposerReady) composer.openReply(mail.selectedMessage);
+    },
+    [composer, isComposerReady, mail.selectedMessage],
   );
   const onReplyAll = useCallback(
-    () => composer.openReplyAll(mail.selectedMessage, accountEmail),
-    [accountEmail, composer, mail.selectedMessage],
+    () => {
+      if (isComposerReady) {
+        composer.openReplyAll(mail.selectedMessage, accountEmail);
+      }
+    },
+    [accountEmail, composer, isComposerReady, mail.selectedMessage],
   );
   const onForward = useCallback(
-    () => composer.openForward(mail.selectedMessage),
-    [composer, mail.selectedMessage],
+    () => {
+      if (isComposerReady) composer.openForward(mail.selectedMessage);
+    },
+    [composer, isComposerReady, mail.selectedMessage],
+  );
+  const onCompose = useCallback(
+    () => {
+      if (isComposerReady) composer.open();
+    },
+    [composer, isComposerReady],
   );
 
   return {
@@ -144,59 +205,13 @@ export const useMailWorkspaceModel = ({
     },
     branding: brandingView,
     activeFolder,
-    composer: {
-      attachments: composer.attachments.map((attachment) =>
-        createComposerAttachmentViewModel(
-          attachment,
-          composer.removeAttachment,
-          composer.retryAttachment,
-        ),
-      ),
-      attachmentInput: composer.onAttachmentInput,
-      attachmentCapabilityUnavailable: composer.attachmentCapabilityUnavailable,
-      bcc: composer.bcc,
-      bccInput: composer.onBccInput,
-      body: {
-        cancelPlainMode: composer.body.cancelPlainMode,
-        confirmPlainMode: composer.body.confirmPlainMode,
-        editorVersion: composer.body.editorVersion,
-        html: composer.body.html,
-        isPlainModeWarningOpen: composer.body.isPlainModeWarningOpen,
-        mode: composer.body.mode,
-        onPlainDrop: composer.body.onPlainDrop,
-        onPlainInput: composer.body.onPlainInput,
-        onPlainPaste: composer.body.onPlainPaste,
-        onRichChange: composer.body.onRichChange,
-        onToggleMode: composer.body.onToggleMode,
-        onWarningKeyDown: composer.body.onWarningKeyDown,
-        plainTransferStatus: composer.body.plainTransferStatus,
-        text: composer.body.text,
-      },
-      cc: composer.cc,
-      ccInput: composer.onCcInput,
-      error: composer.error,
-      focusBody: Boolean(composer.to),
-      isAttachmentCapabilityRefreshing:
-        composer.isAttachmentCapabilityRefreshing,
-      isOpen: composer.isOpen,
-      isSending: composer.isSending,
-      isUploading: composer.isUploading,
-      maxAttachmentBytes: composer.maxAttachmentBytes,
-      onClose: composer.close,
-      onRetryAttachmentCapability: composer.onRetryAttachmentCapability,
-      onToggleBcc: composer.onToggleBcc,
-      onToggleCc: composer.onToggleCc,
-      onSubmit: composer.onSubmit,
-      showBcc: composer.showBcc,
-      showCc: composer.showCc,
-      subject: composer.subject,
-      subjectInput: composer.onSubjectInput,
-      to: composer.to,
-      toInput: composer.onToInput,
-      title: composer.title,
-    },
-    error: mail.error ?? session.error,
+    composer: createComposerViewModel(composer),
+    error:
+      mail.error ??
+      session.error ??
+      (emailSignatures.hasSessionChanged ? emailSignatures.error : null),
     folders,
+    isComposerReady,
     isLoading: mail.isLoading,
     messages,
     navigation: {
@@ -206,7 +221,7 @@ export const useMailWorkspaceModel = ({
     },
     onArchive: mail.archive,
     onCloseReader: mail.closeReader,
-    onCompose: composer.open,
+    onCompose,
     onDelete: mail.remove,
     onForward,
     onRefresh: mail.onRefresh,
