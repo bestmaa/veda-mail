@@ -446,9 +446,11 @@ limiter and encrypted shared session repository.
   route. Attachment IDs are opaque and message-scoped; JMAP blob IDs and IMAP
   part locators remain server-only.
 - Download responses are forced to `application/octet-stream` and attachment
-  disposition with a sanitized bounded filename. Private no-store caching,
-  `nosniff`, sandbox CSP, same-origin resource policy, and explicit range
-  rejection reduce browser content-sniffing and partial-download bypasses.
+  disposition with a sanitized bounded filename. Private no-store/no-transform
+  caching, `nosniff`, sandbox CSP, same-origin resource policy, and explicit
+  range rejection reduce browser content-sniffing, intermediary rewriting, and
+  partial-download bypasses. The browser independently bounds received bytes,
+  verifies any declared length, and revokes failed Blob download handoffs.
 - Decoded output is streamed under a 50 MiB ceiling, bounded concurrency,
   cancellation, and provider timeouts. JMAP requires exact identity-encoded
   length; IMAP revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE`

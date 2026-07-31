@@ -39,7 +39,7 @@ export const parseAttachmentDownloadRouteParams = (input: unknown) =>
 export const attachmentDownloadHeaders = (): Headers =>
   new Headers({
     "Accept-Ranges": "none",
-    "Cache-Control": "private, no-store, max-age=0",
+    "Cache-Control": "private, no-store, no-transform, max-age=0",
     "Content-Security-Policy": "sandbox; default-src 'none'",
     "Cross-Origin-Resource-Policy": "same-origin",
     Expires: "0",

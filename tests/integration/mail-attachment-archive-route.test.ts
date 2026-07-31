@@ -115,7 +115,7 @@ describe("attachment archive route", () => {
       "filename*=UTF-8''attachments.zip",
     );
     expect(response.headers.get("cache-control")).toBe(
-      "private, no-store, max-age=0",
+      "private, no-store, no-transform, max-age=0",
     );
     expect(response.headers.get("content-security-policy")).toBe(
       "sandbox; default-src 'none'",

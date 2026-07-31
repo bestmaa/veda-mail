@@ -131,6 +131,11 @@ Acceptance: allowed attachments send and download byte-identically through both
 providers; authorization, size, MIME, filename, timeout, content-sniffing, and
 malicious-file tests pass.
 
+Direct download, original-attachment forwarding, and Download all implementation
+plus automated security/browser coverage are complete. Their checkboxes remain
+open until receiving-side SHA-256 and response-header evidence is recorded from
+dedicated live JMAP and IMAP/SMTP mailboxes.
+
 ## M3 — Draft-safe, rich composing
 
 - [ ] Provider-backed create, update, list, open, and discard drafts
