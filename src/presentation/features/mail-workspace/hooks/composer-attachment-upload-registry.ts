@@ -70,6 +70,21 @@ export const markComposerAttachmentReady = (
       : item,
   );
 
+export const cleanupComposerAttachmentOperations = (
+  operations: readonly ComposerAttachmentUploadOperation[],
+  removeUpload: RemoveUploadedAttachment,
+): ReadonlySet<AttachmentUploadId> => {
+  const attachmentIds = new Set<AttachmentUploadId>();
+  for (const operation of operations) {
+    if (!operation.upload) continue;
+    attachmentIds.add(operation.upload.id);
+    void removeUpload(operation.draftId, operation.upload.id).catch(
+      () => undefined,
+    );
+  }
+  return attachmentIds;
+};
+
 export class ComposerAttachmentUploadRegistry {
   private readonly operations = new Map<
     string,

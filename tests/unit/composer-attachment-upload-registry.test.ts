@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
 import {
+  cleanupComposerAttachmentOperations,
   ComposerAttachmentUploadRegistry,
   expireComposerAttachments,
   EXPIRED_ATTACHMENT_MESSAGE,
@@ -71,6 +72,30 @@ describe("composer attachment upload registry", () => {
       registry.complete("upload-key", operation, upload, removeUpload),
     ).resolves.toBe(false);
     expect(removeUpload).toHaveBeenCalledWith(draftId, upload.id);
+  });
+
+  it("cleans completed operations from their own quarantine drafts", () => {
+    const firstDraft = id.draft("first-draft");
+    const secondDraft = id.draft("second-draft");
+    const registry = new ComposerAttachmentUploadRegistry();
+    const first = registry.begin("first", firstDraft);
+    const second = registry.begin("second", secondDraft);
+    first.upload = upload;
+    second.upload = { ...upload, id: id.attachmentUpload("second-upload") };
+    const removeUpload = vi.fn(async () => undefined);
+
+    const removedIds = cleanupComposerAttachmentOperations(
+      registry.cancelAll(),
+      removeUpload,
+    );
+
+    expect(removeUpload).toHaveBeenNthCalledWith(1, firstDraft, upload.id);
+    expect(removeUpload).toHaveBeenNthCalledWith(
+      2,
+      secondDraft,
+      second.upload.id,
+    );
+    expect(removedIds).toEqual(new Set([upload.id, second.upload.id]));
   });
 
   it("marks expired and server-invalidated ready uploads as actionable errors", () => {
