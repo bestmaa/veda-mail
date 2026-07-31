@@ -88,19 +88,60 @@ export const adminMailUserIdempotencyKeySchema = z
   .string()
   .uuid("Send a UUID Idempotency-Key header.");
 
-export const parseStrictSearchParams = (
-  url: string,
-): Record<string, string> => {
-  const entries: Record<string, string> = {};
-  for (const [name, value] of new URL(url).searchParams) {
-    if (Object.hasOwn(entries, name)) {
-      throw new z.ZodError([
-        { code: "custom", message: `Query parameter ${name} must appear once.`, path: [name] },
-      ]);
-    }
-    entries[name] = value;
+const queryParameterError = (name: string, message: string): z.ZodError =>
+  new z.ZodError([{ code: "custom", message, path: [name] }]);
+
+const setQueryParameterOnce = (
+  name: string,
+  current: string | undefined,
+  value: string,
+): string => {
+  if (current !== undefined) {
+    throw queryParameterError(
+      name,
+      `Query parameter ${name} must appear once.`,
+    );
   }
-  return entries;
+  return value;
+};
+
+const rejectUnknownQueryParameter = (name: string): never => {
+  throw queryParameterError(name, `Unknown query parameter ${name}.`);
+};
+
+export const parseAdminMailUserListSearchParams = (url: string) => {
+  let cursor: string | undefined;
+  let domain: string | undefined;
+  let search: string | undefined;
+  for (const [name, value] of new URL(url).searchParams) {
+    switch (name) {
+      case "cursor":
+        cursor = setQueryParameterOnce(name, cursor, value);
+        break;
+      case "domain":
+        domain = setQueryParameterOnce(name, domain, value);
+        break;
+      case "search":
+        search = setQueryParameterOnce(name, search, value);
+        break;
+      default:
+        rejectUnknownQueryParameter(name);
+    }
+  }
+  return {
+    ...(cursor !== undefined ? { cursor } : {}),
+    ...(domain !== undefined ? { domain } : {}),
+    ...(search !== undefined ? { search } : {}),
+  };
+};
+
+export const parseAdminMailUserDetailSearchParams = (url: string) => {
+  let domain: string | undefined;
+  for (const [name, value] of new URL(url).searchParams) {
+    if (name !== "domain") rejectUnknownQueryParameter(name);
+    domain = setQueryParameterOnce(name, domain, value);
+  }
+  return domain === undefined ? {} : { domain };
 };
 
 export const emailDomain = (value: string): string =>

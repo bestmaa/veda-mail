@@ -71,6 +71,10 @@ test("fails closed when signature loading loses authentication", async ({
 test("never bootstraps another account after a scoped workspace failure", async ({
   page,
 }) => {
+  await expect(
+    page.getByRole("button", { name: "New message" }),
+  ).toBeEnabled();
+
   await page.route("**/api/v1/mail/workspace*", async (route) => {
     if (!route.request().headers()["x-veda-mail-session-scope"]) {
       await route.fallback();

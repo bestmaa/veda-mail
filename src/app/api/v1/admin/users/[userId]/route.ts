@@ -3,7 +3,7 @@ import { getAdminMailUser } from "@/server/mail-users/mail-user-administration";
 import {
   adminMailUserDetailQuerySchema,
   adminMailUserIdSchema,
-  parseStrictSearchParams,
+  parseAdminMailUserDetailSearchParams,
 } from "@/server/mail-users/admin-mail-user.schema";
 import {
   assertRequestRateLimit,
@@ -34,7 +34,7 @@ export const GET = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const { domain } = adminMailUserDetailQuerySchema.parse(
-      parseStrictSearchParams(request.url),
+      parseAdminMailUserDetailSearchParams(request.url),
     );
     const { userId: rawUserId } = await context.params;
     const userId = adminMailUserIdSchema.parse(rawUserId);

@@ -14,7 +14,7 @@ import {
   adminMailUserCreateSchema,
   adminMailUserIdempotencyKeySchema,
   adminMailUserListQuerySchema,
-  parseStrictSearchParams,
+  parseAdminMailUserListSearchParams,
 } from "@/server/mail-users/admin-mail-user.schema";
 import { provisionAdminMailUser } from "@/server/mail-users/mail-user-provisioning";
 import {
@@ -59,7 +59,7 @@ export const GET = async (request: Request) => {
       60 * 1_000,
     );
     const query = adminMailUserListQuerySchema.parse(
-      parseStrictSearchParams(request.url),
+      parseAdminMailUserListSearchParams(request.url),
     );
     return apiSuccess(
       await getAdminMailUsersSnapshot({

@@ -120,6 +120,14 @@ describe("admin mailbox users API", () => {
     expect((await GET(new Request("https://webmail.example.com/api/v1/admin/users"))).status).toBe(401);
   });
 
+  it.each(["?domain=example.com&domain=example.org", "?extra=1", "?__proto__=polluted"])("rejects unsafe read query %s", async (query) => {
+    const url = `https://webmail.example.com/api/v1/admin/users${query}`;
+    const response = await GET(new Request(url));
+    expect(response.status).toBe(400);
+    expect(response.headers.get("x-veda-api-error-code")).toBe("VALIDATION_ERROR");
+    expect(mocks.snapshot).not.toHaveBeenCalled();
+  });
+
   it("checks same-origin before authentication on mutations", async () => {
     mocks.assertOrigin.mockImplementationOnce(() => {
       throw new ApiError("Cross-origin request rejected.", "CROSS_ORIGIN", 403);
