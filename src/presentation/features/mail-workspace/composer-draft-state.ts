@@ -7,6 +7,8 @@ export type ComposerDraftPhase =
   | "saved"
   | "saving"
   | "unsaved";
+export type ComposerDraftRetryKind = "backoff" | "blocked" | "none" | "reconcile";
+export type ComposerTerminalRecoveryKind = "discard" | "send";
 
 export const LOCAL_ATTACHMENT_DRAFT_MESSAGE =
   "Remove local attachments before saving this provider draft.";
@@ -28,6 +30,8 @@ export const RECOVER_DRAFT_BEFORE_SEND_MESSAGE =
   "Recover this provider draft before sending or discarding it.";
 export const DRAFT_RECOVERY_CONFLICT_MESSAGE =
   "The provider draft changed and could not be recovered. Your local changes are still here. Copy them, then close and reopen the draft from Drafts.";
+export const INTERRUPTED_SEND_RECOVERY_MESSAGE =
+  "This message may already have been sent. Check Sent before choosing to resume this recovery copy; Veda Mail will not resend it automatically.";
 
 export const draftRequestAborted = (error: unknown): boolean =>
   error instanceof DOMException && error.name === "AbortError";
@@ -38,6 +42,16 @@ export const draftFailureMessage = (error: unknown): string =>
 export const isDraftConflict = (error: unknown): boolean =>
   error instanceof ApiClientError &&
   (error.status === 409 || error.code === "MAIL_DRAFT_CONFLICT");
+
+export const isAmbiguousDraftSaveFailure = (error: unknown): boolean =>
+  !(error instanceof ApiClientError) || error.status >= 500 || error.status === 408;
+
+export const draftSaveRetryKind = (error: unknown): ComposerDraftRetryKind =>
+  isAmbiguousDraftSaveFailure(error)
+    ? "reconcile"
+    : error instanceof ApiClientError && error.status === 429
+      ? "backoff"
+      : "blocked";
 
 export const completeDraftSave = (
   startedAtContentGeneration: number,
@@ -63,14 +77,16 @@ export const composerDraftAvailability = ({
   providerDraftRequested,
   requiresRecovery,
   saved,
+  terminalRecovery,
 }: {
   readonly hasLocalAttachments: boolean;
   readonly isDirty: boolean;
   readonly providerDraftRequested: boolean;
   readonly requiresRecovery: boolean;
   readonly saved: DraftDetail | null;
+  readonly terminalRecovery: ComposerTerminalRecoveryKind | null;
 }) => {
-  const canEdit = !saved?.hasUncertainSubmission &&
+  const canEdit = !terminalRecovery && !saved?.hasUncertainSubmission &&
     !saved?.hasAttachments && !saved?.hasTruncatedContent &&
     !(providerDraftRequested && !saved);
   const imported = saved?.composeId === null;

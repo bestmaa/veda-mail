@@ -188,5 +188,6 @@ export interface ProviderMailWorkspace {
 }
 
 export interface MailWorkspace extends ProviderMailWorkspace {
+  readonly sessionExpiresAt: string;
   readonly sessionScope: string;
 }

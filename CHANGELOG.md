@@ -9,6 +9,20 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-independent interrupted-compose recovery plus capability-gated
+  provider autosave. Raw recipients and body content stay in a strictly
+  validated, session/owner-bound IndexedDB journal; session storage contains
+  only opaque discovery pointers. Recovery survives reloads and closed tabs
+  during the same authenticated session, while visible saving, locally
+  recovered, offline, attachment-only, and failure states explain durability
+- Debounced provider autosave with a two-second idle delay, a fifteen-second
+  maximum wait, one in-flight request plus one latest trailing save, exact
+  lost-response reconciliation, offline pause, and capped 2/4/8/16/30-second
+  retry backoff
+- Explicit interrupted-send and interrupted-discard recovery. Every send is
+  journaled before HTTP and an ambiguous outcome can only enter a Check Sent
+  flow; permanent discard can replay only the exact confirmed provider draft
+  ID and revision
 - Runtime-gated Stalwart JMAP manual drafts: provider-backed create, Drafts
   list/open, create-first immutable update, explicit discard, visible
   save/recovery state, and claim-gated save-first submission. Bounded
@@ -63,6 +77,15 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Closing a composer now removes ordinary local recovery before hiding content,
+  preserves unresolved terminal-operation evidence, and confirms before
+  abandoning in-progress attachment copies. Sign-out always asks for
+  session-wide confirmation because another tab may own unrecovered work.
+  Exact-scope sign-out, expiry, and invalidation hide matching mailbox content
+  across tabs while local cleanup runs; failures retain a retryable privacy
+  curtain without repeating the server sign-out request
+- Mail workspace responses now include the exact member-session expiry used to
+  bind and expire browser recovery data
 - Stalwart submission now validates the exact implicit Drafts-to-Sent update;
   malformed, partial, wrong-account, or issued ambiguous cleanup outcomes are
   terminal uncertain rather than accepted or blindly retried
@@ -124,6 +147,15 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- Bind compose recovery to the exact provider, account, server-issued session
+  scope, and session expiry. Enforce strict schemas and a 3 MiB record ceiling,
+  compare-and-swap revisions, record/scope tombstones, newest-first capacity,
+  bounded expiry cleanup, cross-tab revocation, and sign-out/session-invalidation
+  purge. Attachment bytes are never persisted in the journal
+- Treat network failures, HTTP 408, server failures, and an ended in-flight send
+  session as ambiguous after a send intent is armed. The current UI blocks a
+  second send or discard immediately, and reload recovery never exposes a send
+  replay operation
 - Derive signature ownership from the authenticated gateway account, encrypt
   each canonical signature book with an owner-bound AES-256-GCM key, hide raw
   identities behind HMAC keys, and persist only through bounded, atomic

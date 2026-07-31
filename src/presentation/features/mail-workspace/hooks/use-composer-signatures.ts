@@ -81,6 +81,16 @@ export const useComposerSignatures = (book: EmailSignatureBook | null) => {
     setAnnouncement("");
   }, []);
 
+  const restoreRecovery = useCallback((disposition: "detached" | "none") => {
+    selectedIdRef.current = null;
+    setOptions([]);
+    setSelectedId(null);
+    setPlacement("prefix");
+    setIsTracking(false);
+    setIsDetached(disposition === "detached");
+    setAnnouncement("");
+  }, []);
+
   const detach = useCallback(() => {
     const hadSignature = selectedIdRef.current !== null;
     selectedIdRef.current = null;
@@ -114,5 +124,6 @@ export const useComposerSignatures = (book: EmailSignatureBook | null) => {
     isDetached,
     prepare,
     reset,
+    restoreRecovery,
   };
 };

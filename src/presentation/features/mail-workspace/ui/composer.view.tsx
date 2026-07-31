@@ -37,7 +37,7 @@ export const ComposerView = ({
             <button
               aria-label="Close composer"
               className="grid size-8 place-items-center rounded-lg text-indigo-100/70 hover:bg-white/10 hover:text-white disabled:opacity-50"
-              disabled={composer.isBusy}
+              disabled={composer.isBusy || composer.draft.phase === "saving"}
               id="composer-close"
               onClick={composer.onClose}
               type="button"

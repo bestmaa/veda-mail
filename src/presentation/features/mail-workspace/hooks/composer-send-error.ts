@@ -11,5 +11,9 @@ export const attachmentRecoveryMessage = (error: unknown): string | null =>
     ? "An attachment is no longer available. Remove it and attach the file again."
     : null;
 
+export const isAmbiguousComposerSendFailure = (error: unknown): boolean =>
+  !(error instanceof ApiClientError) || error.status >= 500 ||
+  error.status === 408 || error.code === "MAIL_SEND_SESSION_ENDED";
+
 export const composerSendErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Message not sent.";

@@ -284,6 +284,45 @@ claimed and read-only, tells the member to check Sent, and is never submitted
 again automatically; the member may explicitly discard that exact revision
 after checking.
 
+## Composer recovery boundary
+
+Every authenticated provider receives browser-local interrupted-compose
+recovery, independently of provider draft capability. A journal is bound to the
+exact provider ID, account ID, opaque member-session scope, and server-issued
+session expiry. Raw recipients and message bodies live only in a strictly
+validated IndexedDB record keyed by session scope and compose UUID;
+`sessionStorage` contains only opaque record pointers. An indexed scope lookup
+can rediscover a valid pointerless record after its original tab closes.
+
+Each record is capped at 3 MiB, uses compare-and-swap storage revisions, and is
+protected by record and scope tombstones so a stale tab cannot recreate purged
+content. Expired records are removed in bounded indexed batches, tombstones are
+retained for seven days, and no more than the four newest valid records for the
+session are retained. Attachment bytes and upload capabilities remain tab-only
+and are never copied into the journal. A durable send terminal stores only a
+canonical SHA-256 request fingerprint plus any provider-draft revision binding;
+the send request remains in memory. Sign-out, server-issued expiry, and session
+invalidation revoke only the exact scope. The revocation is broadcast
+to matching same-origin tabs so each immediately removes cached mailbox DOM;
+newer or unrelated scopes ignore it. After server sign-out succeeds, local
+cleanup failure keeps every notified tab curtained and retry never repeats the
+server DELETE. Sign-out confirmation is deliberately session-wide because an
+exact-scope purge also removes recovery created by another open tab.
+
+When provider drafts are supported, autosave starts after two idle seconds and
+no later than fifteen seconds after the first unsaved change. It permits one
+request in flight and one newest trailing save, pauses offline, reconciles an
+exact lost response, and retries at 2/4/8/16/30 seconds. The local journal
+remains the recovery layer for providers without writable draft support.
+
+Send and permanent-discard operations write an exact terminal intent before
+issuing HTTP. An ambiguous send outcome exposes only **Check Sent** and cannot
+be submitted or discarded again automatically. Confirming that Sent was
+checked atomically converts the terminal record back to an ordinary recovery
+record. An interrupted discard can replay only its exact provider draft ID and
+revision. Closing a normal composer first removes its ordinary recovery copy;
+unresolved terminal evidence is preserved.
+
 ## Email signature boundary
 
 Email signatures are durable Veda Mail preferences, not provider-side identity

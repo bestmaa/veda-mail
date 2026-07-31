@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   assertRequestRateLimit: vi.fn(),
   assertSubjectRateLimit: vi.fn(),
-  connection: { id: "connection-workspace-route" },
+  connectionIsActive: vi.fn(),
+  connection: {
+    createdAt: "2026-07-31T10:00:00.000Z",
+    id: "connection-workspace-route",
+  },
   getCurrentConnection: vi.fn(),
   getMailService: vi.fn(),
   getWorkspace: vi.fn(),
@@ -11,6 +15,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/connections/connection-session", () => ({
   getCurrentConnection: mocks.getCurrentConnection,
+}));
+
+vi.mock("@/server/connections/connection-store", () => ({
+  connectionStore: { isActive: mocks.connectionIsActive },
 }));
 
 vi.mock("@/server/mail/mail-service", () => ({
@@ -23,6 +31,7 @@ vi.mock("@/server/security/rate-limit", () => ({
 }));
 
 import { GET as getWorkspace } from "@/app/api/v1/mail/workspace/route";
+import { connectionExpiresAt } from "@/server/connections/connection-lifetime";
 import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
 const origin = "https://mail.example.com";
@@ -38,6 +47,8 @@ const request = (path: string): Request =>
 beforeEach(() => {
   mocks.assertRequestRateLimit.mockReset();
   mocks.assertSubjectRateLimit.mockReset();
+  mocks.connectionIsActive.mockReset();
+  mocks.connectionIsActive.mockReturnValue(true);
   mocks.getCurrentConnection.mockReset();
   mocks.getCurrentConnection.mockResolvedValue(mocks.connection);
   mocks.getMailService.mockReset();
@@ -71,6 +82,7 @@ describe("mail workspace route", () => {
     await expect(response.json()).resolves.toEqual({
       data: {
         ...workspace,
+        sessionExpiresAt: connectionExpiresAt(mocks.connection),
         sessionScope: mailSessionScope(mocks.connection),
       },
     });
@@ -93,6 +105,26 @@ describe("mail workspace route", () => {
       limit: 50,
       mailboxId: "inbox-1",
       search: "quarterly",
+    });
+    expect(mocks.connectionIsActive).toHaveBeenCalledWith(mocks.connection);
+  });
+
+  it("does not return mailbox data after the connection expires in flight", async () => {
+    mocks.getWorkspace.mockResolvedValue({
+      account: {},
+      mailboxes: [],
+      messages: { items: [], nextCursor: null, total: 0 },
+    });
+    mocks.connectionIsActive.mockReturnValue(false);
+
+    const response = await getWorkspace(request("/api/v1/mail/workspace"));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "MEMBER_SESSION_EXPIRED",
+        message: "This mail connection expired. Connect the account again.",
+      },
     });
   });
 });

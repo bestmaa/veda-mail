@@ -18,17 +18,44 @@ import {
   validateDraftSaveInput,
 } from "@/domain/mail/draft-validation";
 import type { MessageDetail } from "@/domain/mail/mail";
-import { id, type ProviderDraftId } from "@/domain/shared/brand";
+import {
+  id,
+  type DraftId,
+  type ProviderDraftId,
+} from "@/domain/shared/brand";
 import { mockMailboxIds } from "@/infrastructure/providers/mock/mock-seed";
 
+const comparableContent = (content: DraftContent) => ({
+  bcc: content.bcc.map(({ email, name }) => ({ email, name: name ?? null })),
+  body: content.body,
+  cc: content.cc.map(({ email, name }) => ({ email, name: name ?? null })),
+  htmlBody: content.htmlBody ?? null,
+  inReplyTo: content.inReplyTo ?? null,
+  subject: content.subject,
+  to: content.to.map(({ email, name }) => ({ email, name: name ?? null })),
+});
+
 const sameContent = (left: DraftContent, right: DraftContent): boolean =>
-  JSON.stringify(left) === JSON.stringify(right);
+  JSON.stringify(comparableContent(left)) ===
+  JSON.stringify(comparableContent(right));
 
 const cloneDraft = (draft: DraftDetail): DraftDetail =>
   structuredClone(draft);
 
+const MAX_REPLACEMENT_REPLAYS = 256;
+
+interface MockDraftReplacementReplay {
+  readonly composeId: DraftId;
+  readonly expectedRevision: string;
+  readonly replacementId: ProviderDraftId;
+}
+
 export class MockDraftStore {
   private readonly drafts = new Map<ProviderDraftId, DraftDetail>();
+  private readonly replacementReplays = new Map<
+    ProviderDraftId,
+    MockDraftReplacementReplay
+  >();
   private revision = 0;
 
   public async capability(): Promise<DraftCapability> {
@@ -65,15 +92,31 @@ export class MockDraftStore {
       }
       return this.create(composeId, input.content);
     }
-    const current = this.require(input.providerDraftId);
+    const expectedRevision = assertDraftRevision(input.expectedRevision);
+    const current = this.drafts.get(input.providerDraftId);
+    if (!current) {
+      return this.reconcileReplacementReplay(
+        input.providerDraftId,
+        composeId,
+        expectedRevision,
+        input.content,
+      );
+    }
     if (
-      current.revision !== assertDraftRevision(input.expectedRevision) ||
+      current.revision !== expectedRevision ||
       (current.composeId !== null && current.composeId !== composeId)
     ) {
       throw new DraftConflictError();
     }
     this.drafts.delete(current.id);
-    return this.create(composeId, input.content);
+    const replacement = this.create(composeId, input.content);
+    this.rememberReplacementReplay(
+      current.id,
+      composeId,
+      expectedRevision,
+      replacement.id,
+    );
+    return replacement;
   }
 
   public messages(): readonly MessageDetail[] {
@@ -138,6 +181,44 @@ export class MockDraftStore {
     };
     this.drafts.set(providerDraftId, draft);
     return cloneDraft(draft);
+  }
+
+  private reconcileReplacementReplay(
+    oldId: ProviderDraftId,
+    composeId: DraftId,
+    expectedRevision: string,
+    content: DraftContent,
+  ): DraftDetail {
+    const replay = this.replacementReplays.get(oldId);
+    if (!replay) throw new DraftNotFoundError();
+    const replacement = this.drafts.get(replay.replacementId);
+    if (
+      replay.composeId !== composeId ||
+      replay.expectedRevision !== expectedRevision ||
+      replacement?.composeId !== composeId ||
+      !sameContent(replacement.content, content)
+    ) {
+      throw new DraftConflictError();
+    }
+    return cloneDraft(replacement);
+  }
+
+  private rememberReplacementReplay(
+    oldId: ProviderDraftId,
+    composeId: DraftId,
+    expectedRevision: string,
+    replacementId: ProviderDraftId,
+  ): void {
+    this.replacementReplays.set(oldId, {
+      composeId,
+      expectedRevision,
+      replacementId,
+    });
+    while (this.replacementReplays.size > MAX_REPLACEMENT_REPLAYS) {
+      const oldest = this.replacementReplays.keys().next().value;
+      if (!oldest) break;
+      this.replacementReplays.delete(oldest);
+    }
   }
 
   private require(providerDraftId: ProviderDraftId): DraftDetail {

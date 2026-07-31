@@ -18,6 +18,7 @@ import {
   composerTransferHasFiles,
   plainTextToComposerHtml,
 } from "@/presentation/features/mail-workspace/composer-body-content";
+import type { ComposerRecoveryBody } from "@/presentation/features/mail-workspace/composer-recovery.types";
 
 export type ComposerBodyMode = "plain" | "rich";
 
@@ -30,6 +31,7 @@ export const useComposerBody = (
   isSending: boolean,
   onRichDocumentFlattened: () => void = () => undefined,
   onContentChange: () => void = () => undefined,
+  onProgrammaticChange: () => void = onContentChange,
 ) => {
   const [mode, setMode] = useState<ComposerBodyMode>("rich");
   const [text, setText] = useState("");
@@ -95,6 +97,20 @@ export const useComposerBody = (
     [],
   );
 
+  const restoreRecovery = useCallback((value: ComposerRecoveryBody) => {
+    setMode(value.mode);
+    setText(value.text);
+    setHtml(value.mode === "rich" ? value.html : plainTextToComposerHtml(value.text));
+    setEditorVersion((version) => version + 1);
+    setIsPlainModeWarningOpen(false);
+    setPlainTransferStatus("");
+    setPreserveLoadedHtml(
+      value.mode === "rich" && value.preserveLoadedHtml,
+    );
+    initializedSnapshot.current = null;
+    loadedProviderSnapshot.current = null;
+  }, []);
+
   const onPlainInput: ChangeEventHandler<HTMLTextAreaElement> = useCallback(
     (event) => {
       setText(event.target.value);
@@ -140,9 +156,9 @@ export const useComposerBody = (
     const loaded = loadedProviderSnapshot.current;
     loadedProviderSnapshot.current = null;
     if (loaded && (loaded.html !== snapshot.html || loaded.text !== snapshot.text)) {
-      onContentChange();
+      onProgrammaticChange();
     }
-  }, [onContentChange]);
+  }, [onProgrammaticChange]);
 
   const switchToPlain = useCallback(() => {
     setMode("plain");
@@ -224,6 +240,10 @@ export const useComposerBody = (
     payload,
     plainTransferStatus,
     reset,
+    restoreRecovery,
     text,
+    recoveryBody: mode === "plain"
+      ? { mode, text }
+      : { html, mode, preserveLoadedHtml, text },
   };
 };

@@ -26,11 +26,17 @@ const activeModal = (): HTMLElement | null => {
   return dialogs.at(-1) ?? null;
 };
 
+export const isTopModalDialog = (dialog: HTMLElement): boolean =>
+  activeModal() === dialog;
+
+const alwaysRestoreFocus = (): boolean => true;
+
 export const useModalDialogFocus = (
   isOpen: boolean,
   selector: string,
   onEscape: () => void,
   initialFocusSelector?: string,
+  shouldRestoreFocus: () => boolean = alwaysRestoreFocus,
 ): void => {
   const returnFocus = useRef<HTMLElement | null>(null);
 
@@ -42,7 +48,7 @@ export const useModalDialogFocus = (
         : null;
     const frame = window.requestAnimationFrame(() => {
       const dialog = document.querySelector<HTMLElement>(selector);
-      if (!dialog) return;
+      if (!dialog || !isTopModalDialog(dialog)) return;
       const initial = initialFocusSelector
         ? dialog.querySelector<HTMLElement>(initialFocusSelector)
         : null;
@@ -50,15 +56,17 @@ export const useModalDialogFocus = (
     });
     return () => {
       window.cancelAnimationFrame(frame);
-      window.requestAnimationFrame(() => returnFocus.current?.focus());
+      window.requestAnimationFrame(() => {
+        if (shouldRestoreFocus()) returnFocus.current?.focus();
+      });
     };
-  }, [initialFocusSelector, isOpen, selector]);
+  }, [initialFocusSelector, isOpen, selector, shouldRestoreFocus]);
 
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const dialog = document.querySelector<HTMLElement>(selector);
-      if (!dialog || activeModal() !== dialog) return;
+      if (!dialog || !isTopModalDialog(dialog)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         onEscape();

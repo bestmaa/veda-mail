@@ -35,6 +35,7 @@ const workspace: MailWorkspace = {
     nextCursor: null,
     total: 1,
   },
+  sessionExpiresAt: "2026-08-01T00:00:00.000Z",
   sessionScope: "account-a",
 };
 

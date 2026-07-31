@@ -1,5 +1,4 @@
 "use client";
-
 import {
   useCallback,
   useEffect,
@@ -13,11 +12,9 @@ import { id, type MailboxId } from "@/domain/shared/brand";
 import { isMailSessionFailure } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useMailMessageMutations } from "@/presentation/features/mail-workspace/hooks/use-mail-message-mutations";
 import { useMailSessionScopeState } from "@/presentation/features/mail-workspace/hooks/use-mail-session-scope-state";
+import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
-
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Something went wrong.";
-
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : "Something went wrong.";
 export const useMailDataModel = () => {
   const {
     acceptWorkspace,
@@ -53,14 +50,16 @@ export const useMailDataModel = () => {
   }, [clearMessage]);
   const clearAccountState = useCallback(
     (failure: unknown) => {
+      const invalidatedScope = currentScope();
       sessionInvalidated.current = true;
       workspaceRequestId.current += 1;
       clearScope();
       resetMailboxView();
       setIsLoading(false);
       setError(errorMessage(failure));
+      purgeInvalidatedSessionRecovery(invalidatedScope, setError);
     },
-    [clearScope, resetMailboxView],
+    [clearScope, currentScope, resetMailboxView],
   );
   const handleSessionFailure = useCallback(
     (failure: unknown): boolean => {
@@ -70,7 +69,6 @@ export const useMailDataModel = () => {
     },
     [clearAccountState],
   );
-
   const loadWorkspace = useCallback(
     async (override?: {
       readonly mailboxId: MailboxId | null;
@@ -95,7 +93,10 @@ export const useMailDataModel = () => {
           return;
         }
         const scopeChanged = acceptWorkspace(next);
-        if (scopeChanged) resetMailboxView();
+        if (scopeChanged) {
+          purgeInvalidatedSessionRecovery(requestScope, setError);
+          resetMailboxView();
+        }
         if (!mailboxId || scopeChanged) {
           const inbox =
             next.mailboxes.find((mailbox) => mailbox.role === "inbox") ??
@@ -128,7 +129,6 @@ export const useMailDataModel = () => {
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
-
   const refresh = useCallback(() => {
     void loadWorkspace();
   }, [loadWorkspace]);

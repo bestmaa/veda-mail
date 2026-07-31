@@ -139,8 +139,8 @@ dedicated live JMAP and IMAP/SMTP mailboxes.
 ## M3 — Draft-safe, rich composing
 
 - [ ] Provider-backed create, update, list, open, and discard drafts
-- [ ] Debounced autosave with visible saving/saved/offline/error status
-- [ ] Restore an interrupted compose session without duplicating a draft
+- [x] Debounced autosave with visible saving/saved/offline/error status
+- [x] Restore an interrupted compose session without duplicating a draft
 - [x] Safe rich-text editor v1: headings, emphasis, lists, isolated links,
   browser spellcheck, and an explicit plain-text mode. The server creates the
   readable plain alternative and removes scripts, event handlers, remote
@@ -158,14 +158,16 @@ Acceptance: reloading or losing the network cannot silently lose a draft, and
 the MIME message has equivalent readable HTML and plain-text parts.
 
 Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
-Stalwart JMAP now has a security-reviewed manual provider-draft vertical slice:
+Stalwart JMAP now has a security-reviewed provider-draft vertical slice:
 create, update, Drafts-list/open, discard, save-first send, lost-response
-reconciliation, visible state, and non-destructive guards for attachments and
-incomplete bodies plus unsupported imported headers/MIME. The provider-backed
-checkbox remains open because Standard IMAP/SMTP parity, draft attachments, and
-automatic restore are not complete.
-Completing this milestone still requires autosave/restore, templates, delayed
-send, and the broader shortcut/accessibility audit listed above.
+reconciliation, serialized autosave, visible state, and non-destructive guards
+for attachments and incomplete bodies plus unsupported imported headers/MIME.
+All providers also receive session-bound local crash recovery and terminal
+send/discard protection; local attachment bytes deliberately remain tab-only.
+The provider-backed checkbox remains open because Standard IMAP/SMTP parity,
+draft attachments, and provider-durable attachment autosave are not complete.
+Completing this milestone still requires templates, delayed send, and the
+broader shortcut/accessibility audit listed above.
 
 ## M4 — Fast mailbox management
 

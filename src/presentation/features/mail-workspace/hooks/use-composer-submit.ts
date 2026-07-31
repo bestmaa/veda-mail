@@ -9,18 +9,24 @@ import {
 
 import type { SavedProviderDraft } from "@/domain/mail/draft";
 import type { SendReceipt } from "@/domain/mail/mail";
+import type { DraftId } from "@/domain/shared/brand";
 import { parseRecipientInputs } from "@/domain/mail/compose";
-import { SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE } from "@/presentation/features/mail-workspace/composer-draft-state";
+import {
+  SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE,
+} from "@/presentation/features/mail-workspace/composer-draft-state";
+import type { ComposerRecoverySnapshot } from "@/presentation/features/mail-workspace/composer-recovery.types";
 import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import {
   attachmentRecoveryMessage,
   composerSendErrorMessage,
+  isAmbiguousComposerSendFailure,
 } from "@/presentation/features/mail-workspace/hooks/composer-send-error";
 import type { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import type { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import type { useComposerFields } from "@/presentation/features/mail-workspace/hooks/use-composer-fields";
 import { mailApi } from "@/transport/client/api-client";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+import type { ComposerRecoveryJournalPort } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-journal";
 
 interface ComposerSubmitOptions {
   readonly attachments: ReturnType<typeof useComposerAttachments>;
@@ -32,12 +38,19 @@ interface ComposerSubmitOptions {
   readonly isDraftBusy: boolean;
   readonly isDraftReadOnly: boolean;
   readonly onDraftSent: () => void;
+  readonly onSendUncertain: () => void;
   readonly onSent: (
     receipt: SendReceipt,
     submittedEmails: readonly string[],
   ) => void;
   readonly openAccountKey: string;
   readonly providerDraft: SavedProviderDraft | null;
+  readonly recovery: ComposerRecoveryJournalPort;
+  readonly recoveryCheckpoint: {
+    readonly composeId: DraftId;
+    readonly generation: number;
+    readonly snapshot: ComposerRecoverySnapshot;
+  };
   readonly resetFields: () => void;
   readonly restoreFocus: () => void;
   readonly setError: Dispatch<SetStateAction<string | null>>;
@@ -55,9 +68,12 @@ export const useComposerSubmit = ({
   isDraftBusy,
   isDraftReadOnly,
   onDraftSent,
+  onSendUncertain,
   onSent,
   openAccountKey,
   providerDraft,
+  recovery,
+  recoveryCheckpoint,
   resetFields,
   restoreFocus,
   setError,
@@ -112,8 +128,9 @@ export const useComposerSubmit = ({
       }
       setIsSending(true);
       setError(null);
+      let terminalIntentId: string | null = null;
       try {
-        const receipt = await mailApi.sendMessage(
+        const prepared = await recovery.prepareSend(
           {
             attachmentIds: attachments.attachmentIds,
             bcc: recipients.bcc,
@@ -128,9 +145,25 @@ export const useComposerSubmit = ({
             subject: fields.subject,
             to: recipients.to,
           },
+          recoveryCheckpoint,
+        );
+        if (!prepared) {
+          setError("Couldn’t secure this send attempt. Keep this tab open and retry.");
+          return;
+        }
+        terminalIntentId = prepared.intentId;
+        const receipt = await mailApi.sendMessage(
+          prepared.request,
           submittedAccountKey,
         );
         if (!isAccountCurrent(submittedAccountKey)) return;
+        try {
+          if (!await recovery.completeTerminal(prepared.intentId)) {
+            await recovery.markSendUncertain(prepared.intentId);
+          }
+        } catch {
+          await recovery.markSendUncertain(prepared.intentId).catch(() => false);
+        }
         setIsOpen(false);
         onDraftSent();
         resetFields();
@@ -140,9 +173,21 @@ export const useComposerSubmit = ({
       } catch (error) {
         if (!isAccountCurrent(submittedAccountKey)) return;
         if (handleSessionFailure(error)) return;
-        const recovery = attachmentRecoveryMessage(error);
-        if (recovery) attachments.invalidateReady(recovery);
-        setError(recovery ?? composerSendErrorMessage(error));
+        if (terminalIntentId) {
+          const ambiguous = isAmbiguousComposerSendFailure(error);
+          const transition = ambiguous
+            ? recovery.markSendUncertain(terminalIntentId)
+            : recovery.rejectTerminal(terminalIntentId);
+          await transition.catch(() => false);
+          if (ambiguous) {
+            onSendUncertain();
+            setError(null);
+            return;
+          }
+        }
+        const attachmentFailure = attachmentRecoveryMessage(error);
+        if (attachmentFailure) attachments.invalidateReady(attachmentFailure);
+        setError(attachmentFailure ?? composerSendErrorMessage(error));
       } finally {
         if (isAccountCurrent(submittedAccountKey)) {
           setIsSending(false);
@@ -160,9 +205,12 @@ export const useComposerSubmit = ({
       isDraftBusy,
       isDraftReadOnly,
       onDraftSent,
+      onSendUncertain,
       onSent,
       openAccountKey,
       providerDraft,
+      recovery,
+      recoveryCheckpoint,
       resetFields,
       restoreFocus,
       setError,

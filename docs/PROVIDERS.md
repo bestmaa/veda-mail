@@ -19,7 +19,9 @@ today, not every feature the upstream server protocol could eventually supply.
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Admin user list/detail/create                 | Yes, optional   | Unsupported          |
 | Manual provider-backed drafts                 | Yes             | Unsupported          |
-| Draft autosave / draft attachments            | Not implemented | Not implemented      |
+| Provider-backed draft autosave                 | Yes             | Unsupported          |
+| Browser-local interrupted-compose recovery    | Yes             | Yes                  |
+| Provider draft attachments                    | Not implemented | Not implemented      |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
 | Download all ZIP (100 files / 200 MiB)        | Yes             | Yes                  |
@@ -88,8 +90,10 @@ provider attachments, local quarantine attachments, incomplete/truncated body
 values, duplicate or unsupported top-level headers, named address groups, or a
 non-canonical MIME tree are not destructively rewritten or sent; bounded
 unsupported drafts remain closeable, copyable, and explicitly discardable.
-Standard IMAP/SMTP, automatic autosave, offline restore, and draft attachments
-remain roadmap work.
+Standard IMAP/SMTP provider-draft persistence and provider draft attachments
+remain roadmap work. Session-bound local interrupted-compose recovery works for
+both adapters; Stalwart also receives debounced provider autosave with offline
+pause and exact lost-response reconciliation.
 
 The Standard IMAP + SMTP adapter omits BCC from delivered MIME while retaining
 it in the SMTP envelope. If SMTP immediately rejects only some recipients, Veda

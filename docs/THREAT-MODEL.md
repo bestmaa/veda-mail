@@ -449,6 +449,42 @@ limiter and encrypted shared session repository.
   outcome keeps the old draft claimed/read-only, directs the member to check
   Sent, and cannot trigger an automatic duplicate submission.
 
+### Browser compose recovery
+
+- Recovery is a confidentiality boundary, not a trusted mailbox database. Raw
+  content is stored only in IndexedDB and is accepted only after strict schema,
+  canonical-content, control-character, size, owner, scope, and expiry checks.
+  Session storage contains opaque UUID pointers, never recipients or bodies.
+- Records are bound to provider, account, opaque server session scope, and the
+  server-issued expiry. Indexed scope discovery permits same-session recovery
+  after a tab closes without weakening owner checks. At most 32 matching
+  candidates are inspected and only the four newest valid records survive.
+- A 3 MiB per-record ceiling, bounded expiry scans, seven-day tombstone
+  retention, compare-and-swap revisions, and record/scope revocation prevent
+  unbounded storage growth and stale-tab resurrection. Expired writes fail
+  closed. Sign-out, server-issued expiry, and session invalidation revoke only
+  the exact session scope.
+- Attachment bytes, temporary upload capabilities, and source-file handles are
+  never persisted. Recovery records only whether local attachments existed and
+  requires the member to add them again. A durable terminal send marker contains
+  only a canonical SHA-256 request fingerprint and any provider-draft revision
+  binding, never a second copy of recipients, content, or upload identifiers.
+- Provider autosave is serialized to one in-flight request plus one latest
+  trailing save. Lost responses reconcile exact content before retry, offline
+  state pauses writes, and capped backoff prevents retry storms. Provider draft
+  support is not required for local recovery.
+- A send intent is durable before its HTTP request. Network errors, HTTP 408,
+  server errors, and an ended in-flight send session are ambiguous outcomes;
+  they immediately block send/discard and expose only a Check Sent workflow.
+  Reload never replays send. A permanent discard marker can replay only the
+  exact confirmed provider ID and revision.
+- Closing removes ordinary recovery before hiding the composer but preserves
+  terminal evidence. Exact-scope revocation is broadcast to matching tabs, and
+  each immediately removes cached mailbox DOM while local cleanup completes;
+  unrelated or newer session scopes ignore it. Cleanup failure keeps the
+  curtain in place and retry never repeats server sign-out. Because cleanup is
+  session-wide across tabs, sign-out always asks for explicit confirmation.
+
 ### Attachments
 
 - Upload reservations use random opaque IDs HMAC-bound to the authenticated

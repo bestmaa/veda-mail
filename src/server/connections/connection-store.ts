@@ -1,12 +1,11 @@
 import "server-only";
 
-import type {
-  ConnectionInput,
-  ProviderConnection,
-} from "@/domain/provider/provider";
+import type { ConnectionInput, ProviderConnection } from "@/domain/provider/provider";
 import type { SendReceipt } from "@/domain/mail/mail";
 import type { ConnectionId, DraftId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
+import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
+import { connectionExpiresAtMs } from "@/server/connections/connection-lifetime";
 import { clearGateway } from "@/server/mail/gateway-cache";
 import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
 import {
@@ -14,10 +13,9 @@ import {
   type SendIdempotencyBegin,
 } from "@/server/mail/send-idempotency-store";
 
-const CONNECTION_TTL_MS = 12 * 60 * 60 * 1000;
-
 interface ConnectionState {
   readonly connections: Map<ConnectionId, StoredConnection>;
+  readonly expiryTimers: Map<ConnectionId, ReturnType<typeof setTimeout>>;
 }
 
 export interface StoredConnection {
@@ -27,26 +25,87 @@ export interface StoredConnection {
 }
 
 const globalState = globalThis as typeof globalThis & {
-  __vedaMailConnections?: ConnectionState;
+  __vedaMailConnections?: Partial<ConnectionState> &
+    Pick<ConnectionState, "connections">;
 };
 
-const state: ConnectionState = globalState.__vedaMailConnections ?? {
-  connections: new Map(),
+const existingState = globalState.__vedaMailConnections;
+const state: ConnectionState = {
+  connections: existingState?.connections ?? new Map(),
+  expiryTimers: existingState?.expiryTimers ?? new Map(),
 };
 
 globalState.__vedaMailConnections = state;
 
+const clearConnectionResources = (connectionId: ConnectionId): void => {
+  clearGateway(connectionId);
+  deliveryNoticeStore.clear(connectionId);
+  sendIdempotencyStore.clear(connectionId);
+  twoFactorEnrollmentStore.remove(connectionId);
+};
+
+const removeStoredConnection = (
+  connectionId: ConnectionId,
+  expectedCreatedAt?: string,
+): boolean => {
+  const stored = state.connections.get(connectionId);
+  if (!stored) {
+    if (expectedCreatedAt) return false;
+    const timer = state.expiryTimers.get(connectionId);
+    if (timer) clearTimeout(timer);
+    state.expiryTimers.delete(connectionId);
+    clearConnectionResources(connectionId);
+    return false;
+  }
+  if (expectedCreatedAt && stored.connection.createdAt !== expectedCreatedAt) {
+    return false;
+  }
+  state.connections.delete(connectionId);
+  const timer = state.expiryTimers.get(connectionId);
+  if (timer) clearTimeout(timer);
+  state.expiryTimers.delete(connectionId);
+  clearConnectionResources(connectionId);
+  return true;
+};
+
+const expiresAtOrNull = (connection: ProviderConnection): number | null => {
+  try {
+    const expiresAt = connectionExpiresAtMs(connection);
+    return Number.isFinite(expiresAt) ? expiresAt : null;
+  } catch {
+    return null;
+  }
+};
+
+const scheduleExpiry = (connection: ProviderConnection): void => {
+  const existingTimer = state.expiryTimers.get(connection.id);
+  if (existingTimer) clearTimeout(existingTimer);
+  state.expiryTimers.delete(connection.id);
+  const expiresAt = expiresAtOrNull(connection);
+  const remaining = expiresAt === null ? 0 : expiresAt - Date.now();
+  if (remaining <= 0) {
+    removeStoredConnection(connection.id, connection.createdAt);
+    return;
+  }
+  const timer = setTimeout(() => {
+    removeStoredConnection(connection.id, connection.createdAt);
+  }, remaining);
+  timer.unref();
+  state.expiryTimers.set(connection.id, timer);
+};
+
 const pruneExpiredConnections = (): void => {
-  const expiresBefore = Date.now() - CONNECTION_TTL_MS;
   for (const [connectionId, stored] of state.connections) {
-    if (Date.parse(stored.connection.createdAt) < expiresBefore) {
-      state.connections.delete(connectionId);
-      clearGateway(connectionId);
-      deliveryNoticeStore.clear(connectionId);
-      sendIdempotencyStore.clear(connectionId);
+    const expiresAt = expiresAtOrNull(stored.connection);
+    if (expiresAt === null || expiresAt <= Date.now()) {
+      removeStoredConnection(connectionId, stored.connection.createdAt);
     }
   }
 };
+
+for (const { connection } of state.connections.values()) {
+  scheduleExpiry(connection);
+}
 
 export const connectionStore = {
   beginSendIfActive(
@@ -63,12 +122,9 @@ export const connectionStore = {
     ) {
       return { kind: "inactive" };
     }
-    const expiresAt = Date.parse(current.createdAt) + CONNECTION_TTL_MS;
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-      state.connections.delete(connection.id);
-      clearGateway(connection.id);
-      deliveryNoticeStore.clear(connection.id);
-      sendIdempotencyStore.clear(connection.id);
+    const expiresAt = expiresAtOrNull(current);
+    if (expiresAt === null || expiresAt <= Date.now()) {
+      removeStoredConnection(connection.id, current.createdAt);
       return { kind: "inactive" };
     }
     return sendIdempotencyStore.begin(
@@ -93,12 +149,9 @@ export const connectionStore = {
     ) {
       return false;
     }
-    const expiresAt = Date.parse(current.createdAt) + CONNECTION_TTL_MS;
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-      state.connections.delete(connection.id);
-      clearGateway(connection.id);
-      deliveryNoticeStore.clear(connection.id);
-      sendIdempotencyStore.clear(connection.id);
+    const expiresAt = expiresAtOrNull(current);
+    if (expiresAt === null || expiresAt <= Date.now()) {
+      removeStoredConnection(connection.id, current.createdAt);
       return false;
     }
     const admitted = deliveryNoticeStore.append(
@@ -130,6 +183,7 @@ export const connectionStore = {
       deliveryNoticeCapacityWarning: false,
       profileRevision,
     });
+    scheduleExpiry(connection);
     return connection;
   },
 
@@ -149,17 +203,25 @@ export const connectionStore = {
     );
   },
 
+  isActive(connection: ProviderConnection): boolean {
+    pruneExpiredConnections();
+    const current = state.connections.get(connection.id)?.connection;
+    return Boolean(
+      current &&
+        current.createdAt === connection.createdAt &&
+        current.providerId === connection.providerId,
+    );
+  },
+
   remove(connectionId: ConnectionId): void {
-    state.connections.delete(connectionId);
-    clearGateway(connectionId);
-    deliveryNoticeStore.clear(connectionId);
-    sendIdempotencyStore.clear(connectionId);
+    removeStoredConnection(connectionId);
   },
 
   updateConfig(
     connectionId: ConnectionId,
     config: Readonly<Record<string, string>>,
   ): ProviderConnection {
+    pruneExpiredConnections();
     const stored = state.connections.get(connectionId);
     if (!stored) {
       throw new Error("Mail connection was not found.");
@@ -171,8 +233,13 @@ export const connectionStore = {
   },
 
   clearAll(): void {
+    for (const timer of state.expiryTimers.values()) {
+      clearTimeout(timer);
+    }
+    state.expiryTimers.clear();
     for (const connectionId of state.connections.keys()) {
       clearGateway(connectionId);
+      twoFactorEnrollmentStore.remove(connectionId);
     }
     state.connections.clear();
     deliveryNoticeStore.clearAll();
