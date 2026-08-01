@@ -17,6 +17,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
+| Bounded bulk actions and permanent delete    | Yes             | Yes                  |
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Admin user list/detail/create                 | Yes, optional   | Unsupported          |
 | Manual provider-backed drafts                 | Yes             | Unsupported          |
@@ -53,6 +54,18 @@ pages, rejects stale page completions after mailbox/search/session changes,
 and keeps an already open message selected. Refresh deliberately restarts from
 the first page so new-mail movement cannot silently rewrite an accumulated
 list.
+
+Multi-select is also provider-independent and applies only to messages loaded
+in the current browser view. The strict bulk route accepts at most 100 unique
+message IDs, runs no more than four provider mutations concurrently, and
+returns separate succeeded/failed ID lists without upstream error details.
+JMAP uses keyword patches, mailbox replacement, and `Email/set/destroy`.
+IMAP uses UID flag updates, UID move, and UID EXPUNGE only after the scoped
+message identity and current mailbox `UIDVALIDITY` match. Spam is an ordinary
+move to the provider mailbox mapped to the `spam` role. Permanent delete is
+shown only in Spam or Trash and requires an explicit confirmation. No provider
+profile, Stalwart setting, schema migration, or additional network port is
+required.
 
 Both adapters also receive the same server-canonicalized content contract:
 required readable `body` plus optional safe `htmlBody`. When rich content is

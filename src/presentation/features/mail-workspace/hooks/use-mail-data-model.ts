@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type FormEventHandler, type M
 import { id, type MailboxId } from "@/domain/shared/brand";
 import { isMailSessionFailure } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useMailMessageMutations } from "@/presentation/features/mail-workspace/hooks/use-mail-message-mutations";
+import { useMailDataBulkSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-data-bulk-selection";
 import { useMailPagination } from "@/presentation/features/mail-workspace/hooks/use-mail-pagination";
 import { useMailSessionScopeState } from "@/presentation/features/mail-workspace/hooks/use-mail-session-scope-state";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
@@ -112,23 +113,25 @@ export const useMailDataModel = () => {
         }
       }
     },
-    [
-      acceptWorkspace,
-      activeMailboxId,
-      appliedSearch,
-      currentScope,
-      handleSessionFailure,
-      resetMailboxView,
-    ],
+    [acceptWorkspace, activeMailboxId, appliedSearch, currentScope,
+      handleSessionFailure, resetMailboxView],
   );
-
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
-  const refresh = useCallback(() => {
-    void loadWorkspace();
-  }, [loadWorkspace]);
-
+  const refresh = useCallback(() => void loadWorkspace(), [loadWorkspace]);
+  const bulk = useMailDataBulkSelection({
+    activeMailboxId,
+    appliedSearch,
+    clearMessage,
+    currentViewRevision: () => workspaceRequestId.current,
+    handleSessionFailure,
+    isCurrentScope,
+    refresh,
+    selectedMessage,
+    sessionScope,
+    workspace,
+  });
   const selectMailbox = useCallback(
     (mailboxId: string) => {
       workspaceRequestId.current += 1;
@@ -139,7 +142,6 @@ export const useMailDataModel = () => {
     },
     [clearMessage],
   );
-
   const selectMessage = useCallback(
     async (messageId: string) => {
       const requestScope = currentScope();
@@ -182,7 +184,6 @@ export const useMailDataModel = () => {
     },
     [commitMessage, currentScope, handleSessionFailure, isCurrentScope, refresh],
   );
-
   const mutations = useMailMessageMutations({
     clearMessage,
     commitMessage,
@@ -193,7 +194,6 @@ export const useMailDataModel = () => {
     sessionScope,
     setReaderError,
   });
-
   const onSearchSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (event) => {
       event.preventDefault();
@@ -203,14 +203,13 @@ export const useMailDataModel = () => {
     },
     [clearMessage, searchValue],
   );
-
   const onRefresh: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
     refresh();
   }, [refresh]);
-
   return {
     activeMailboxId,
     archive: mutations.archive,
+    bulk,
     closeReader: useCallback(() => {
       messageRequestId.current += 1;
       clearMessage();

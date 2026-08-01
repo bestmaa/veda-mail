@@ -162,7 +162,7 @@ export class MockMailGateway implements MailGateway {
     if (!current) {
       throw new Error("Message not found.");
     }
-
+    if (mutation.type === "destroy") { this.messages.splice(index, 1); return; }
     if (mutation.type === "set-read") {
       this.messages[index] = { ...current, isUnread: !mutation.value };
       return;

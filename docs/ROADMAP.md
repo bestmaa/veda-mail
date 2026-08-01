@@ -172,7 +172,7 @@ broader shortcut/accessibility audit listed above.
 ## M4 — Fast mailbox management
 
 - [x] Cursor pagination/infinite loading with stable selection
-- [ ] Multi-select and bulk read/unread, star, archive, spam, trash, restore,
+- [x] Multi-select and bulk read/unread, star, archive, spam, trash, restore,
   move, and permanent-delete actions
 - [ ] Create, rename, recolor, nest, and delete custom folders/mailboxes
 - [ ] Portable labels model with a documented IMAP mapping
@@ -191,6 +191,15 @@ control, duplicate-request coalescing, cross-page message-ID deduplication,
 stale mailbox/search/session response rejection, recoverable retry, and stable
 reader selection. Offset movement during concurrent provider mutation remains
 documented; refresh restarts from the authoritative first page.
+
+Loaded-page multi-select and bulk actions are complete for both adapters.
+Selection is explicitly limited to loaded messages, excludes editable Drafts,
+survives only within the current mailbox/search/session view, and retains only
+provider failures after a partial result. Strict unique batches are capped at
+100 IDs, execute with four provider operations at most, and expose no upstream
+error text. Read/unread, star/unstar, archive, spam, trash, restore, move, and
+irreversible delete are available according to mailbox role; permanent delete
+is limited to Spam/Trash and requires a focus-managed confirmation.
 
 ## M5 — Conversations and powerful search
 

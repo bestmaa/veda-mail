@@ -1,13 +1,18 @@
 import {
+  Check,
   Inbox,
+  Minus,
 } from "lucide-react";
 
 import type { MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import type { BulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
+import { BulkActionsToolbarView } from "@/presentation/features/mail-workspace/ui/bulk-actions-toolbar.view";
 import { MessageListSkeletonView } from "@/presentation/features/mail-workspace/ui/message-list-skeleton.view";
 import { MessageRowView } from "@/presentation/features/mail-workspace/ui/message-row.view";
 
 interface MessageListViewProps {
   readonly activeFolder: string;
+  readonly bulkActions: BulkActionsViewModel;
   readonly error: string | null;
   readonly hasMore: boolean;
   readonly isLoading: boolean;
@@ -20,6 +25,7 @@ interface MessageListViewProps {
 
 export const MessageListView = ({
   activeFolder,
+  bulkActions,
   error,
   hasMore,
   isLoading,
@@ -32,18 +38,51 @@ export const MessageListView = ({
   <section className="flex min-h-0 flex-col border-r border-slate-200 bg-[#f8f9fc]">
     <div className="border-b border-slate-200 bg-white px-4 pb-3 pt-4">
       <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">
-            Mailbox
-          </p>
-          <h1 className="mt-0.5 text-2xl font-extrabold tracking-[-0.04em] text-slate-900">
-            {activeFolder}
-          </h1>
+        <div className="flex min-w-0 items-center gap-3">
+          {messages.some((message) => message.canSelect) ? (
+            <button
+              aria-checked={
+                bulkActions.selectedCount > 0 &&
+                !bulkActions.allLoadedSelected
+                  ? "mixed"
+                  : bulkActions.allLoadedSelected
+              }
+              aria-label="Select all loaded messages"
+              className="grid size-6 shrink-0 place-items-center rounded border border-slate-300 bg-white text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-wait disabled:opacity-50"
+              disabled={bulkActions.isBusy}
+              onClick={bulkActions.onToggleAllLoaded}
+              role="checkbox"
+              type="button"
+            >
+              {bulkActions.allLoadedSelected ? (
+                <Check aria-hidden size={14} />
+              ) : bulkActions.selectedCount > 0 ? (
+                <Minus aria-hidden size={14} />
+              ) : null}
+            </button>
+          ) : null}
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">
+              Mailbox
+            </p>
+            <h1 className="mt-0.5 text-2xl font-extrabold tracking-[-0.04em] text-slate-900">
+              {activeFolder}
+            </h1>
+          </div>
         </div>
         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
           {total} messages
         </span>
       </div>
+      <BulkActionsToolbarView bulk={bulkActions} />
+      <div aria-live="polite" className="sr-only">
+        {bulkActions.status}
+      </div>
+      {bulkActions.error ? (
+        <p className="mt-2 text-xs font-semibold text-red-700" role="alert">
+          {bulkActions.error}
+        </p>
+      ) : null}
     </div>
 
     <div

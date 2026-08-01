@@ -9,18 +9,24 @@ export const MessageRowView = ({
 }) => (
   <article
     className={`group relative rounded-2xl border p-3.5 transition ${
-      message.isActive
+      message.isSelected
+        ? "border-indigo-300 bg-indigo-50 shadow-sm ring-1 ring-indigo-200"
+        : message.isActive
         ? "border-indigo-200 bg-indigo-50/75 shadow-sm"
         : "border-transparent bg-white hover:border-slate-200 hover:shadow-sm"
     }`}
   >
-    <button
-      aria-label={message.openLabel}
-      className="absolute inset-0 rounded-2xl"
-      onClick={message.onSelect}
-      type="button"
-    />
     <div className="pointer-events-none relative flex items-start gap-3">
+      {message.canSelect ? (
+        <input
+          aria-label={message.selectLabel}
+          checked={message.isSelected}
+          className="pointer-events-auto relative z-10 mt-1 size-6 shrink-0 accent-indigo-600"
+          disabled={message.isSelectionDisabled}
+          onChange={message.onToggleSelected}
+          type="checkbox"
+        />
+      ) : null}
       <span
         className={`grid size-9 shrink-0 place-items-center rounded-xl text-[11px] font-extrabold ${
           message.isUnread
@@ -71,5 +77,11 @@ export const MessageRowView = ({
         </p>
       </div>
     </div>
+    <button
+      aria-label={message.openLabel}
+      className="absolute inset-0 rounded-2xl"
+      onClick={message.onSelect}
+      type="button"
+    />
   </article>
 );

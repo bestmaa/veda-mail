@@ -1,10 +1,4 @@
-import type {
-  ChangeEventHandler,
-  ClipboardEventHandler,
-  DragEventHandler,
-  FormEventHandler,
-  KeyboardEventHandler, MouseEventHandler,
-} from "react";
+import type { ChangeEventHandler, ClipboardEventHandler, DragEventHandler, FormEventHandler, KeyboardEventHandler, MouseEventHandler } from "react";
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
@@ -12,6 +6,7 @@ import type { MailSessionFailureHandler } from "@/presentation/features/mail-wor
 import type { ComposerDraftPhase, ComposerTerminalRecoveryKind } from "@/presentation/features/mail-workspace/composer-draft-state";
 import type { ComposerDraftStatus } from "@/presentation/features/mail-workspace/composer-draft-status";
 import type { ComposerRecoveryPromptViewModel } from "@/presentation/features/mail-workspace/composer-recovery-prompt.view-model";
+import type { BulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
 export type MailboxIconName =
   "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
 export interface FolderViewModel {
@@ -23,19 +18,23 @@ export interface FolderViewModel {
   readonly label: string;
   readonly onSelect: () => void;
 }
-
 export interface MessageItemViewModel {
   readonly avatar: string;
+  readonly canSelect: boolean;
   readonly date: string;
   readonly hasAttachment: boolean;
   readonly id: string;
   readonly isActive: boolean;
+  readonly isSelected: boolean;
+  readonly isSelectionDisabled: boolean;
   readonly isStarred: boolean;
   readonly isUnread: boolean;
   readonly onSelect: () => void;
+  readonly onToggleSelected: () => void;
   readonly openLabel: string;
   readonly preview: string;
   readonly sender: string;
+  readonly selectLabel: string;
   readonly subject: string;
 }
 
@@ -214,6 +213,7 @@ export interface MailWorkspaceViewProps {
   };
   readonly branding: BrandingViewModel;
   readonly activeFolder: string;
+  readonly bulkActions: BulkActionsViewModel;
   readonly composer: ComposerViewModel;
   readonly error: string | null;
   readonly folders: readonly FolderViewModel[];

@@ -16,17 +16,12 @@ import {
   jmapComposeBody,
   uploadVerifiedJmapAttachments,
 } from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
-import {
-  jmapIdentityResultSchema,
-  jmapSetResultSchema,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
-import {
-  JMAP_MAIL,
-  JMAP_SUBMISSION,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { jmapIdentityResultSchema } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
+import { JMAP_SUBMISSION } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { submitStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
 import type { StalwartDraftSendSource } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.store";
 import { submitStalwartSavedDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-send";
+import { mutateStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-mutation";
 
 const addresses = (
   values: SendMessageInput["to"],
@@ -44,37 +39,7 @@ export class StalwartMailWriter {
   ) {}
 
   public async mutateMessage(mutation: MessageMutation): Promise<void> {
-    const accountId = await this.reader.getAccountId();
-    const patch: Readonly<Record<string, unknown>> =
-      mutation.type === "set-read"
-        ? { "keywords/$seen": mutation.value ? true : null }
-        : mutation.type === "set-starred"
-          ? { "keywords/$flagged": mutation.value ? true : null }
-          : {
-              mailboxIds: {
-                [await this.resolveTargetMailbox(mutation.type, mutation)]:
-                  true,
-              },
-            };
-    const response = await this.client.request(
-      [
-        [
-          "Email/set",
-          { accountId, update: { [mutation.messageId]: patch } },
-          "update",
-        ],
-      ],
-      [JMAP_MAIL],
-    );
-    const result = this.client.result(
-      response,
-      "update",
-      "Email/set",
-      jmapSetResultSchema,
-    );
-    if (result.notUpdated && Object.keys(result.notUpdated).length > 0) {
-      throw new Error("Stalwart rejected the message update.");
-    }
+    return mutateStalwartMessage(this.client, this.reader, mutation);
   }
 
   public async sendMessage(input: SendMessageInput): Promise<SendReceipt> {
@@ -218,21 +183,4 @@ export class StalwartMailWriter {
     return mailboxId;
   }
 
-  private async resolveTargetMailbox(
-    type: Exclude<MessageMutation["type"], "set-read" | "set-starred">,
-    mutation: MessageMutation,
-  ): Promise<string> {
-    if (type === "move" && mutation.type === "move") {
-      return mutation.mailboxId;
-    }
-    const role =
-      type === "delete" ? "trash" : type === "restore" ? "inbox" : "archive";
-    const mailbox = (await this.reader.listMailboxes()).find(
-      (candidate) => candidate.role === role,
-    );
-    if (!mailbox) {
-      throw new Error(`The ${role} mailbox is not configured.`);
-    }
-    return mailbox.id;
-  }
 }

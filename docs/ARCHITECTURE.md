@@ -376,6 +376,37 @@ not close or replace the message being read. A recoverable provider failure
 leaves the accepted pages intact and reuses the same server cursor only after
 an explicit retry. Full refresh replaces the accumulated list with page one.
 
+## Bounded bulk mailbox mutations
+
+The message-list selection is a separate set of opaque message IDs. A member
+may select individual rows or every currently loaded row; Veda Mail never
+claims that this selects unseen provider results. Draft rows remain routed to
+the provider-draft editor and cannot enter ordinary message bulk operations.
+Mailbox, search, session, and root-workspace generations clear or invalidate
+selection. A completion is accepted only if its member scope and root view
+revision still match the request that started it.
+
+`PATCH /api/v1/mail/messages/bulk` accepts one strict 64 KiB JSON operation
+with 1–100 unique IDs. Same-origin, member-session-scope, global request, and
+verified-connection rate limits run before provider resolution. The server
+runs at most four ordinary provider-port mutations concurrently and returns
+only succeeded and failed IDs; provider exception text is not serialized. The
+client permits one batch in flight, removes succeeded IDs from selection,
+retains failed IDs for an explicit retry, refreshes authoritative page one,
+and announces the result without replacing an independently open reader.
+
+Read/unread, star/unstar, archive, spam, trash, restore, and move use the same
+provider-independent mutation contract as single-message actions. Permanent
+delete maps to JMAP `Email/set/destroy` or IMAP UID EXPUNGE after scoped
+identity and `UIDVALIDITY` revalidation. The request includes its source
+mailbox; the server verifies that mailbox has the Spam/Trash role and reloads
+each message to confirm current membership before destruction. JMAP then
+rechecks the minimal mailbox membership and supplies its collection state as
+`ifInState`, so an intervening account mutation fails instead of destroying
+against a stale check. It is guarded by an inert-background, focus-managed
+alert dialog. Cancellation performs no
+provider request; confirmation is irreversible.
+
 With the supplied Compose layout, signature books live in
 `/data/member-signatures.json`. The outer file contains keyed owner buckets but
 no raw email addresses or signature plaintext. An HMAC-SHA-256 of the

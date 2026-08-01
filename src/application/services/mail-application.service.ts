@@ -42,6 +42,10 @@ export class MailApplicationService {
     return this.gateway.getMessage(messageId);
   }
 
+  public listMailboxes() {
+    return this.gateway.listMailboxes();
+  }
+
   public listMessageAttachments(input: MessageAttachmentListInput) {
     return this.gateway.listMessageAttachments(input);
   }

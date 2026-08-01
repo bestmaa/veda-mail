@@ -117,6 +117,11 @@ export class ImapMailWriter {
       if (!imapUidValidityMatches(reference, opened.uidValidity)) {
         throw new Error("Message not found.");
       }
+      if (mutation.type === "destroy") {
+        const deleted = await client.messageDelete(reference.uid, { uid: true });
+        if (!deleted) throw new Error("Message not found.");
+        return;
+      }
       if (mutation.type === "set-read" || mutation.type === "set-starred") {
         const flag = mutation.type === "set-read" ? "\\Seen" : "\\Flagged";
         const update = mutation.value

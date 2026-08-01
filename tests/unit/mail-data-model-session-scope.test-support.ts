@@ -57,6 +57,7 @@ const apiState = vi.hoisted(() => ({
   getMessage: vi.fn(),
   getWorkspace: vi.fn(),
   mutateMessage: vi.fn(),
+  mutateMessages: vi.fn(),
 }));
 
 vi.mock("react", async (importOriginal) => ({
@@ -73,6 +74,7 @@ vi.mock("@/transport/client/api-client", () => ({
     getMessage: apiState.getMessage,
     getWorkspace: apiState.getWorkspace,
     mutateMessage: apiState.mutateMessage,
+    mutateMessages: apiState.mutateMessages,
   },
 }));
 
@@ -148,4 +150,5 @@ export const resetMailDataModelHarness = () => {
   api.getMessage.mockReset();
   api.getWorkspace.mockReset();
   api.mutateMessage.mockReset();
+  api.mutateMessages.mockReset();
 };

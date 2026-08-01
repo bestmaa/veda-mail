@@ -147,6 +147,19 @@ describe("mail read and mutation routes", () => {
     });
   });
 
+  it("does not expose permanent deletion without bulk mailbox verification", async () => {
+    const response = await patchMessage(
+      request("/api/v1/mail/messages/message-42", {
+        body: JSON.stringify({ mailboxId: "trash-a", type: "destroy" }),
+        method: "PATCH",
+      }),
+      context("message-42"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.mutateMessage).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["GET", getMessage],
     ["PATCH", patchMessage],
