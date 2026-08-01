@@ -8,6 +8,7 @@ import {
   mailSessionScope,
 } from "@/server/connections/mail-session-scope";
 import { getMailService } from "@/server/mail/mail-service";
+import { labelCatalogStore } from "@/server/labels/label-catalog.store";
 import { decorateMailboxesSafely } from "@/server/mailboxes/mailbox-http";
 import {
   assertRequestRateLimit,
@@ -48,10 +49,17 @@ export const GET = async (request: Request) => {
       ...(mailbox ? { mailboxId: id.mailbox(mailbox) } : {}),
       ...(search ? { search: search.slice(0, 200) } : {}),
     });
-    const mailboxes = await decorateMailboxesSafely(
-      { email: workspace.account.email, providerId: workspace.account.providerId },
-      workspace.mailboxes,
-    );
+    const owner = {
+      email: workspace.account.email,
+      providerId: workspace.account.providerId,
+    };
+    const [mailboxes, labels] = await Promise.all([
+      decorateMailboxesSafely(
+        owner,
+        workspace.mailboxes,
+      ),
+      labelCatalogStore.list(owner).catch(() => []),
+    ]);
     if (!connectionStore.isActive(connection)) {
       throw new ApiError(
         "This mail connection expired. Connect the account again.",
@@ -61,6 +69,7 @@ export const GET = async (request: Request) => {
     }
     return apiSuccess({
       ...workspace,
+      labels,
       mailboxes,
       sessionExpiresAt: connectionExpiresAt(connection),
       sessionScope: mailSessionScope(connection),

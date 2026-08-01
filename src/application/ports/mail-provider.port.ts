@@ -19,6 +19,7 @@ import type {
   DraftDetail,
   DraftSaveInput,
 } from "@/domain/mail/draft";
+import type { LabelCapability } from "@/domain/mail/label";
 import type {
   MemberAuthenticationResult,
   MemberCredentials,
@@ -31,7 +32,7 @@ import type {
   MemberProfileUpdate,
   MemberTwoFactorUpdate,
 } from "@/domain/member/member-settings";
-import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
+import type { MailboxId, MessageId, ProviderDraftId } from "@/domain/shared/brand";
 
 export interface MailGateway {
   changePassword(input: MemberPasswordChange): Promise<void>;
@@ -46,6 +47,7 @@ export interface MailGateway {
   getAccount(): Promise<MailAccount>;
   getDraft(providerDraftId: ProviderDraftId): Promise<DraftDetail>;
   getDraftCapability(): Promise<DraftCapability>;
+  getLabelCapability(mailboxId: MailboxId): Promise<LabelCapability>;
   getMemberProfile(): Promise<MemberProfile>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;

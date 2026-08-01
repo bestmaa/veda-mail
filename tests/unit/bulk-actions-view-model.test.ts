@@ -23,6 +23,8 @@ const workspace: MailWorkspace = {
     providerId: id.provider("mock"),
   },
   draftCapability: { status: "supported" },
+  labelCapability: "supported",
+  labels: [],
   mailboxes: [
     mailbox("inbox"),
     mailbox("archive"),

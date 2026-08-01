@@ -37,6 +37,7 @@ export const createMockPreviewMessage = (): MessageDetail => ({
   id: mockPreviewMessageId,
   isStarred: false,
   isUnread: false,
+  labelIds: [],
   mailboxIds: [id.mailbox("mock-inbox")],
   preview: "A hostile-looking string must remain inert plain text.",
   receivedAt: "2026-07-23T03:55:00.000Z",

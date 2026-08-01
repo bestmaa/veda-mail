@@ -7,6 +7,7 @@ import {
   ReplyAll,
   ShieldCheck,
   Star,
+  Tag,
   Trash2,
   X,
 } from "lucide-react";
@@ -65,6 +66,45 @@ export const MessageReaderView = ({
           <Mail aria-hidden size={18} />
         )}
       </ReaderActionView>
+      {reader.labelActions?.applyOptions.length ? (
+        <label className="relative hidden sm:block">
+          <span className="sr-only">Apply label to message</span>
+          <Tag aria-hidden className="pointer-events-none absolute left-2 top-2.5 text-slate-500" size={16} />
+          <select
+            aria-label="Apply label to message"
+            className="h-9 max-w-36 rounded-lg border border-slate-200 bg-white pl-8 pr-6 text-xs font-semibold"
+            defaultValue=""
+            onChange={(event) => {
+              if (event.currentTarget.value) reader.labelActions?.onApply(event.currentTarget.value);
+              event.currentTarget.value = "";
+            }}
+          >
+            <option disabled value="">Apply label…</option>
+            {reader.labelActions.applyOptions.map((label) => (
+              <option key={label.id} value={label.id}>{label.name}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {reader.labelActions?.removeOptions.length ? (
+        <label className="relative hidden md:block">
+          <span className="sr-only">Remove label from message</span>
+          <select
+            aria-label="Remove label from message"
+            className="h-9 max-w-36 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold"
+            defaultValue=""
+            onChange={(event) => {
+              if (event.currentTarget.value) reader.labelActions?.onRemove(event.currentTarget.value);
+              event.currentTarget.value = "";
+            }}
+          >
+            <option disabled value="">Remove label…</option>
+            {reader.labelActions.removeOptions.map((label) => (
+              <option key={label.id} value={label.id}>{label.name}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <ReaderActionView label="Delete" onClick={onDelete}>
         <Trash2 aria-hidden size={18} />
       </ReaderActionView>
@@ -110,6 +150,19 @@ export const MessageReaderView = ({
           <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-[-0.04em] text-slate-900 md:text-[30px]">
             {reader.subject}
           </h2>
+          {reader.labels.length ? (
+            <div aria-label="Message labels" className="mt-3 flex flex-wrap gap-2">
+              {reader.labels.map((label) => (
+                <span
+                  className="rounded-full border px-2.5 py-1 text-xs font-bold"
+                  key={label.id}
+                  style={{ borderColor: label.color, color: label.color }}
+                >
+                  {label.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="mt-6 flex items-center gap-3 border-b border-slate-100 pb-6">
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#edeaff] text-sm font-extrabold text-[#4f46a5]">
               {reader.avatar}

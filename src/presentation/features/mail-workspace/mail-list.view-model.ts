@@ -39,6 +39,9 @@ export const createMailListViewModel = ({
     ({ id }) => id === activeMailboxId,
   );
   const opensDrafts = draftsEnabled && activeMailbox?.role === "drafts";
+  const labelById = new Map(
+    (workspace?.labels ?? []).map((label) => [label.id, label] as const),
+  );
   return {
     activeFolder: activeMailbox?.name ?? "Inbox",
     folders: flattenMailboxTree(workspace?.mailboxes ?? []).map(({ depth, mailbox }) => ({
@@ -69,6 +72,10 @@ export const createMailListViewModel = ({
         isSelectionDisabled: selectionDisabled,
         isStarred: message.isStarred,
         isUnread: message.isUnread,
+        labels: (message.labelIds ?? []).flatMap((labelId) => {
+          const label = labelById.get(labelId);
+          return label ? [label] : [];
+        }),
         onSelect: () => opensDrafts
           ? onOpenDraft(message.id)
           : onSelectMessage(message.id),

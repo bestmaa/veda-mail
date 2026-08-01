@@ -8,6 +8,9 @@ import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
+import { labelCatalogStore } from "@/server/labels/label-catalog.store";
+import { labelHttpError } from "@/server/labels/label-http";
+import { mailboxOwner } from "@/server/mailboxes/mailbox-http";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -25,6 +28,14 @@ const mutationFor = (
 ): MessageMutation => {
   if (request.type === "set-read" || request.type === "set-starred") {
     return { messageId, type: request.type, value: request.value };
+  }
+  if (request.type === "set-label") {
+    return {
+      labelId: request.labelId,
+      messageId,
+      type: request.type,
+      value: request.value,
+    };
   }
   if (request.type === "destroy" || request.type === "move") {
     return { mailboxId: request.mailboxId, messageId, type: request.type };
@@ -79,6 +90,12 @@ export const PATCH = async (request: Request) => {
       await readJsonBody(request, 64 * 1_024),
     );
     const service = await getMailService(connection);
+    if (payload.type === "set-label") {
+      await labelCatalogStore.requireActive(
+        await mailboxOwner(service),
+        payload.labelId,
+      );
+    }
     if (payload.type === "destroy") {
       const source = (await service.listMailboxes()).find(
         (mailbox) => mailbox.id === payload.mailboxId,
@@ -102,6 +119,6 @@ export const PATCH = async (request: Request) => {
     });
     return apiSuccess(result);
   } catch (error) {
-    return apiFailure(error, "Unable to update the selected messages.");
+    return apiFailure(labelHttpError(error), "Unable to update the selected messages.");
   }
 };

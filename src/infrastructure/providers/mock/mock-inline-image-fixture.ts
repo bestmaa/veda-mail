@@ -43,6 +43,7 @@ export const createMockInlineImageMessage = (
   id: mockInlineImageAttachment.messageId,
   isStarred: false,
   isUnread: true,
+  labelIds: [],
   mailboxIds: [inbox],
   preview: "This logo is embedded in the message.",
   receivedAt: "2026-07-23T05:20:00.000Z",

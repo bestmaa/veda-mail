@@ -7,12 +7,14 @@ import {
 } from "react";
 
 import type { MessageDetail, MessageMutation } from "@/domain/mail/mail";
+import type { LabelId } from "@/domain/shared/brand";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { mailApi } from "@/transport/client/api-client";
 
 type SelectedMessageMutation =
   | { readonly type: "archive" | "delete" | "restore" }
-  | { readonly type: "set-read" | "set-starred"; readonly value: boolean };
+  | { readonly type: "set-read" | "set-starred"; readonly value: boolean }
+  | { readonly labelId: LabelId; readonly type: "set-label"; readonly value: boolean };
 
 interface MailMessageMutationOptions {
   readonly clearMessage: () => void;
@@ -67,6 +69,12 @@ export const useMailMessageMutations = ({
             { ...selectedMessage, isStarred: mutation.value },
             sessionScope,
           );
+        } else if (mutation.type === "set-label") {
+          const currentIds = selectedMessage.labelIds ?? [];
+          const nextIds = mutation.value
+            ? [...new Set([...currentIds, mutation.labelId])]
+            : currentIds.filter((labelId) => labelId !== mutation.labelId);
+          commitMessage({ ...selectedMessage, labelIds: nextIds }, sessionScope);
         }
         refresh();
       } catch (nextError) {
@@ -111,6 +119,11 @@ export const useMailMessageMutations = ({
     ),
     remove: useCallback(
       () => void mutateSelected({ type: "delete" }),
+      [mutateSelected],
+    ),
+    setLabel: useCallback(
+      (labelId: LabelId, value: boolean) =>
+        void mutateSelected({ labelId, type: "set-label", value }),
       [mutateSelected],
     ),
     toggleRead,

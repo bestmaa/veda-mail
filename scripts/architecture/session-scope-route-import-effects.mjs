@@ -42,6 +42,8 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/mail/attachment-send-memory-budget", new Set(["attachmentSendMemoryBudget"])],
   ["@/server/mail/outgoing-mail-content", new Set(["canonicalizeOutgoingMailContent"])],
   ["@/server/mailboxes/mailbox-appearance.store", new Set(["mailboxAppearanceStore"])],
+  ["@/server/labels/label-catalog.store", new Set(["labelCatalogStore"])],
+  ["@/server/labels/label-http", new Set(["labelHttpError"])],
   [
     "@/server/mailboxes/mailbox-http",
     new Set(["decorateMailboxesSafely", "mailboxHttpError", "mailboxOwner"]),
@@ -87,6 +89,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
   ["@/transport/http/request-schemas", new Set(["*"])],
   ["@/transport/http/mailbox-mutation.schema", new Set(["*"])],
+  ["@/transport/http/label.schema", new Set(["*"])],
   [
     "@/transport/http/draft-schemas",
     new Set([

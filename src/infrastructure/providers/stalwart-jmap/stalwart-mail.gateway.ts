@@ -62,6 +62,10 @@ export class StalwartMailGateway implements MailGateway {
     return this.drafts.capability();
   }
 
+  public async getLabelCapability() {
+    return "supported" as const;
+  }
+
   public downloadAttachment(input: AttachmentDownloadInput) {
     return this.reader.downloadAttachment(input);
   }

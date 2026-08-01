@@ -19,17 +19,12 @@ import { initials } from "@/presentation/shared/formatters/mail-formatters";
 import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
 import { useBulkDestroyConfirmation } from "@/presentation/features/mail-workspace/hooks/use-bulk-destroy-confirmation";
 import { useMailboxWorkspaceManagement } from "@/presentation/features/mail-workspace/hooks/use-mailbox-workspace-management";
-import {
-  createBrandingViewModel,
-  type BrandingInput,
-} from "@/presentation/shared/branding/branding.view-model";
+import { useLabelManagement } from "@/presentation/features/mail-workspace/hooks/use-label-management";
+import { createBrandingViewModel, type BrandingInput } from "@/presentation/shared/branding/branding.view-model";
 interface MailWorkspaceModelOptions {
-  readonly branding: BrandingInput;
-  readonly canSignOut: boolean;
-  readonly initialSessionScope: string;
-  readonly maxAttachmentBytes: number | null;
-  readonly providerLabel: string;
-  readonly signOutPath: string;
+  readonly branding: BrandingInput; readonly canSignOut: boolean;
+  readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null;
+  readonly providerLabel: string; readonly signOutPath: string;
 }
 export const useMailWorkspaceModel = ({
   branding,
@@ -105,6 +100,13 @@ export const useMailWorkspaceModel = ({
     mail.handleSessionFailure,
   );
   const mailboxManagement = useMailboxWorkspaceManagement(mail);
+  const labelManagement = useLabelManagement({
+    handleSessionFailure: mail.handleSessionFailure,
+    isSupported: workspace?.labelCapability === "supported",
+    labels: workspace?.labels ?? [],
+    refresh: mail.refresh,
+    sessionScope,
+  });
   const mailList = useMemo(() => createMailListViewModel({
     activeMailboxId: mail.activeMailboxId,
     draftsEnabled,
@@ -147,20 +149,16 @@ export const useMailWorkspaceModel = ({
         handleSessionFailure: mail.handleSessionFailure,
         isLoading: mail.isReaderLoading,
         message: mail.selectedMessage,
+        labels: workspace?.labels ?? [],
+        labelCapability: workspace?.labelCapability ?? "unsupported",
+        onSetLabel: mail.setLabel,
         readerError: mail.readerError,
         sessionScope,
       }),
-    [
-      mail.isReaderLoading,
-      mail.readerError,
-      mail.selectedMessage,
-      mail.handleSessionFailure,
-      mail.workspace?.mailboxes,
-      archiveDownload,
-      attachmentDownload,
-      attachmentPreview,
-      sessionScope,
-    ],
+    [mail.isReaderLoading, mail.readerError, mail.selectedMessage,
+      mail.handleSessionFailure, mail.workspace?.mailboxes, archiveDownload,
+      attachmentDownload, attachmentPreview, sessionScope,
+      workspace?.labelCapability, workspace?.labels, mail.setLabel],
   );
 
   const accountName = settings.profileName ?? workspaceAccountName;
@@ -211,6 +209,7 @@ export const useMailWorkspaceModel = ({
     isLoading: mail.isLoading,
     isLoadingMore: mail.isLoadingMore,
     mailboxManagement,
+    labelManagement,
     loadMoreError: mail.loadMoreError,
     messages: mailList.messages,
     navigation: {

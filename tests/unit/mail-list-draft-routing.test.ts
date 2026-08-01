@@ -13,6 +13,12 @@ const workspace: MailWorkspace = {
     providerId: id.provider("stalwart"),
   },
   draftCapability: { status: "supported" },
+  labelCapability: "supported",
+  labels: [{
+    color: "#4f46e5",
+    id: id.label("veda-label-aaaqeayeaudaocajbifqydiob4"),
+    name: "Clients",
+  }],
   mailboxes: [{
     color: "#6366f1", id: draftsId, name: "Drafts", role: "drafts",
     parentId: null,
@@ -27,6 +33,7 @@ const workspace: MailWorkspace = {
       id: id.message("provider-draft-a"),
       isStarred: false,
       isUnread: false,
+      labelIds: [id.label("veda-label-aaaqeayeaudaocajbifqydiob4")],
       mailboxIds: [draftsId],
       preview: "Draft body",
       receivedAt: "2026-07-31T10:00:00.000Z",
@@ -65,6 +72,7 @@ describe("draft mailbox list routing", () => {
     expect(onSelectMessage).not.toHaveBeenCalled();
     expect(list.messages[0]?.openLabel).toBe("Edit draft (No subject)");
     expect(list.messages[0]?.sender).toBe("To: Recipient");
+    expect(list.messages[0]?.labels).toEqual([workspace.labels[0]]);
   });
 
   it("keeps generic reader routing when provider draft editing is unsupported", () => {

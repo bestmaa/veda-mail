@@ -75,6 +75,19 @@ export const MessageRowView = ({
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
           {message.preview}
         </p>
+        {message.labels.length ? (
+          <div aria-label="Message labels" className="mt-2 flex flex-wrap gap-1.5">
+            {message.labels.map((label) => (
+              <span
+                className="rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                key={label.id}
+                style={{ borderColor: label.color, color: label.color }}
+              >
+                {label.name}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
     <button

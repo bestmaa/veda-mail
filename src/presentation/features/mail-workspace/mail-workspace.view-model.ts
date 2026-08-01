@@ -8,6 +8,8 @@ import type { ComposerDraftStatus } from "@/presentation/features/mail-workspace
 import type { ComposerRecoveryPromptViewModel } from "@/presentation/features/mail-workspace/composer-recovery-prompt.view-model";
 import type { BulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
 import type { MailboxManagementViewModel } from "@/presentation/features/mail-workspace/mailbox-management.view-model";
+import type { LabelManagementViewModel } from "@/presentation/features/mail-workspace/label-management.view-model";
+import type { MailLabel } from "@/domain/mail/label";
 import type { FolderViewModel } from "@/presentation/features/mail-workspace/folder.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
@@ -21,6 +23,7 @@ export interface MessageItemViewModel {
   readonly isSelectionDisabled: boolean;
   readonly isStarred: boolean;
   readonly isUnread: boolean;
+  readonly labels: readonly MessageLabelViewModel[];
   readonly onSelect: () => void;
   readonly onToggleSelected: () => void;
   readonly openLabel: string;
@@ -29,7 +32,7 @@ export interface MessageItemViewModel {
   readonly selectLabel: string;
   readonly subject: string;
 }
-
+export type MessageLabelViewModel = Pick<MailLabel, "color" | "id" | "name">;
 export interface AttachmentViewModel {
   readonly href: string;
   readonly id: string;
@@ -40,7 +43,6 @@ export interface AttachmentViewModel {
   readonly onDownload: () => void;
   readonly onPreview: ((trigger: HTMLButtonElement) => void) | null;
 }
-
 export interface ReaderViewModel {
   readonly attachments: readonly AttachmentViewModel[];
   readonly attachmentPreview: {
@@ -69,6 +71,11 @@ export interface ReaderViewModel {
   readonly isLoading: boolean;
   readonly isStarred: boolean;
   readonly isUnread: boolean;
+  readonly labelActions: {
+    readonly applyOptions: readonly MessageLabelViewModel[]; readonly onApply: (labelId: string) => void;
+    readonly onRemove: (labelId: string) => void; readonly removeOptions: readonly MessageLabelViewModel[];
+  } | null;
+  readonly labels: readonly MessageLabelViewModel[];
   readonly messageId: string;
   readonly sessionScope: string;
   readonly subject: string;
@@ -211,7 +218,7 @@ export interface MailWorkspaceViewProps {
   readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean;
   readonly isLoading: boolean; readonly isLoadingMore: boolean;
-  readonly mailboxManagement: MailboxManagementViewModel;
+  readonly mailboxManagement: MailboxManagementViewModel; readonly labelManagement: LabelManagementViewModel;
   readonly loadMoreError: string | null;
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: {

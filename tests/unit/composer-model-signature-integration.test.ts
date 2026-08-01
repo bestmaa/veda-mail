@@ -144,6 +144,7 @@ const message: MessageDetail = {
   id: id.message("message-1"),
   isStarred: false,
   isUnread: true,
+  labelIds: [],
   mailboxIds: [id.mailbox("inbox")],
   preview: "Hello",
   receivedAt: "2026-07-31T09:00:00.000Z",

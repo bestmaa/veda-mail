@@ -17,6 +17,7 @@ import type {
   ProviderDraftId,
 } from "@/domain/shared/brand";
 import { attachmentApi } from "@/transport/client/attachment-api";
+import { labelApi } from "@/transport/client/label-api";
 import {
   deleteResource,
   fetchData,
@@ -55,6 +56,7 @@ const draftEndpoint = (draftId?: ProviderDraftId): string =>
 
 export const mailApi = {
   ...attachmentApi,
+  ...labelApi,
 
   createDraft(
     composeId: DraftId,
@@ -216,4 +218,5 @@ export const mailApi = {
       method: "PATCH",
     });
   },
+
 };

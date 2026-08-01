@@ -1,6 +1,7 @@
 import {
   Archive,
   FolderInput,
+  Tag,
   Mail,
   MailOpen,
   RotateCcw,
@@ -165,6 +166,30 @@ export const BulkActionsToolbarView = ({
           </select>
         </label>
       ) : null}
+      {bulk.labels.length ? ([
+        ["Apply label…", bulk.onApplyLabel],
+        ["Remove label…", bulk.onRemoveLabel],
+      ] as const).map(([placeholder, onChange]) => (
+        <label className="relative shrink-0" key={placeholder}>
+          <span className="sr-only">{placeholder}</span>
+          <Tag aria-hidden className="pointer-events-none absolute left-3 top-3" size={16} />
+          <select
+            aria-label={placeholder}
+            className="h-10 max-w-44 rounded-xl border border-slate-200 bg-white pl-9 pr-7 text-xs font-bold"
+            defaultValue=""
+            disabled={bulk.isBusy}
+            onChange={(event) => {
+              if (event.currentTarget.value) onChange(event.currentTarget.value);
+              event.currentTarget.value = "";
+            }}
+          >
+            <option disabled value="">{placeholder}</option>
+            {bulk.labels.map((label) => (
+              <option key={label.id} value={label.id}>{label.name}</option>
+            ))}
+          </select>
+        </label>
+      )) : null}
     </div>
   );
 };

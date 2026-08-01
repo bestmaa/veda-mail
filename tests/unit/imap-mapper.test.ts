@@ -14,6 +14,7 @@ const summary: MessageSummary = {
   id: id.message("message-1"),
   isStarred: false,
   isUnread: true,
+  labelIds: [],
   mailboxIds: [id.mailbox("inbox")],
   preview: "Preview",
   receivedAt: "2026-07-29T00:00:00.000Z",

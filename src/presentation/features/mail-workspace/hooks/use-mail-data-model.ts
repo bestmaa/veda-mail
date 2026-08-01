@@ -237,6 +237,7 @@ export const useMailDataModel = () => {
     refresh,
     remove: mutations.remove,
     searchValue,
+    setLabel: mutations.setLabel,
     sessionScope,
     selectMailbox,
     selectMessage,

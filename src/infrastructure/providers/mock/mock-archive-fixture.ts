@@ -58,6 +58,7 @@ export const createMockArchiveMessage = (): MessageDetail => ({
   id: mockArchiveMessageId,
   isStarred: false,
   isUnread: false,
+  labelIds: [],
   mailboxIds: [id.mailbox("mock-inbox")],
   preview: "Three deterministic files exercise secure ZIP download.",
   receivedAt: "2026-07-23T03:50:00.000Z",

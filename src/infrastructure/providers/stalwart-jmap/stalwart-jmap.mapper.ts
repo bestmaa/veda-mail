@@ -8,6 +8,7 @@ import type {
   MessageDetail,
   MessageSummary,
 } from "@/domain/mail/mail";
+import { labelIdFromKeyword } from "@/domain/mail/label";
 import { id } from "@/domain/shared/brand";
 import {
   jmapMessagePresentation,
@@ -76,6 +77,7 @@ export const mapMailbox = (mailbox: JmapMailbox): Mailbox => {
       mayCreateChild: mailbox.myRights?.mayCreateChild ?? false,
       mayDelete: role === "custom" && (mailbox.myRights?.mayDelete ?? false),
       mayRename: role === "custom" && (mailbox.myRights?.mayRename ?? false),
+      maySetKeywords: mailbox.myRights?.maySetKeywords ?? false,
     },
     sortOrder: mailbox.sortOrder ?? 0,
     total: mailbox.totalEmails,
@@ -89,6 +91,10 @@ export const mapMessageSummary = (email: JmapEmail): MessageSummary => ({
   id: id.message(email.id),
   isStarred: Boolean(email.keywords["$flagged"]),
   isUnread: !email.keywords["$seen"],
+  labelIds: Object.entries(email.keywords).flatMap(([keyword, enabled]) => {
+    const labelId = enabled ? labelIdFromKeyword(keyword) : null;
+    return labelId ? [labelId] : [];
+  }),
   mailboxIds: Object.keys(email.mailboxIds).map(id.mailbox),
   preview: email.preview,
   receivedAt: email.receivedAt,

@@ -17,16 +17,19 @@ export interface BulkActionsViewModel {
   };
   readonly error: string | null;
   readonly isBusy: boolean;
+  readonly labels: readonly { readonly color: string; readonly id: string; readonly name: string }[];
   readonly moveTargets: readonly {
     readonly id: string;
     readonly label: string;
   }[];
   readonly onArchive: () => void;
+  readonly onApplyLabel: (labelId: string) => void;
   readonly onClear: () => void;
   readonly onMarkRead: () => void;
   readonly onMarkUnread: () => void;
   readonly onMove: (mailboxId: string) => void;
   readonly onRequestDestroy: () => void;
+  readonly onRemoveLabel: (labelId: string) => void;
   readonly onRestore: () => void;
   readonly onSpam: () => void;
   readonly onStar: () => void;
@@ -86,6 +89,7 @@ export const createBulkActionsViewModel = ({
     },
     error: bulk.error,
     isBusy: bulk.isBusy,
+    labels: workspace?.labelCapability === "supported" ? workspace.labels : [],
     moveTargets: (workspace?.mailboxes ?? [])
       .filter(
         (mailbox) =>
@@ -95,6 +99,8 @@ export const createBulkActionsViewModel = ({
       )
       .map((mailbox) => ({ id: mailbox.id, label: mailbox.name })),
     onArchive: () => void bulk.mutate({ type: "archive" }),
+    onApplyLabel: (labelId: string) =>
+      void bulk.mutate({ labelId: id.label(labelId), type: "set-label", value: true }),
     onClear: bulk.clear,
     onMarkRead: () =>
       void bulk.mutate({ type: "set-read", value: true }),
@@ -103,6 +109,8 @@ export const createBulkActionsViewModel = ({
     onMove: (mailboxId: string) =>
       void bulk.mutate({ mailboxId: id.mailbox(mailboxId), type: "move" }),
     onRequestDestroy: destroyConfirmation.onRequest,
+    onRemoveLabel: (labelId: string) =>
+      void bulk.mutate({ labelId: id.label(labelId), type: "set-label", value: false }),
     onRestore: () => void bulk.mutate({ type: "restore" }),
     onSpam: () => {
       if (spamTarget) {

@@ -67,6 +67,10 @@ export class ImapSmtpMailGateway implements MailGateway {
     return { status: "unsupported" as const };
   }
 
+  public getLabelCapability(mailboxId: Parameters<ImapMailReader["getLabelCapability"]>[0]) {
+    return this.reader.getLabelCapability(mailboxId);
+  }
+
   public downloadAttachment(
     input: AttachmentDownloadInput,
   ): Promise<AttachmentDownload> {

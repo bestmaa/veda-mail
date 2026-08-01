@@ -15,6 +15,8 @@ the supplied Compose deployment.
   `member-signatures.json`
 - Per-provider/mailbox custom folder colors encrypted in
   `mailbox-appearance.json`
+- Per-provider/mailbox portable label names, colors, and opaque IDs encrypted
+  in `mail-label-catalog.json`
 - Organization and product branding
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
@@ -44,13 +46,15 @@ service does not blindly repeat a recent provisioning intent.
 
 Always back up the entire volume as one unit. `installation.json` contains the
 session secret required to decrypt `member-security.json`,
-`member-signatures.json`, and `mailbox-appearance.json`; mismatched copies can
-make member TOTP, signature, and mailbox-color records unrecoverable. Although
+`member-signatures.json`, `mailbox-appearance.json`, and
+`mail-label-catalog.json`; mismatched copies can make member TOTP, signature,
+mailbox-color, and label records unrecoverable. Although
 the metadata files contain encrypted owner buckets rather than raw addresses
 or content, the same backup also contains
 its decryption key. Protect the archive as sensitive mailbox-adjacent data.
 
-Signature and mailbox-appearance write serialization is process-local. Keep
+Signature, mailbox-appearance, and label-catalog write serialization is
+process-local. Keep
 exactly one Veda Mail process writing the volume, and stop that writer or use
 an operator-verified atomic whole-volume snapshot. Never mount one writable
 `/data` directory into multiple application replicas or merge individual
