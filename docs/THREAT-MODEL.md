@@ -298,6 +298,28 @@ scope. It is intentionally non-authenticating and useful only alongside the
 already authenticated current connection. Operators should still apply normal
 access-log retention and redaction controls.
 
+### Mailbox cursor and stale-page isolation
+
+- A cursor is untrusted query input even when the preceding response produced
+  it. The route accepts only canonical non-negative decimal positions capped at
+  2,147,483,647 and fixes the provider page size at 50. Invalid cursors fail
+  before provider resolution.
+- The browser coalesces duplicate load-more actions. Each page captures both
+  its page generation and the root workspace generation; mailbox, search,
+  refresh, logout, expiry, or cross-tab session replacement invalidates the
+  completion before it can commit.
+- Adjacent pages are deduplicated by provider-bound immutable message ID. The
+  already selected message is independent state and is not replaced by list
+  append. A provider error retains prior pages and exposes an explicit retry
+  instead of advancing the cursor locally.
+
+Residual risk: both included adapters currently use positions rather than a
+snapshot token. Concurrent delivery or deletion can move later results between
+requests. Deduplication prevents duplicate display but cannot reconstruct a
+message skipped by upstream position movement; a manual refresh restarts from
+the authoritative first page. Snapshot/query-state cursors remain future
+provider-capability work.
+
 ### Stored email signatures
 
 - Signature ownership is derived only after member authentication from the

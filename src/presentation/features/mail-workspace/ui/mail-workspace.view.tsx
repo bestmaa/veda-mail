@@ -67,8 +67,12 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
         <MessageListView
           activeFolder={props.activeFolder}
           error={props.error}
+          hasMore={props.hasMoreMessages}
           isLoading={props.isLoading}
+          isLoadingMore={props.isLoadingMore}
+          loadMoreError={props.loadMoreError}
           messages={props.messages}
+          onLoadMore={props.onLoadMore}
           total={props.total}
         />
       </div>

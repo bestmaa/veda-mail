@@ -12,7 +12,6 @@ import type { MailSessionFailureHandler } from "@/presentation/features/mail-wor
 import type { ComposerDraftPhase, ComposerTerminalRecoveryKind } from "@/presentation/features/mail-workspace/composer-draft-state";
 import type { ComposerDraftStatus } from "@/presentation/features/mail-workspace/composer-draft-status";
 import type { ComposerRecoveryPromptViewModel } from "@/presentation/features/mail-workspace/composer-recovery-prompt.view-model";
-
 export type MailboxIconName =
   "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
 export interface FolderViewModel {
@@ -219,7 +218,8 @@ export interface MailWorkspaceViewProps {
   readonly error: string | null;
   readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean;
-  readonly isLoading: boolean;
+  readonly isLoading: boolean; readonly isLoadingMore: boolean;
+  readonly loadMoreError: string | null;
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: {
     readonly isOpen: boolean;
@@ -232,6 +232,7 @@ export interface MailWorkspaceViewProps {
   readonly onDelete: () => void;
   readonly onRefresh: MouseEventHandler<HTMLButtonElement>;
   readonly onForward: () => void;
+  readonly onLoadMore: () => void;
   readonly onReply: () => void;
   readonly onReplyAll: () => void;
   readonly onSearchClear: () => void;
@@ -244,5 +245,5 @@ export interface MailWorkspaceViewProps {
   readonly searchValue: string;
   readonly session: MemberSessionViewModel;
   readonly settings: AccountSettingsViewModel;
-  readonly total: number;
+  readonly total: number; readonly hasMoreMessages: boolean;
 }

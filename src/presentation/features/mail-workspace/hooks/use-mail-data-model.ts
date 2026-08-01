@@ -1,16 +1,9 @@
 "use client";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEventHandler,
-  type MouseEventHandler,
-} from "react";
-
+import { useCallback, useEffect, useRef, useState, type FormEventHandler, type MouseEventHandler } from "react";
 import { id, type MailboxId } from "@/domain/shared/brand";
 import { isMailSessionFailure } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useMailMessageMutations } from "@/presentation/features/mail-workspace/hooks/use-mail-message-mutations";
+import { useMailPagination } from "@/presentation/features/mail-workspace/hooks/use-mail-pagination";
 import { useMailSessionScopeState } from "@/presentation/features/mail-workspace/hooks/use-mail-session-scope-state";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
@@ -18,6 +11,7 @@ const errorMessage = (error: unknown): string => error instanceof Error ? error.
 export const useMailDataModel = () => {
   const {
     acceptWorkspace,
+    appendWorkspace,
     clear: clearScope,
     clearMessage,
     commitMessage,
@@ -27,9 +21,7 @@ export const useMailDataModel = () => {
     sessionScope,
     workspace,
   } = useMailSessionScopeState();
-  const [activeMailboxId, setActiveMailboxId] = useState<MailboxId | null>(
-    null,
-  );
+  const [activeMailboxId, setActiveMailboxId] = useState<MailboxId | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +61,10 @@ export const useMailDataModel = () => {
     },
     [clearAccountState],
   );
+  const pagination = useMailPagination({
+    activeMailboxId, appendWorkspace, appliedSearch, currentScope,
+    handleSessionFailure, workspace, workspaceRequestId,
+  });
   const loadWorkspace = useCallback(
     async (override?: {
       readonly mailboxId: MailboxId | null;
@@ -201,6 +197,7 @@ export const useMailDataModel = () => {
   const onSearchSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (event) => {
       event.preventDefault();
+      workspaceRequestId.current += 1;
       setAppliedSearch(searchValue.trim());
       clearMessage();
     },
@@ -222,12 +219,14 @@ export const useMailDataModel = () => {
     error,
     handleSessionFailure,
     isLoading,
+    isLoadingMore: pagination.isLoadingMore,
     isReaderLoading,
     onRefresh,
+    onLoadMore: pagination.onLoadMore,
     onSearchClear: useCallback(() => {
-      setSearchValue("");
-      setAppliedSearch("");
-    }, []),
+      workspaceRequestId.current += 1;
+      setSearchValue(""); setAppliedSearch(""); clearMessage();
+    }, [clearMessage]),
     onSearchInput: useCallback(
       (event: React.ChangeEvent<HTMLInputElement>) =>
         setSearchValue(event.target.value),
@@ -235,6 +234,7 @@ export const useMailDataModel = () => {
     ),
     onSearchSubmit,
     readerError,
+    loadMoreError: pagination.loadMoreError,
     refresh,
     remove: mutations.remove,
     searchValue,

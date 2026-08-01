@@ -171,7 +171,7 @@ broader shortcut/accessibility audit listed above.
 
 ## M4 — Fast mailbox management
 
-- [ ] Cursor pagination/infinite loading with stable selection
+- [x] Cursor pagination/infinite loading with stable selection
 - [ ] Multi-select and bulk read/unread, star, archive, spam, trash, restore,
   move, and permanent-delete actions
 - [ ] Create, rename, recolor, nest, and delete custom folders/mailboxes
@@ -184,6 +184,13 @@ broader shortcut/accessibility audit listed above.
 
 Acceptance: operations on large selections are bounded, cancellable where
 possible, and report which messages failed without corrupting local state.
+
+Cursor pagination is complete for both included adapters with a server-owned
+50-message page size, bounded canonical cursors, an accessible Load more
+control, duplicate-request coalescing, cross-page message-ID deduplication,
+stale mailbox/search/session response rejection, recoverable retry, and stable
+reader selection. Offset movement during concurrent provider mutation remains
+documented; refresh restarts from the authoritative first page.
 
 ## M5 — Conversations and powerful search
 
