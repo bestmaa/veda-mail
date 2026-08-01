@@ -133,9 +133,18 @@ test("preserves route-owned attachment isolation headers end to end", async ({
     "/api/v1/mail/messages/msg-archive-fixtures/attachments/attachment-archive-one",
     { headers: { origin, ...scopeHeaders } },
   );
+  const archiveHref =
+    "/api/v1/mail/messages/msg-archive-fixtures/attachments/archive";
+  const ticketResponse = await page.request.post(archiveHref, {
+    headers: { origin, ...scopeHeaders },
+  });
+  expect(ticketResponse.status()).toBe(201);
+  const ticketPayload = (await ticketResponse.json()) as {
+    readonly data: { readonly ticket: string };
+  };
   const archive = await page.request.get(
-    "/api/v1/mail/messages/msg-archive-fixtures/attachments/archive",
-    { headers: { origin, ...scopeHeaders } },
+    `${archiveHref}?ticket=${encodeURIComponent(ticketPayload.data.ticket)}`,
+    { headers: { origin } },
   );
 
   for (const response of [direct, archive]) {

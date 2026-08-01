@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
 import {
+  createAttachmentArchiveViewModel,
   createAttachmentArchiveHref,
   createAttachmentDownloadHref,
   createAttachmentPreviewHref,
@@ -24,6 +25,25 @@ describe("attachment download link", () => {
     expect(createAttachmentArchiveHref("mailbox/message?tab=1")).toBe(
       "/api/v1/mail/messages/mailbox%2Fmessage%3Ftab%3D1/attachments/archive",
     );
+  });
+
+  it("scopes archive feedback to the current message route", () => {
+    const download = vi.fn(async () => undefined);
+    const current = createAttachmentArchiveViewModel("message-one", 2, {
+      download,
+      error: "Archive failed.",
+      href: createAttachmentArchiveHref("message-one"),
+      isPreparing: false,
+    });
+    const stale = createAttachmentArchiveViewModel("message-two", 2, {
+      download,
+      error: "Stale failure.",
+      href: createAttachmentArchiveHref("message-one"),
+      isPreparing: false,
+    });
+
+    expect(current.downloadAll?.error).toBe("Archive failed.");
+    expect(stale.downloadAll?.error).toBeNull();
   });
 
   it("creates a nested preview route from only opaque identifiers", () => {
@@ -50,6 +70,7 @@ describe("attachment download link", () => {
       ]),
     ).toEqual([
       {
+        error: null,
         href:
           "/api/v1/mail/messages/message-one/attachments/opaque-attachment",
         id: "opaque-attachment",
@@ -61,6 +82,27 @@ describe("attachment download link", () => {
         onPreview: null,
       },
     ]);
+  });
+
+  it("scopes download feedback and callbacks to one attachment", () => {
+    const download = vi.fn(async () => undefined);
+    const href = "/api/v1/mail/messages/message-one/attachments/report";
+    const [model] = createReceivedAttachmentViewModels(
+      "message-one",
+      [{
+        disposition: "attachment",
+        id: id.attachment("report"),
+        mimeType: "application/pdf",
+        name: "report.pdf",
+        size: null,
+      }],
+      undefined,
+      { download, error: "Download failed.", href, isDownloading: false },
+    );
+
+    expect(model?.error).toBe("Download failed.");
+    model?.onDownload();
+    expect(download).toHaveBeenCalledWith(href, "report.pdf");
   });
 
   it("offers text preview without trusting provider-reported encoded size", () => {

@@ -185,6 +185,10 @@ network. Preserve the original host and HTTPS scheme. Recommended behavior:
   a ten-minute absolute deadline. Set the proxy timeout above the longer archive
   deadline (eleven or twelve minutes is suitable). Do not add range handling:
   Veda Mail intentionally rejects partial attachment requests.
+- Preserve POST and GET on the Download all archive route. Its scoped POST
+  preflight returns a 30-second, single-use ticket for the native GET; proxies
+  must not cache either response or log query strings. Ticket state is
+  process-local and follows the existing supported single-replica boundary.
 - Do not cache any application document or `/api/*`, including `/`, `/setup`,
   and `/admin`; preserve Veda Mail's private no-store response policy.
 - Do not automatically retry `POST /api/v1/mail/send` with a newly generated

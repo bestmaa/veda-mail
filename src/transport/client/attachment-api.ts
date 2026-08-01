@@ -70,8 +70,11 @@ export const attachmentApi = {
     signal?: AbortSignal,
   ): Promise<string> {
     const response = await fetch(href, {
+      cache: "no-store",
+      credentials: "same-origin",
       headers: mailSessionScopeHeaders(sessionScope),
-      method: "HEAD",
+      method: "POST",
+      redirect: "error",
       referrerPolicy: "no-referrer",
       ...(signal ? { signal } : {}),
     });
@@ -81,7 +84,16 @@ export const attachmentApi = {
         archivePreflightFailure(response),
       );
     }
-    return `${href}?sessionScope=${encodeURIComponent(sessionScope)}`;
+    const payload = (await response.json()) as ApiEnvelope<{
+      readonly ticket?: unknown;
+    }>;
+    if (
+      typeof payload.data?.ticket !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/u.test(payload.data.ticket)
+    ) {
+      throw new Error("The attachment archive ticket is invalid.");
+    }
+    return `${href}?ticket=${encodeURIComponent(payload.data.ticket)}`;
   },
 
   async downloadAttachment(

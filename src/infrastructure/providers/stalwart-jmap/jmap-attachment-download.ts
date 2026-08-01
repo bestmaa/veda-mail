@@ -115,7 +115,7 @@ export const downloadJmapAttachment = async (
       : {}),
     maxBytes,
     ...(onFinalize ? { onFinalize } : {}),
-    requireContentLength: true,
+    requireContentLength: false,
     ...(input.signal ? { signal: input.signal } : {}),
   });
   return Object.freeze({

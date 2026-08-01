@@ -8,7 +8,9 @@ import { sessionScopeHandlerViolations } from "./session-scope-route-check.mjs";
 export const verifySessionScopeRouteChecker = () => {
   for (const fixture of SESSION_SCOPE_ROUTE_FIXTURES) {
     assert.deepEqual(
-      sessionScopeHandlerViolations("fixture-route.ts", fixture.source),
+      fixture.fileName
+        ? sessionScopeHandlerViolations(fixture.fileName, fixture.source)
+        : sessionScopeHandlerViolations("fixture-route.ts", fixture.source),
       fixture.expected,
       fixture.name,
     );

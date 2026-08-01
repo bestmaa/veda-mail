@@ -13,6 +13,13 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+Download all now exchanges the mailbox-session header for a 30-second,
+single-use archive ticket through POST before starting the native GET. No
+environment variable, Stalwart setting, provider migration, or `/data` change
+is required. Preserve both methods on the archive route and disable query-string
+logging where practical. Open tabs from an older image must be reloaded after
+deployment because the former HEAD/session-scope query protocol is rejected.
+
 The administrator mailbox-user release adds the optional server-only
 `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` and its required exact HTTPS
 `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding. Without both, the new Users

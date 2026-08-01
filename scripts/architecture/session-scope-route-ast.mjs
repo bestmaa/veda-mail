@@ -8,6 +8,10 @@ import {
   knownAuthWrapperName,
   knownRequestUtilityName,
 } from "./session-scope-route-import-effects.mjs";
+import {
+  specialPrimitiveFields,
+  specialPrimitiveForExport,
+} from "./session-scope-route-special-imports.mjs";
 
 export const HTTP_METHODS = new Set([
   "DELETE",
@@ -63,6 +67,8 @@ export const importBindings = (sourceFile) => {
     requestUtilityNamespaces: new Set(),
     scopeNames: new Map(),
     scopeNamespaces: new Set(),
+    specialNames: new Map(),
+    specialNamespaces: new Map(),
     untrustedNames: new Set(),
     untrustedNamespaces: new Set(),
   };
@@ -89,6 +95,8 @@ export const importBindings = (sourceFile) => {
       if ([CONNECTION_MODULE, SCOPE_MODULE].includes(moduleName)) {
         targetSet(result, moduleName, true).add(named.name.text);
       }
+      const special = specialPrimitiveFields(moduleName);
+      if (special) result.specialNamespaces.set(named.name.text, special);
       continue;
     }
     if (!ts.isNamedImports(named)) continue;
@@ -117,6 +125,11 @@ export const importBindings = (sourceFile) => {
           local,
           imported === REQUEST_SCOPE_EXPORT ? "request-guard" : "value-guard",
         );
+        classified = true;
+      }
+      const special = specialPrimitiveForExport(moduleName, imported);
+      if (special) {
+        result.specialNames.set(local, special);
         classified = true;
       }
       if (!classified) result.untrustedNames.add(local);
@@ -158,6 +171,8 @@ export const resolveCallable = (name, bindings, resolving = new Set()) => {
 export const primitiveReference = (expression, imports) => {
   const target = unwrapExpression(expression);
   if (ts.isIdentifier(target)) {
+    const special = imports.specialNames.get(target.text);
+    if (special) return special;
     if (imports.authWrapperNames.has(target.text)) return "auth-wrapper";
     if (imports.requestUtilityNames.has(target.text)) return "request-utility";
     if (imports.connectionNames.has(target.text)) return "connection";
@@ -170,6 +185,10 @@ export const primitiveReference = (expression, imports) => {
     return null;
   }
   const namespace = target.expression.text;
+  const special = imports.specialNamespaces.get(namespace)?.get(
+    target.name.text,
+  );
+  if (special) return special;
   if (
     imports.authWrapperNamespaces.has(namespace) &&
     knownAuthWrapperName(target.name.text)

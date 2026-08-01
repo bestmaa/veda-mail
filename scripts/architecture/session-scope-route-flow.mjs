@@ -151,8 +151,14 @@ const inspectCallback = (value, caller, context) => {
   return { value: returnedValue(completed) };
 };
 
-export const analyzeSessionScopeHandler = (handler, bindings, imports) => {
+export const analyzeSessionScopeHandler = (
+  handler,
+  bindings,
+  imports,
+  allowTicketGuard = false,
+) => {
   const context = {
+    allowTicketGuard,
     bindings,
     callHelper: undefined,
     callStack: new Set(),

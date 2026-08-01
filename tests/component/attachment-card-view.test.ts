@@ -9,6 +9,7 @@ describe("attachment card component", () => {
     const html = renderToStaticMarkup(
       createElement(AttachmentCardView, {
         attachment: {
+          error: null,
           href: "/api/v1/mail/messages/message%2F1/attachments/attachment%3F1",
           id: "attachment?1",
           isDownloading: false,
@@ -33,6 +34,7 @@ describe("attachment card component", () => {
     const html = renderToStaticMarkup(
       createElement(AttachmentCardView, {
         attachment: {
+          error: null,
           href: "/api/v1/mail/messages/message-one/attachments/text-one",
           id: "text-one",
           isDownloading: false,
@@ -49,5 +51,47 @@ describe("attachment card component", () => {
     expect(html).toContain('type="button"');
     expect(html).toContain('aria-label="Download notes.txt"');
     expect(html.match(/type="button"/gu)).toHaveLength(2);
+  });
+
+  it("exposes busy state and local download feedback without a focusable card", () => {
+    const html = renderToStaticMarkup(createElement(AttachmentCardView, {
+      attachment: {
+        error: null,
+        href: "/download",
+        id: "busy",
+        isDownloading: true,
+        isPreviewing: true,
+        meta: "text/plain · 12 B",
+        name: "notes.txt",
+        onDownload: () => undefined,
+        onPreview: () => undefined,
+      },
+    }));
+
+    expect(html.match(/aria-busy="true"/gu)).toHaveLength(2);
+    expect(html).toContain('role="status"');
+    expect(html).toContain("Downloading notes.txt…");
+    expect(html).toContain("overflow-wrap:anywhere");
+    expect(html).not.toContain("tabindex=");
+  });
+
+  it("renders download failure beside its action", () => {
+    const html = renderToStaticMarkup(createElement(AttachmentCardView, {
+      attachment: {
+        error: "Unable to download this attachment.",
+        href: "/download",
+        id: "failed",
+        isDownloading: false,
+        isPreviewing: false,
+        meta: "application/pdf · 1 KB",
+        name: "report.pdf",
+        onDownload: () => undefined,
+        onPreview: null,
+      },
+    }));
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("Unable to download this attachment.");
+    expect(html).toContain('aria-describedby="attachment-failed-download-feedback"');
   });
 });

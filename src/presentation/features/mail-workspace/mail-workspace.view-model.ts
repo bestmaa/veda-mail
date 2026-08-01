@@ -43,7 +43,7 @@ export interface MessageItemViewModel {
 }
 export type MessageLabelViewModel = Pick<MailLabel, "color" | "id" | "name">;
 export interface AttachmentViewModel {
-  readonly href: string;
+  readonly error: string | null; readonly href: string;
   readonly id: string;
   readonly isDownloading: boolean;
   readonly isPreviewing: boolean;
@@ -69,7 +69,7 @@ export interface ReaderViewModel {
   readonly cc: string;
   readonly date: string;
   readonly downloadAll: {
-    readonly isPreparing: boolean;
+    readonly error: string | null; readonly isPreparing: boolean;
     readonly onClick: () => void;
   } | null;
   readonly error: string | null;

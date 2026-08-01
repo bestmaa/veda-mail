@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import { unwrapExpression } from "./session-scope-route-ast.mjs";
+import { evaluateSpecialPrimitive } from "./session-scope-route-special-calls.mjs";
 import {
   alternativeValues,
   cloneState,
@@ -46,6 +47,8 @@ const evaluateGuard = (kind, arguments_, state, context) => {
 };
 
 const evaluatePrimitive = (kind, arguments_, state, context, node) => {
+  const special = evaluateSpecialPrimitive(kind, arguments_, state, context);
+  if (special) return special;
   if (kind === "connection") {
     if (arguments_.some((value) => value.callables.length > 0)) {
       context.violation = true;
