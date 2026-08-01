@@ -10,6 +10,10 @@ test("bulk updates loaded messages and keeps only failures selected", async ({
   let firstId = "";
   const secondId = "message-bulk-second";
   let requestBody: Record<string, unknown> | null = null;
+  let releaseMutation: () => void = () => undefined;
+  const mutationGate = new Promise<void>((resolve) => {
+    releaseMutation = resolve;
+  });
   await page.route("**/api/v1/mail/workspace**", async (route) => {
     const response = await route.fetch();
     const envelope = (await response.json()) as {
@@ -41,6 +45,7 @@ test("bulk updates loaded messages and keeps only failures selected", async ({
   });
   await page.route("**/api/v1/mail/messages/bulk", async (route) => {
     requestBody = route.request().postDataJSON() as Record<string, unknown>;
+    await mutationGate;
     await route.fulfill({
       json: {
         data: { failed: [secondId], succeeded: [firstId] },
@@ -64,11 +69,15 @@ test("bulk updates loaded messages and keeps only failures selected", async ({
     name: "Mark selected messages as unread",
   }).click();
 
+  await expect(page.getByRole("status")).toContainText("Updating 2 messages");
+  await expect(page.locator('article[aria-busy="true"]')).toHaveCount(2);
+  releaseMutation();
+
   await expect(page.getByText("1 selected")).toBeVisible();
   await expect(firstSelection).not.toBeChecked();
   await expect(secondSelection).toBeChecked();
   await expect(page.getByText(
-    "1 updated; 1 failed and remain selected.",
+    "1 updated; 1 failed, was restored, and remains selected.",
   )).toBeAttached();
   expect(requestBody).toEqual({
     messageIds: [firstId, secondId],

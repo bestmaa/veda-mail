@@ -109,9 +109,17 @@ export const MessageListView = ({
         </p>
       ) : null}
       <div aria-live="polite" className="sr-only">
-        {[bulkActions.status, moveAnnouncement, preferences.announcement]
+        {[moveAnnouncement, preferences.announcement]
           .filter(Boolean).join(" ")}
       </div>
+      {bulkActions.status ? (
+        <p
+          className="mt-2 text-xs font-semibold text-slate-600"
+          role="status"
+        >
+          {bulkActions.status}
+        </p>
+      ) : null}
       {bulkActions.error ? (
         <p className="mt-2 text-xs font-semibold text-red-700" role="alert">
           {bulkActions.error}

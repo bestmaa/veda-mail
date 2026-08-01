@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     fetchOne: vi.fn(),
     mailboxOpen: vi.fn(),
     messageFlagsAdd: vi.fn(),
+    messageFlagsRemove: vi.fn(),
     messageDelete: vi.fn(),
   },
   sendMail: vi.fn(),
@@ -30,6 +31,7 @@ import { id } from "@/domain/shared/brand";
 import { encodeScopedImapMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 const config: ImapSmtpMemberConfig = {
   imapHost: "imap.example.com",
@@ -82,6 +84,12 @@ describe("IMAP writer message identity", () => {
       exists: 1,
       uidValidity: BigInt(123),
     });
+    mocks.client.fetchOne.mockResolvedValue({
+      flags: new Set(["\\Seen"]),
+      uid: 77,
+    });
+    mocks.client.messageFlagsAdd.mockResolvedValue(true);
+    mocks.client.messageFlagsRemove.mockResolvedValue(true);
   });
 
   it("rejects another account before opening the provider", async () => {
@@ -111,6 +119,60 @@ describe("IMAP writer message identity", () => {
     expect(mocks.client.messageFlagsAdd).not.toHaveBeenCalled();
   });
 
+  it("verifies a successful flag update against the scoped UID", async () => {
+    await new ImapMailWriter(config).mutateMessage({
+      messageId: messageId(),
+      type: "set-read",
+      value: true,
+    });
+
+    expect(mocks.client.messageFlagsAdd).toHaveBeenCalledWith(
+      77,
+      ["\\Seen"],
+      { uid: true },
+    );
+    expect(mocks.client.fetchOne).toHaveBeenCalledWith(
+      77,
+      { flags: true, uid: true },
+      { uid: true },
+    );
+  });
+
+  it("classifies a false flag STORE result as a definite rejection", async () => {
+    mocks.client.messageFlagsAdd.mockResolvedValue(false);
+
+    await expect(new ImapMailWriter(config).mutateMessage({
+      messageId: messageId(),
+      type: "set-read",
+      value: true,
+    })).rejects.toBeInstanceOf(ProviderMessageMutationRejectedError);
+    expect(mocks.client.fetchOne).not.toHaveBeenCalled();
+  });
+
+  it("rejects a flag update that was not persisted", async () => {
+    mocks.client.fetchOne.mockResolvedValue({ flags: new Set(), uid: 77 });
+
+    await expect(new ImapMailWriter(config).mutateMessage({
+      messageId: messageId(),
+      type: "set-starred",
+      value: true,
+    })).rejects.toBeInstanceOf(ProviderMessageMutationRejectedError);
+  });
+
+  it("keeps a missing post-STORE UID unconfirmed", async () => {
+    mocks.client.fetchOne.mockResolvedValue(false);
+
+    const mutation = new ImapMailWriter(config).mutateMessage({
+      messageId: messageId(),
+      type: "set-read",
+      value: true,
+    });
+    await expect(mutation).rejects.toThrow("did not confirm");
+    await expect(mutation).rejects.not.toBeInstanceOf(
+      ProviderMessageMutationRejectedError,
+    );
+  });
+
   it("permanently deletes only the scoped UID after UIDVALIDITY revalidation", async () => {
     mocks.client.messageDelete.mockResolvedValue(true);
 
@@ -130,7 +192,7 @@ describe("IMAP writer message identity", () => {
       mailboxId: id.mailbox("INBOX"),
       messageId: messageId(),
       type: "destroy",
-    })).rejects.toThrow("Message not found.");
+    })).rejects.toBeInstanceOf(ProviderMessageMutationRejectedError);
   });
 
   it("rejects a stale reply before fetching or sending", async () => {

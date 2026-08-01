@@ -6,6 +6,7 @@ import type { MessageMutation } from "@/domain/mail/mail";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 type MoveMutation = Extract<MessageMutation, { readonly type: "move" }>;
 
@@ -45,7 +46,7 @@ export const prepareStalwartMessageMove = async (
   );
   const message = result.list[0];
   if (result.accountId !== accountId || message?.id !== mutation.messageId) {
-    throw new Error("Message not found for move.");
+    throw new ProviderMessageMutationRejectedError("Message not found for move.");
   }
   const hasSource = message.mailboxIds[mutation.sourceMailboxId] === true;
   const hasDestination =
@@ -70,7 +71,9 @@ export const prepareStalwartMessageMove = async (
     !source ||
     source.rights.mayRemoveItems !== true
   ) {
-    throw new Error("The message is no longer movable from its source mailbox.");
+    throw new ProviderMessageMutationRejectedError(
+      "The message is no longer movable from its source mailbox.",
+    );
   }
   if (
     hasDestination ||
@@ -79,7 +82,9 @@ export const prepareStalwartMessageMove = async (
     destination.role === "drafts" ||
     destination.role === "sent"
   ) {
-    throw new Error("The destination mailbox does not accept this message.");
+    throw new ProviderMessageMutationRejectedError(
+      "The destination mailbox does not accept this message.",
+    );
   }
   return { achieved: false, patch, state: result.state };
 };

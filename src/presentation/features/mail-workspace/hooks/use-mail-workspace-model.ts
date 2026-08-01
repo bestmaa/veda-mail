@@ -26,8 +26,7 @@ import { useWorkspacePrimaryActions } from "@/presentation/features/mail-workspa
 import { createBrandingViewModel, type BrandingInput } from "@/presentation/shared/branding/branding.view-model";
 import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-preferences";
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
-interface MailWorkspaceModelOptions {
-  readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
+interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
   readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
   branding, canSignOut, initialSessionScope, maxAttachmentBytes, providerLabel, signOutPath,
@@ -117,8 +116,9 @@ export const useMailWorkspaceModel = ({
     },
     onSelectMessage: mail.selectMessage,
     onToggleMessage: mail.bulk.toggle,
+    pendingMessageIds: mail.pendingMessageIds,
     selectedMessageIds: mail.bulk.selectedIds,
-    selectionDisabled: mail.bulk.isBusy,
+    selectionDisabled: mail.isReaderMutating || mail.bulk.isBusy,
     ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
     workspace: mail.workspace,
   }), [composer.openSavedDraft, draftsEnabled, mail, mailboxManagement.openEdit,

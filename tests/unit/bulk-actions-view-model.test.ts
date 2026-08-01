@@ -48,11 +48,13 @@ const workspace: MailWorkspace = {
 type BulkModel = Parameters<typeof createBulkActionsViewModel>[0]["bulk"];
 const bulk = () => ({
   allLoadedSelected: true,
+  canStop: false,
   clear: vi.fn(),
   error: null,
   isBusy: false,
   mutate: vi.fn(),
   selectedIds: new Set([id.message("message-a")]),
+  stop: vi.fn(),
   status: "",
   toggle: vi.fn(),
   toggleAllLoaded: vi.fn(),

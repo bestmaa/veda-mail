@@ -24,6 +24,7 @@ export interface MessageItemViewModel {
   readonly hasAttachment: boolean;
   readonly id: string;
   readonly isActive: boolean;
+  readonly isPending?: boolean;
   readonly isSelected: boolean;
   readonly isSelectionDisabled: boolean;
   readonly isStarred: boolean;
@@ -170,7 +171,6 @@ export interface ComposerBodyViewModel {
   readonly signatureDetached: boolean;
   readonly text: string;
 }
-
 export interface ComposerAttachmentViewModel {
   readonly error: string | null;
   readonly id: string;

@@ -9,6 +9,7 @@ export interface BulkActionsViewModel {
   readonly canDestroy: boolean;
   readonly canRestore: boolean;
   readonly canSpam: boolean;
+  readonly canStop: boolean;
   readonly canTrash: boolean;
   readonly destroyConfirmation: {
     readonly count: number;
@@ -34,6 +35,7 @@ export interface BulkActionsViewModel {
   readonly onRestore: () => void;
   readonly onSpam: () => void;
   readonly onStar: () => void;
+  readonly onStop: () => void;
   readonly onToggleAllLoaded: () => void;
   readonly onTrash: () => void;
   readonly onUnstar: () => void;
@@ -88,6 +90,7 @@ export const createBulkActionsViewModel = ({
       Boolean(inboxTarget) &&
       (activeMailbox?.role === "spam" || activeMailbox?.role === "trash"),
     canSpam: !disabled && !lifecycleMailbox && Boolean(spamTarget),
+    canStop: bulk.canStop,
     canTrash: !disabled && !lifecycleMailbox && Boolean(trashTarget),
     destroyConfirmation: {
       count: bulk.selectedIds.size,
@@ -137,6 +140,7 @@ export const createBulkActionsViewModel = ({
     },
     onStar: () =>
       void bulk.mutate({ type: "set-starred", value: true }),
+    onStop: bulk.stop,
     onToggleAllLoaded: bulk.toggleAllLoaded,
     onTrash: () => void bulk.mutate({ type: "delete" }),
     onUnstar: () =>

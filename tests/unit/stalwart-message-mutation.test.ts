@@ -4,6 +4,7 @@ import { id } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { mutateStalwartMessage } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-mutation";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 const reader = {
   getAccountId: vi.fn().mockResolvedValue("account-a"),
@@ -124,7 +125,21 @@ describe("Stalwart message mutation", () => {
       mailboxId: id.mailbox("trash-a"),
       messageId: id.message("message-a"),
       type: "destroy",
-    })).rejects.toThrow("Stalwart rejected the message update.");
+    })).rejects.toBeInstanceOf(ProviderMessageMutationRejectedError);
+  });
+
+  it("does not report destroy success without the destroyed message id", async () => {
+    const jmap = client({ destroyed: [] });
+
+    const mutation = mutateStalwartMessage(jmap.instance, reader, {
+      mailboxId: id.mailbox("trash-a"),
+      messageId: id.message("message-a"),
+      type: "destroy",
+    });
+    await expect(mutation).rejects.toThrow("did not confirm");
+    await expect(mutation).rejects.not.toBeInstanceOf(
+      ProviderMessageMutationRejectedError,
+    );
   });
 
   it("rechecks source membership before issuing JMAP destroy", async () => {

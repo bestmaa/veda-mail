@@ -23,6 +23,7 @@ import {
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { mutateImapMessage } from "@/infrastructure/providers/imap-smtp/imap-message-mutation";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 const config: ImapSmtpMemberConfig = {
   imapHost: "imap.example.com", imapPort: "993", imapSecurity: "tls",
@@ -84,8 +85,8 @@ describe("IMAP message move", () => {
   it("does not report a false MOVE result as success", async () => {
     mocks.client.messageMove.mockResolvedValue(false);
 
-    await expect(mutateImapMessage(config, mutation)).rejects.toThrow(
-      "did not confirm",
+    await expect(mutateImapMessage(config, mutation)).rejects.toBeInstanceOf(
+      ProviderMessageMutationRejectedError,
     );
   });
 

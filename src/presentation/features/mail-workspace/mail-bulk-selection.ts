@@ -17,8 +17,32 @@ export const selectLoadedMessages = (
 export const retainAvailableSelection = (
   selection: ReadonlySet<MessageId>,
   availableIds: ReadonlySet<MessageId>,
-): ReadonlySet<MessageId> =>
-  new Set([...selection].filter((messageId) => availableIds.has(messageId)));
+): ReadonlySet<MessageId> => {
+  const retained = [...selection].filter((messageId) => availableIds.has(messageId));
+  return retained.length === selection.size ? selection : new Set(retained);
+};
+
+export const reconcilePendingSelection = (
+  current: ReadonlySet<MessageId>,
+  requested: readonly MessageId[],
+  pending: readonly MessageId[],
+): ReadonlySet<MessageId> => {
+  const next = new Set(current);
+  requested.forEach((messageId) => next.delete(messageId));
+  pending.forEach((messageId) => next.add(messageId));
+  return next;
+};
+
+export const replaceOperationSelection = (
+  current: ReadonlySet<MessageId>,
+  requested: readonly MessageId[],
+  retry: readonly MessageId[],
+): ReadonlySet<MessageId> => {
+  const next = new Set(current);
+  requested.forEach((messageId) => next.delete(messageId));
+  retry.forEach((messageId) => next.add(messageId));
+  return next;
+};
 
 export const retainFailedSelection = (
   selection: ReadonlySet<MessageId>,

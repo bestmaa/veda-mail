@@ -93,7 +93,7 @@ describe("bulk message mutation route", () => {
     );
   });
 
-  it("reports individual failures without exposing provider errors", async () => {
+  it("reports uncertain provider outcomes without exposing provider errors", async () => {
     mocks.mutateMessage.mockImplementation(async (mutation) => {
       if (mutation.messageId === "message-b") {
         throw new Error("provider host secret");
@@ -108,7 +108,11 @@ describe("bulk message mutation route", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toEqual({
-      data: { failed: ["message-b"], succeeded: ["message-a"] },
+      data: {
+        failed: ["message-b"],
+        succeeded: ["message-a"],
+        unconfirmed: ["message-b"],
+      },
     });
     expect(JSON.stringify(body)).not.toContain("provider host secret");
   });
@@ -190,7 +194,12 @@ describe("bulk message mutation route", () => {
 
   it("destroys only messages still in the confirmed Trash mailbox", async () => {
     mocks.listMailboxes.mockResolvedValue([
-      { id: "trash-a", name: "Trash", role: "trash" },
+      {
+        id: "trash-a",
+        name: "Trash",
+        rights: { mayRemoveItems: true },
+        role: "trash",
+      },
     ]);
     mocks.getMessage.mockImplementation(async (messageId) => ({
       id: messageId,
@@ -215,4 +224,26 @@ describe("bulk message mutation route", () => {
     });
   });
 
+  it("rejects permanent deletion without source removal rights", async () => {
+    mocks.listMailboxes.mockResolvedValue([{
+      id: "trash-a",
+      name: "Trash",
+      rights: { mayRemoveItems: false },
+      role: "trash",
+    }]);
+
+    const response = await PATCH(request({
+      mailboxId: "trash-a",
+      messageIds: ["message-a"],
+      type: "destroy",
+    }));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: {
+      code: "PERMANENT_DELETE_RIGHTS_FORBIDDEN",
+      message: "The mail provider does not allow permanent deletion from this mailbox.",
+    } });
+    expect(mocks.getMessage).not.toHaveBeenCalled();
+    expect(mocks.mutateMessage).not.toHaveBeenCalled();
+  });
 });

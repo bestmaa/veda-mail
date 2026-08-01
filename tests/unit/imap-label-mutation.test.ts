@@ -5,6 +5,7 @@ import {
   imapLabelCapability,
   mutateImapLabel,
 } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 const labelId = id.label("veda-label-aaaqeayeaudaocajbifqydiob4");
 const mutation = (value: boolean) => ({
@@ -49,6 +50,33 @@ describe("IMAP label mutation", () => {
       mutation(true),
     )).rejects.toThrow(/does not support custom labels/u);
     expect(fixture.messageFlagsAdd).not.toHaveBeenCalled();
+  });
+
+  it("classifies a persisted-state mismatch as a definite rejection", async () => {
+    const fixture = client([]);
+
+    await expect(mutateImapLabel(
+      fixture as never,
+      { permanentFlags: new Set(["\\*"]) } as never,
+      42,
+      mutation(true),
+    )).rejects.toBeInstanceOf(ProviderMessageMutationRejectedError);
+  });
+
+  it("keeps a missing verification UID unconfirmed", async () => {
+    const fixture = client([]);
+    fixture.fetchOne.mockResolvedValue(false as never);
+
+    const update = mutateImapLabel(
+      fixture as never,
+      { permanentFlags: new Set(["\\*"]) } as never,
+      42,
+      mutation(true),
+    );
+    await expect(update).rejects.toThrow(/did not confirm/u);
+    await expect(update).rejects.not.toBeInstanceOf(
+      ProviderMessageMutationRejectedError,
+    );
   });
 
   it("allows removal but fails if the server does not confirm it", async () => {

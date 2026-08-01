@@ -59,25 +59,48 @@ const runBounded = async (
   request: BulkMessageMutation,
   mutate: (mutation: MessageMutation) => Promise<void>,
 ): Promise<BulkMessageMutationResult> => {
-  const succeeded: MessageId[] = [];
-  const failed: MessageId[] = [];
+  const outcomes = new Array<"failed" | "succeeded" | "unconfirmed">(
+    request.messageIds.length,
+  ).fill("unconfirmed");
   let cursor = 0;
   const worker = async () => {
     while (cursor < request.messageIds.length) {
-      const messageId = request.messageIds[cursor++];
+      const index = cursor++;
+      const messageId = request.messageIds[index];
       if (!messageId) continue;
       try {
         await mutate(mutationFor(request, messageId));
-        succeeded.push(messageId);
-      } catch {
-        failed.push(messageId);
+        outcomes[index] = "succeeded";
+      } catch (error) {
+        outcomes[index] = error instanceof ApiError &&
+          error.status >= 400 && error.status < 500
+          ? "failed"
+          : "unconfirmed";
       }
     }
   };
   await Promise.all(
     Array.from({ length: Math.min(4, request.messageIds.length) }, worker),
   );
-  return { failed, succeeded };
+  const failed: MessageId[] = [];
+  const succeeded: MessageId[] = [];
+  const unconfirmed: MessageId[] = [];
+  for (let index = 0; index < request.messageIds.length; index += 1) {
+    const messageId = request.messageIds[index];
+    if (!messageId) continue;
+    if (outcomes[index] === "failed") failed.push(messageId);
+    else if (outcomes[index] === "succeeded") succeeded.push(messageId);
+    else unconfirmed.push(messageId);
+  }
+  return {
+    // Keep unconfirmed IDs in `failed` for rolling clients that predate the
+    // richer outcome. New clients subtract the explicit subset after validation.
+    failed: request.messageIds.filter(
+      (_, index) => outcomes[index] !== "succeeded",
+    ),
+    succeeded,
+    ...(unconfirmed.length ? { unconfirmed } : {}),
+  };
 };
 
 export const PATCH = async (request: Request) => {
@@ -122,6 +145,13 @@ export const PATCH = async (request: Request) => {
             400,
           );
         }
+        if (source.rights.mayRemoveItems !== true) {
+          throw new ApiError(
+            "The mail provider does not allow permanent deletion from this mailbox.",
+            "PERMANENT_DELETE_RIGHTS_FORBIDDEN",
+            403,
+          );
+        }
       }
       const moveContext = payload.type === "move"
         ? authorizeMessageMoveMailboxes(await service.listMailboxes(), payload)
@@ -130,7 +160,11 @@ export const PATCH = async (request: Request) => {
         if (mutation.type === "destroy") {
           const message = await service.getMessage(mutation.messageId);
           if (!message.mailboxIds.includes(mutation.mailboxId)) {
-            throw new Error("Message is outside the confirmed mailbox.");
+            throw new ApiError(
+              "Message is outside the confirmed mailbox.",
+              "PERMANENT_DELETE_SOURCE_STALE",
+              409,
+            );
           }
         }
         if (mutation.type === "move" && moveContext) {

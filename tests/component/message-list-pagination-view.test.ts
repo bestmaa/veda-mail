@@ -14,6 +14,7 @@ const props = {
     canDestroy: false,
     canRestore: false,
     canSpam: true,
+    canStop: false,
     canTrash: true,
     destroyConfirmation: {
       count: 0,
@@ -36,6 +37,7 @@ const props = {
     onRestore: vi.fn(),
     onSpam: vi.fn(),
     onStar: vi.fn(),
+    onStop: vi.fn(),
     onToggleAllLoaded: vi.fn(),
     onTrash: vi.fn(),
     onUnstar: vi.fn(),
@@ -190,5 +192,39 @@ describe("message list pagination view", () => {
     expect(html).toContain("min-h-11 p-2");
     expect(html).not.toContain(">Preview<");
     expect(html).toContain("Message list options");
+  });
+
+  it("visibly announces optimistic progress and marks pending rows busy", () => {
+    const html = renderToStaticMarkup(createElement(MessageListView, {
+      ...props,
+      bulkActions: {
+        ...props.bulkActions,
+        isBusy: true,
+        status: "Updating 1 message…",
+      },
+      messages: [{ ...props.messages[0], isPending: true }],
+    }));
+
+    expect(html).toContain('role="status"');
+    expect(html).toContain("Updating 1 message…");
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("opacity-60");
+  });
+
+  it("offers stopping after the active provider batch", () => {
+    const html = renderToStaticMarkup(createElement(MessageListView, {
+      ...props,
+      bulkActions: {
+        ...props.bulkActions,
+        canStop: true,
+        isBusy: true,
+        selectedCount: 101,
+      },
+    }));
+
+    expect(html).toContain('aria-label="Stop after current batch"');
+    expect(html).toMatch(
+      /aria-label="Stop after current batch" class="[^"]+" title=/,
+    );
   });
 });

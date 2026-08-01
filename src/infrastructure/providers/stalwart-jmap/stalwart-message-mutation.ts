@@ -10,6 +10,7 @@ import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jma
 import { jmapSetResultSchema } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
 import { prepareStalwartMessageMove } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-move";
 import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 const destroySourceSchema = z.object({
   accountId: z.string().min(1),
@@ -57,7 +58,9 @@ const destroyState = async (
     message?.id !== mutation.messageId ||
     message.mailboxIds[mutation.mailboxId] !== true
   ) {
-    throw new Error("Message is outside the confirmed mailbox.");
+    throw new ProviderMessageMutationRejectedError(
+      "Message is outside the confirmed mailbox.",
+    );
   }
   return result.state;
 };
@@ -81,7 +84,9 @@ const labelState = async (
   );
   const message = result.list[0];
   if (result.accountId !== accountId || message?.id !== mutation.messageId) {
-    throw new Error("Message not found for label update.");
+    throw new ProviderMessageMutationRejectedError(
+      "Message not found for label update.",
+    );
   }
   const snapshot = await reader.getMailboxSnapshot();
   const rights = new Map(snapshot.mailboxes.map((mailbox) => [mailbox.id, mailbox.rights]));
@@ -92,7 +97,9 @@ const labelState = async (
     containing.length === 0 ||
     containing.some((mailboxId) => rights.get(id.mailbox(mailboxId))?.maySetKeywords !== true)
   ) {
-    throw new Error("The mail server denied label changes for this message.");
+    throw new ProviderMessageMutationRejectedError(
+      "The mail server denied label changes for this message.",
+    );
   }
   if (mutation.value && !message.keywords[mutation.labelId]) {
     const capability = mailCapabilitySchema.safeParse(
@@ -103,7 +110,9 @@ const labelState = async (
       : undefined;
     const keywordCount = Object.values(message.keywords).filter(Boolean).length;
     if (maximum !== undefined && keywordCount >= maximum) {
-      throw new Error("This message has reached the mail server's label limit.");
+      throw new ProviderMessageMutationRejectedError(
+        "This message has reached the mail server's label limit.",
+      );
     }
   }
   return {
@@ -128,7 +137,11 @@ const targetMailbox = async (
   const mailbox = (await reader.listMailboxes()).find(
     (candidate) => candidate.role === role,
   );
-  if (!mailbox) throw new Error(`The ${role} mailbox is not configured.`);
+  if (!mailbox) {
+    throw new ProviderMessageMutationRejectedError(
+      `The ${role} mailbox is not configured.`,
+    );
+  }
   return mailbox.id;
 };
 
@@ -197,14 +210,17 @@ export const mutateStalwartMessage = async (
       const rejection = Object.values(rejected)[0];
       const rejectionType = typeof rejection === "object" && rejection &&
         "type" in rejection ? String(rejection.type) : "";
-      throw new Error(rejectionType === "tooManyKeywords"
-        ? "This message has reached the mail server's label limit."
-        : "Stalwart rejected the message update.");
+      throw new ProviderMessageMutationRejectedError(
+        rejectionType === "tooManyKeywords"
+          ? "This message has reached the mail server's label limit."
+          : "Stalwart rejected the message update.",
+      );
     }
     if (
       (result.accountId && result.accountId !== accountId) ||
-      (mutation.type !== "destroy" &&
-        !Object.hasOwn(result.updated ?? {}, mutation.messageId))
+      (mutation.type === "destroy"
+        ? !result.destroyed?.includes(mutation.messageId)
+        : !Object.hasOwn(result.updated ?? {}, mutation.messageId))
     ) {
       throw new Error("Stalwart did not confirm the message update.");
     }
@@ -216,6 +232,11 @@ export const mutateStalwartMessage = async (
       error.type === "stateMismatch"
     ) {
       return mutateStalwartMessage(client, reader, mutation, 1);
+    }
+    if (error instanceof StalwartJmapMethodError) {
+      throw new ProviderMessageMutationRejectedError(
+        "Stalwart rejected the message update.",
+      );
     }
     throw error;
   }

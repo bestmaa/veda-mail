@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { id } from "@/domain/shared/brand";
 import {
+  reconcilePendingSelection,
   retainAvailableSelection,
   retainFailedSelection,
   selectLoadedMessages,
@@ -31,6 +32,23 @@ describe("mail bulk selection", () => {
     );
 
     expect([...retained]).toEqual([second, third]);
+  });
+
+  it("preserves selection identity when every selected message is available", () => {
+    const selected = selectLoadedMessages([first, second]);
+
+    expect(retainAvailableSelection(selected, new Set([first, second, third])))
+      .toBe(selected);
+  });
+
+  it("reconciles one operation without dropping older pending selections", () => {
+    const pending = reconcilePendingSelection(
+      new Set([first, second]),
+      [second, third],
+      [third],
+    );
+
+    expect([...pending]).toEqual([first, third]);
   });
 
   it("keeps only failed messages selected for an explicit retry", () => {

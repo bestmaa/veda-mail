@@ -25,6 +25,7 @@ import {
   fetchData,
 } from "@/transport/client/api-request";
 import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
+import { validateBulkMessageMutationResult } from "@/transport/client/bulk-message-mutation-result";
 
 export type MailApiSendInput = Omit<ComposeInput, "draftId"> & {
   readonly draftId: DraftId;
@@ -190,8 +191,8 @@ export const mailApi = {
     );
   },
 
-  mutateMessages(mutation: BulkMessageMutation, sessionScope: string) {
-    return fetchData<BulkMessageMutationResult>(
+  async mutateMessages(mutation: BulkMessageMutation, sessionScope: string) {
+    const result = await fetchData<BulkMessageMutationResult>(
       "/api/v1/mail/messages/bulk",
       {
         body: JSON.stringify(mutation),
@@ -199,6 +200,7 @@ export const mailApi = {
         method: "PATCH",
       },
     );
+    return validateBulkMessageMutationResult(result, mutation.messageIds);
   },
 
   sendMessage(

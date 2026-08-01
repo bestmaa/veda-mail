@@ -11,6 +11,7 @@ const bulk = (overrides: Partial<BulkActionsViewModel> = {}) => ({
   canDestroy: false,
   canRestore: false,
   canSpam: true,
+  canStop: false,
   canTrash: true,
   destroyConfirmation: {
     count: 2,
@@ -33,6 +34,7 @@ const bulk = (overrides: Partial<BulkActionsViewModel> = {}) => ({
   onRestore: vi.fn(),
   onSpam: vi.fn(),
   onStar: vi.fn(),
+  onStop: vi.fn(),
   onToggleAllLoaded: vi.fn(),
   onTrash: vi.fn(),
   onUnstar: vi.fn(),

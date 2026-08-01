@@ -11,13 +11,13 @@ import type {
   BulkMessageMutationResult,
   MessageMutation,
 } from "@/domain/mail/mail";
-import type { MessageId } from "@/domain/shared/brand";
 import { labelCatalogStore } from "@/server/labels/label-catalog.store";
 import {
   labelDeletionCatalogStore,
 } from "@/server/labels/label-deletion-catalog.store";
 import type { LabelDeletionUpdate } from "@/server/labels/label-deletion-progress";
 import { withLabelOperation } from "@/server/labels/label-operation-lock";
+import { ApiError } from "@/transport/http/api-error";
 
 type LabelMutation = Extract<MessageMutation, { readonly type: "set-label" }>;
 type BulkLabelMutation = Extract<
@@ -43,12 +43,15 @@ export const mutateBulkMessageLabels = (
   request.labelId,
   async () => {
     await labelCatalogStore.requireActive(owner, request.labelId);
-    const succeeded: MessageId[] = [];
-    const failed: MessageId[] = [];
+    const outcomes: ("failed" | "succeeded" | "unconfirmed")[] = Array.from(
+      { length: request.messageIds.length },
+      () => "unconfirmed",
+    );
     let cursor = 0;
     const worker = async () => {
       while (cursor < request.messageIds.length) {
-        const messageId = request.messageIds[cursor++];
+        const index = cursor++;
+        const messageId = request.messageIds[index];
         if (!messageId) continue;
         try {
           await service.mutateMessage({
@@ -57,16 +60,30 @@ export const mutateBulkMessageLabels = (
             type: "set-label",
             value: request.value,
           });
-          succeeded.push(messageId);
-        } catch {
-          failed.push(messageId);
+          outcomes[index] = "succeeded";
+        } catch (error) {
+          outcomes[index] = error instanceof ApiError &&
+            error.status >= 400 && error.status < 500
+            ? "failed"
+            : "unconfirmed";
         }
       }
     };
     await Promise.all(
       Array.from({ length: Math.min(4, request.messageIds.length) }, worker),
     );
-    return { failed, succeeded };
+    const idsFor = (outcome: (typeof outcomes)[number]) =>
+      request.messageIds.filter((_, index) => outcomes[index] === outcome);
+    const unconfirmed = idsFor("unconfirmed");
+    return {
+      // Preserve the conservative legacy contract while exposing ambiguity to
+      // clients that can reconcile it safely.
+      failed: request.messageIds.filter(
+        (_, index) => outcomes[index] !== "succeeded",
+      ),
+      succeeded: idsFor("succeeded"),
+      ...(unconfirmed.length ? { unconfirmed } : {}),
+    };
   },
 );
 

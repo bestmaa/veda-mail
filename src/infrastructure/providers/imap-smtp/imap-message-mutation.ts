@@ -11,6 +11,7 @@ import {
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import { mutateImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { ProviderMessageMutationRejectedError } from "@/infrastructure/providers/provider-message-mutation-error";
 
 const rolePath = (
   mailboxes: readonly ListResponse[],
@@ -22,7 +23,11 @@ const rolePath = (
       candidate.specialUse?.toLowerCase() === special.toLowerCase() ||
       (role === "inbox" && candidate.path.toUpperCase() === "INBOX"),
   );
-  if (!mailbox) throw new Error(`No ${role} mailbox is configured.`);
+  if (!mailbox) {
+    throw new ProviderMessageMutationRejectedError(
+      `No ${role} mailbox is configured.`,
+    );
+  }
   return mailbox.path;
 };
 
@@ -34,20 +39,28 @@ export const mutateImapMessage = async (
   try {
     reference = decodeScopedImapMessageId(config, mutation.messageId);
   } catch {
-    throw new Error("Message not found.");
+    throw new ProviderMessageMutationRejectedError("Message not found.");
   }
   return withImapClient(config, async (client) => {
     const opened = await client.mailboxOpen(reference.mailbox);
     if (!imapUidValidityMatches(reference, opened.uidValidity)) {
-      throw new Error("Message not found.");
+      throw new ProviderMessageMutationRejectedError("Message not found.");
     }
-    if (opened.readOnly) throw new Error("The source mailbox is read-only.");
+    if (opened.readOnly) {
+      throw new ProviderMessageMutationRejectedError(
+        "The source mailbox is read-only.",
+      );
+    }
     if (mutation.type === "destroy") {
       if (!client.capabilities.has("UIDPLUS")) {
-        throw new Error("Safe permanent deletion requires IMAP UIDPLUS.");
+        throw new ProviderMessageMutationRejectedError(
+          "Safe permanent deletion requires IMAP UIDPLUS.",
+        );
       }
       const deleted = await client.messageDelete(reference.uid, { uid: true });
-      if (!deleted) throw new Error("Message not found.");
+      if (!deleted) {
+        throw new ProviderMessageMutationRejectedError("Message not found.");
+      }
       return;
     }
     if (mutation.type === "set-label") {
@@ -59,17 +72,42 @@ export const mutateImapMessage = async (
       const update = mutation.value
         ? client.messageFlagsAdd.bind(client)
         : client.messageFlagsRemove.bind(client);
-      await update(reference.uid, [flag], { uid: true });
+      const updated = await update(reference.uid, [flag], { uid: true });
+      if (!updated) {
+        throw new ProviderMessageMutationRejectedError(
+          "The IMAP server rejected the flag update.",
+        );
+      }
+      const verified = await client.fetchOne(
+        reference.uid,
+        { flags: true, uid: true },
+        { uid: true },
+      );
+      if (!verified || verified.uid !== reference.uid) {
+        throw new Error("The IMAP server did not confirm the flag update.");
+      }
+      const hasFlag = [...(verified.flags ?? [])].some(
+        (current) => current.toLowerCase() === flag.toLowerCase(),
+      );
+      if (hasFlag !== mutation.value) {
+        throw new ProviderMessageMutationRejectedError(
+          "The IMAP server did not persist the flag update.",
+        );
+      }
       return;
     }
     if (
       mutation.type === "move" &&
       decodeMailboxId(mutation.sourceMailboxId) !== reference.mailbox
     ) {
-      throw new Error("The message is outside the selected source mailbox.");
+      throw new ProviderMessageMutationRejectedError(
+        "The message is outside the selected source mailbox.",
+      );
     }
     if (!client.capabilities.has("MOVE")) {
-      throw new Error("Safe message moves require native IMAP MOVE support.");
+      throw new ProviderMessageMutationRejectedError(
+        "Safe message moves require native IMAP MOVE support.",
+      );
     }
     const mailboxes = await client.list();
     const target = mutation.type === "move"
@@ -82,18 +120,26 @@ export const mutateImapMessage = async (
         );
     const destination = mailboxes.find(({ path }) => path === target);
     if (!destination || destination.flags.has("\\Noselect")) {
-      throw new Error("The destination mailbox does not accept messages.");
+      throw new ProviderMessageMutationRejectedError(
+        "The destination mailbox does not accept messages.",
+      );
     }
     if (target === reference.mailbox) {
-      throw new Error("Choose a different destination mailbox.");
+      throw new ProviderMessageMutationRejectedError(
+        "Choose a different destination mailbox.",
+      );
     }
     const source = await client.fetchOne(
       reference.uid, { uid: true }, { uid: true },
     );
     if (!source || source.uid !== reference.uid) {
-      throw new Error("Message not found.");
+      throw new ProviderMessageMutationRejectedError("Message not found.");
     }
     const moved = await client.messageMove(reference.uid, target, { uid: true });
-    if (!moved) throw new Error("The mail server did not confirm the move.");
+    if (!moved) {
+      throw new ProviderMessageMutationRejectedError(
+        "The mail server did not confirm the move.",
+      );
+    }
   });
 };

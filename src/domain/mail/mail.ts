@@ -9,10 +9,7 @@ import type {
   ProviderId,
   ThreadId,
 } from "@/domain/shared/brand";
-import type {
-  DraftCapability,
-  SavedProviderDraft,
-} from "@/domain/mail/draft";
+import type { DraftCapability, SavedProviderDraft } from "@/domain/mail/draft";
 import type { Mailbox } from "@/domain/mail/mailbox";
 import type {
   LabelCapability,
@@ -168,6 +165,7 @@ export type BulkMessageMutation =
 export interface BulkMessageMutationResult {
   readonly failed: readonly MessageId[];
   readonly succeeded: readonly MessageId[];
+  readonly unconfirmed?: readonly MessageId[];
 }
 
 export interface ComposeInput {
