@@ -27,6 +27,36 @@ export const useMailSessionScopeState = () => {
     return scopeChanged;
   }, []);
 
+  const appendWorkspace = useCallback(
+    (next: MailWorkspace, expectedScope: string): boolean => {
+      if (
+        !expectedScope ||
+        sessionScopeRef.current !== expectedScope ||
+        next.sessionScope !== expectedScope
+      ) {
+        return false;
+      }
+      setWorkspace((current) => {
+        if (!current || current.sessionScope !== expectedScope) return current;
+        const existingIds = new Set(
+          current.messages.items.map((message) => message.id),
+        );
+        const appended = next.messages.items.filter(
+          (message) => !existingIds.has(message.id),
+        );
+        return {
+          ...next,
+          messages: {
+            ...next.messages,
+            items: [...current.messages.items, ...appended],
+          },
+        };
+      });
+      return true;
+    },
+    [],
+  );
+
   const clear = useCallback(() => {
     sessionScopeRef.current = "";
     setWorkspace(null);
@@ -46,6 +76,7 @@ export const useMailSessionScopeState = () => {
 
   return {
     acceptWorkspace,
+    appendWorkspace,
     clear,
     clearMessage: useCallback(() => setSelection(null), []),
     commitMessage,

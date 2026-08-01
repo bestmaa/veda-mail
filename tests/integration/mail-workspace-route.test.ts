@@ -72,7 +72,7 @@ describe("mail workspace route", () => {
     };
     mocks.getWorkspace.mockResolvedValue(workspace);
     const routeRequest = request(
-      "/api/v1/mail/workspace?mailboxId=inbox-1&cursor=cursor-2&search=quarterly",
+      "/api/v1/mail/workspace?mailboxId=inbox-1&cursor=50&search=quarterly",
     );
 
     const response = await getWorkspace(routeRequest);
@@ -101,13 +101,32 @@ describe("mail workspace route", () => {
     );
     expect(mocks.getMailService).toHaveBeenCalledWith(mocks.connection);
     expect(mocks.getWorkspace).toHaveBeenCalledWith({
-      cursor: "cursor-2",
+      cursor: "50",
       limit: 50,
       mailboxId: "inbox-1",
       search: "quarterly",
     });
     expect(mocks.connectionIsActive).toHaveBeenCalledWith(mocks.connection);
   });
+
+  it.each(["cursor-2", "-1", "01", "2147483648"])(
+    "rejects the invalid or unbounded cursor %s before calling the provider",
+    async (cursor) => {
+      const response = await getWorkspace(
+        request(`/api/v1/mail/workspace?cursor=${encodeURIComponent(cursor)}`),
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: "INVALID_CURSOR",
+          message: "The mailbox cursor is invalid.",
+        },
+      });
+      expect(mocks.getMailService).not.toHaveBeenCalled();
+      expect(mocks.getWorkspace).not.toHaveBeenCalled();
+    },
+  );
 
   it("does not return mailbox data after the connection expires in flight", async () => {
     mocks.getWorkspace.mockResolvedValue({

@@ -100,12 +100,14 @@ export const mailApi = {
 
   getWorkspace(
     input: {
+      readonly cursor?: string;
       readonly mailboxId?: MailboxId;
       readonly search?: string;
     },
     sessionScope?: string,
   ) {
     const params = new URLSearchParams();
+    if (input.cursor) params.set("cursor", input.cursor);
     if (input.mailboxId) params.set("mailboxId", input.mailboxId);
     if (input.search) params.set("search", input.search);
     const query = params.size ? `?${params.toString()}` : "";

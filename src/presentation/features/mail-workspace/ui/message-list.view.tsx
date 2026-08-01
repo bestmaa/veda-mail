@@ -9,16 +9,24 @@ import { MessageRowView } from "@/presentation/features/mail-workspace/ui/messag
 interface MessageListViewProps {
   readonly activeFolder: string;
   readonly error: string | null;
+  readonly hasMore: boolean;
   readonly isLoading: boolean;
+  readonly isLoadingMore: boolean;
+  readonly loadMoreError: string | null;
   readonly messages: readonly MessageItemViewModel[];
+  readonly onLoadMore: () => void;
   readonly total: number;
 }
 
 export const MessageListView = ({
   activeFolder,
   error,
+  hasMore,
   isLoading,
+  isLoadingMore,
+  loadMoreError,
   messages,
+  onLoadMore,
   total,
 }: MessageListViewProps) => (
   <section className="flex min-h-0 flex-col border-r border-slate-200 bg-[#f8f9fc]">
@@ -72,6 +80,24 @@ export const MessageListView = ({
           {messages.map((message) => (
             <MessageRowView key={message.id} message={message} />
           ))}
+          {hasMore ? (
+            <div className="flex flex-col items-center gap-2 py-3 text-center">
+              <button
+                aria-busy={isLoadingMore}
+                className="min-h-11 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-wait disabled:opacity-60"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+                type="button"
+              >
+                {isLoadingMore ? "Loading more messages…" : "Load more messages"}
+              </button>
+              {loadMoreError ? (
+                <p className="max-w-72 text-xs leading-5 text-red-700" role="alert">
+                  {loadMoreError} Select Load more messages to retry.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

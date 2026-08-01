@@ -359,6 +359,23 @@ responses remain private, non-cacheable, same-origin, and `no-referrer`. The
 scope is neither the connection cookie nor an authentication credential and
 cannot authorize a request without the current member cookie.
 
+## Mailbox cursor pagination
+
+The workspace route owns the page size (50) and accepts only a canonical
+decimal position from 0 through 2,147,483,647. Browser-supplied cursors are
+therefore bounded and validated before the adapter is resolved. Both included
+adapters return the next position through the provider-independent
+`MessagePage` contract; the client never derives or increments it itself.
+
+The mail model separates root mailbox/search refresh generations from page
+request generations. It permits one page request in flight, ignores a late
+page after any root refresh, mailbox/search change, or session replacement,
+and appends only previously unseen immutable message IDs. The selected reader
+record is stored independently of the accumulated list, so adding a page does
+not close or replace the message being read. A recoverable provider failure
+leaves the accepted pages intact and reuses the same server cursor only after
+an explicit retry. Full refresh replaces the accumulated list with page one.
+
 With the supplied Compose layout, signature books live in
 `/data/member-signatures.json`. The outer file contains keyed owner buckets but
 no raw email addresses or signature plaintext. An HMAC-SHA-256 of the

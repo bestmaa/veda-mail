@@ -197,6 +197,8 @@ export const useMailWorkspaceModel = ({
     folders: mailList.folders,
     isComposerReady,
     isLoading: mail.isLoading,
+    isLoadingMore: mail.isLoadingMore,
+    loadMoreError: mail.loadMoreError,
     messages: mailList.messages,
     navigation: {
       isOpen: navigation.isOpen,
@@ -208,6 +210,7 @@ export const useMailWorkspaceModel = ({
     onCompose,
     onDelete: mail.remove,
     onForward,
+    onLoadMore: mail.onLoadMore,
     onRefresh: mail.onRefresh,
     onReply,
     onReplyAll,
@@ -228,5 +231,6 @@ export const useMailWorkspaceModel = ({
     },
     settings,
     total: mail.workspace?.messages.total ?? 0,
+    hasMoreMessages: Boolean(mail.workspace?.messages.nextCursor),
   };
 };

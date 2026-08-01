@@ -12,6 +12,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Capability                                    | Stalwart JMAP   | Standard IMAP + SMTP |
 | --------------------------------------------- | --------------- | -------------------- |
 | Mailbox/message read                          | Yes             | Yes                  |
+| Cursor-paginated message lists                | Yes             | Yes                  |
 | Server-side text search                       | Yes             | Yes                  |
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
@@ -41,6 +42,17 @@ provider-independent domain. Detailed reads request no more than 256,000 bytes
 per body value, retain no more than 128 referenced body values within a 256,000
 character aggregate source budget, and cap each final text or sanitized HTML
 presentation at 256,000 characters with a visible truncation marker.
+
+Both adapters expose a provider-independent decimal position cursor and a
+fixed server-owned page size of 50. The public route rejects malformed,
+negative, non-canonical, or greater-than-32-bit cursor positions before a
+provider call. Stalwart maps the position to `Email/query`; Standard IMAP sorts
+matching UIDs newest-first before applying the position. The browser permits
+one next-page request at a time, drops duplicate message IDs across adjacent
+pages, rejects stale page completions after mailbox/search/session changes,
+and keeps an already open message selected. Refresh deliberately restarts from
+the first page so new-mail movement cannot silently rewrite an accumulated
+list.
 
 Both adapters also receive the same server-canonicalized content contract:
 required readable `body` plus optional safe `htmlBody`. When rich content is

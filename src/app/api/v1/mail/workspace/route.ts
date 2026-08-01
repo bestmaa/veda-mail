@@ -17,6 +17,18 @@ import { ApiError } from "@/transport/http/api-error";
 
 export const runtime = "nodejs";
 
+const parseMessageCursor = (value: string | null): string | undefined => {
+  if (value === null) return undefined;
+  if (!/^(0|[1-9]\d{0,9})$/.test(value)) {
+    throw new ApiError("The mailbox cursor is invalid.", "INVALID_CURSOR", 400);
+  }
+  const position = Number(value);
+  if (!Number.isSafeInteger(position) || position > 2_147_483_647) {
+    throw new ApiError("The mailbox cursor is invalid.", "INVALID_CURSOR", 400);
+  }
+  return String(position);
+};
+
 export const GET = async (request: Request) => {
   try {
     assertRequestRateLimit(request, "mail-read", 20_000, 1_000, 60 * 1000);
@@ -27,7 +39,7 @@ export const GET = async (request: Request) => {
     assertSubjectRateLimit("mail-read", connection.id, 300, 60 * 1000);
     const params = new URL(request.url).searchParams;
     const mailbox = params.get("mailboxId");
-    const cursor = params.get("cursor");
+    const cursor = parseMessageCursor(params.get("cursor"));
     const search = params.get("search");
     const workspace = await (
       await getMailService(connection)
