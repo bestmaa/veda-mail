@@ -122,7 +122,7 @@ describe("mail data session scope lifecycle", () => {
     api.getMessage.mockResolvedValueOnce(message());
     await model.selectMessage("message-a");
     model = render();
-    api.mutateMessage.mockRejectedValueOnce(
+    api.mutateMessages.mockRejectedValueOnce(
       new ApiClientError(
         "Reconnect this mailbox.",
         401,
@@ -134,8 +134,8 @@ describe("mail data session scope lifecycle", () => {
     await settle();
     model = render();
 
-    expect(api.mutateMessage).toHaveBeenCalledWith(
-      { messageId: id.message("message-a"), type: "archive" },
+    expect(api.mutateMessages).toHaveBeenCalledWith(
+      { messageIds: [id.message("message-a")], type: "archive" },
       "scope-a",
     );
     expect(model.workspace).toBeNull();

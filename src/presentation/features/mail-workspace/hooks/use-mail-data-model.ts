@@ -7,13 +7,17 @@ import { useMailMessageMutations } from "@/presentation/features/mail-workspace/
 import { useMailDataBulkSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-data-bulk-selection";
 import { useMailPagination } from "@/presentation/features/mail-workspace/hooks/use-mail-pagination";
 import { useMailSessionScopeState } from "@/presentation/features/mail-workspace/hooks/use-mail-session-scope-state";
+import { useMailMessageSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-message-selection";
 import { useMessageListPreferencesSave } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-save";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : "Something went wrong.";
 export const useMailDataModel = () => {
-  const { acceptWorkspace, appendWorkspace, clear: clearScope, clearMessage, commitMessage,
-    commitPreferences, currentScope, isCurrentScope, selectedMessage, sessionScope, workspace } = useMailSessionScopeState();
+  const { acceptWorkspace, appendWorkspace, beginOptimisticMutation,
+    clear: clearScope, clearMessage, commitMessage, commitPreferences,
+    currentMessageId, currentScope, isCurrentScope, isMessageMutationBusy,
+    markOptimisticMutationUnconfirmed, pendingMessageIds, selectedMessage,
+    sessionScope, settleOptimisticMutation, workspace } = useMailSessionScopeState();
   const [activeMailboxId, setActiveMailboxId] = useState<MailboxId | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -24,8 +28,11 @@ export const useMailDataModel = () => {
   const workspaceRequestId = useRef(0);
   const messageRequestId = useRef(0);
   const sessionInvalidated = useRef(false);
+  const activeMailboxIdRef = useRef(activeMailboxId), appliedSearchRef = useRef(appliedSearch);
+  const viewKey = `${activeMailboxId ?? ""}\n${appliedSearch}\n${workspace?.messageListPreferences.sort ?? "newest"}`;
   const resetMailboxView = useCallback(() => {
     messageRequestId.current += 1;
+    activeMailboxIdRef.current = null; appliedSearchRef.current = "";
     setActiveMailboxId(null);
     clearMessage();
     setSearchValue("");
@@ -64,7 +71,7 @@ export const useMailDataModel = () => {
       readonly preferences?: MessageListPreferences;
       readonly search: string;
     }) => {
-      if (sessionInvalidated.current) return;
+      if (sessionInvalidated.current) return false;
       const requestId = ++workspaceRequestId.current;
       const mailboxId = override ? override.mailboxId : activeMailboxId;
       const search = override ? override.search : appliedSearch;
@@ -83,10 +90,15 @@ export const useMailDataModel = () => {
           },
           requestScope || undefined,
         );
-        if (requestId !== workspaceRequestId.current) {
-          return;
-        }
-        const scopeChanged = acceptWorkspace(next);
+        if (requestId !== workspaceRequestId.current) return false;
+        const resolvedMailboxId = mailboxId ?? (
+          next.mailboxes.find((candidate) => candidate.role === "inbox") ??
+          next.mailboxes[0]
+        )?.id ?? null;
+        const nextViewKey = `${resolvedMailboxId ?? ""}\n${search}\n${
+          override?.preferences?.sort ?? next.messageListPreferences.sort
+        }`;
+        const scopeChanged = acceptWorkspace(next, nextViewKey);
         if (scopeChanged) {
           purgeInvalidatedSessionRecovery(requestScope, setError);
           resetMailboxView();
@@ -95,15 +107,15 @@ export const useMailDataModel = () => {
           const inbox =
             next.mailboxes.find((mailbox) => mailbox.role === "inbox") ??
             next.mailboxes[0];
-          if (inbox) {
-            setActiveMailboxId(inbox.id);
-          }
+          if (inbox) { activeMailboxIdRef.current = inbox.id; setActiveMailboxId(inbox.id); }
         }
+        return true;
       } catch (nextError) {
         if (requestId === workspaceRequestId.current) {
-          if (handleSessionFailure(nextError)) return;
+          if (handleSessionFailure(nextError)) return false;
           else setError(errorMessage(nextError));
         }
+        return false;
       } finally {
         if (requestId === workspaceRequestId.current) {
           setIsLoading(false);
@@ -117,88 +129,75 @@ export const useMailDataModel = () => {
     void loadWorkspace();
   }, [loadWorkspace]);
   const refresh = useCallback(() => void loadWorkspace(), [loadWorkspace]);
+  const refreshCurrentView = useCallback(() => loadWorkspace({
+    mailboxId: activeMailboxIdRef.current,
+    search: appliedSearchRef.current,
+  }), [loadWorkspace]);
+  const beginMessageMutation = useCallback((
+    input: Parameters<typeof beginOptimisticMutation>[0],
+  ) => {
+    const token = beginOptimisticMutation(input);
+    if (token) workspaceRequestId.current += 1;
+    return token;
+  }, [beginOptimisticMutation]);
   const saveListPreferences = useMessageListPreferencesSave({ activeMailboxId,
     appliedSearch, commitPreferences, current: workspace?.messageListPreferences,
     currentScope, handleSessionFailure, isCurrentScope, loadWorkspace });
   const bulk = useMailDataBulkSelection({
     activeMailboxId,
     appliedSearch,
-    clearMessage,
+    beginOptimisticMutation: beginMessageMutation,
     currentViewRevision: () => workspaceRequestId.current,
     handleSessionFailure,
     isCurrentScope,
-    refresh,
-    selectedMessage,
+    markOptimisticMutationUnconfirmed,
+    optimisticPendingIds: pendingMessageIds,
+    refresh: refreshCurrentView,
     sessionScope,
+    settleOptimisticMutation,
     workspace,
   });
   const selectMailbox = useCallback(
     (mailboxId: string) => {
       workspaceRequestId.current += 1;
       messageRequestId.current += 1;
-      setActiveMailboxId(id.mailbox(mailboxId));
+      const nextMailboxId = id.mailbox(mailboxId);
+      activeMailboxIdRef.current = nextMailboxId;
+      setActiveMailboxId(nextMailboxId);
       clearMessage();
       setReaderError(null);
     },
     [clearMessage],
   );
-  const selectMessage = useCallback(
-    async (messageId: string) => {
-      const requestScope = currentScope();
-      if (!requestScope) return;
-      const typedId = id.message(messageId);
-      const requestId = ++messageRequestId.current;
-      setIsReaderLoading(true);
-      setReaderError(null);
-      try {
-        const message = await mailApi.getMessage(typedId, requestScope);
-        if (
-          requestId !== messageRequestId.current ||
-          !commitMessage(message, requestScope)
-        ) {
-          return;
-        }
-        if (message.isUnread) {
-          await mailApi.mutateMessage(
-            { messageId: typedId, type: "set-read", value: true },
-            requestScope,
-          );
-          if (
-            requestId !== messageRequestId.current ||
-            !isCurrentScope(requestScope)
-          )
-            return;
-          commitMessage({ ...message, isUnread: false }, requestScope);
-          refresh();
-        }
-      } catch (nextError) {
-        if (requestId === messageRequestId.current) {
-          if (handleSessionFailure(nextError)) return;
-          else setReaderError(errorMessage(nextError));
-        }
-      } finally {
-        if (requestId === messageRequestId.current) {
-          setIsReaderLoading(false);
-        }
-      }
-    },
-    [commitMessage, currentScope, handleSessionFailure, isCurrentScope, refresh],
-  );
+  const selectMessage = useMailMessageSelection({
+    beginRequest: () => ++messageRequestId.current,
+    commitMessage, currentScope, handleSessionFailure,
+    isCurrentRequest: (requestId) => requestId === messageRequestId.current,
+    isCurrentScope, refreshCurrentView,
+    setIsReaderLoading, setReaderError });
   const mutations = useMailMessageMutations({
+    activeMailboxId,
+    beginOptimisticMutation: beginMessageMutation,
     clearMessage,
-    commitMessage,
+    currentMessageId,
+    currentViewRevision: () => workspaceRequestId.current,
     handleSessionFailure,
     isCurrentScope,
+    markOptimisticMutationUnconfirmed,
     refresh,
+    refreshCurrentView,
     selectedMessage,
     sessionScope,
     setReaderError,
+    settleOptimisticMutation,
+    viewKey,
   });
   const onSearchSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (event) => {
       event.preventDefault();
       workspaceRequestId.current += 1;
-      setAppliedSearch(searchValue.trim());
+      const nextSearch = searchValue.trim(); appliedSearchRef.current = nextSearch;
+      setAppliedSearch(nextSearch);
       clearMessage();
     },
     [clearMessage, searchValue],
@@ -218,11 +217,12 @@ export const useMailDataModel = () => {
     error, hasActiveSearch: Boolean(appliedSearch),
     handleSessionFailure,
     isLoading, isLoadingMore: pagination.isLoadingMore,
-    isReaderLoading, isReaderMutating: mutations.isBusy,
+    isReaderLoading, isReaderMutating: mutations.isBusy || isMessageMutationBusy,
     onRefresh,
     onLoadMore: pagination.onLoadMore,
     onSearchClear: useCallback(() => {
       workspaceRequestId.current += 1;
+      appliedSearchRef.current = "";
       setSearchValue(""); setAppliedSearch(""); clearMessage();
     }, [clearMessage]),
     onSearchInput: useCallback((event: React.ChangeEvent<HTMLInputElement>) =>
@@ -237,12 +237,13 @@ export const useMailDataModel = () => {
     saveListPreferences,
     setLabel: mutations.setLabel,
     sessionScope,
+    pendingMessageIds,
     selectMailbox,
     selectMessage,
     selectedMessage,
     toggleRead: mutations.toggleRead,
     toggleStar: mutations.toggleStar,
-    viewKey: `${activeMailboxId ?? ""}\n${appliedSearch}\n${workspace?.messageListPreferences.sort ?? "newest"}`,
+    viewKey,
     workspace,
   };
 };

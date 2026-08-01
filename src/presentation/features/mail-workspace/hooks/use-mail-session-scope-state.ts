@@ -1,106 +1,105 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { MailWorkspace, MessageDetail } from "@/domain/mail/mail";
 import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
+import type { MessageId } from "@/domain/shared/brand";
+import {
+  OptimisticMessageState,
+  type BeginOptimisticMutationInput,
+  type OptimisticMutationToken,
+} from "@/presentation/features/mail-workspace/optimistic-message-state";
 
-interface ScopedMessage {
-  readonly message: MessageDetail;
-  readonly sessionScope: string;
-}
+export type { OptimisticMutationToken } from "@/presentation/features/mail-workspace/optimistic-message-state";
 
 export const useMailSessionScopeState = () => {
-  const [workspace, setWorkspace] = useState<MailWorkspace | null>(null);
-  const [selection, setSelection] = useState<ScopedMessage | null>(null);
-  const sessionScopeRef = useRef("");
-  const sessionScope = workspace?.sessionScope ?? "";
-  const selectedMessage =
-    selection?.sessionScope === sessionScope ? selection.message : null;
+  const [state] = useState(() => new OptimisticMessageState());
+  const [snapshot, setSnapshot] = useState(() => state.snapshot());
+  const sync = useCallback(() => setSnapshot(state.snapshot()), [state]);
 
-  const acceptWorkspace = useCallback((next: MailWorkspace): boolean => {
-    const scopeChanged =
-      Boolean(sessionScopeRef.current) &&
-      sessionScopeRef.current !== next.sessionScope;
-    sessionScopeRef.current = next.sessionScope;
-    setWorkspace(next);
-    if (scopeChanged) setSelection(null);
-    return scopeChanged;
-  }, []);
-
-  const appendWorkspace = useCallback(
-    (next: MailWorkspace, expectedScope: string): boolean => {
-      if (
-        !expectedScope ||
-        sessionScopeRef.current !== expectedScope ||
-        next.sessionScope !== expectedScope
-      ) {
-        return false;
-      }
-      setWorkspace((current) => {
-        if (!current || current.sessionScope !== expectedScope) return current;
-        const existingIds = new Set(
-          current.messages.items.map((message) => message.id),
-        );
-        const appended = next.messages.items.filter(
-          (message) => !existingIds.has(message.id),
-        );
-        return {
-          ...next,
-          messages: {
-            ...next.messages,
-            items: [...current.messages.items, ...appended],
-          },
-        };
-      });
-      return true;
-    },
-    [],
+  const acceptWorkspace = useCallback((
+    next: MailWorkspace,
+    nextViewKey = "",
+  ): boolean => {
+    const changed = state.acceptWorkspace(next, nextViewKey);
+    sync();
+    return changed;
+  }, [state, sync]);
+  const appendWorkspace = useCallback((
+    next: MailWorkspace,
+    expectedScope: string,
+  ): boolean => {
+    const accepted = state.appendWorkspace(next, expectedScope);
+    if (accepted) sync();
+    return accepted;
+  }, [state, sync]);
+  const beginOptimisticMutation = useCallback((
+    input: BeginOptimisticMutationInput,
+  ): OptimisticMutationToken | null => {
+    const token = state.begin(input);
+    if (token) sync();
+    return token;
+  }, [state, sync]);
+  const settleOptimisticMutation = useCallback((
+    token: OptimisticMutationToken,
+    succeeded: readonly MessageId[],
+    unconfirmed: readonly MessageId[] = [],
+  ): boolean => {
+    const settled = state.settle(token, succeeded, unconfirmed);
+    if (settled) sync();
+    return settled;
+  }, [state, sync]);
+  const markOptimisticMutationUnconfirmed = useCallback((
+    token: OptimisticMutationToken,
+  ): boolean => {
+    const marked = state.markUnconfirmed(token);
+    if (marked) sync();
+    return marked;
+  }, [state, sync]);
+  const clear = useCallback(() => { state.clear(); sync(); }, [state, sync]);
+  const clearMessage = useCallback(
+    () => { state.clearMessage(); sync(); },
+    [state, sync],
   );
-
-  const clear = useCallback(() => {
-    sessionScopeRef.current = "";
-    setWorkspace(null);
-    setSelection(null);
-  }, []);
-
-  const commitMessage = useCallback(
-    (message: MessageDetail, expectedScope: string): boolean => {
-      if (!expectedScope || sessionScopeRef.current !== expectedScope) {
-        return false;
-      }
-      setSelection({ message, sessionScope: expectedScope });
-      return true;
-    },
-    [],
-  );
-
+  const commitMessage = useCallback((
+    message: MessageDetail,
+    expectedScope: string,
+  ): boolean => {
+    const committed = state.commitMessage(message, expectedScope);
+    if (committed) sync();
+    return committed;
+  }, [state, sync]);
   const commitPreferences = useCallback((
     preferences: MessageListPreferences,
     expectedScope: string,
   ): boolean => {
-    if (!expectedScope || sessionScopeRef.current !== expectedScope) return false;
-    setWorkspace((current) => current?.sessionScope === expectedScope
-      ? { ...current, messageListPreferences: preferences }
-      : current);
-    return true;
-  }, []);
+    const committed = state.commitPreferences(preferences, expectedScope);
+    if (committed) sync();
+    return committed;
+  }, [state, sync]);
+  const sessionScope = snapshot.workspace?.sessionScope ?? "";
 
   return {
     acceptWorkspace,
     appendWorkspace,
+    beginOptimisticMutation,
     clear,
-    clearMessage: useCallback(() => setSelection(null), []),
+    clearMessage,
     commitMessage,
     commitPreferences,
-    currentScope: useCallback(() => sessionScopeRef.current, []),
+    currentMessageId: useCallback(() => state.currentMessageId(), [state]),
+    currentScope: useCallback(() => state.currentScope(), [state]),
     isCurrentScope: useCallback(
-      (expectedScope: string) =>
-        Boolean(expectedScope) && sessionScopeRef.current === expectedScope,
-      [],
+      (expectedScope: string) => state.isCurrentScope(expectedScope),
+      [state],
     ),
-    selectedMessage,
+    isMessageMutationBusy: snapshot.isMessageMutationBusy,
+    markOptimisticMutationUnconfirmed,
+    pendingMessageIds: snapshot.pendingMessageIds,
+    selectedMessage: snapshot.selectedMessage,
     sessionScope,
-    workspace,
+    settleOptimisticMutation,
+    workspace: snapshot.workspace,
   };
 };

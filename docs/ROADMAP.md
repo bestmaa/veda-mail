@@ -180,7 +180,7 @@ broader shortcut/accessibility audit listed above.
   and safe permanent-delete confirmation
 - [x] Drag/drop or keyboard move with an accessible non-pointer alternative
 - [x] Configurable density, sorting, and message-list preview
-- [ ] Optimistic updates with rollback and partial-failure reporting
+- [x] Optimistic updates with rollback and partial-failure reporting
 
 Acceptance: operations on large selections are bounded, cancellable where
 possible, and report which messages failed without corrupting local state.
@@ -203,6 +203,21 @@ Dokploy reported the exact amd64 image config, a healthy container, and a
 durable named volume at `/data`. The production health endpoint returned HTTP
 200 at `2026-08-01T16:01:14.621Z`, and setup status confirmed the installation
 is complete on that volume.
+
+Message mutations now use a session-scoped, view-versioned optimistic
+transaction layer. Read, star, label, archive, trash, restore, spam, and move
+actions project into the loaded list and open reader before provider
+confirmation; exact per-ID failures restore only rejected rows and fields.
+Unknown transport/provider outcomes stay explicitly unconfirmed until an
+authoritative refresh, newer intent supersedes older uncertain projections,
+and permanent deletion remains confirmation-first. Bulk response envelopes
+must contain a complete, unique `succeeded`/conservative-`failed` partition;
+an optional `unconfirmed` subset lets newer clients reconcile ambiguity while
+rolling clients fail safely. Client operations are capped at 2,000 IDs across
+server-bounded 100-ID batches and can stop after the current batch. Pending
+rows expose `aria-busy`, progress and partial outcomes remain visibly
+announced, unrelated selection is preserved, and Spam/Trash destruction now
+also requires provider removal rights and exact provider confirmation.
 
 Loaded-page multi-select and bulk actions are complete for both adapters.
 

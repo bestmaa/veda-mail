@@ -480,9 +480,19 @@ does not become a Veda label and later cleanup remains an operator concern.
   subject limits; untrusted cookie values are never used as limiter subjects.
 - Bulk mutation bodies are strict and capped at 64 KiB, 100 unique opaque IDs,
   20 verified-connection batches per minute, and four concurrent provider
-  calls. The response exposes failed IDs but suppresses provider exception
-  text. One client batch may run at a time, and mailbox/search/session/root
-  generation mismatches discard late completions.
+  calls. One client operation is capped at 2,000 loaded IDs. Responses expose
+  a complete `succeeded`/conservative-`failed` partition plus an optional
+  `unconfirmed` subset and suppress provider exception text; the browser
+  rejects missing, duplicate, contradictory, unknown, or wrong-typed outcomes.
+  One session mutation may be issued at a time, and mailbox/search/session/root
+  generation changes stop unsent batches without releasing the provider-write
+  lock early.
+- Reversible mutations project through a session- and view-versioned ledger.
+  Confirmed successes commit, definite policy failures roll back only matching
+  IDs, and ambiguous transport/provider outcomes remain projected only until
+  mandatory authoritative refresh. Background refreshes are rebased under the
+  active projection, newer per-message intent supersedes older uncertainty,
+  and stale completions cannot reopen or overwrite a different reader.
 - The encrypted signature file is checked against a 32 MiB ceiling before and
   after reading and before atomic replacement.
 
@@ -496,7 +506,8 @@ limiter and encrypted shared session repository.
   a focus-managed alert dialog whose cancel path performs no request.
 - The server treats that UI restriction only as usability. It independently
   resolves the submitted source mailbox, requires its role to be Spam/Trash,
-  and reloads every message to confirm current membership before destruction.
+  requires `mayRemoveItems`, and reloads every message to confirm current
+  membership before destruction.
 - JMAP performs a minimal mailbox-membership reload, binds `Email/set/destroy` to its
   `ifInState` collection state, and rejects `notDestroyed`. IMAP decodes
   the account-bound opaque locator, opens its source mailbox, revalidates

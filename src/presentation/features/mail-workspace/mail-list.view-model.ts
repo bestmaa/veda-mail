@@ -27,6 +27,7 @@ interface MailListOptions {
   readonly onSelectMailbox: (id: string) => void;
   readonly onSelectMessage: (id: string) => void;
   readonly onToggleMessage: (id: MessageId) => void;
+  readonly pendingMessageIds?: ReadonlySet<string>;
   readonly selectedMessageIds: ReadonlySet<string>;
   readonly selectionDisabled: boolean;
   readonly selectedMessageId?: string;
@@ -43,6 +44,7 @@ export const createMailListViewModel = ({
   onSelectMailbox,
   onSelectMessage,
   onToggleMessage,
+  pendingMessageIds = new Set(),
   selectedMessageIds,
   selectionDisabled,
   selectedMessageId,
@@ -89,6 +91,7 @@ export const createMailListViewModel = ({
         hasAttachment: message.hasAttachment,
         id: message.id,
         isActive: !opensDrafts && message.id === selectedMessageId,
+        isPending: pendingMessageIds.has(message.id),
         isSelected: selectedMessageIds.has(message.id),
         isSelectionDisabled: selectionDisabled,
         isStarred: message.isStarred,

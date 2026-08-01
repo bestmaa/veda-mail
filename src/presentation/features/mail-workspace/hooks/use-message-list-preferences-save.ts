@@ -22,7 +22,7 @@ interface PreferenceSaveOptions {
     readonly mailboxId: MailboxId | null;
     readonly preferences?: MessageListPreferences;
     readonly search: string;
-  }) => Promise<void>;
+  }) => Promise<unknown>;
 }
 
 export const useMessageListPreferencesSave = ({

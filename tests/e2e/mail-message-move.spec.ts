@@ -149,7 +149,9 @@ test("drags the selected group and keeps provider failures selected", async ({ p
     state.firstId,
     state.secondId,
   ]);
-  await expect(page.getByText("1 moved; 1 failed and remain selected.")).toBeAttached();
+  await expect(page.getByText(
+    "1 moved; 1 failed, was restored, and remains selected.",
+  )).toBeAttached();
   await expect(first).toHaveCount(0);
   await expect(second).toBeChecked();
 });

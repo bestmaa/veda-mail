@@ -34,9 +34,10 @@ export const MessageRowView = ({
   readonly showPreview: boolean;
 }) => (
   <article
+    aria-busy={message.isPending}
     className={`group relative rounded-2xl border transition ${
       densityClasses[density].row
-    } ${
+    } ${message.isPending ? "opacity-60" : ""} ${
       message.isSelected
         ? "border-indigo-300 bg-indigo-50 shadow-sm ring-1 ring-indigo-200"
         : message.isActive

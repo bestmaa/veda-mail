@@ -6,6 +6,7 @@ import {
   MailOpen,
   RotateCcw,
   ShieldAlert,
+  Square,
   Star,
   Trash2,
   X,
@@ -62,6 +63,15 @@ export const BulkActionsToolbarView = ({
       <span className="shrink-0 px-1 text-xs font-bold text-indigo-900">
         {bulk.selectedCount} selected
       </span>
+      {bulk.isBusy ? (
+        <ActionButton
+          disabled={!bulk.canStop}
+          label="Stop after current batch"
+          onClick={bulk.onStop}
+        >
+          <Square aria-hidden size={16} />
+        </ActionButton>
+      ) : null}
       <ActionButton
         disabled={bulk.isBusy}
         label="Mark selected messages as read"
