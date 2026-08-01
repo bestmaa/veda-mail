@@ -27,18 +27,20 @@ const installMoveFixture = async (
     sourceId: "",
   };
   const moved = new Set<string>();
-  await page.route("**/api/v1/mail/workspace**", async (route) => {
-    const response = await route.fetch();
-    const envelope = (await response.json()) as {
-      data: {
-        mailboxes: Array<Record<string, unknown>>;
-        messages: {
-          items: Array<Record<string, unknown>>;
-          nextCursor: string | null;
-          total: number;
-        };
+  const baselineResponse = await page.request.get("/api/v1/mail/workspace");
+  expect(baselineResponse.ok()).toBe(true);
+  const baseline = (await baselineResponse.json()) as {
+    data: {
+      mailboxes: Array<Record<string, unknown>>;
+      messages: {
+        items: Array<Record<string, unknown>>;
+        nextCursor: string | null;
+        total: number;
       };
     };
+  };
+  await page.route("**/api/v1/mail/workspace**", async (route) => {
+    const envelope = structuredClone(baseline);
     state.sourceId = String(envelope.data.mailboxes.find(
       (mailbox) => mailbox["role"] === "inbox",
     )?.["id"] ?? "");
@@ -78,7 +80,7 @@ const installMoveFixture = async (
       nextCursor: null,
       total: visible.length,
     };
-    await route.fulfill({ json: envelope, response });
+    await route.fulfill({ json: envelope, status: 200 });
   });
   await page.route("**/api/v1/mail/messages/bulk", async (route) => {
     state.body = route.request().postDataJSON() as Record<string, unknown>;

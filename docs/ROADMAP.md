@@ -178,7 +178,7 @@ broader shortcut/accessibility audit listed above.
 - [x] Portable labels model with a documented IMAP mapping
 - [x] Dedicated spam and trash behavior, empty-folder action, retention hints,
   and safe permanent-delete confirmation
-- [ ] Drag/drop or keyboard move with an accessible non-pointer alternative
+- [x] Drag/drop or keyboard move with an accessible non-pointer alternative
 - [ ] Configurable density, sorting, and message-list preview
 - [ ] Optimistic updates with rollback and partial-failure reporting
 
@@ -206,11 +206,14 @@ migrate across IMAP rename IDs. One residual IMAP race remains because the
 protocol has no atomic “delete only if still empty” primitive.
 
 Drag/drop and the complete keyboard/touch move alternative are implemented
-and locally verified for list, multi-select, reader, partial-failure, and
-mobile flows. The browser carries only an opaque per-drag token, requests use
-exact source/destination mailbox IDs in bounded 100-message chunks, and the
-server rechecks mailbox rights plus current membership. The checkbox remains
-open until the immutable release is deployed and verified in production.
+and verified for list, multi-select, reader, partial-failure, and mobile flows.
+The browser carries only an opaque per-drag token, requests use exact
+source/destination mailbox IDs in bounded 100-message chunks, and the server
+rechecks mailbox rights plus current membership. Merge `4d4f329` was deployed
+from immutable release digest
+`sha256:e672430ae5de17c18ded6a4b1bb153882189f73977a641577646154f549c503d`;
+the production health endpoint returned HTTP 200 at
+`2026-08-01T13:51:47.440Z`.
 
 Portable label create, rename, recolor, display, bulk/single apply, and remove
 are implemented for both included adapters. Opaque stable IDs map to JMAP
