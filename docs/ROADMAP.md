@@ -175,7 +175,7 @@ broader shortcut/accessibility audit listed above.
 - [x] Multi-select and bulk read/unread, star, archive, spam, trash, restore,
   move, and permanent-delete actions
 - [x] Create, rename, recolor, nest, and delete custom folders/mailboxes
-- [ ] Portable labels model with a documented IMAP mapping
+- [x] Portable labels model with a documented IMAP mapping
 - [ ] Dedicated spam and trash behavior, empty-folder action, retention hints,
   and safe permanent-delete confirmation
 - [ ] Drag/drop or keyboard move with an accessible non-pointer alternative
@@ -209,11 +209,11 @@ Portable label create, rename, recolor, display, bulk/single apply, and remove
 are implemented for both included adapters. Opaque stable IDs map to JMAP
 keywords or capability-checked IMAP user flags; the encrypted account catalog,
 strict scoped APIs, state/right/capacity checks, post-mutation verification,
-accessible UI, and provider/security tests are complete. The checkbox remains
-open until the release image is deployed and verified. Resumable two-phase
-deletion now blocks new applications, persists bounded provider progress behind
-an expiring lease, survives interruption, requires two empty checks, and
-retains a tombstone.
+accessible UI, and provider/security tests are complete. The immutable release
+image is deployed and verified healthy in production. Resumable two-phase
+deletion blocks new applications, persists bounded provider progress behind an
+expiring lease, survives interruption, requires two empty checks, and retains a
+tombstone.
 
 Selection is explicitly limited to loaded messages, excludes editable Drafts,
 survives only within the current mailbox/search/session view, and retains only
