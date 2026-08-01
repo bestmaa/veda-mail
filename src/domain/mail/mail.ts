@@ -116,8 +116,39 @@ export type MessageMutation =
   | {
       readonly mailboxId: MailboxId;
       readonly messageId: MessageId;
+      readonly type: "destroy";
+    }
+  | {
+      readonly mailboxId: MailboxId;
+      readonly messageId: MessageId;
       readonly type: "move";
     };
+
+export type BulkMessageMutation =
+  | {
+      readonly messageIds: readonly MessageId[];
+      readonly type: "archive" | "delete" | "restore";
+    }
+  | {
+      readonly messageIds: readonly MessageId[];
+      readonly type: "set-read" | "set-starred";
+      readonly value: boolean;
+    }
+  | {
+      readonly mailboxId: MailboxId;
+      readonly messageIds: readonly MessageId[];
+      readonly type: "destroy";
+    }
+  | {
+      readonly mailboxId: MailboxId;
+      readonly messageIds: readonly MessageId[];
+      readonly type: "move";
+    };
+
+export interface BulkMessageMutationResult {
+  readonly failed: readonly MessageId[];
+  readonly succeeded: readonly MessageId[];
+}
 
 export interface ComposeInput {
   readonly attachmentIds?: readonly AttachmentUploadId[];

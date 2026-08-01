@@ -384,11 +384,34 @@ because the installation session secret is required for decryption.
   a shared atomic ledger before it can preserve exactly-once provider access.
 - Mailbox reads and mutations have global limits plus verified-connection
   subject limits; untrusted cookie values are never used as limiter subjects.
+- Bulk mutation bodies are strict and capped at 64 KiB, 100 unique opaque IDs,
+  20 verified-connection batches per minute, and four concurrent provider
+  calls. The response exposes failed IDs but suppresses provider exception
+  text. One client batch may run at a time, and mailbox/search/session/root
+  generation mismatches discard late completions.
 - The encrypted signature file is checked against a 32 MiB ceiling before and
   after reading and before atomic replacement.
 
 Residual risk: limits are in-process. Horizontal scaling requires a distributed
 limiter and encrypted shared session repository.
+
+### Irreversible message deletion
+
+- The ordinary `delete` action remains a move to Trash. The distinct
+  `destroy` mutation is exposed only from Spam/Trash bulk selection and behind
+  a focus-managed alert dialog whose cancel path performs no request.
+- The server treats that UI restriction only as usability. It independently
+  resolves the submitted source mailbox, requires its role to be Spam/Trash,
+  and reloads every message to confirm current membership before destruction.
+- JMAP performs a minimal mailbox-membership reload, binds `Email/set/destroy` to its
+  `ifInState` collection state, and rejects `notDestroyed`. IMAP decodes
+  the account-bound opaque locator, opens its source mailbox, revalidates
+  `UIDVALIDITY`, and only then issues UID-scoped EXPUNGE. A stale or cross-user
+  locator fails before deletion.
+- Destruction is intentionally not optimistic. Only server-confirmed successes
+  leave selection; failures remain selected and the mailbox refreshes after at
+  least one success. The operation is still irreversible at the provider and
+  cannot be undone by Veda Mail.
 
 ## Outbound rich-text boundary
 

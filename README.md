@@ -21,8 +21,11 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Allowed-domain controls and a protected provider configuration
 - Secure Stalwart mailbox-user listing, details, and creation with admin
   password/2FA step-up, durable idempotency, and a server-only management key
-- Inbox, reader, search, To/CC/BCC compose, Reply, Reply All, Forward, star,
-  archive, and delete flows
+- Cursor-paginated inbox, reader, search, To/CC/BCC compose, Reply, Reply All,
+  and Forward flows
+- Accessible loaded-message multi-select with bounded bulk read/unread,
+  star/unstar, archive, spam, trash, restore, move, and confirmed permanent
+  delete across JMAP and IMAP
 - Safe rich-text composing with headings, emphasis, lists, isolated links,
   plain-text mode, and a server-derived readable text alternative
 - Multiple named plain or sanitized-rich signatures per mailbox identity, with

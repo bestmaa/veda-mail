@@ -1,0 +1,136 @@
+import { describe, expect, it, vi } from "vitest";
+
+import type { MailWorkspace, MailboxRole } from "@/domain/mail/mail";
+import { id } from "@/domain/shared/brand";
+import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
+
+const mailbox = (role: MailboxRole) => ({
+  color: "#000",
+  id: id.mailbox(role),
+  name: role[0]!.toUpperCase() + role.slice(1),
+  role,
+  total: 1,
+  unread: 0,
+});
+const workspace: MailWorkspace = {
+  account: {
+    email: "member@example.com",
+    id: id.account("member"),
+    name: "Member",
+    providerId: id.provider("mock"),
+  },
+  draftCapability: { status: "supported" },
+  mailboxes: [
+    mailbox("inbox"),
+    mailbox("archive"),
+    mailbox("spam"),
+    mailbox("trash"),
+    mailbox("drafts"),
+    mailbox("sent"),
+    mailbox("custom"),
+  ],
+  messages: { items: [], nextCursor: null, total: 0 },
+  sessionExpiresAt: "2026-08-01T00:00:00.000Z",
+  sessionScope: "scope-a",
+};
+
+type BulkModel = Parameters<typeof createBulkActionsViewModel>[0]["bulk"];
+const bulk = () => ({
+  allLoadedSelected: true,
+  clear: vi.fn(),
+  error: null,
+  isBusy: false,
+  mutate: vi.fn(),
+  selectedIds: new Set([id.message("message-a")]),
+  status: "",
+  toggle: vi.fn(),
+  toggleAllLoaded: vi.fn(),
+}) as unknown as BulkModel;
+const confirmation = (selection: BulkModel) => ({
+  isOpen: false,
+  onCancel: vi.fn(),
+  onConfirm: () => void selection.mutate({
+    mailboxId: id.mailbox("trash"), type: "destroy",
+  }),
+  onRequest: vi.fn(),
+});
+
+describe("bulk actions view model", () => {
+  it("maps every inbox action to a provider-independent mutation", () => {
+    const selection = bulk();
+    const model = createBulkActionsViewModel({
+      activeMailboxId: id.mailbox("inbox"),
+      bulk: selection,
+      destroyConfirmation: confirmation(selection),
+      workspace,
+    });
+
+    expect(model).toMatchObject({
+      canArchive: true,
+      canDestroy: false,
+      canRestore: false,
+      canSpam: true,
+      canTrash: true,
+      selectedCount: 1,
+    });
+    expect(model.moveTargets.map((target) => target.id)).toEqual([
+      "archive", "spam", "trash", "custom",
+    ]);
+    model.onMarkRead();
+    model.onMarkUnread();
+    model.onStar();
+    model.onUnstar();
+    model.onArchive();
+    model.onSpam();
+    model.onTrash();
+    model.onMove("custom");
+    const mutate = vi.mocked(selection.mutate);
+    expect(mutate.mock.calls.map(([action]) => action)).toEqual([
+      { type: "set-read", value: true },
+      { type: "set-read", value: false },
+      { type: "set-starred", value: true },
+      { type: "set-starred", value: false },
+      { type: "archive" },
+      { mailboxId: "spam", type: "move" },
+      { type: "delete" },
+      { mailboxId: "custom", type: "move" },
+    ]);
+  });
+
+  it("offers restore and confirmed permanent-delete intent in trash", () => {
+    const selection = bulk();
+    const model = createBulkActionsViewModel({
+      activeMailboxId: id.mailbox("trash"),
+      bulk: selection,
+      destroyConfirmation: confirmation(selection),
+      workspace,
+    });
+
+    expect(model.canRestore).toBe(true);
+    expect(model.canDestroy).toBe(true);
+    expect(model.canTrash).toBe(false);
+    model.onRestore();
+    model.destroyConfirmation.onConfirm();
+    expect(selection.mutate).toHaveBeenNthCalledWith(1, { type: "restore" });
+    expect(selection.mutate).toHaveBeenNthCalledWith(2, {
+      mailboxId: "trash",
+      type: "destroy",
+    });
+  });
+
+  it("disables bulk selection for provider draft rows", () => {
+    const selection = bulk();
+    const model = createBulkActionsViewModel({
+      activeMailboxId: id.mailbox("drafts"),
+      bulk: selection,
+      destroyConfirmation: confirmation(selection),
+      workspace,
+    });
+
+    expect(model.selectedCount).toBe(0);
+    expect(model.canArchive).toBe(false);
+    expect(model.canSpam).toBe(false);
+    expect(model.canTrash).toBe(false);
+    expect(model.canDestroy).toBe(false);
+  });
+});

@@ -49,6 +49,9 @@ describe("draft mailbox list routing", () => {
       onOpenDraft,
       onSelectMailbox: vi.fn(),
       onSelectMessage,
+      onToggleMessage: vi.fn(),
+      selectedMessageIds: new Set(),
+      selectionDisabled: false,
       workspace,
     });
 
@@ -69,6 +72,9 @@ describe("draft mailbox list routing", () => {
       onOpenDraft,
       onSelectMailbox: vi.fn(),
       onSelectMessage,
+      onToggleMessage: vi.fn(),
+      selectedMessageIds: new Set(),
+      selectionDisabled: false,
       workspace,
     });
 

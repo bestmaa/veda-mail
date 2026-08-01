@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     fetchOne: vi.fn(),
     mailboxOpen: vi.fn(),
     messageFlagsAdd: vi.fn(),
+    messageDelete: vi.fn(),
   },
   sendMail: vi.fn(),
   withImapClient: vi.fn(),
@@ -107,6 +108,28 @@ describe("IMAP writer message identity", () => {
       }),
     ).rejects.toThrow("Message not found.");
     expect(mocks.client.messageFlagsAdd).not.toHaveBeenCalled();
+  });
+
+  it("permanently deletes only the scoped UID after UIDVALIDITY revalidation", async () => {
+    mocks.client.messageDelete.mockResolvedValue(true);
+
+    await new ImapMailWriter(config).mutateMessage({
+      mailboxId: id.mailbox("INBOX"),
+      messageId: messageId(),
+      type: "destroy",
+    });
+
+    expect(mocks.client.messageDelete).toHaveBeenCalledWith(77, { uid: true });
+  });
+
+  it("does not report a missing UID as permanently deleted", async () => {
+    mocks.client.messageDelete.mockResolvedValue(false);
+
+    await expect(new ImapMailWriter(config).mutateMessage({
+      mailboxId: id.mailbox("INBOX"),
+      messageId: messageId(),
+      type: "destroy",
+    })).rejects.toThrow("Message not found.");
   });
 
   it("rejects a stale reply before fetching or sending", async () => {

@@ -1,6 +1,7 @@
 import { PenLine } from "lucide-react";
 
 import { ComposerRecoveryPromptConnector } from "@/presentation/features/mail-workspace/connectors/composer-recovery-prompt.connector";
+import { BulkDestroyConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/bulk-destroy-confirmation.connector";
 import { MemberSignOutConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/member-sign-out-confirmation.connector";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { AccountSettingsView } from "@/presentation/features/mail-workspace/ui/account-settings.view";
@@ -22,7 +23,8 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     );
   }
   const topLevelModalOpen = props.composer.recoveryPrompt.isOpen ||
-    props.session.confirmation.isOpen;
+    props.session.confirmation.isOpen ||
+    props.bulkActions.destroyConfirmation.isOpen;
   return (
   <>
   <main
@@ -66,6 +68,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       >
         <MessageListView
           activeFolder={props.activeFolder}
+          bulkActions={props.bulkActions}
           error={props.error}
           hasMore={props.hasMoreMessages}
           isLoading={props.isLoading}
@@ -122,6 +125,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     <AccountSettingsView settings={props.settings} />
   </main>
   <ComposerRecoveryPromptConnector prompt={props.composer.recoveryPrompt} />
+  <BulkDestroyConfirmationConnector bulk={props.bulkActions} />
   <MemberSignOutConfirmationConnector session={props.session} />
   </>
   );

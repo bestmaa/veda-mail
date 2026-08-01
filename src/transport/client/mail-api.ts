@@ -1,4 +1,6 @@
 import type {
+  BulkMessageMutation,
+  BulkMessageMutationResult,
   ComposeInput,
   MailWorkspace,
   MessageDetail,
@@ -122,6 +124,17 @@ export const mailApi = {
   mutateMessage(mutation: MessageMutation, sessionScope: string) {
     return fetchData<{ readonly updated: boolean }>(
       `/api/v1/mail/messages/${encodeURIComponent(mutation.messageId)}`,
+      {
+        body: JSON.stringify(mutation),
+        headers: mailSessionScopeHeaders(sessionScope),
+        method: "PATCH",
+      },
+    );
+  },
+
+  mutateMessages(mutation: BulkMessageMutation, sessionScope: string) {
+    return fetchData<BulkMessageMutationResult>(
+      "/api/v1/mail/messages/bulk",
       {
         body: JSON.stringify(mutation),
         headers: mailSessionScopeHeaders(sessionScope),

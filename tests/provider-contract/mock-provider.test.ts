@@ -64,6 +64,15 @@ describe("mock provider contract", () => {
     });
     expect(archived.items.some((item) => item.id === message.id)).toBe(true);
 
+    await gateway.mutateMessage({
+      mailboxId: archive?.id ?? id.mailbox("archive"),
+      messageId: message.id,
+      type: "destroy",
+    });
+    await expect(gateway.getMessage(message.id)).rejects.toThrow(
+      "Message not found.",
+    );
+
     const receipt = await gateway.sendMessage({
       bcc: [],
       body: "Provider contract test",

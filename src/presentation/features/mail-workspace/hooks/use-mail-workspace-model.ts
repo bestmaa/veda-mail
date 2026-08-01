@@ -1,5 +1,4 @@
 "use client";
-
 import { useCallback, useEffect, useMemo } from "react";
 
 import { createComposerViewModel } from "@/presentation/features/mail-workspace/composer.view-model";
@@ -18,6 +17,8 @@ import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hoo
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
 import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model";
 import { initials } from "@/presentation/shared/formatters/mail-formatters";
+import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
+import { useBulkDestroyConfirmation } from "@/presentation/features/mail-workspace/hooks/use-bulk-destroy-confirmation";
 import {
   createBrandingViewModel,
   type BrandingInput,
@@ -114,9 +115,20 @@ export const useMailWorkspaceModel = ({
       navigation.close();
     },
     onSelectMessage: mail.selectMessage,
+    onToggleMessage: mail.bulk.toggle,
+    selectedMessageIds: mail.bulk.selectedIds,
+    selectionDisabled: mail.bulk.isBusy,
     ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
     workspace: mail.workspace,
   }), [composer.openSavedDraft, draftsEnabled, mail, navigation]);
+
+  const destroyConfirmation = useBulkDestroyConfirmation(mail.bulk.selectedIds.size > 0, () => mail.activeMailboxId && void mail.bulk.mutate({ mailboxId: mail.activeMailboxId, type: "destroy" }));
+  const bulkActions = createBulkActionsViewModel({
+    activeMailboxId: mail.activeMailboxId,
+    bulk: mail.bulk,
+    destroyConfirmation,
+    workspace,
+  });
 
   useEffect(() => {
     closeAttachmentPreview();
@@ -189,6 +201,7 @@ export const useMailWorkspaceModel = ({
     },
     branding: brandingView,
     activeFolder: mailList.activeFolder,
+    bulkActions,
     composer: createComposerViewModel(composer),
     error:
       mail.error ??

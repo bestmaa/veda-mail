@@ -10,6 +10,9 @@ import {
 } from "@/transport/http/draft-reference-schemas";
 import { z } from "zod";
 
+export { bulkMessageMutationSchema } from "@/transport/http/bulk-message-mutation.schema";
+export { messageMutationSchema } from "@/transport/http/message-mutation.schema";
+
 export const mailAddressSchema = z
   .object({
     email: z
@@ -184,23 +187,6 @@ export const sendMessageSchema = z
       path: ["to"],
     },
   );
-
-export const messageMutationSchema = z.discriminatedUnion("type", [
-  z.object({
-    messageId: z.string().transform(id.message),
-    type: z.enum(["archive", "delete", "restore"]),
-  }),
-  z.object({
-    messageId: z.string().transform(id.message),
-    type: z.enum(["set-read", "set-starred"]),
-    value: z.boolean(),
-  }),
-  z.object({
-    mailboxId: z.string().transform(id.mailbox),
-    messageId: z.string().transform(id.message),
-    type: z.literal("move"),
-  }),
-]);
 
 export const memberProfileUpdateSchema = z
   .object({
