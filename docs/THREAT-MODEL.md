@@ -476,6 +476,22 @@ limiter and encrypted shared session repository.
   leave selection; failures remain selected and the mailbox refreshes after at
   least one success. The operation is still irreversible at the provider and
   cannot be undone by Veda Mail.
+- Empty Spam/Trash is prepare-first. The server persists a provider snapshot
+  cursor before deletion, exposes only prepared operations for resume, and
+  abandons an unprepared failed claim so a restart cannot silently include mail
+  received after confirmation. Encrypted owner-scoped state, a 60-second random
+  lease, strict cumulative progress checks, and 100-target batches bound replay
+  and resource use.
+- JMAP cursors include account, mailbox, cutoff, and query state. Additions
+  reported by `Email/queryChanges`, an uncalculable change set, stale collection
+  state, membership drift, denied removal rights, or an unverified destroy all
+  fail closed. IMAP cursors include a confirmation-time upper UID and validate
+  canonical mailbox identity, UIDVALIDITY, optional OBJECTID, write access, and
+  UIDPLUS before targeted expunge; post-confirmation UIDs and unrelated
+  pre-existing `\\Deleted` messages are never expunged.
+- Cursor MAC keys are derived from the installation secret and normalized owner
+  identity rather than the mailbox password, so a leaked encrypted-state cursor
+  is not an offline provider-password verifier. Cursors remain server-only.
 
 ## Outbound rich-text boundary
 

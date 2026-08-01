@@ -20,6 +20,7 @@ import { createBulkActionsViewModel } from "@/presentation/features/mail-workspa
 import { useBulkDestroyConfirmation } from "@/presentation/features/mail-workspace/hooks/use-bulk-destroy-confirmation";
 import { useMailboxWorkspaceManagement } from "@/presentation/features/mail-workspace/hooks/use-mailbox-workspace-management";
 import { useLabelManagement } from "@/presentation/features/mail-workspace/hooks/use-label-management";
+import { useMailboxLifecycle } from "@/presentation/features/mail-workspace/hooks/use-mailbox-lifecycle";
 import { createBrandingViewModel, type BrandingInput } from "@/presentation/shared/branding/branding.view-model";
 interface MailWorkspaceModelOptions {
   readonly branding: BrandingInput; readonly canSignOut: boolean;
@@ -27,12 +28,9 @@ interface MailWorkspaceModelOptions {
   readonly providerLabel: string; readonly signOutPath: string;
 }
 export const useMailWorkspaceModel = ({
-  branding,
-  canSignOut,
-  initialSessionScope,
-  maxAttachmentBytes,
-  providerLabel,
-  signOutPath,
+  branding, canSignOut,
+  initialSessionScope, maxAttachmentBytes,
+  providerLabel, signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
   const mail = useMailDataModel();
   const workspace = mail.workspace;
@@ -46,11 +44,7 @@ export const useMailWorkspaceModel = ({
           sessionExpiresAt: recoveryExpiresAt, sessionScope }
       : null,
   [recoveryAccountId, recoveryExpiresAt, recoveryProviderId, sessionScope]);
-  const partialDelivery = usePartialDeliveryNotice(
-    mail.refresh,
-    sessionScope,
-    mail.handleSessionFailure,
-  );
+  const partialDelivery = usePartialDeliveryNotice(mail.refresh, sessionScope, mail.handleSessionFailure);
   const navigation = useMobileNavigationModel();
   const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure);
   const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
@@ -61,11 +55,7 @@ export const useMailWorkspaceModel = ({
     mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure);
-  const signatureSettings = useEmailSignatureSettingsModel(
-    accountEmail,
-    emailSignatures,
-    sessionScope,
-  );
+  const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
   const isComposerReady =
     Boolean(sessionScope) &&
     !emailSignatures.isLoading &&
@@ -93,11 +83,7 @@ export const useMailWorkspaceModel = ({
     signOutPath,
   });
   const settings = useAccountSettingsModel(
-    accountEmail,
-    workspaceAccountName,
-    signatureSettings,
-    sessionScope,
-    mail.handleSessionFailure,
+    accountEmail, workspaceAccountName, signatureSettings, sessionScope, mail.handleSessionFailure,
   );
   const mailboxManagement = useMailboxWorkspaceManagement(mail);
   const labelManagement = useLabelManagement({
@@ -124,17 +110,30 @@ export const useMailWorkspaceModel = ({
     ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
     workspace: mail.workspace,
   }), [composer.openSavedDraft, draftsEnabled, mail, mailboxManagement.openEdit, navigation]);
+  const activeMailbox = workspace?.mailboxes.find(
+    (mailbox) => mailbox.id === mail.activeMailboxId);
+  const canPermanentlyDelete = activeMailbox?.rights.mayRemoveItems === true &&
+    (activeMailbox.role === "spam" || activeMailbox.role === "trash");
   const destroyConfirmation = useBulkDestroyConfirmation(mail.bulk.selectedIds.size > 0, () => mail.activeMailboxId && void mail.bulk.mutate({ mailboxId: mail.activeMailboxId, type: "destroy" }));
+  const readerDestroyConfirmation = useBulkDestroyConfirmation(
+    Boolean(mail.selectedMessage && canPermanentlyDelete && !mail.isReaderMutating),
+    () => {
+      if (mail.activeMailboxId) mail.destroy(mail.activeMailboxId);
+    },
+  );
   const bulkActions = createBulkActionsViewModel({
-    activeMailboxId: mail.activeMailboxId,
-    bulk: mail.bulk,
-    destroyConfirmation,
-    workspace,
+    activeMailboxId: mail.activeMailboxId, bulk: mail.bulk,
+    destroyConfirmation, workspace,
   });
-  useEffect(() => {
-    closeAttachmentPreview();
-  }, [closeAttachmentPreview, mail.selectedMessage?.id]);
-
+  const mailboxLifecycle = useMailboxLifecycle({
+    activeMailboxId: mail.activeMailboxId, activeRole: mailList.activeRole,
+    bulkBusy: mail.bulk.isBusy, handleSessionFailure: mail.handleSessionFailure,
+    hasActiveSearch: mail.hasActiveSearch,
+    mayRemoveItems: activeMailbox?.rights.mayRemoveItems === true,
+    operations: workspace?.mailboxEmptyOperations ?? [], refresh: mail.refresh,
+    sessionScope, total: workspace?.messages.total ?? 0,
+  });
+  useEffect(() => closeAttachmentPreview(), [closeAttachmentPreview, mail.selectedMessage?.id]);
   const reader = useMemo(
     () =>
       createReaderViewModel({
@@ -144,7 +143,7 @@ export const useMailWorkspaceModel = ({
         canArchive: Boolean(
           mail.workspace?.mailboxes.some(
             (mailbox) => mailbox.role === "archive",
-          ),
+          ) && mailList.activeRole !== "spam" && mailList.activeRole !== "trash",
         ),
         deletingLabelIds: new Set((workspace?.labelDeletions ?? []).map(({ labelId }) => labelId)),
         handleSessionFailure: mail.handleSessionFailure,
@@ -157,7 +156,7 @@ export const useMailWorkspaceModel = ({
         sessionScope,
       }),
     [mail.isReaderLoading, mail.readerError, mail.selectedMessage,
-      mail.handleSessionFailure, mail.workspace?.mailboxes, archiveDownload,
+      mail.handleSessionFailure, mail.workspace?.mailboxes, mailList.activeRole, archiveDownload,
       attachmentDownload, attachmentPreview, sessionScope,
       workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel],
   );
@@ -197,22 +196,19 @@ export const useMailWorkspaceModel = ({
       name: accountName,
       provider: providerLabel,
     },
-    branding: brandingView,
-    activeFolder: mailList.activeFolder,
-    bulkActions,
+    branding: brandingView, ...mailList, bulkActions,
+    canPermanentlyDelete,
     composer: createComposerViewModel(composer),
     error:
       mail.error ??
       session.error ??
       (emailSignatures.hasSessionChanged ? emailSignatures.error : null),
-    folders: mailList.folders,
     isComposerReady,
     isLoading: mail.isLoading,
     isLoadingMore: mail.isLoadingMore,
-    mailboxManagement,
-    labelManagement,
+    isReaderMutating: mail.isReaderMutating,
+    mailboxManagement, mailboxLifecycle, labelManagement,
     loadMoreError: mail.loadMoreError,
-    messages: mailList.messages,
     navigation: {
       isOpen: navigation.isOpen,
       onClose: navigation.close,
@@ -227,12 +223,15 @@ export const useMailWorkspaceModel = ({
     onRefresh: mail.onRefresh,
     onReply,
     onReplyAll,
+    onRequestReaderDestroy: readerDestroyConfirmation.onRequest,
+    onRestore: mail.restore,
     onSearchClear: mail.onSearchClear,
     onSearchSubmit: mail.onSearchSubmit,
     onToggleRead: mail.toggleRead,
     onToggleStar: mail.toggleStar,
     deliveryNotice: partialDelivery.notice,
     reader,
+    readerDestroyConfirmation,
     searchInput: mail.onSearchInput,
     searchValue: mail.searchValue,
     session: {

@@ -15,6 +15,7 @@ type Definition = Omit<Mailbox, "total" | "unread">;
 const rights = (custom = false) => ({
   mayCreateChild: true,
   mayDelete: custom,
+  mayRemoveItems: true,
   mayRename: custom,
 });
 

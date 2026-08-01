@@ -7,6 +7,7 @@ import { MessageListView } from "@/presentation/features/mail-workspace/ui/messa
 
 const props = {
   activeFolder: "Inbox",
+  activeRole: "inbox" as const,
   bulkActions: {
     allLoadedSelected: false,
     canArchive: true,
@@ -38,7 +39,9 @@ const props = {
     onToggleAllLoaded: vi.fn(),
     onTrash: vi.fn(),
     onUnstar: vi.fn(),
+    restoreLabel: "Restore selected messages from Trash to Inbox",
     selectedCount: 0,
+    spamLabel: "Move selected messages to Spam",
     status: "",
   },
   error: null,
@@ -46,6 +49,23 @@ const props = {
   isLoading: false,
   isLoadingMore: false,
   loadMoreError: null,
+  mailboxLifecycle: {
+    confirmation: {
+      description: "",
+      isOpen: false,
+      onCancel: vi.fn(),
+      onConfirm: vi.fn(),
+      title: "",
+    },
+    disabledReason: null,
+    emptyLabel: "Empty Trash",
+    error: null,
+    isBusy: false,
+    onRequestEmpty: vi.fn(),
+    retentionHint: "",
+    role: null,
+    status: "",
+  },
   messages: [
     {
       avatar: "S",

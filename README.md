@@ -26,6 +26,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Accessible loaded-message multi-select with bounded bulk read/unread,
   star/unstar, archive, spam, trash, restore, move, and confirmed permanent
   delete across JMAP and IMAP
+- Dedicated Spam and Trash lifecycle banners with provider-neutral retention
+  hints, restore/not-spam reader actions, and confirmed resumable Empty actions
+  that preserve every message arriving after confirmation
 - Account-private portable labels with create/rename/recolor, visible chips,
   single or bulk apply/remove, and resumable verified deletion through JMAP
   keywords or IMAP user flags

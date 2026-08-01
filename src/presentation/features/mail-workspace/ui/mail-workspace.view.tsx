@@ -2,6 +2,8 @@ import { PenLine } from "lucide-react";
 
 import { ComposerRecoveryPromptConnector } from "@/presentation/features/mail-workspace/connectors/composer-recovery-prompt.connector";
 import { BulkDestroyConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/bulk-destroy-confirmation.connector";
+import { MailboxEmptyConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/mailbox-empty-confirmation.connector";
+import { ReaderDestroyConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/reader-destroy-confirmation.connector";
 import { MemberSignOutConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/member-sign-out-confirmation.connector";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { AccountSettingsView } from "@/presentation/features/mail-workspace/ui/account-settings.view";
@@ -27,6 +29,8 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   const topLevelModalOpen = props.composer.recoveryPrompt.isOpen ||
     props.session.confirmation.isOpen ||
     props.bulkActions.destroyConfirmation.isOpen ||
+    props.readerDestroyConfirmation.isOpen ||
+    props.mailboxLifecycle.confirmation.isOpen ||
     props.mailboxManagement.isOpen ||
     props.labelManagement.isOpen;
   return (
@@ -74,6 +78,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       >
         <MessageListView
           activeFolder={props.activeFolder}
+          activeRole={props.activeRole}
           bulkActions={props.bulkActions}
           error={props.error}
           hasMore={props.hasMoreMessages}
@@ -81,6 +86,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
           isLoadingMore={props.isLoadingMore}
           loadMoreError={props.loadMoreError}
           messages={props.messages}
+          mailboxLifecycle={props.mailboxLifecycle}
           onLoadMore={props.onLoadMore}
           total={props.total}
         />
@@ -90,13 +96,18 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       >
         {props.reader ? (
           <MessageReaderView
+            activeRole={props.activeRole}
+            canPermanentlyDelete={props.canPermanentlyDelete}
             isComposerReady={props.isComposerReady}
+            isMutating={props.isReaderMutating}
             onArchive={props.onArchive}
             onClose={props.onCloseReader}
             onDelete={props.onDelete}
             onForward={props.onForward}
             onReply={props.onReply}
             onReplyAll={props.onReplyAll}
+            onRequestDestroy={props.onRequestReaderDestroy}
+            onRestore={props.onRestore}
             onToggleRead={props.onToggleRead}
             onToggleStar={props.onToggleStar}
             reader={props.reader}
@@ -132,6 +143,10 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   </main>
   <ComposerRecoveryPromptConnector prompt={props.composer.recoveryPrompt} />
   <BulkDestroyConfirmationConnector bulk={props.bulkActions} />
+  <MailboxEmptyConfirmationConnector lifecycle={props.mailboxLifecycle} />
+  <ReaderDestroyConfirmationConnector
+    confirmation={props.readerDestroyConfirmation}
+  />
   <MemberSignOutConfirmationConnector session={props.session} />
   <MailboxManagementView management={props.mailboxManagement} />
   <LabelManagementView management={props.labelManagement} />

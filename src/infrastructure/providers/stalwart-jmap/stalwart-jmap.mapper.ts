@@ -76,6 +76,7 @@ export const mapMailbox = (mailbox: JmapMailbox): Mailbox => {
     rights: {
       mayCreateChild: mailbox.myRights?.mayCreateChild ?? false,
       mayDelete: role === "custom" && (mailbox.myRights?.mayDelete ?? false),
+      mayRemoveItems: mailbox.myRights?.mayRemoveItems ?? false,
       mayRename: role === "custom" && (mailbox.myRights?.mayRename ?? false),
       maySetKeywords: mailbox.myRights?.maySetKeywords ?? false,
     },

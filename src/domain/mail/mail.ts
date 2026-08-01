@@ -19,6 +19,7 @@ import type {
   MailLabel,
   MailLabelDeletion,
 } from "@/domain/mail/label";
+import type { MailboxEmptyOperation } from "@/domain/mail/mailbox-empty";
 export type {
   Mailbox,
   MailboxMutation,
@@ -237,6 +238,7 @@ export interface ProviderMailWorkspace {
 export interface MailWorkspace extends ProviderMailWorkspace {
   readonly labelDeletions?: readonly MailLabelDeletion[];
   readonly labels: readonly MailLabel[];
+  readonly mailboxEmptyOperations?: readonly MailboxEmptyOperation[];
   readonly sessionExpiresAt: string;
   readonly sessionScope: string;
 }

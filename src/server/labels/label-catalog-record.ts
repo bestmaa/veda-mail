@@ -9,6 +9,15 @@ const deletionLeaseSchema = z.object({
   expiresAt: z.string().datetime(),
   id: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
 }).strict();
+const mailboxEmptyOperationSchema = z.object({
+  cursor: z.string().min(1).max(2_048).nullable(),
+  lease: deletionLeaseSchema.nullable(),
+  mailboxId: z.string().min(1).max(2_048),
+  processed: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  removed: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  startedAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+}).strict();
 const labelDeletionSchema = z.object({
   cursor: z.string().max(4_096).nullable(),
   emptyChecks: z.number().int().min(0).max(2),
@@ -30,11 +39,16 @@ const storedLabelSchema = z.object({
 
 export const storedLabelCatalogSchema = z.object({
   labels: z.record(labelIdSchema, storedLabelSchema),
+  mailboxEmptyOperations: z.array(mailboxEmptyOperationSchema).max(4)
+    .default([]),
   tombstones: z.record(labelIdSchema, z.string().datetime()),
   updatedAt: z.string().datetime(),
   version: z.literal(1),
 }).strict().refine((value) => Object.keys(value.labels).length <= 256)
-  .refine((value) => Object.keys(value.tombstones).length <= 512);
+  .refine((value) => Object.keys(value.tombstones).length <= 512)
+  .refine((value) => new Set(
+    value.mailboxEmptyOperations.map(({ mailboxId }) => mailboxId),
+  ).size === value.mailboxEmptyOperations.length);
 
 const encryptedCatalogSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
@@ -54,11 +68,15 @@ export const labelCatalogFileSchema = z.object({
 
 export type StoredLabelCatalog = z.infer<typeof storedLabelCatalogSchema>;
 export type StoredLabelDeletion = z.infer<typeof labelDeletionSchema>;
+export type StoredMailboxEmptyOperation = z.infer<
+  typeof mailboxEmptyOperationSchema
+>;
 export type LabelCatalogFile = z.infer<typeof labelCatalogFileSchema>;
 export type EncryptedLabelCatalog = LabelCatalogFile["owners"][string];
 
 export const emptyLabelCatalog = (): StoredLabelCatalog => ({
   labels: {},
+  mailboxEmptyOperations: [],
   tombstones: {},
   updatedAt: new Date(0).toISOString(),
   version: 1,

@@ -84,6 +84,7 @@ describe("mail workspace route", () => {
         ...workspace,
         labelDeletions: [],
         labels: [],
+        mailboxEmptyOperations: [],
         sessionExpiresAt: connectionExpiresAt(mocks.connection),
         sessionScope: mailSessionScope(mocks.connection),
       },

@@ -10,7 +10,9 @@ const mailbox = (role: MailboxRole) => ({
   name: role[0]!.toUpperCase() + role.slice(1),
   parentId: null,
   role,
-  rights: { mayCreateChild: true, mayDelete: false, mayRename: false },
+  rights: {
+    mayCreateChild: true, mayDelete: false, mayRemoveItems: true, mayRename: false,
+  },
   sortOrder: 0,
   total: 1,
   unread: 0,
@@ -113,7 +115,14 @@ describe("bulk actions view model", () => {
 
     expect(model.canRestore).toBe(true);
     expect(model.canDestroy).toBe(true);
+    expect(model.canArchive).toBe(false);
+    expect(model.canSpam).toBe(false);
     expect(model.canTrash).toBe(false);
+    expect(model.restoreLabel).toBe(
+      "Restore selected messages from Trash to Inbox",
+    );
+    expect(model.moveTargets.map(({ id: mailboxId }) => mailboxId)).not
+      .toContain("spam");
     model.onRestore();
     model.destroyConfirmation.onConfirm();
     expect(selection.mutate).toHaveBeenNthCalledWith(1, { type: "restore" });
@@ -121,6 +130,44 @@ describe("bulk actions view model", () => {
       mailboxId: "trash",
       type: "destroy",
     });
+  });
+
+  it("uses a dedicated Not spam action without generic lifecycle moves", () => {
+    const selection = bulk();
+    const model = createBulkActionsViewModel({
+      activeMailboxId: id.mailbox("spam"),
+      bulk: selection,
+      destroyConfirmation: confirmation(selection),
+      workspace,
+    });
+
+    expect(model).toMatchObject({
+      canArchive: false,
+      canDestroy: true,
+      canRestore: true,
+      canSpam: false,
+      canTrash: false,
+      restoreLabel: "Mark selected messages as not spam",
+    });
+    expect(model.moveTargets.map(({ id: mailboxId }) => mailboxId))
+      .not.toContain("trash");
+  });
+
+  it("hides permanent delete when provider removal rights are denied", () => {
+    const selection = bulk();
+    const model = createBulkActionsViewModel({
+      activeMailboxId: id.mailbox("trash"),
+      bulk: selection,
+      destroyConfirmation: confirmation(selection),
+      workspace: {
+        ...workspace,
+        mailboxes: workspace.mailboxes.map((item) => item.role === "trash"
+          ? { ...item, rights: { ...item.rights, mayRemoveItems: false } }
+          : item),
+      },
+    });
+
+    expect(model.canDestroy).toBe(false);
   });
 
   it("disables bulk selection for provider draft rows", () => {

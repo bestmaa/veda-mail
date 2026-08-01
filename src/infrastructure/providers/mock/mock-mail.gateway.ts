@@ -1,5 +1,4 @@
 import "server-only";
-
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
   AttachmentDownloadInput,
@@ -11,9 +10,9 @@ import type {
   MessageMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
-import type { MessageId } from "@/domain/shared/brand";
 import type { LabelCleanupInput } from "@/domain/mail/label";
-import { id } from "@/domain/shared/brand";
+import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
+import { id, type MessageId } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type {
   MemberPasswordChange,
@@ -33,7 +32,7 @@ import { mockArchiveFailureMessageId } from "@/infrastructure/providers/mock/moc
 import { MockDraftStore } from "@/infrastructure/providers/mock/mock-draft.store";
 import { MockMailboxStore } from "@/infrastructure/providers/mock/mock-mailbox.store";
 import { cleanupMockLabel } from "@/infrastructure/providers/mock/mock-label-cleanup";
-
+import { emptyMockMailbox } from "@/infrastructure/providers/mock/mock-mailbox-empty";
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
@@ -56,6 +55,9 @@ export class MockMailGateway implements MailGateway {
   }
   public async cleanupLabel(input: LabelCleanupInput) {
     return cleanupMockLabel(this.messages, input);
+  }
+  public async emptyMailbox(input: MailboxEmptyInput, cursorSecret: string) {
+    void cursorSecret; return emptyMockMailbox(this.messages, input);
   }
   public async downloadAttachment(
     input: AttachmentDownloadInput,

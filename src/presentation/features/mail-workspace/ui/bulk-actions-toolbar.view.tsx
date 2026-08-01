@@ -102,7 +102,7 @@ export const BulkActionsToolbarView = ({
       {bulk.canSpam ? (
         <ActionButton
           disabled={bulk.isBusy}
-          label="Report selected messages as spam"
+          label={bulk.spamLabel}
           onClick={bulk.onSpam}
         >
           <ShieldAlert aria-hidden size={18} />
@@ -120,7 +120,7 @@ export const BulkActionsToolbarView = ({
       {bulk.canRestore ? (
         <ActionButton
           disabled={bulk.isBusy}
-          label="Restore selected messages to inbox"
+          label={bulk.restoreLabel}
           onClick={bulk.onRestore}
         >
           <RotateCcw aria-hidden size={18} />

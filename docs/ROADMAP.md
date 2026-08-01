@@ -223,6 +223,13 @@ error text. Read/unread, star/unstar, archive, spam, trash, restore, move, and
 irreversible delete are available according to mailbox role; permanent delete
 is limited to Spam/Trash and requires a focus-managed confirmation.
 
+Dedicated Spam/Trash lifecycle implementation now includes provider-neutral
+retention hints, rights-aware role actions, reader restore/not-spam, and
+prepare-first Empty actions. Encrypted server-owned progress resumes only after
+a durable snapshot: JMAP aborts on post-confirmation query additions, while
+IMAP binds an upper UID to UIDVALIDITY/OBJECTID and requires UIDPLUS. The
+checkbox remains open until the immutable release is verified in production.
+
 ## M5 — Conversations and powerful search
 
 - [ ] Provider-backed conversation/thread view with deterministic fallback

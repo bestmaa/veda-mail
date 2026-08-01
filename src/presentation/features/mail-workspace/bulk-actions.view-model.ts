@@ -37,6 +37,8 @@ export interface BulkActionsViewModel {
   readonly onTrash: () => void;
   readonly onUnstar: () => void;
   readonly selectedCount: number;
+  readonly restoreLabel: string;
+  readonly spamLabel: string;
   readonly status: string;
 }
 
@@ -68,22 +70,24 @@ export const createBulkActionsViewModel = ({
   const spamTarget = targetFor("spam");
   const trashTarget = targetFor("trash");
   const disabled = activeMailbox?.role === "drafts";
+  const lifecycleMailbox =
+    activeMailbox?.role === "spam" || activeMailbox?.role === "trash";
   const deletingLabelIds = new Set(
     (workspace?.labelDeletions ?? []).map(({ labelId }) => labelId),
   );
   return {
     allLoadedSelected: !disabled && bulk.allLoadedSelected,
     canArchive:
-      !disabled && Boolean(archiveTarget) && activeMailbox?.role !== "archive",
+      !disabled && !lifecycleMailbox && Boolean(archiveTarget) &&
+      activeMailbox?.role !== "archive",
     canDestroy:
-      activeMailbox?.role === "spam" || activeMailbox?.role === "trash",
+      activeMailbox?.rights.mayRemoveItems === true &&
+      (activeMailbox.role === "spam" || activeMailbox.role === "trash"),
     canRestore:
       Boolean(inboxTarget) &&
       (activeMailbox?.role === "spam" || activeMailbox?.role === "trash"),
-    canSpam:
-      !disabled && Boolean(spamTarget) && activeMailbox?.role !== "spam",
-    canTrash:
-      !disabled && Boolean(trashTarget) && activeMailbox?.role !== "trash",
+    canSpam: !disabled && !lifecycleMailbox && Boolean(spamTarget),
+    canTrash: !disabled && !lifecycleMailbox && Boolean(trashTarget),
     destroyConfirmation: {
       count: bulk.selectedIds.size,
       isOpen: destroyConfirmation.isOpen,
@@ -102,7 +106,9 @@ export const createBulkActionsViewModel = ({
         (mailbox) =>
           mailbox.id !== activeMailbox?.id &&
           mailbox.role !== "drafts" &&
-          mailbox.role !== "sent",
+          mailbox.role !== "sent" &&
+          (!lifecycleMailbox ||
+            (mailbox.role !== "spam" && mailbox.role !== "trash")),
       )
       .map((mailbox) => ({ id: mailbox.id, label: mailbox.name })),
     onArchive: () => void bulk.mutate({ type: "archive" }),
@@ -131,6 +137,10 @@ export const createBulkActionsViewModel = ({
     onUnstar: () =>
       void bulk.mutate({ type: "set-starred", value: false }),
     selectedCount: disabled ? 0 : bulk.selectedIds.size,
+    restoreLabel: activeMailbox?.role === "spam"
+      ? "Mark selected messages as not spam"
+      : "Restore selected messages from Trash to Inbox",
+    spamLabel: "Move selected messages to Spam",
     status: bulk.status,
   };
 };

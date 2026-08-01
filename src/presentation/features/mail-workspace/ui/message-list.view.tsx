@@ -6,18 +6,23 @@ import {
 
 import type { MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import type { BulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
+import type { MailboxRole } from "@/domain/mail/mail";
+import type { MailboxLifecycleViewModel } from "@/presentation/features/mail-workspace/mailbox-lifecycle.view-model";
 import { BulkActionsToolbarView } from "@/presentation/features/mail-workspace/ui/bulk-actions-toolbar.view";
+import { MailboxLifecycleBannerView } from "@/presentation/features/mail-workspace/ui/mailbox-lifecycle-banner.view";
 import { MessageListSkeletonView } from "@/presentation/features/mail-workspace/ui/message-list-skeleton.view";
 import { MessageRowView } from "@/presentation/features/mail-workspace/ui/message-row.view";
 
 interface MessageListViewProps {
   readonly activeFolder: string;
+  readonly activeRole: MailboxRole | null;
   readonly bulkActions: BulkActionsViewModel;
   readonly error: string | null;
   readonly hasMore: boolean;
   readonly isLoading: boolean;
   readonly isLoadingMore: boolean;
   readonly loadMoreError: string | null;
+  readonly mailboxLifecycle: MailboxLifecycleViewModel;
   readonly messages: readonly MessageItemViewModel[];
   readonly onLoadMore: () => void;
   readonly total: number;
@@ -25,12 +30,14 @@ interface MessageListViewProps {
 
 export const MessageListView = ({
   activeFolder,
+  activeRole,
   bulkActions,
   error,
   hasMore,
   isLoading,
   isLoadingMore,
   loadMoreError,
+  mailboxLifecycle,
   messages,
   onLoadMore,
   total,
@@ -74,6 +81,9 @@ export const MessageListView = ({
           {total} messages
         </span>
       </div>
+      {activeRole === "spam" || activeRole === "trash" ? (
+        <MailboxLifecycleBannerView lifecycle={mailboxLifecycle} />
+      ) : null}
       <BulkActionsToolbarView bulk={bulkActions} />
       <div aria-live="polite" className="sr-only">
         {bulkActions.status}

@@ -2,17 +2,21 @@
 
 import {
   useCallback,
+  useEffect,
+  useRef,
+  useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
 
 import type { MessageDetail, MessageMutation } from "@/domain/mail/mail";
-import type { LabelId } from "@/domain/shared/brand";
+import type { LabelId, MailboxId } from "@/domain/shared/brand";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { mailApi } from "@/transport/client/api-client";
 
 type SelectedMessageMutation =
   | { readonly type: "archive" | "delete" | "restore" }
+  | { readonly mailboxId: MailboxId; readonly type: "destroy" }
   | { readonly type: "set-read" | "set-starred"; readonly value: boolean }
   | { readonly labelId: LabelId; readonly type: "set-label"; readonly value: boolean };
 
@@ -43,19 +47,40 @@ export const useMailMessageMutations = ({
   sessionScope,
   setReaderError,
 }: MailMessageMutationOptions) => {
+  const [isBusy, setIsBusy] = useState(false);
+  const inFlightScope = useRef<string | null>(null);
+  useEffect(() => {
+    inFlightScope.current = null;
+    setIsBusy(false);
+  }, [sessionScope]);
   const mutateSelected = useCallback(
     async (mutation: SelectedMessageMutation) => {
-      if (!selectedMessage || !sessionScope) return;
+      if (!selectedMessage || !sessionScope || inFlightScope.current) return;
+      const requestScope = sessionScope;
+      inFlightScope.current = requestScope;
+      setIsBusy(true);
       setReaderError(null);
       try {
-        await mailApi.mutateMessage(
-          { ...mutation, messageId: selectedMessage.id } as MessageMutation,
-          sessionScope,
-        );
+        if (mutation.type === "destroy") {
+          const result = await mailApi.mutateMessages({
+            mailboxId: mutation.mailboxId,
+            messageIds: [selectedMessage.id],
+            type: "destroy",
+          }, requestScope);
+          if (result.failed.length || result.succeeded.length !== 1) {
+            throw new Error("The mail provider did not confirm permanent deletion.");
+          }
+        } else {
+          await mailApi.mutateMessage(
+            { ...mutation, messageId: selectedMessage.id } as MessageMutation,
+            requestScope,
+          );
+        }
         if (!isCurrentScope(sessionScope)) return;
         if (
           mutation.type === "archive" ||
           mutation.type === "delete" ||
+          mutation.type === "destroy" ||
           mutation.type === "restore"
         ) {
           clearMessage();
@@ -81,6 +106,11 @@ export const useMailMessageMutations = ({
         if (!isCurrentScope(sessionScope)) return;
         if (handleSessionFailure(nextError)) return;
         else setReaderError(errorMessage(nextError));
+      } finally {
+        if (inFlightScope.current === requestScope) {
+          inFlightScope.current = null;
+          setIsBusy(false);
+        }
       }
     },
     [
@@ -119,6 +149,16 @@ export const useMailMessageMutations = ({
     ),
     remove: useCallback(
       () => void mutateSelected({ type: "delete" }),
+      [mutateSelected],
+    ),
+    destroy: useCallback(
+      (mailboxId: MailboxId) =>
+        void mutateSelected({ mailboxId, type: "destroy" }),
+      [mutateSelected],
+    ),
+    isBusy,
+    restore: useCallback(
+      () => void mutateSelected({ type: "restore" }),
       [mutateSelected],
     ),
     setLabel: useCallback(

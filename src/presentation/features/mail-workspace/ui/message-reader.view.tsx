@@ -1,125 +1,63 @@
-import {
-  Archive,
-  Mail,
-  MailOpen,
-  Forward,
-  Reply,
-  ReplyAll,
-  ShieldCheck,
-  Star,
-  Tag,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Forward, Reply, ReplyAll, ShieldCheck } from "lucide-react";
 
 import type {
   ReaderViewModel,
 } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import type { MailboxRole } from "@/domain/mail/mail";
 import { MessageFrameConnector } from "@/presentation/features/mail-workspace/connectors/message-frame.connector";
 import { AttachmentPreviewDialogConnector } from "@/presentation/features/mail-workspace/connectors/attachment-preview-dialog.connector";
 import { ReceivedAttachmentListView } from "@/presentation/features/mail-workspace/ui/received-attachment-list.view";
-import { ReaderActionView } from "@/presentation/features/mail-workspace/ui/reader-action.view";
+import { MessageReaderToolbarView } from "@/presentation/features/mail-workspace/ui/message-reader-toolbar.view";
 
 interface MessageReaderViewProps {
+  readonly activeRole: MailboxRole | null;
+  readonly canPermanentlyDelete: boolean;
   readonly isComposerReady: boolean;
+  readonly isMutating: boolean;
   readonly onArchive: () => void;
   readonly onClose: () => void;
   readonly onDelete: () => void;
   readonly onForward: () => void;
   readonly onReply: () => void;
   readonly onReplyAll: () => void;
+  readonly onRequestDestroy: () => void;
+  readonly onRestore: () => void;
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly reader: ReaderViewModel;
 }
 
 export const MessageReaderView = ({
+  activeRole,
+  canPermanentlyDelete,
   isComposerReady,
+  isMutating,
   onArchive,
   onClose,
   onDelete,
   onForward,
   onReply,
   onReplyAll,
+  onRequestDestroy,
+  onRestore,
   onToggleRead,
   onToggleStar,
   reader,
 }: MessageReaderViewProps) => (
   <section className="flex min-h-0 flex-col bg-white">
-    <div className="flex h-14 shrink-0 items-center gap-1 border-b border-slate-200 px-3 md:px-5">
-      <ReaderActionView label="Back to message list" onClick={onClose}>
-        <X aria-hidden size={18} />
-      </ReaderActionView>
-      <span className="mx-1 h-5 w-px bg-slate-200" />
-      {reader.canArchive ? (
-        <ReaderActionView label="Archive" onClick={onArchive}>
-          <Archive aria-hidden size={18} />
-        </ReaderActionView>
-      ) : null}
-      <ReaderActionView
-        label={reader.isUnread ? "Mark as read" : "Mark as unread"}
-        onClick={onToggleRead}
-      >
-        {reader.isUnread ? (
-          <MailOpen aria-hidden size={18} />
-        ) : (
-          <Mail aria-hidden size={18} />
-        )}
-      </ReaderActionView>
-      {reader.labelActions?.applyOptions.length ? (
-        <label className="relative hidden sm:block">
-          <span className="sr-only">Apply label to message</span>
-          <Tag aria-hidden className="pointer-events-none absolute left-2 top-2.5 text-slate-500" size={16} />
-          <select
-            aria-label="Apply label to message"
-            className="h-9 max-w-36 rounded-lg border border-slate-200 bg-white pl-8 pr-6 text-xs font-semibold"
-            defaultValue=""
-            onChange={(event) => {
-              if (event.currentTarget.value) reader.labelActions?.onApply(event.currentTarget.value);
-              event.currentTarget.value = "";
-            }}
-          >
-            <option disabled value="">Apply label…</option>
-            {reader.labelActions.applyOptions.map((label) => (
-              <option key={label.id} value={label.id}>{label.name}</option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {reader.labelActions?.removeOptions.length ? (
-        <label className="relative hidden md:block">
-          <span className="sr-only">Remove label from message</span>
-          <select
-            aria-label="Remove label from message"
-            className="h-9 max-w-36 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold"
-            defaultValue=""
-            onChange={(event) => {
-              if (event.currentTarget.value) reader.labelActions?.onRemove(event.currentTarget.value);
-              event.currentTarget.value = "";
-            }}
-          >
-            <option disabled value="">Remove label…</option>
-            {reader.labelActions.removeOptions.map((label) => (
-              <option key={label.id} value={label.id}>{label.name}</option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      <ReaderActionView label="Delete" onClick={onDelete}>
-        <Trash2 aria-hidden size={18} />
-      </ReaderActionView>
-      <span className="flex-1" />
-      <ReaderActionView
-        label={reader.isStarred ? "Remove star" : "Add star"}
-        onClick={onToggleStar}
-      >
-        <Star
-          aria-hidden
-          className={reader.isStarred ? "fill-amber-400 text-amber-400" : ""}
-          size={18}
-        />
-      </ReaderActionView>
-    </div>
+    <MessageReaderToolbarView
+      activeRole={activeRole}
+      canPermanentlyDelete={canPermanentlyDelete}
+      isBusy={isMutating}
+      onArchive={onArchive}
+      onClose={onClose}
+      onDelete={onDelete}
+      onRequestDestroy={onRequestDestroy}
+      onRestore={onRestore}
+      onToggleRead={onToggleRead}
+      onToggleStar={onToggleStar}
+      reader={reader}
+    />
 
     <article
       aria-busy={reader.isLoading}

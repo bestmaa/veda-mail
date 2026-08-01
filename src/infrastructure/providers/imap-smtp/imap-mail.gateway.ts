@@ -3,6 +3,7 @@ import "server-only";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { DraftSaveInput } from "@/domain/mail/draft";
 import type { LabelCleanupInput } from "@/domain/mail/label";
+import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -23,6 +24,7 @@ import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.w
 import { ImapMailboxManager } from "@/infrastructure/providers/imap-smtp/imap-mailbox.manager";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import { cleanupImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-cleanup";
+import { emptyImapMailbox } from "@/infrastructure/providers/imap-smtp/imap-mailbox-empty";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 
@@ -53,6 +55,14 @@ export class ImapSmtpMailGateway implements MailGateway {
       client,
       input,
       `${this.config.imapHost}\0${this.config.imapPort}\0${this.config.username}\0${this.config.secret}`,
+    ));
+  }
+
+  public emptyMailbox(input: MailboxEmptyInput, cursorSecret: string) {
+    return withImapClient(this.config, (client) => emptyImapMailbox(
+      client,
+      input,
+      cursorSecret,
     ));
   }
 
