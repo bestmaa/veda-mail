@@ -7,17 +7,9 @@ import type { ComposerDraftPhase, ComposerTerminalRecoveryKind } from "@/present
 import type { ComposerDraftStatus } from "@/presentation/features/mail-workspace/composer-draft-status";
 import type { ComposerRecoveryPromptViewModel } from "@/presentation/features/mail-workspace/composer-recovery-prompt.view-model";
 import type { BulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
-export type MailboxIconName =
-  "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
-export interface FolderViewModel {
-  readonly color: string;
-  readonly count: number;
-  readonly id: string;
-  readonly icon: MailboxIconName;
-  readonly isActive: boolean;
-  readonly label: string;
-  readonly onSelect: () => void;
-}
+import type { MailboxManagementViewModel } from "@/presentation/features/mail-workspace/mailbox-management.view-model";
+import type { FolderViewModel } from "@/presentation/features/mail-workspace/folder.view-model";
+export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
   readonly canSelect: boolean;
@@ -219,6 +211,7 @@ export interface MailWorkspaceViewProps {
   readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean;
   readonly isLoading: boolean; readonly isLoadingMore: boolean;
+  readonly mailboxManagement: MailboxManagementViewModel;
   readonly loadMoreError: string | null;
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: {

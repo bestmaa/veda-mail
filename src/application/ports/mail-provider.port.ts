@@ -3,6 +3,8 @@ import type {
   AttachmentDownloadInput,
   MailAccount,
   Mailbox,
+  MailboxMutation,
+  MailboxMutationResult,
   MessageDetail,
   MessageAttachmentMetadata,
   MessageAttachmentListInput,
@@ -53,6 +55,7 @@ export interface MailGateway {
   listMailboxes(): Promise<readonly Mailbox[]>;
   listMessages(query: MessageListQuery): Promise<MessagePage>;
   mutateMessage(mutation: MessageMutation): Promise<void>;
+  mutateMailbox(mutation: MailboxMutation): Promise<MailboxMutationResult>;
   saveDraft(input: DraftSaveInput): Promise<DraftDetail>;
   sendMessage(input: SendMessageInput): Promise<SendReceipt>;
   testConnection(): Promise<void>;

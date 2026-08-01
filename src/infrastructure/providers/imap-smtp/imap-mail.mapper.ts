@@ -75,7 +75,16 @@ export const mapImapMailbox = (mailbox: ListResponse): Mailbox => {
     color: colors[role],
     id: id.mailbox(encodeMailboxId(mailbox.path)),
     name: mailbox.name || mailbox.path,
+    parentId: mailbox.parentPath
+      ? id.mailbox(encodeMailboxId(mailbox.parentPath))
+      : null,
     role,
+    rights: {
+      mayCreateChild: !mailbox.flags.has("\\Noinferiors"),
+      mayDelete: role === "custom",
+      mayRename: role === "custom",
+    },
+    sortOrder: 0,
     total: mailbox.status?.messages ?? 0,
     unread: mailbox.status?.unseen ?? 0,
   };

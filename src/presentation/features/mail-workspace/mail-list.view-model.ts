@@ -2,11 +2,13 @@ import type { MailWorkspace } from "@/domain/mail/mail";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 import type { FolderViewModel, MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { formatMessageDate, formatSender, initials } from "@/presentation/shared/formatters/mail-formatters";
+import { flattenMailboxTree } from "@/presentation/features/mail-workspace/mailbox-tree.view-model";
 
 interface MailListOptions {
   readonly activeMailboxId: MailboxId | null;
   readonly draftsEnabled: boolean;
   readonly onOpenDraft: (id: string) => void;
+  readonly onManageMailbox: (id: string) => void;
   readonly onSelectMailbox: (id: string) => void;
   readonly onSelectMessage: (id: string) => void;
   readonly onToggleMessage: (id: MessageId) => void;
@@ -20,6 +22,7 @@ export const createMailListViewModel = ({
   activeMailboxId,
   draftsEnabled,
   onOpenDraft,
+  onManageMailbox,
   onSelectMailbox,
   onSelectMessage,
   onToggleMessage,
@@ -38,13 +41,16 @@ export const createMailListViewModel = ({
   const opensDrafts = draftsEnabled && activeMailbox?.role === "drafts";
   return {
     activeFolder: activeMailbox?.name ?? "Inbox",
-    folders: (workspace?.mailboxes ?? []).map((mailbox) => ({
+    folders: flattenMailboxTree(workspace?.mailboxes ?? []).map(({ depth, mailbox }) => ({
+      canManage: mailbox.role === "custom" && mailbox.rights.mayRename,
       color: mailbox.color,
       count: mailbox.unread || mailbox.total,
+      depth,
       id: mailbox.id,
       icon: mailbox.role,
       isActive: mailbox.id === activeMailboxId,
       label: mailbox.name,
+      onManage: () => onManageMailbox(mailbox.id),
       onSelect: () => onSelectMailbox(mailbox.id),
     })),
     messages: (workspace?.messages.items ?? []).map((message) => {

@@ -70,7 +70,14 @@ export const mapMailbox = (mailbox: JmapMailbox): Mailbox => {
     color: mailboxColors[role],
     id: id.mailbox(mailbox.id),
     name: mailbox.name,
+    parentId: mailbox.parentId ? id.mailbox(mailbox.parentId) : null,
     role,
+    rights: {
+      mayCreateChild: mailbox.myRights?.mayCreateChild ?? false,
+      mayDelete: role === "custom" && (mailbox.myRights?.mayDelete ?? false),
+      mayRename: role === "custom" && (mailbox.myRights?.mayRename ?? false),
+    },
+    sortOrder: mailbox.sortOrder ?? 0,
     total: mailbox.totalEmails,
     unread: mailbox.unreadEmails,
   };

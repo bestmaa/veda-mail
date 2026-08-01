@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useMemo } from "react";
-
 import { createComposerViewModel } from "@/presentation/features/mail-workspace/composer.view-model";
 import { createMailListViewModel } from "@/presentation/features/mail-workspace/mail-list.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
@@ -19,11 +18,11 @@ import { createReaderViewModel } from "@/presentation/features/mail-workspace/re
 import { initials } from "@/presentation/shared/formatters/mail-formatters";
 import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
 import { useBulkDestroyConfirmation } from "@/presentation/features/mail-workspace/hooks/use-bulk-destroy-confirmation";
+import { useMailboxWorkspaceManagement } from "@/presentation/features/mail-workspace/hooks/use-mailbox-workspace-management";
 import {
   createBrandingViewModel,
   type BrandingInput,
 } from "@/presentation/shared/branding/branding.view-model";
-
 interface MailWorkspaceModelOptions {
   readonly branding: BrandingInput;
   readonly canSignOut: boolean;
@@ -32,7 +31,6 @@ interface MailWorkspaceModelOptions {
   readonly providerLabel: string;
   readonly signOutPath: string;
 }
-
 export const useMailWorkspaceModel = ({
   branding,
   canSignOut,
@@ -106,10 +104,12 @@ export const useMailWorkspaceModel = ({
     sessionScope,
     mail.handleSessionFailure,
   );
+  const mailboxManagement = useMailboxWorkspaceManagement(mail);
   const mailList = useMemo(() => createMailListViewModel({
     activeMailboxId: mail.activeMailboxId,
     draftsEnabled,
     onOpenDraft: composer.openSavedDraft,
+    onManageMailbox: mailboxManagement.openEdit,
     onSelectMailbox: (mailboxId) => {
       mail.selectMailbox(mailboxId);
       navigation.close();
@@ -120,8 +120,7 @@ export const useMailWorkspaceModel = ({
     selectionDisabled: mail.bulk.isBusy,
     ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
     workspace: mail.workspace,
-  }), [composer.openSavedDraft, draftsEnabled, mail, navigation]);
-
+  }), [composer.openSavedDraft, draftsEnabled, mail, mailboxManagement.openEdit, navigation]);
   const destroyConfirmation = useBulkDestroyConfirmation(mail.bulk.selectedIds.size > 0, () => mail.activeMailboxId && void mail.bulk.mutate({ mailboxId: mail.activeMailboxId, type: "destroy" }));
   const bulkActions = createBulkActionsViewModel({
     activeMailboxId: mail.activeMailboxId,
@@ -211,6 +210,7 @@ export const useMailWorkspaceModel = ({
     isComposerReady,
     isLoading: mail.isLoading,
     isLoadingMore: mail.isLoadingMore,
+    mailboxManagement,
     loadMoreError: mail.loadMoreError,
     messages: mailList.messages,
     navigation: {

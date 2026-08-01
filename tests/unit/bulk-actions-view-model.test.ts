@@ -8,7 +8,10 @@ const mailbox = (role: MailboxRole) => ({
   color: "#000",
   id: id.mailbox(role),
   name: role[0]!.toUpperCase() + role.slice(1),
+  parentId: null,
   role,
+  rights: { mayCreateChild: true, mayDelete: false, mayRename: false },
+  sortOrder: 0,
   total: 1,
   unread: 0,
 });

@@ -8,6 +8,7 @@ import {
   mailSessionScope,
 } from "@/server/connections/mail-session-scope";
 import { getMailService } from "@/server/mail/mail-service";
+import { decorateMailboxesSafely } from "@/server/mailboxes/mailbox-http";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -41,14 +42,16 @@ export const GET = async (request: Request) => {
     const mailbox = params.get("mailboxId");
     const cursor = parseMessageCursor(params.get("cursor"));
     const search = params.get("search");
-    const workspace = await (
-      await getMailService(connection)
-    ).getWorkspace({
+    const workspace = await (await getMailService(connection)).getWorkspace({
       ...(cursor ? { cursor } : {}),
       limit: 50,
       ...(mailbox ? { mailboxId: id.mailbox(mailbox) } : {}),
       ...(search ? { search: search.slice(0, 200) } : {}),
     });
+    const mailboxes = await decorateMailboxesSafely(
+      { email: workspace.account.email, providerId: workspace.account.providerId },
+      workspace.mailboxes,
+    );
     if (!connectionStore.isActive(connection)) {
       throw new ApiError(
         "This mail connection expired. Connect the account again.",
@@ -58,6 +61,7 @@ export const GET = async (request: Request) => {
     }
     return apiSuccess({
       ...workspace,
+      mailboxes,
       sessionExpiresAt: connectionExpiresAt(connection),
       sessionScope: mailSessionScope(connection),
     });

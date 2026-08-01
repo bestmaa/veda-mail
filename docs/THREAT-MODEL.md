@@ -370,6 +370,31 @@ the supported deployment therefore has exactly one signature-store writer.
 Backups must keep `installation.json` and `member-signatures.json` together
 because the installation session secret is required for decryption.
 
+### Custom mailbox administration
+
+- The mutation route accepts no owner identity. It derives the current account
+  only after browser-scope verification and applies same-origin, 16 KiB body,
+  request, and verified-connection rate limits before provider mutation.
+- Provider state is reloaded before each operation. System-role folders cannot
+  be renamed or deleted; custom deletes require permission, zero messages, and
+  no children. JMAP additionally uses `ifInState` and never enables
+  `onDestroyRemoveEmails`. IMAP rechecks STATUS immediately before DELETE.
+- Names reject controls and unpaired Unicode, are capped at 255 UTF-8 bytes,
+  and cannot contain the active IMAP hierarchy delimiter. NFKC/case-folded
+  sibling collisions, cycles, depth above eight, and more than 256 custom
+  mailboxes are rejected.
+- Color values come from a fixed palette. The encrypted
+  `/data/mailbox-appearance.json` index uses provider/email HMAC owner keys and
+  AES-256-GCM owner-bound ciphertext, strict schemas, mode-0600 temporary files,
+  and atomic replacement. IMAP path-ID changes migrate metadata only after the
+  provider rename succeeds.
+
+Residual risk: standard IMAP cannot condition DELETE on the immediately prior
+STATUS result. A delivery in that narrow interval is controlled by the remote
+server's DELETE semantics. Operators needing atomic empty-only deletion should
+use the JMAP adapter. The appearance writer is process-local, so one writable
+`/data` volume still requires one Veda Mail replica.
+
 ### Availability and resource exhaustion
 
 - Request-body, multipart, recipient, body, provider timeout, and rate limits

@@ -3,6 +3,7 @@ import type { DraftSaveInput } from "@/domain/mail/draft";
 import type {
   AttachmentDownloadInput,
   Mailbox,
+  MailboxMutation,
   MessageAttachmentListInput,
   MessageMutation,
   ProviderMailWorkspace,
@@ -42,8 +43,16 @@ export class MailApplicationService {
     return this.gateway.getMessage(messageId);
   }
 
+  public getAccount() {
+    return this.gateway.getAccount();
+  }
+
   public listMailboxes() {
     return this.gateway.listMailboxes();
+  }
+
+  public mutateMailbox(mutation: MailboxMutation) {
+    return this.gateway.mutateMailbox(mutation);
   }
 
   public listMessageAttachments(input: MessageAttachmentListInput) {

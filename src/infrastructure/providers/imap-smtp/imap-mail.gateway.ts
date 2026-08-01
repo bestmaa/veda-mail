@@ -8,6 +8,7 @@ import type {
   MessageAttachmentListInput,
   MessageListQuery,
   MessageMutation,
+  MailboxMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type {
@@ -18,6 +19,7 @@ import type {
 import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
 import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
+import { ImapMailboxManager } from "@/infrastructure/providers/imap-smtp/imap-mailbox.manager";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 
@@ -28,11 +30,13 @@ const unsupported = (feature: string): never => {
 export class ImapSmtpMailGateway implements MailGateway {
   private readonly attachmentCapability: SmtpAttachmentCapability;
   private readonly reader: ImapMailReader;
+  private readonly mailboxes: ImapMailboxManager;
   private readonly writer: ImapMailWriter;
 
   public constructor(config: ImapSmtpMemberConfig) {
     this.attachmentCapability = new SmtpAttachmentCapability(config);
     this.reader = new ImapMailReader(config);
+    this.mailboxes = new ImapMailboxManager(config);
     this.writer = new ImapMailWriter(config, this.attachmentCapability);
   }
 
@@ -100,6 +104,10 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public mutateMessage(mutation: MessageMutation) {
     return this.writer.mutateMessage(mutation);
+  }
+
+  public mutateMailbox(mutation: MailboxMutation) {
+    return this.mailboxes.mutate(mutation);
   }
 
   public async saveDraft(_input: DraftSaveInput): Promise<never> {

@@ -407,6 +407,38 @@ against a stale check. It is guarded by an inert-background, focus-managed
 alert dialog. Cancellation performs no
 provider request; confirmation is irreversible.
 
+## Custom mailbox administration
+
+`POST`, `PATCH`, and `DELETE /api/v1/mail/mailboxes` accept strict 16 KiB JSON
+operations after same-origin, member-session-scope, global request, and
+verified-connection rate limits. Mailbox names are trimmed, single-line,
+limited to 255 UTF-8 bytes, and checked case-insensitively after NFKC
+normalization within one parent. The provider-independent policy caps custom
+mailboxes at 256 and hierarchy depth at eight, rejects cycles and stale IDs,
+honors provider rights, protects every system-role mailbox, and permits delete
+only when the target is custom, empty, childless, and provider-authorized.
+
+JMAP maps `parentId`, `sortOrder`, and `myRights` into the domain model. Every
+mutation starts with `Mailbox/get`, validates that authoritative snapshot, and
+sends `Mailbox/set` with `ifInState`. Delete always sets
+`onDestroyRemoveEmails: false`; `mailboxHasEmail`, `mailboxHasChild`, rights,
+and state conflicts become safe domain failures. IMAP derives parent IDs from
+LIST `parentPath`, rejects the active server delimiter inside a leaf name,
+uses CREATE/RENAME/DELETE through ImapFlow, and reloads LIST after success.
+Immediately before DELETE it issues STATUS and aborts if any message exists.
+IMAP cannot make that final check and DELETE atomic, so a remote delivery in
+that narrow interval remains a documented provider limitation.
+
+Mailbox color is presentation metadata rather than a JMAP or IMAP standard.
+The fixed `/data/mailbox-appearance.json` sidecar stores no raw email address,
+mailbox ID, or color outside authenticated ciphertext. HMAC-SHA-256 keys select
+normalized provider/email owner buckets; AES-256-GCM with an HKDF-derived key
+and owner-bound additional data encrypts each strict book. Writes use a
+mode-0600 temporary file and atomic replacement. IMAP rename migrates the
+appearance from the old opaque path ID to the new one. If a provider mutation
+succeeds but the optional appearance write fails, the API reports that state
+without misrepresenting the already-committed provider operation as failed.
+
 With the supplied Compose layout, signature books live in
 `/data/member-signatures.json`. The outer file contains keyed owner buckets but
 no raw email addresses or signature plaintext. An HMAC-SHA-256 of the

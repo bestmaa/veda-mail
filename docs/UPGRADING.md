@@ -143,6 +143,16 @@ versions concurrently or attach multiple replicas to the same signature file.
 An older rollback image ignores the new file, but preserve the whole matching
 volume so signatures return when the newer version is restored.
 
+Custom mailbox administration adds the authenticated
+`/api/v1/mail/mailboxes` endpoint and creates
+`/data/mailbox-appearance.json` on the first custom color change. There is no
+provider-profile or mailbox-data migration and no new port or environment
+variable. JMAP accounts use standard `Mailbox/set`; IMAP accounts use standard
+CREATE, RENAME, STATUS, SUBSCRIBE, and DELETE. Back up the new encrypted file
+together with `installation.json`. Older rollback images ignore it, but do not
+copy it independently between installations. Its process-serialized writer has
+the same single-replica writable-volume requirement as member signatures.
+
 Then verify:
 
 ```bash
