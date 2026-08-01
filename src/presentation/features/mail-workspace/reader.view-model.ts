@@ -1,4 +1,6 @@
 import type { MessageDetail } from "@/domain/mail/mail";
+import type { LabelCapability, MailLabel } from "@/domain/mail/label";
+import type { LabelId } from "@/domain/shared/brand";
 import type { ReaderViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import {
@@ -48,6 +50,9 @@ export const createReaderViewModel = (input: {
   readonly canArchive: boolean;
   readonly isLoading: boolean;
   readonly message: MessageDetail | null;
+  readonly labelCapability: LabelCapability;
+  readonly labels: readonly MailLabel[];
+  readonly onSetLabel: (labelId: LabelId, value: boolean) => void;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly readerError: string | null;
   readonly sessionScope: string;
@@ -79,6 +84,8 @@ export const createReaderViewModel = (input: {
       isLoading: true,
       isStarred: false,
       isUnread: false,
+      labelActions: null,
+      labels: [],
       messageId: "",
       sessionScope: input.sessionScope,
       subject: "Opening message…",
@@ -86,6 +93,8 @@ export const createReaderViewModel = (input: {
     };
   }
   const message = input.message;
+  const appliedLabelIds = new Set(message.labelIds ?? []);
+  const appliedLabels = input.labels.filter(({ id }) => appliedLabelIds.has(id));
   const visibleAttachments = message.attachments.filter(
     ({ disposition }) => disposition === "attachment",
   );
@@ -138,6 +147,13 @@ export const createReaderViewModel = (input: {
     isLoading: input.isLoading,
     isStarred: message.isStarred,
     isUnread: message.isUnread,
+    labelActions: input.labelCapability === "supported" ? {
+      applyOptions: input.labels.filter(({ id }) => !appliedLabelIds.has(id)),
+      onApply: (labelId) => input.onSetLabel(labelId as LabelId, true),
+      onRemove: (labelId) => input.onSetLabel(labelId as LabelId, false),
+      removeOptions: appliedLabels,
+    } : null,
+    labels: appliedLabels,
     messageId: message.id,
     sessionScope: input.sessionScope,
     subject: message.subject,

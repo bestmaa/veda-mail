@@ -395,6 +395,33 @@ server's DELETE semantics. Operators needing atomic empty-only deletion should
 use the JMAP adapter. The appearance writer is process-local, so one writable
 `/data` volume still requires one Veda Mail replica.
 
+### Portable labels
+
+- Label IDs are opaque 128-bit random values in a restricted lowercase
+  keyword alphabet. The browser cannot submit raw provider keywords; strict
+  single and bulk schemas accept only a catalog ID and the server resolves it
+  inside the authenticated provider/email owner bucket before provider access.
+- Catalog names reject controls and unpaired Unicode, normalize with NFKC, and
+  are bounded by character, byte, uniqueness, and per-account capacity limits.
+  Colors come from a fixed palette. The account catalog uses HMAC owner keys,
+  HKDF-derived AES-256-GCM keys, owner-bound additional data, strict decrypted
+  schemas, mode-0600 temporary files, fsync, and atomic replacement.
+- JMAP additions are authorized against all current containing mailboxes,
+  capacity-checked, conditioned on current Email state, result-confirmed, and
+  retried only once after a state mismatch. IMAP additions fail closed unless
+  `PERMANENTFLAGS` permits the user flag and every STORE is refetched and
+  verified. Unsupported providers hide mutation controls.
+- Catalog reads in the workspace fail soft so corrupt metadata cannot suppress
+  mailbox access. Catalog writes and label mutations fail closed. Provider
+  exceptions are converted to bounded application errors and never expose
+  credentials or raw upstream responses.
+
+Residual risk: the encrypted catalog writer is process-local and requires one
+writable Veda Mail replica. IMAP has no account-global message identity, so a
+copied message may carry an independent label flag. Label deletion remains
+disabled until resumable JMAP/IMAP cleanup can prove zero remaining uses before
+finalizing a permanent tombstone.
+
 ### Availability and resource exhaustion
 
 - Request-body, multipart, recipient, body, provider timeout, and rate limits

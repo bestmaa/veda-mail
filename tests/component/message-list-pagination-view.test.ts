@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { id } from "@/domain/shared/brand";
 import { MessageListView } from "@/presentation/features/mail-workspace/ui/message-list.view";
 
 const props = {
@@ -21,13 +22,16 @@ const props = {
     },
     error: null,
     isBusy: false,
+    labels: [],
     moveTargets: [],
     onArchive: vi.fn(),
+    onApplyLabel: vi.fn(),
     onClear: vi.fn(),
     onMarkRead: vi.fn(),
     onMarkUnread: vi.fn(),
     onMove: vi.fn(),
     onRequestDestroy: vi.fn(),
+    onRemoveLabel: vi.fn(),
     onRestore: vi.fn(),
     onSpam: vi.fn(),
     onStar: vi.fn(),
@@ -54,6 +58,7 @@ const props = {
       isSelectionDisabled: false,
       isStarred: false,
       isUnread: false,
+      labels: [],
       onSelect: vi.fn(),
       onToggleSelected: vi.fn(),
       openLabel: "Open Example message",
@@ -102,5 +107,23 @@ describe("message list pagination view", () => {
     );
 
     expect(html).not.toContain("Load more messages");
+  });
+
+  it("renders catalog names instead of opaque provider keywords", () => {
+    const html = renderToStaticMarkup(createElement(MessageListView, {
+      ...props,
+      messages: [{
+        ...props.messages[0],
+        labels: [{
+          color: "#4f46e5" as const,
+          id: id.label("veda-label-aaaqeayeaudaocajbifqydiob4"),
+          name: "Clients",
+        }],
+      }],
+    }));
+
+    expect(html).toContain('aria-label="Message labels"');
+    expect(html).toContain("Clients");
+    expect(html).not.toContain("veda-label-aaaqeayeaudaocajbifqydiob4");
   });
 });

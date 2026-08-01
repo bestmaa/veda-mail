@@ -13,6 +13,7 @@ interface MailSidebarViewProps {
   readonly isComposerReady: boolean;
   readonly isMobileOpen: boolean;
   readonly mailboxManagement: MailWorkspaceViewProps["mailboxManagement"];
+  readonly labelManagement: MailWorkspaceViewProps["labelManagement"];
   readonly onCloseNavigation: () => void;
   readonly onCompose: () => void;
   readonly session: MailWorkspaceViewProps["session"];
@@ -26,6 +27,7 @@ export const MailSidebarView = ({
   isComposerReady,
   isMobileOpen,
   mailboxManagement,
+  labelManagement,
   onCloseNavigation,
   onCompose,
   session,
@@ -128,6 +130,45 @@ export const MailSidebarView = ({
           </div>
         ))}
       </div>
+      {labelManagement.isSupported ? (
+        <div className="mt-6">
+          <div className="mb-2 flex items-center justify-between px-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-100/80">
+              Labels
+            </p>
+            <button
+              aria-label="Create label"
+              className="grid size-8 place-items-center rounded-lg text-indigo-100/80 hover:bg-white/10 hover:text-white"
+              onClick={labelManagement.openCreate}
+              title="Create label"
+              type="button"
+            >
+              <Plus aria-hidden size={17} />
+            </button>
+          </div>
+          <div className="space-y-1">
+            {labelManagement.labels.map((label) => (
+              <div className="group relative flex h-10 items-center gap-3 rounded-xl px-3 pr-11 text-sm text-indigo-100/90" key={label.id}>
+                <span
+                  aria-hidden
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: label.color }}
+                />
+                <span className="min-w-0 flex-1 truncate">{label.name}</span>
+                <button
+                  aria-label={`Manage ${label.name} label`}
+                  className="absolute right-1.5 top-1 grid size-8 place-items-center rounded-lg text-indigo-100/70 opacity-100 hover:bg-white/10 hover:text-white md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                  onClick={() => labelManagement.openEdit(label.id)}
+                  title={`Manage ${label.name} label`}
+                  type="button"
+                >
+                  <MoreHorizontal aria-hidden size={17} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </nav>
 
     <div className="m-4">

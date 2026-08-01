@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-portable account labels with encrypted owner-isolated catalogs,
+  stable opaque JMAP keyword/IMAP user-flag mappings, create/rename/recolor UI,
+  single and bulk apply/remove controls, capability/right/capacity checks,
+  conditional JMAP updates, verified IMAP STORE operations, and strict scoped
+  APIs. Deletion remains disabled pending resumable provider cleanup
+
 - Provider-independent interrupted-compose recovery plus capability-gated
   provider autosave. Raw recipients and body content stay in a strictly
   validated, session/owner-bound IndexedDB journal; session storage contains

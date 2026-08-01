@@ -39,6 +39,9 @@ export class MockMailGateway implements MailGateway {
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
   public readonly getDraft = this.drafts.get.bind(this.drafts);
   public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
+  public async getLabelCapability() {
+    return "supported" as const;
+  }
   public readonly saveDraft = this.drafts.save.bind(this.drafts);
   private archiveFailureLookups = 0;
   private messages = createMockMessages();
@@ -146,6 +149,13 @@ export class MockMailGateway implements MailGateway {
       this.messages[index] = { ...current, isStarred: mutation.value };
       return;
     }
+    if (mutation.type === "set-label") {
+      const labels = new Set(current.labelIds);
+      if (mutation.value) labels.add(mutation.labelId);
+      else labels.delete(mutation.labelId);
+      this.messages[index] = { ...current, labelIds: [...labels] };
+      return;
+    }
 
     let nextMailbox = mockMailboxIds.inbox;
     if (mutation.type === "archive") {
@@ -197,6 +207,7 @@ export class MockMailGateway implements MailGateway {
       id: messageId,
       isStarred: false,
       isUnread: false,
+      labelIds: [],
       mailboxIds: [mockMailboxIds.sent],
       preview: input.body.slice(0, 140),
       receivedAt: now,

@@ -6,7 +6,7 @@ import type {
   BulkMessageMutation,
   MessageSummary,
 } from "@/domain/mail/mail";
-import type { MailboxId, MessageId } from "@/domain/shared/brand";
+import type { LabelId, MailboxId, MessageId } from "@/domain/shared/brand";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import {
   retainAvailableSelection,
@@ -22,6 +22,7 @@ export type BulkMessageAction =
       readonly type: "set-read" | "set-starred";
       readonly value: boolean;
     }
+  | { readonly labelId: LabelId; readonly type: "set-label"; readonly value: boolean }
   | { readonly mailboxId: MailboxId; readonly type: "destroy" | "move" };
 
 interface MailBulkSelectionOptions {
@@ -44,6 +45,14 @@ const mutationRequest = (
 ): BulkMessageMutation => {
   if (action.type === "set-read" || action.type === "set-starred") {
     return { messageIds, type: action.type, value: action.value };
+  }
+  if (action.type === "set-label") {
+    return {
+      labelId: action.labelId,
+      messageIds,
+      type: action.type,
+      value: action.value,
+    };
   }
   if (action.type === "destroy" || action.type === "move") {
     return { mailboxId: action.mailboxId, messageIds, type: action.type };

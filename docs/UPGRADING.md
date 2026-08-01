@@ -153,6 +153,15 @@ together with `installation.json`. Older rollback images ignore it, but do not
 copy it independently between installations. Its process-serialized writer has
 the same single-replica writable-volume requirement as member signatures.
 
+Portable labels add `/data/mail-label-catalog.json` on the first label create.
+The file is account-isolated AES-256-GCM metadata and must be backed up together
+with `installation.json`; an older image ignores it. No provider migration,
+port, or environment variable is required. JMAP accounts use standard Email
+keywords and IMAP accounts use standard user flags only when provider
+capabilities allow them. Keep one writer for the mounted `/data` volume. Label
+deletion is not enabled in this release, so rollback does not need to reconcile
+provider keywords with catalog tombstones.
+
 Then verify:
 
 ```bash

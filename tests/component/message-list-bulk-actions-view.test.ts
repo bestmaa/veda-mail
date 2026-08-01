@@ -20,13 +20,16 @@ const bulk = (overrides: Partial<BulkActionsViewModel> = {}) => ({
   },
   error: null,
   isBusy: false,
+  labels: [],
   moveTargets: [{ id: "archive", label: "Archive" }],
   onArchive: vi.fn(),
+  onApplyLabel: vi.fn(),
   onClear: vi.fn(),
   onMarkRead: vi.fn(),
   onMarkUnread: vi.fn(),
   onMove: vi.fn(),
   onRequestDestroy: vi.fn(),
+  onRemoveLabel: vi.fn(),
   onRestore: vi.fn(),
   onSpam: vi.fn(),
   onStar: vi.fn(),
@@ -64,6 +67,18 @@ describe("message list bulk action toolbar", () => {
 
     expect(html).toContain('aria-busy="true"');
     expect(html.match(/disabled=""/g)?.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("offers provider-portable label apply and remove controls", () => {
+    const html = renderToStaticMarkup(createElement(BulkActionsToolbarView, {
+      bulk: bulk({
+        labels: [{ color: "#4f46e5", id: "veda-label-aaaqeayeaudaocajbifqydiob4", name: "Clients" }],
+      }),
+    }));
+
+    expect(html).toContain('aria-label="Apply label…"');
+    expect(html).toContain('aria-label="Remove label…"');
+    expect(html).toContain("Clients");
   });
 
   it("does not occupy the mailbox when no messages are selected", () => {

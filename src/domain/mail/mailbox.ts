@@ -27,6 +27,7 @@ export interface MailboxRights {
   readonly mayCreateChild: boolean;
   readonly mayDelete: boolean;
   readonly mayRename: boolean;
+  readonly maySetKeywords?: boolean;
 }
 
 export interface Mailbox {

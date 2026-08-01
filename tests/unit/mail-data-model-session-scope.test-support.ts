@@ -95,6 +95,8 @@ export const workspace = (sessionScope: string): MailWorkspace => ({
     providerId: id.provider("mock"),
   },
   draftCapability: { status: "supported" },
+  labelCapability: "supported",
+  labels: [],
   mailboxes: [
     {
       color: "#4338ca",
@@ -122,6 +124,7 @@ export const message = (value = "message-a"): MessageDetail => ({
   id: id.message(value),
   isStarred: false,
   isUnread: false,
+  labelIds: [],
   mailboxIds: [inboxId],
   preview: "Private account A message",
   receivedAt: "2026-07-31T10:00:00.000Z",

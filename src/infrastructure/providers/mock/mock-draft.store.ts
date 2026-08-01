@@ -129,6 +129,7 @@ export class MockDraftStore {
       id: id.message(draft.id),
       isStarred: false,
       isUnread: false,
+      labelIds: [],
       mailboxIds: [mockMailboxIds.drafts],
       preview: draft.content.body.slice(0, 140),
       receivedAt: draft.updatedAt,

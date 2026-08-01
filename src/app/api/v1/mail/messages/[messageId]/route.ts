@@ -3,6 +3,9 @@ import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
+import { labelCatalogStore } from "@/server/labels/label-catalog.store";
+import { labelHttpError } from "@/server/labels/label-http";
+import { mailboxOwner } from "@/server/mailboxes/mailbox-http";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -46,9 +49,16 @@ export const PATCH = async (request: Request, context: RouteContext) => {
       ...(typeof payload === "object" && payload ? payload : {}),
       messageId,
     });
-    await (await getMailService(connection)).mutateMessage(mutation);
+    const service = await getMailService(connection);
+    if (mutation.type === "set-label") {
+      await labelCatalogStore.requireActive(
+        await mailboxOwner(service),
+        mutation.labelId,
+      );
+    }
+    await service.mutateMessage(mutation);
     return apiSuccess({ updated: true });
   } catch (error) {
-    return apiFailure(error, "Unable to update this message.");
+    return apiFailure(labelHttpError(error), "Unable to update this message.");
   }
 };

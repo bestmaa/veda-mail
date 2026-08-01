@@ -26,6 +26,14 @@ export const bulkMessageMutationSchema = z.discriminatedUnion("type", [
     .strict(),
   z
     .object({
+      labelId: z.string().regex(/^veda-label-[a-z2-7]{26}$/u).transform(id.label),
+      messageIds: messageIdsSchema,
+      type: z.literal("set-label"),
+      value: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
       mailboxId: z.string().min(1).max(2_048).transform(id.mailbox),
       messageIds: messageIdsSchema,
       type: z.literal("destroy"),

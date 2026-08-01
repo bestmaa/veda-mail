@@ -4,7 +4,6 @@ import { createHash } from "node:crypto";
 import type { ListResponse } from "imapflow";
 import MailComposer from "nodemailer/lib/mail-composer";
 import nodemailer from "nodemailer";
-
 import type {
   MessageMutation,
   ReplyContext,
@@ -19,6 +18,7 @@ import {
   imapUidValidityMatches,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
+import { mutateImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
 import {
   normalizeAttachmentFilename,
   normalizeAttachmentMimeType,
@@ -36,19 +36,16 @@ import {
   safeReplyReferences,
 } from "@/infrastructure/providers/message-id";
 import { assertSafeProviderHost } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
-
 const address = (
   value: SendMessageInput["to"][number],
 ): { address: string; name: string } => ({
   address: value.email,
   name: value.name ?? "",
 });
-
 const referencesFrom = (headers?: Buffer): readonly string[] => {
   const values = headers?.toString("utf8").match(/<[^<>\r\n]{1,996}>/g) ?? [];
   return safeMessageIds(values);
 };
-
 const outgoingAttachments = (
   input: SendMessageInput,
 ): {
@@ -120,6 +117,10 @@ export class ImapMailWriter {
       if (mutation.type === "destroy") {
         const deleted = await client.messageDelete(reference.uid, { uid: true });
         if (!deleted) throw new Error("Message not found.");
+        return;
+      }
+      if (mutation.type === "set-label") {
+        await mutateImapLabel(client, opened, reference.uid, mutation);
         return;
       }
       if (mutation.type === "set-read" || mutation.type === "set-starred") {

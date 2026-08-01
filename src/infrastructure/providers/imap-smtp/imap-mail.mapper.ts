@@ -14,6 +14,7 @@ import type {
   MessageDetail,
   MessageSummary,
 } from "@/domain/mail/mail";
+import { labelIdFromKeyword } from "@/domain/mail/label";
 import { id } from "@/domain/shared/brand";
 import {
   encodeMailboxId,
@@ -116,6 +117,10 @@ export const mapImapSummary = (
     id: id.message(messageId),
     isStarred: message.flags?.has("\\Flagged") ?? false,
     isUnread: !(message.flags?.has("\\Seen") ?? false),
+    labelIds: [...(message.flags ?? [])].flatMap((flag) => {
+      const labelId = labelIdFromKeyword(flag);
+      return labelId ? [labelId] : [];
+    }),
     mailboxIds: [id.mailbox(encodeMailboxId(mailbox))],
     preview: "",
     receivedAt: received.toISOString(),

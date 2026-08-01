@@ -10,6 +10,7 @@ export const jmapMailboxSchema = z
         mayCreateChild: z.boolean(),
         mayDelete: z.boolean(),
         mayRename: z.boolean(),
+        maySetKeywords: z.boolean().optional(),
       })
       .passthrough()
       .optional(),

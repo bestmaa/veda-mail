@@ -439,6 +439,32 @@ appearance from the old opaque path ID to the new one. If a provider mutation
 succeeds but the optional appearance write fails, the API reports that state
 without misrepresenting the already-committed provider operation as failed.
 
+## Portable labels
+
+Veda labels use an opaque stable `veda-label-` keyword derived from 128 random
+bits. Display names and colors never enter provider state: they live in the
+account-scoped encrypted `/data/mail-label-catalog.json` catalog. Names are
+NFKC-normalized, single-line, unique after case folding, and limited to 100
+characters and 255 UTF-8 bytes; each account is capped at 256 labels. Browser
+APIs accept only catalog IDs, enforce the current mail-session scope, and
+resolve an active owner-bound catalog record before any provider mutation.
+
+JMAP maps a label to an Email keyword. Before changing it, the adapter reloads
+authoritative keywords, mailbox membership, Email state, every containing
+mailbox's `maySetKeywords` right, and the advertised `maxKeywordsPerEmail`.
+`Email/set` changes only the selected keyword with `ifInState`, confirms the
+account and updated message, and performs one bounded authoritative retry after
+`stateMismatch`. IMAP maps the same ID to a user flag. Additions require absent
+`PERMANENTFLAGS`, `\\*`, or an already-permanent token; removals remain allowed.
+The adapter uses UID STORE and then refetches flags because servers may silently
+discard unsupported keywords. Copies in ordinary IMAP mailboxes may have
+independent flags and are not presented as JMAP-style account-global objects.
+
+The sidebar provides accessible create/rename/recolor controls; selected rows
+and the reader provide apply/remove controls. Unknown provider keywords never
+become catalog labels. Label deletion is intentionally not advertised until
+two-phase provider cleanup and a non-reusable tombstone are implemented.
+
 With the supplied Compose layout, signature books live in
 `/data/member-signatures.json`. The outer file contains keyed owner buckets but
 no raw email addresses or signature plaintext. An HMAC-SHA-256 of the

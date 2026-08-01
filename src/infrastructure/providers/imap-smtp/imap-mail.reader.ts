@@ -10,7 +10,7 @@ import type {
   MessageListQuery,
   MessagePage,
 } from "@/domain/mail/mail";
-import type { MessageId } from "@/domain/shared/brand";
+import type { MailboxId, MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 import {
   decodeMailboxId,
@@ -31,6 +31,7 @@ import {
   imapAttachmentAccountScope,
 } from "@/infrastructure/providers/imap-smtp/imap-received-attachment";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { imapLabelCapability } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
 
 const summaryQuery = {
   bodyStructure: true,
@@ -52,6 +53,15 @@ export class ImapMailReader {
       name: this.config.username.split("@")[0] ?? "Mail account",
       providerId: id.provider("imap-smtp"),
     };
+  }
+
+  public getLabelCapability(mailboxId: MailboxId) {
+    return withImapClient(this.config, async (client) => {
+      const opened = await client.mailboxOpen(decodeMailboxId(mailboxId), {
+        readOnly: true,
+      });
+      return imapLabelCapability(opened.permanentFlags);
+    });
   }
 
   public listMailboxes(): Promise<readonly Mailbox[]> {

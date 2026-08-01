@@ -30,13 +30,14 @@ export class MailApplicationService {
   ): Promise<ProviderMailWorkspace> {
     const mailboxes = await this.gateway.listMailboxes();
     const mailboxId = query.mailboxId ?? this.getDefaultMailbox(mailboxes).id;
-    const [account, draftCapability, messages] = await Promise.all([
+    const [account, draftCapability, labelCapability, messages] = await Promise.all([
       this.gateway.getAccount(),
       this.gateway.getDraftCapability(),
+      this.gateway.getLabelCapability(mailboxId),
       this.gateway.listMessages({ ...query, mailboxId }),
     ]);
 
-    return { account, draftCapability, mailboxes, messages };
+    return { account, draftCapability, labelCapability, mailboxes, messages };
   }
 
   public getMessage(messageId: MessageId) {

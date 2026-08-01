@@ -3,6 +3,7 @@ import type {
   AttachmentId,
   AttachmentUploadId,
   DraftId,
+  LabelId,
   MailboxId,
   MessageId,
   ProviderId,
@@ -13,6 +14,7 @@ import type {
   SavedProviderDraft,
 } from "@/domain/mail/draft";
 import type { Mailbox } from "@/domain/mail/mailbox";
+import type { LabelCapability, MailLabel } from "@/domain/mail/label";
 export type {
   Mailbox,
   MailboxMutation,
@@ -69,6 +71,7 @@ export interface MessageSummary {
   readonly id: MessageId;
   readonly isStarred: boolean;
   readonly isUnread: boolean;
+  readonly labelIds: readonly LabelId[];
   readonly mailboxIds: readonly MailboxId[];
   readonly preview: string;
   readonly receivedAt: string;
@@ -110,6 +113,12 @@ export type MessageMutation =
       readonly value: boolean;
     }
   | {
+      readonly labelId: LabelId;
+      readonly messageId: MessageId;
+      readonly type: "set-label";
+      readonly value: boolean;
+    }
+  | {
       readonly mailboxId: MailboxId;
       readonly messageId: MessageId;
       readonly type: "destroy";
@@ -128,6 +137,12 @@ export type BulkMessageMutation =
   | {
       readonly messageIds: readonly MessageId[];
       readonly type: "set-read" | "set-starred";
+      readonly value: boolean;
+    }
+  | {
+      readonly labelId: LabelId;
+      readonly messageIds: readonly MessageId[];
+      readonly type: "set-label";
       readonly value: boolean;
     }
   | {
@@ -210,11 +225,13 @@ export interface MailAccount {
 export interface ProviderMailWorkspace {
   readonly account: MailAccount;
   readonly draftCapability: DraftCapability;
+  readonly labelCapability: LabelCapability;
   readonly mailboxes: readonly Mailbox[];
   readonly messages: MessagePage;
 }
 
 export interface MailWorkspace extends ProviderMailWorkspace {
+  readonly labels: readonly MailLabel[];
   readonly sessionExpiresAt: string;
   readonly sessionScope: string;
 }

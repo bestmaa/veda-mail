@@ -205,6 +205,14 @@ in an account-isolated encrypted `/data/mailbox-appearance.json` sidecar and
 migrate across IMAP rename IDs. One residual IMAP race remains because the
 protocol has no atomic “delete only if still empty” primitive.
 
+Portable label create, rename, recolor, display, bulk/single apply, and remove
+are implemented for both included adapters. Opaque stable IDs map to JMAP
+keywords or capability-checked IMAP user flags; the encrypted account catalog,
+strict scoped APIs, state/right/capacity checks, post-mutation verification,
+accessible UI, and provider/security tests are complete. The checkbox remains
+open until the release image is deployed and verified and resumable two-phase
+label deletion is delivered.
+
 Selection is explicitly limited to loaded messages, excludes editable Drafts,
 survives only within the current mailbox/search/session view, and retains only
 provider failures after a partial result. Strict unique batches are capped at
