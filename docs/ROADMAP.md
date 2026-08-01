@@ -176,7 +176,7 @@ broader shortcut/accessibility audit listed above.
   move, and permanent-delete actions
 - [x] Create, rename, recolor, nest, and delete custom folders/mailboxes
 - [x] Portable labels model with a documented IMAP mapping
-- [ ] Dedicated spam and trash behavior, empty-folder action, retention hints,
+- [x] Dedicated spam and trash behavior, empty-folder action, retention hints,
   and safe permanent-delete confirmation
 - [ ] Drag/drop or keyboard move with an accessible non-pointer alternative
 - [ ] Configurable density, sorting, and message-list preview
@@ -227,8 +227,10 @@ Dedicated Spam/Trash lifecycle implementation now includes provider-neutral
 retention hints, rights-aware role actions, reader restore/not-spam, and
 prepare-first Empty actions. Encrypted server-owned progress resumes only after
 a durable snapshot: JMAP aborts on post-confirmation query additions, while
-IMAP binds an upper UID to UIDVALIDITY/OBJECTID and requires UIDPLUS. The
-checkbox remains open until the immutable release is verified in production.
+IMAP binds an upper UID to UIDVALIDITY/OBJECTID and requires UIDPLUS. Release
+digest `sha256:af01a2ab82735b3ba613b19d94038bcc3c425af8a31ac3636b93ed5fb7c35d25`
+was deployed on 2026-08-01; Dokploy confirmed the image pull and container
+recreation, and the public `/api/health` endpoint returned HTTP 200.
 
 ## M5 — Conversations and powerful search
 
