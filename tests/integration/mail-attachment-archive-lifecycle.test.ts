@@ -3,9 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import { id } from "@/domain/shared/brand";
 import { mailSessionScope } from "@/server/connections/mail-session-scope";
+import { ApiError } from "@/transport/http/api-error";
 
 const mocks = vi.hoisted(() => ({
   connection: { id: "archive-lifecycle-connection" },
+  consumeAttachmentArchiveTicket: vi.fn(),
   downloadAttachment: vi.fn(),
   getCurrentConnection: vi.fn(),
   getMessage: vi.fn(),
@@ -18,6 +20,10 @@ vi.mock("@/server/connections/connection-session", () => ({
 }));
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: mocks.getMailService,
+}));
+vi.mock("@/server/mail/attachment-archive-ticket", () => ({
+  consumeAttachmentArchiveTicket: mocks.consumeAttachmentArchiveTicket,
+  issueAttachmentArchiveTicket: vi.fn(),
 }));
 vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: vi.fn(),
@@ -36,7 +42,7 @@ const item = {
   size: 3,
 };
 const request = (
-  query = "",
+  query = `?ticket=${"t".repeat(43)}`,
   sessionScope = mailSessionScope(mocks.connection),
 ): Request =>
   new Request(
@@ -74,17 +80,15 @@ afterEach(() => {
 });
 
 describe("attachment archive lifecycle", () => {
-  it("accepts the current native-download query scope without a matching header", async () => {
+  it("accepts a single-use ticket without a matching scope header", async () => {
     mocks.downloadAttachment.mockResolvedValueOnce({
       body: byteStream(Uint8Array.of(1, 2, 3)),
       mimeType: "application/octet-stream",
       name: "one.bin",
       size: 3,
     });
-    const scope = mailSessionScope(mocks.connection);
-
     const response = await GET(
-      request(`?sessionScope=${encodeURIComponent(scope)}`, "stale-scope"),
+      request(`?ticket=${"t".repeat(43)}`, "stale-scope"),
       context(),
     );
 
@@ -93,15 +97,19 @@ describe("attachment archive lifecycle", () => {
     expect(mocks.downloadAttachment).toHaveBeenCalledOnce();
   });
 
-  it("rejects a stale native-download query before provider access", async () => {
-    const response = await GET(
-      request("?sessionScope=stale-scope"),
-      context(),
-    );
+  it("rejects an invalid or replayed ticket before provider access", async () => {
+    mocks.consumeAttachmentArchiveTicket.mockImplementationOnce(() => {
+      throw new ApiError(
+        "The attachment archive ticket is invalid or expired.",
+        "ATTACHMENT_ARCHIVE_TICKET_INVALID",
+        403,
+      );
+    });
+    const response = await GET(request("?ticket=stale-ticket"), context());
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: "MAIL_SESSION_CHANGED" },
+      error: { code: "ATTACHMENT_ARCHIVE_TICKET_INVALID" },
     });
     expect(mocks.getMailService).not.toHaveBeenCalled();
     expect(mocks.listMessageAttachments).not.toHaveBeenCalled();
@@ -164,6 +172,9 @@ describe("attachment archive lifecycle", () => {
       size: null,
     });
     const first = await GET(request(), context());
+    const busy = await GET(request(), context());
+    expect(busy.status).toBe(429);
+    expect(mocks.consumeAttachmentArchiveTicket).toHaveBeenCalledOnce();
     const reader = first.body?.getReader();
     await reader?.read();
     await reader?.read();
@@ -178,6 +189,7 @@ describe("attachment archive lifecycle", () => {
     const retry = await GET(request(), context());
     expect(retry.status).toBe(200);
     await retry.arrayBuffer();
+    expect(mocks.consumeAttachmentArchiveTicket).toHaveBeenCalledTimes(2);
     expect(cancelled).toHaveBeenCalledTimes(1);
   });
 });

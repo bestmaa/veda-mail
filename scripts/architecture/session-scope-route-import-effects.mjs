@@ -6,7 +6,7 @@ const REQUEST_UTILITY_EXPORTS = new Map([
   ["@/server/installation/request-origin", new Set(["assertSameOrigin"])],
   [
     "@/server/security/rate-limit",
-    new Set(["assertRequestRateLimit", "assertSubjectRateLimit"]),
+    new Set(["assertRequestRateLimit"]),
   ],
   ["@/transport/http/api-response", new Set(["apiFailure", "apiSuccess"])],
   ["@/transport/http/read-json-body", new Set(["readJsonBody"])],
@@ -79,7 +79,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     ]),
   ],
   ["@/server/mail/attachment-archive", new Set(["preflightAttachmentArchive", "prepareAttachmentArchive"])],
-  ["@/server/mail/attachment-archive-concurrency", new Set(["acquireAttachmentArchiveLease"])],
+  ["@/server/mail/attachment-archive-ticket", new Set(["issueAttachmentArchiveTicket"])],
   ["@/server/mail/attachment-download-concurrency", new Set(["acquireAttachmentDownloadLease"])],
   ["@/server/mail/attachment-archive-http", new Set(["*"])],
   [

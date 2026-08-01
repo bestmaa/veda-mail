@@ -7,6 +7,9 @@ import {
 import { exportedHandlers } from "./session-scope-route-exports.mjs";
 import { analyzeSessionScopeHandler } from "./session-scope-route-flow.mjs";
 
+const ATTACHMENT_ARCHIVE_ROUTE =
+  "src/app/api/v1/mail/messages/[messageId]/attachments/archive/route.ts";
+
 export const sessionScopeHandlerViolations = (
   fileName,
   source,
@@ -32,6 +35,8 @@ export const sessionScopeHandlerViolations = (
       record.handler,
       bindings,
       imports,
+      fileName.replaceAll("\\", "/").endsWith(ATTACHMENT_ARCHIVE_ROUTE) &&
+        method === "GET",
     );
     if (security.violation) violations.push(method);
   }

@@ -1,9 +1,6 @@
 import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
-import {
-  assertMailSessionScope,
-  assertMailSessionScopeValue,
-} from "@/server/connections/mail-session-scope";
+import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   acquireAttachmentArchiveLease,
@@ -18,6 +15,10 @@ import {
   preflightAttachmentArchive,
   prepareAttachmentArchive,
 } from "@/server/mail/attachment-archive";
+import {
+  consumeAttachmentArchiveTicket,
+  issueAttachmentArchiveTicket,
+} from "@/server/mail/attachment-archive-ticket";
 import { attachmentDownloadHeaders } from "@/server/mail/attachment-download-http";
 import type { AttachmentDownloadLease } from "@/server/mail/attachment-download-concurrency";
 import { getMailService } from "@/server/mail/mail-service";
@@ -25,9 +26,11 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import { ApiError } from "@/transport/http/api-error";
+import { apiSuccess } from "@/transport/http/api-response";
 
 export const runtime = "nodejs";
-const ARCHIVE_SESSION_SCOPE_QUERY = "sessionScope";
+const ARCHIVE_TICKET_QUERY = "ticket";
 
 interface RouteContext {
   readonly params: Promise<{ readonly messageId: string }>;
@@ -46,24 +49,24 @@ export const GET = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const connection = await getCurrentConnection();
-    assertAttachmentArchiveRequest(request, ARCHIVE_SESSION_SCOPE_QUERY);
-    const queryScope = new URL(request.url).searchParams.get(
-      ARCHIVE_SESSION_SCOPE_QUERY,
-    );
-    if (queryScope === null) {
-      assertMailSessionScope(request, connection);
-    } else {
-      assertMailSessionScopeValue(queryScope, connection);
-    }
-    assertSubjectRateLimit(
-      "attachment-archive",
-      connection.id,
-      5,
-      60 * 1_000,
-    );
+    await assertAttachmentArchiveRequest(request, ARCHIVE_TICKET_QUERY);
+    assertSubjectRateLimit("attachment-archive", connection.id, 5, 60 * 1_000);
     const params = parseAttachmentArchiveRouteParams(await context.params);
-    const mail = await getMailService(connection);
+    const ticket = new URL(request.url).searchParams.get(ARCHIVE_TICKET_QUERY);
+    if (!ticket) {
+      throw new ApiError(
+        "A valid attachment archive ticket is required.",
+        "ATTACHMENT_ARCHIVE_TICKET_REQUIRED",
+        403,
+      );
+    }
     lease = acquireAttachmentArchiveLease(connection.id);
+    consumeAttachmentArchiveTicket({
+      connectionId: connection.id,
+      messageId: params.messageId,
+      ticket,
+    });
+    const mail = await getMailService(connection);
     body = await prepareAttachmentArchive({
       lease,
       mail,
@@ -81,7 +84,7 @@ export const GET = async (request: Request, context: RouteContext) => {
   }
 };
 
-export const HEAD = async (request: Request, context: RouteContext) => {
+export const POST = async (request: Request, context: RouteContext) => {
   let lease: AttachmentDownloadLease | undefined;
   try {
     assertSameOrigin(request);
@@ -100,7 +103,7 @@ export const HEAD = async (request: Request, context: RouteContext) => {
       10,
       60 * 1_000,
     );
-    assertAttachmentArchiveRequest(request);
+    await assertAttachmentArchiveRequest(request);
     const params = parseAttachmentArchiveRouteParams(await context.params);
     const mail = await getMailService(connection);
     lease = acquireAttachmentArchiveLease(connection.id);
@@ -109,17 +112,17 @@ export const HEAD = async (request: Request, context: RouteContext) => {
       messageId: id.message(params.messageId),
       requestSignal: request.signal,
     });
-    return new Response(null, {
-      headers: attachmentDownloadHeaders(),
-      status: 204,
+    const issued = issueAttachmentArchiveTicket({
+      connectionId: connection.id,
+      messageId: params.messageId,
     });
+    const response = apiSuccess(issued, { status: 201 });
+    for (const [name, value] of attachmentDownloadHeaders()) {
+      response.headers.set(name, value);
+    }
+    return response;
   } catch (error) {
-    const failure = attachmentArchiveFailure(error);
-    return new Response(null, {
-      headers: failure.headers,
-      status: failure.status,
-      statusText: failure.statusText,
-    });
+    return attachmentArchiveFailure(error);
   } finally {
     lease?.release();
   }

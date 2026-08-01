@@ -36,6 +36,12 @@ const evaluateIdentifier = (node, state, context) => {
     return cloneValue(state.bindings.get(node.text));
   }
   const namespaceFields = new Map();
+  const special = context.imports.specialNamespaces.get(node.text);
+  if (special) {
+    special.forEach((kind, name) => {
+      namespaceFields.set(name, primitiveValue(kind));
+    });
+  }
   if (context.imports.connectionNamespaces.has(node.text)) {
     namespaceFields.set("getCurrentConnection", primitiveValue("connection"));
   }
@@ -56,7 +62,6 @@ const evaluateIdentifier = (node, state, context) => {
     for (const name of [
       "assertRequestRateLimit",
       "assertSameOrigin",
-      "assertSubjectRateLimit",
       "readJsonBody",
     ]) {
       namespaceFields.set(name, primitiveValue("request-utility"));

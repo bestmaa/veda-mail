@@ -23,10 +23,61 @@ const routeParamsSchema = z
 export const parseAttachmentArchiveRouteParams = (input: unknown) =>
   routeParamsSchema.parse(input);
 
-export const assertAttachmentArchiveRequest = (
+const EMPTY_BODY_READ_TIMEOUT_MS = 1_000;
+const MAX_EMPTY_BODY_CHUNKS = 8;
+
+const invalidArchiveBody = (): ApiError =>
+  new ApiError(
+    "Attachment archive request bodies are not supported.",
+    "INVALID_ATTACHMENT_ARCHIVE",
+    400,
+  );
+
+const readBodyChunk = async (
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<ReadableStreamReadResult<Uint8Array> | null> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(null), EMPTY_BODY_READ_TIMEOUT_MS);
+    timer.unref();
+    reader.read().then(
+      (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+
+const assertEmptyArchiveBody = async (request: Request): Promise<void> => {
+  if (request.body === null) return;
+  const reader = request.body.getReader();
+  try {
+    for (let index = 0; index < MAX_EMPTY_BODY_CHUNKS; index += 1) {
+      const result = await readBodyChunk(reader).catch(() => null);
+      if (!result) throw invalidArchiveBody();
+      if (result.done) return;
+      if (result.value.byteLength > 0) throw invalidArchiveBody();
+    }
+    throw invalidArchiveBody();
+  } finally {
+    void reader.cancel().catch(() => undefined);
+  }
+};
+
+export const assertAttachmentArchiveRequest = async (
   request: Request,
   allowedQueryParameter?: string,
-): void => {
+): Promise<void> => {
+  const contentLength = request.headers.get("content-length");
+  if (
+    request.headers.has("transfer-encoding") ||
+    (contentLength !== null && contentLength !== "0")
+  ) {
+    throw invalidArchiveBody();
+  }
   if (request.headers.has("range")) {
     throw new ApiError(
       "Attachment archive byte ranges are not supported.",
@@ -35,20 +86,18 @@ export const assertAttachmentArchiveRequest = (
     );
   }
   const searchParams = new URL(request.url).searchParams;
-  if (
-    searchParams.size > 0 &&
-    !(
-      allowedQueryParameter &&
-      searchParams.size === 1 &&
-      searchParams.has(allowedQueryParameter)
-    )
-  ) {
+  const allowedQuery =
+    allowedQueryParameter &&
+    searchParams.size === 1 &&
+    searchParams.getAll(allowedQueryParameter).length === 1;
+  if (searchParams.size > 0 && !allowedQuery) {
     throw new ApiError(
       "Attachment archive query parameters are not supported.",
       "INVALID_ATTACHMENT_ARCHIVE",
       400,
     );
   }
+  await assertEmptyArchiveBody(request);
 };
 
 export const createAttachmentArchiveResponse = (

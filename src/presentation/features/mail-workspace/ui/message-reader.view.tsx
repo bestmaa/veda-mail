@@ -64,7 +64,6 @@ export const MessageReaderView = ({
 
     <article
       aria-busy={reader.isLoading}
-      aria-live="polite"
       className="min-h-0 flex-1 overflow-y-auto"
     >
       {reader.isLoading ? (

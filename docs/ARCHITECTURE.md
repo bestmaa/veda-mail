@@ -353,11 +353,13 @@ client workspace accepts that same scope. Otherwise the limit clears until a
 scoped capability refresh succeeds.
 
 Normal scoped requests use the `X-Veda-Mail-Session-Scope` header. Native ZIP
-downloads cannot attach a custom header, so only the archive GET accepts the
-same scope as its single query parameter after a scoped HEAD preflight. Archive
-responses remain private, non-cacheable, same-origin, and `no-referrer`. The
-scope is neither the connection cookie nor an authentication credential and
-cannot authorize a request without the current member cookie.
+downloads cannot attach a custom header, so an authenticated, scoped `POST`
+preflight exchanges it for a random 256-bit archive ticket. Only the ticket is
+placed in the native GET query; the session scope never enters a URL. Tickets
+expire after 30 seconds, are stored only as SHA-256 digests, bind the exact
+connection and message, and are deleted before binding validation so every
+presentation is single-use. Archive responses remain private, non-cacheable,
+same-origin, and `no-referrer`; the current member cookie is still required.
 
 ## Mailbox cursor pagination
 
@@ -632,8 +634,10 @@ a sandbox CSP, and same-origin resource policy. Byte-range requests are
 rejected because partial-response semantics are not implemented.
 
 The JMAP adapter resolves the authenticated account download URL, requires
-identity transfer encoding and an exact provider `Content-Length`, then checks
-the streamed byte count. The IMAP adapter opens the source mailbox read-only,
+identity transfer encoding, and checks the streamed byte count against
+authoritative metadata or a valid provider `Content-Length` when either is
+known. A chunked response is accepted only under the same streaming byte
+ceiling. The IMAP adapter opens the source mailbox read-only,
 revalidates `UIDVALIDITY` and `BODYSTRUCTURE`, resolves the server-held MIME
 part, and keeps the IMAP connection alive only for that bounded stream. IMAP
 decoded length is not reliably known before transfer, so the HTTP response
@@ -690,7 +694,9 @@ retries only failed opaque attachment IDs and remains bounded and fail-closed.
 
 Download all uses the message-scoped static route
 `/api/v1/mail/messages/{messageId}/attachments/archive`. The browser supplies
-only the opaque message ID. A signal-aware gateway call authoritatively
+only the opaque message ID plus the single-use ticket issued by its immediately
+preceding scoped preflight; neither a session scope nor provider identifier is
+placed in the URL. A signal-aware gateway call authoritatively
 classifies the current visible/downloadable attachments and may inspect bounded
 message presentation data to apply the same sanitizer and inline-image render
 cap as the reader. The existing per-attachment gateway operation then

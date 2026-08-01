@@ -33,14 +33,14 @@ export const createAttachmentArchiveViewModel = (
     readonly isPreparing: boolean;
   },
 ) => {
-  if (attachmentCount < 2) return { downloadAll: null, error: null };
+  if (attachmentCount < 2) return { downloadAll: null };
   const href = createAttachmentArchiveHref(messageId);
   return {
     downloadAll: {
+      error: state.href === href ? state.error : null,
       isPreparing: state.href === href && state.isPreparing,
       onClick: () => void state.download(href),
     },
-    error: state.href === href ? state.error : null,
   };
 };
 
@@ -58,6 +58,7 @@ export const createReceivedAttachmentViewModels = (
   },
   download?: {
     readonly download: (href: string, name: string) => Promise<void>;
+    readonly error: string | null;
     readonly href: string | null;
     readonly isDownloading: boolean;
   },
@@ -72,6 +73,7 @@ export const createReceivedAttachmentViewModels = (
       preview && canPreviewReceivedAttachment(attachment),
     );
     return {
+      error: download?.href === href ? download.error : null,
       href,
       id: attachment.id,
       isDownloading: Boolean(

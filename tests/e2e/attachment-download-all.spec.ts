@@ -76,12 +76,22 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
       hash(expected.get(entry.name) ?? new Uint8Array()),
     );
   }
-
   const href = "/api/v1/mail/messages/msg-archive-fixtures/attachments/archive";
   const origin = new URL(page.url()).origin;
   const scopeHeaders = await mailSessionScopeHeaders(page);
-  const authenticated = await page.request.get(href ?? "", {
+  const ticketResponse = await page.request.post(href, {
     headers: { origin, ...scopeHeaders },
+  });
+  expect(ticketResponse.status()).toBe(201);
+  const ticketPayload = (await ticketResponse.json()) as {
+    readonly data: { readonly ticket: string };
+  };
+  const ticketHref = `${href}?ticket=${encodeURIComponent(
+    ticketPayload.data.ticket,
+  )}`;
+  expect(ticketHref).not.toContain("sessionScope");
+  const authenticated = await page.request.get(ticketHref, {
+    headers: { origin },
   });
   expect(authenticated.status()).toBe(200);
   expect(authenticated.headers()["content-type"]).toBe("application/zip");
@@ -90,10 +100,17 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
   );
   expect(authenticated.headers()["accept-ranges"]).toBe("none");
   expect(parseStoreZip(await authenticated.body())).toHaveLength(3);
-
-  const unauthenticated = await request.get(href ?? "", {
+  const replay = await page.request.get(ticketHref, {
     headers: { origin },
   });
+  expect(replay.status()).toBe(403);
+
+  const unauthenticated = await request.get(
+    `${href}?ticket=${"u".repeat(43)}`,
+    {
+      headers: { origin },
+    },
+  );
   expect(unauthenticated.status()).toBe(401);
   const crossOrigin = await page.request.get(href ?? "", {
     headers: { origin: "https://evil.example" },
@@ -125,8 +142,17 @@ test("shows an actionable error when ZIP preflight fails", async ({ page }) => {
   await page.route(
     "**/api/v1/mail/messages/msg-archive-fixtures/attachments/archive",
     async (route) => {
-      if (route.request().method() === "HEAD") {
-        await route.fulfill({ status: 413 });
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          contentType: "application/json",
+          status: 413,
+          body: JSON.stringify({
+            error: {
+              code: "ATTACHMENT_ARCHIVE_TOO_LARGE",
+              message: "These attachments are too large to download together.",
+            },
+          }),
+        });
         return;
       }
       await route.continue();

@@ -134,7 +134,11 @@ malicious-file tests pass.
 Direct download, original-attachment forwarding, and Download all implementation
 plus automated security/browser coverage are complete. Their checkboxes remain
 open until receiving-side SHA-256 and response-header evidence is recorded from
-dedicated live JMAP and IMAP/SMTP mailboxes.
+dedicated live JMAP and IMAP/SMTP mailboxes. Download all now uses a 30-second,
+single-use connection/message-bound ticket, so the reusable mailbox-session
+scope never appears in a native-download URL. JMAP downloads also support
+standards-compliant unknown-length identity streams while retaining exact
+verification whenever a length is known and the existing byte ceiling always.
 
 ## M3 — Draft-safe, rich composing
 

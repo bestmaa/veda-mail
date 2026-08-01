@@ -9,6 +9,7 @@ const attachment = (
   id: string,
   name: string,
 ): AttachmentViewModel => ({
+  error: null,
   href: `/api/v1/mail/messages/message-one/attachments/${id}`,
   id,
   isDownloading: false,
@@ -22,9 +23,10 @@ const attachment = (
 const render = (
   attachments: readonly AttachmentViewModel[],
   downloadAll: {
+    readonly error: string | null;
     readonly isPreparing: boolean;
     readonly onClick: () => void;
-  } | null = { isPreparing: false, onClick: () => undefined },
+  } | null = { error: null, isPreparing: false, onClick: () => undefined },
 ) =>
   renderToStaticMarkup(
     createElement(ReceivedAttachmentListView, {
@@ -74,5 +76,26 @@ describe("received attachment list component", () => {
     expect(html).not.toContain("Download all");
     expect(html).toContain("Download first.txt");
     expect(html).toContain("Download second.txt");
+  });
+
+  it("announces archive preparation and failures beside Download all", () => {
+    const attachments = [
+      attachment("first", "first.txt"),
+      attachment("second", "second.txt"),
+    ];
+    const preparing = render(attachments, {
+      error: null, isPreparing: true, onClick: () => undefined,
+    });
+    const failed = render(attachments, {
+      error: "Archive preparation failed.",
+      isPreparing: false,
+      onClick: () => undefined,
+    });
+
+    expect(preparing).toContain('aria-busy="true"');
+    expect(preparing).toContain('role="status"');
+    expect(preparing).toContain("Preparing attachment ZIP…");
+    expect(failed).toContain('role="alert"');
+    expect(failed).toContain("Archive preparation failed.");
   });
 });

@@ -694,9 +694,11 @@ limiter and encrypted shared session repository.
   partial-download bypasses. The browser independently bounds received bytes,
   verifies any declared length, and revokes failed Blob download handoffs.
 - Decoded output is streamed under a 50 MiB ceiling, bounded concurrency,
-  cancellation, and provider timeouts. JMAP requires exact identity-encoded
-  length; IMAP revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE`
-  before resolving and streaming the server-held MIME part.
+  cancellation, and provider timeouts. JMAP requires identity encoding and
+  verifies exact length whenever authoritative metadata or a valid response
+  length is available; an unknown-length stream remains byte-capped. IMAP
+  revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE` before resolving
+  and streaming the server-held MIME part.
 - Download all accepts only an opaque message ID and performs an authoritative,
   signal-aware provider classification that may inspect bounded message
   presentation data to match the reader's sanitizer and inline-image render
@@ -704,6 +706,12 @@ limiter and encrypted shared session repository.
   ZIPs use STORE mode, CRC-32, fixed metadata, regular root files, and
   collision-safe sanitized names; they contain no source paths, comments,
   symlinks, device entries, or provider identifiers.
+- Native Download all navigation never carries the reusable member-session
+  scope. A same-origin, scoped POST first issues a 256-bit ticket stored only by
+  digest, bound to the current connection and message, capped globally and per
+  connection, expired after 30 seconds, and consumed before binding checks so a
+  wrong-message attempt also burns it. The opaque ticket is still a temporary
+  bearer value, so archive responses keep `no-referrer` and no-store policies.
 - Archive generation allows at most 100 entries, 50 MiB per entry, 200 MiB
   actual decoded payload, 32 zero-progress chunks per entry, and ten minutes.
   Dedicated four-global/one-member concurrency also consumes the shared

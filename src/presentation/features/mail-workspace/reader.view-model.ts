@@ -112,11 +112,6 @@ export const createReaderViewModel = (input: {
       `/api/v1/mail/messages/${encodeURIComponent(message.id)}/attachments/`,
     ),
   );
-  const downloadBelongsToMessage = Boolean(
-    input.attachmentDownload.href?.startsWith(
-      `/api/v1/mail/messages/${encodeURIComponent(message.id)}/attachments/`,
-    ),
-  );
   return {
     attachments: createReceivedAttachmentViewModels(
       message.id,
@@ -140,10 +135,7 @@ export const createReaderViewModel = (input: {
     cc: message.cc.map((address) => address.email).join(", "),
     date: formatFullDate(message.receivedAt),
     downloadAll: archive.downloadAll,
-    error:
-      archive.error ??
-      (downloadBelongsToMessage ? input.attachmentDownload.error : null) ??
-      input.readerError,
+    error: input.readerError,
     from: formatSender(message.from),
     fromEmail: message.from[0]?.email ?? "",
     htmlBody: message.htmlBody,

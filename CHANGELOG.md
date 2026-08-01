@@ -108,6 +108,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Download all now exchanges the scoped authenticated preflight for a 30-second,
+  256-bit, single-use ticket bound to the exact connection and message. The
+  reusable mailbox-session scope no longer appears in native-download URLs;
+  replay, expiry, wrong binding, request bodies, ranges, and extra query values
+  fail before provider access
+- Stalwart JMAP attachment downloads now accept standards-compliant chunked
+  identity responses when no length is declared, while enforcing authoritative
+  known lengths and the streaming byte ceiling
 - Closing a composer now removes ordinary local recovery before hiding content,
   preserves unresolved terminal-operation evidence, and confirms before
   abandoning in-progress attachment copies. Sign-out always asks for
