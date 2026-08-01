@@ -179,7 +179,7 @@ broader shortcut/accessibility audit listed above.
 - [x] Dedicated spam and trash behavior, empty-folder action, retention hints,
   and safe permanent-delete confirmation
 - [x] Drag/drop or keyboard move with an accessible non-pointer alternative
-- [ ] Configurable density, sorting, and message-list preview
+- [x] Configurable density, sorting, and message-list preview
 - [ ] Optimistic updates with rollback and partial-failure reporting
 
 Acceptance: operations on large selections are bounded, cancellable where
@@ -193,11 +193,16 @@ retry, and stable reader selection. Offset movement during concurrent provider
 mutation remains documented; refresh restarts from the authoritative first
 page.
 
-The density/sort/preview slice is implemented locally with three density modes,
+The density/sort/preview slice is deployed with three density modes,
 newest/oldest provider mailbox order, encrypted account preferences, and
-privacy-bounded JMAP previews. The milestone remains unchecked until production
-deployment and verification are complete; Standard IMAP also truthfully shows
-no list snippet because its summary path does not fetch message bodies.
+privacy-bounded JMAP previews. Standard IMAP truthfully shows no list snippet
+because its summary path does not fetch message bodies. Merge `a52b21f` was
+deployed from immutable release digest
+`sha256:12e0aa9f46f01b595d5ba407b0691e1aa2b794cc9df1b1f8b3c34737015d51e5`;
+Dokploy reported the exact amd64 image config, a healthy container, and a
+durable named volume at `/data`. The production health endpoint returned HTTP
+200 at `2026-08-01T16:01:14.621Z`, and setup status confirmed the installation
+is complete on that volume.
 
 Loaded-page multi-select and bulk actions are complete for both adapters.
 
