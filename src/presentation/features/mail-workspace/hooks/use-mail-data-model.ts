@@ -225,11 +225,8 @@ export const useMailDataModel = () => {
       workspaceRequestId.current += 1;
       setSearchValue(""); setAppliedSearch(""); clearMessage();
     }, [clearMessage]),
-    onSearchInput: useCallback(
-      (event: React.ChangeEvent<HTMLInputElement>) =>
-        setSearchValue(event.target.value),
-      [],
-    ),
+    onSearchInput: useCallback((event: React.ChangeEvent<HTMLInputElement>) =>
+      setSearchValue(event.target.value), []),
     onSearchSubmit,
     readerError, loadMoreError: pagination.loadMoreError,
     refresh,
@@ -244,6 +241,7 @@ export const useMailDataModel = () => {
     selectedMessage,
     toggleRead: mutations.toggleRead,
     toggleStar: mutations.toggleStar,
+    viewKey: `${activeMailboxId ?? ""}\n${appliedSearch}`,
     workspace,
   };
 };

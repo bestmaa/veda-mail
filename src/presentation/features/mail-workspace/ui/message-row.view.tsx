@@ -1,4 +1,4 @@
-import { Paperclip, Star } from "lucide-react";
+import { FolderInput, GripVertical, Paperclip, Star } from "lucide-react";
 
 import type { MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 
@@ -15,6 +15,9 @@ export const MessageRowView = ({
         ? "border-indigo-200 bg-indigo-50/75 shadow-sm"
         : "border-transparent bg-white hover:border-slate-200 hover:shadow-sm"
     }`}
+    draggable={message.canDrag}
+    onDragEnd={message.onDragEnd}
+    onDragStart={message.onDragStart}
   >
     <div className="pointer-events-none relative flex items-start gap-3">
       {message.canSelect ? (
@@ -36,6 +39,13 @@ export const MessageRowView = ({
       >
         {message.avatar}
       </span>
+      {message.canDrag ? (
+        <GripVertical
+          aria-hidden
+          className="mt-2 shrink-0 text-slate-400"
+          size={14}
+        />
+      ) : null}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p
@@ -92,9 +102,20 @@ export const MessageRowView = ({
     </div>
     <button
       aria-label={message.openLabel}
-      className="absolute inset-0 rounded-2xl"
+      className="absolute inset-0 z-0 rounded-2xl"
       onClick={message.onSelect}
       type="button"
     />
+    {message.canDrag ? (
+      <button
+        aria-label={`Move ${message.subject}`}
+        className="absolute bottom-2 right-2 z-20 grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 opacity-100 shadow-sm hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+        onClick={message.onRequestMove}
+        title={`Move ${message.subject}`}
+        type="button"
+      >
+        <FolderInput aria-hidden size={16} />
+      </button>
+    ) : null}
   </article>
 );

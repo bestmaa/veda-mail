@@ -24,8 +24,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Cursor-paginated inbox, reader, search, To/CC/BCC compose, Reply, Reply All,
   and Forward flows
 - Accessible loaded-message multi-select with bounded bulk read/unread,
-  star/unstar, archive, spam, trash, restore, move, and confirmed permanent
-  delete across JMAP and IMAP
+  star/unstar, archive, spam, trash, restore, permission-aware drag/drop or
+  keyboard/touch move, and confirmed permanent delete across JMAP and IMAP
 - Dedicated Spam and Trash lifecycle banners with provider-neutral retention
   hints, restore/not-spam reader actions, and confirmed resumable Empty actions
   that preserve every message arriving after confirmation

@@ -43,6 +43,14 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/mail/outgoing-mail-content", new Set(["canonicalizeOutgoingMailContent"])],
   ["@/server/mailboxes/mailbox-appearance.store", new Set(["mailboxAppearanceStore"])],
   ["@/server/mailboxes/mailbox-empty.service", new Set(["emptyMailboxBatch"])],
+  [
+    "@/server/messages/message-move.service",
+    new Set([
+      "authorizeMessageMoveMailboxes",
+      "authorizeMessageMoveMembership",
+      "moveMessage",
+    ]),
+  ],
   ["@/server/labels/label-catalog.store", new Set(["labelCatalogStore"])],
   ["@/server/labels/label-http", new Set(["labelHttpError"])],
   [

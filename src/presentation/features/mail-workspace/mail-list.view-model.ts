@@ -7,6 +7,21 @@ import { flattenMailboxTree } from "@/presentation/features/mail-workspace/mailb
 interface MailListOptions {
   readonly activeMailboxId: MailboxId | null;
   readonly draftsEnabled: boolean;
+  readonly folderMoveProps: (
+    mailboxId: MailboxId,
+  ) => Pick<
+    FolderViewModel,
+    "canDrop" | "isDropTarget" | "onDragEnter" | "onDragLeave" |
+      "onDragOver" | "onDrop"
+  >;
+  readonly messageMoveProps: (
+    messageId: MessageId,
+    label: string,
+    canMove: boolean,
+  ) => Pick<
+    MessageItemViewModel,
+    "canDrag" | "onDragEnd" | "onDragStart" | "onRequestMove"
+  >;
   readonly onOpenDraft: (id: string) => void;
   readonly onManageMailbox: (id: string) => void;
   readonly onSelectMailbox: (id: string) => void;
@@ -21,6 +36,8 @@ interface MailListOptions {
 export const createMailListViewModel = ({
   activeMailboxId,
   draftsEnabled,
+  folderMoveProps,
+  messageMoveProps,
   onOpenDraft,
   onManageMailbox,
   onSelectMailbox,
@@ -47,6 +64,7 @@ export const createMailListViewModel = ({
     activeFolder: activeMailbox?.name ?? "Inbox",
     activeRole: activeMailbox?.role ?? null,
     folders: flattenMailboxTree(workspace?.mailboxes ?? []).map(({ depth, mailbox }) => ({
+      ...folderMoveProps(mailbox.id),
       canManage: mailbox.role === "custom" && mailbox.rights.mayRename,
       color: mailbox.color,
       count: mailbox.unread || mailbox.total,
@@ -64,6 +82,7 @@ export const createMailListViewModel = ({
         ? `To: ${message.to.length ? formatSender(message.to) : "No recipients"}`
         : formatSender(message.from);
       return {
+        ...messageMoveProps(message.id, subject, !opensDrafts),
         avatar: initials(sender),
         canSelect: !opensDrafts,
         date: formatMessageDate(message.receivedAt),

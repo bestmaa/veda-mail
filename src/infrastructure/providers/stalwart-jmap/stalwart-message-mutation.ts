@@ -8,6 +8,7 @@ import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jma
 import { StalwartJmapMethodError } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { jmapSetResultSchema } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
+import { prepareStalwartMessageMove } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-move";
 import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 const destroySourceSchema = z.object({
@@ -113,9 +114,11 @@ const labelState = async (
 
 const targetMailbox = async (
   reader: StalwartMailReader,
-  mutation: Exclude<MessageMutation, { readonly type: "destroy" }>,
+  mutation: Exclude<
+    MessageMutation,
+    { readonly type: "destroy" } | { readonly type: "move" }
+  >,
 ): Promise<string> => {
-  if (mutation.type === "move") return mutation.mailboxId;
   const role =
     mutation.type === "delete"
       ? "trash"
@@ -139,13 +142,26 @@ export const mutateStalwartMessage = async (
   const label = mutation.type === "set-label"
     ? await labelState(client, reader, accountId, mutation)
     : null;
-  if (label?.achieved) return;
+  const move = mutation.type === "move"
+    ? await prepareStalwartMessageMove(client, reader, accountId, mutation)
+    : null;
+  if (label?.achieved || move?.achieved) return;
   const ifInState = mutation.type === "destroy"
     ? await destroyState(client, accountId, mutation)
-    : label?.state ?? null;
+    : label?.state ?? move?.state ?? null;
   const arguments_ =
     mutation.type === "destroy"
       ? { accountId, destroy: [mutation.messageId], ifInState }
+      : mutation.type === "move"
+        ? {
+            accountId,
+            ifInState,
+            update: {
+              [mutation.messageId]: {
+                ...move?.patch,
+              },
+            },
+          }
       : {
           accountId,
           ...(ifInState ? { ifInState } : {}),
@@ -194,7 +210,7 @@ export const mutateStalwartMessage = async (
     }
   } catch (error) {
     if (
-      mutation.type === "set-label" &&
+      (mutation.type === "set-label" || mutation.type === "move") &&
       attempt === 0 &&
       error instanceof StalwartJmapMethodError &&
       error.type === "stateMismatch"

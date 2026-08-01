@@ -1,5 +1,6 @@
 import {
   Archive,
+  FolderInput,
   Mail,
   MailOpen,
   RotateCcw,
@@ -20,6 +21,7 @@ interface Props {
   readonly onArchive: () => void;
   readonly onClose: () => void;
   readonly onDelete: () => void;
+  readonly onRequestMove: React.MouseEventHandler<HTMLButtonElement>;
   readonly onRequestDestroy: () => void;
   readonly onRestore: () => void;
   readonly onToggleRead: () => void;
@@ -34,6 +36,7 @@ export const MessageReaderToolbarView = ({
   onArchive,
   onClose,
   onDelete,
+  onRequestMove,
   onRequestDestroy,
   onRestore,
   onToggleRead,
@@ -50,6 +53,13 @@ export const MessageReaderToolbarView = ({
         <Archive aria-hidden size={18} />
       </ReaderActionView>
     ) : null}
+    <ReaderActionView
+      disabled={isBusy || reader.isLoading || !reader.messageId}
+      label="Move message"
+      onClick={onRequestMove}
+    >
+      <FolderInput aria-hidden size={18} />
+    </ReaderActionView>
     <ReaderActionView
       label={reader.isUnread ? "Mark as read" : "Mark as unread"}
       disabled={isBusy}

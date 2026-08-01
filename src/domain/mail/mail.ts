@@ -129,8 +129,9 @@ export type MessageMutation =
       readonly type: "destroy";
     }
   | {
-      readonly mailboxId: MailboxId;
+      readonly destinationMailboxId: MailboxId;
       readonly messageId: MessageId;
+      readonly sourceMailboxId: MailboxId;
       readonly type: "move";
     };
 
@@ -156,8 +157,9 @@ export type BulkMessageMutation =
       readonly type: "destroy";
     }
   | {
-      readonly mailboxId: MailboxId;
+      readonly destinationMailboxId: MailboxId;
       readonly messageIds: readonly MessageId[];
+      readonly sourceMailboxId: MailboxId;
       readonly type: "move";
     };
 

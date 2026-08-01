@@ -5,6 +5,7 @@ import { BulkDestroyConfirmationConnector } from "@/presentation/features/mail-w
 import { MailboxEmptyConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/mailbox-empty-confirmation.connector";
 import { ReaderDestroyConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/reader-destroy-confirmation.connector";
 import { MemberSignOutConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/member-sign-out-confirmation.connector";
+import { MessageMoveDialogConnector } from "@/presentation/features/mail-workspace/connectors/message-move-dialog.connector";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { AccountSettingsView } from "@/presentation/features/mail-workspace/ui/account-settings.view";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
@@ -32,7 +33,8 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     props.readerDestroyConfirmation.isOpen ||
     props.mailboxLifecycle.confirmation.isOpen ||
     props.mailboxManagement.isOpen ||
-    props.labelManagement.isOpen;
+    props.labelManagement.isOpen ||
+    props.messageMove.dialog.isOpen;
   return (
   <>
   <main
@@ -87,6 +89,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
           loadMoreError={props.loadMoreError}
           messages={props.messages}
           mailboxLifecycle={props.mailboxLifecycle}
+          moveAnnouncement={props.messageMove.announcement}
           onLoadMore={props.onLoadMore}
           total={props.total}
         />
@@ -107,6 +110,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
             onReply={props.onReply}
             onReplyAll={props.onReplyAll}
             onRequestDestroy={props.onRequestReaderDestroy}
+            onRequestMove={props.messageMove.onRequestReaderMove}
             onRestore={props.onRestore}
             onToggleRead={props.onToggleRead}
             onToggleStar={props.onToggleStar}
@@ -148,6 +152,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     confirmation={props.readerDestroyConfirmation}
   />
   <MemberSignOutConfirmationConnector session={props.session} />
+  <MessageMoveDialogConnector move={props.messageMove} />
   <MailboxManagementView management={props.mailboxManagement} />
   <LabelManagementView management={props.labelManagement} />
   </>

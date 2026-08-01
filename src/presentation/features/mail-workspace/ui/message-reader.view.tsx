@@ -21,6 +21,7 @@ interface MessageReaderViewProps {
   readonly onReply: () => void;
   readonly onReplyAll: () => void;
   readonly onRequestDestroy: () => void;
+  readonly onRequestMove: React.MouseEventHandler<HTMLButtonElement>;
   readonly onRestore: () => void;
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
@@ -39,6 +40,7 @@ export const MessageReaderView = ({
   onReply,
   onReplyAll,
   onRequestDestroy,
+  onRequestMove,
   onRestore,
   onToggleRead,
   onToggleStar,
@@ -52,6 +54,7 @@ export const MessageReaderView = ({
       onArchive={onArchive}
       onClose={onClose}
       onDelete={onDelete}
+      onRequestMove={onRequestMove}
       onRequestDestroy={onRequestDestroy}
       onRestore={onRestore}
       onToggleRead={onToggleRead}

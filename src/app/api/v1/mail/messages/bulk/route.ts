@@ -8,6 +8,10 @@ import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
+import {
+  authorizeMessageMoveMailboxes,
+  authorizeMessageMoveMembership,
+} from "@/server/messages/message-move.service";
 import { labelHttpError } from "@/server/labels/label-http";
 import { mutateBulkMessageLabels } from "@/server/labels/label-operation.service";
 import { mailboxOwner } from "@/server/mailboxes/mailbox-http";
@@ -37,8 +41,16 @@ const mutationFor = (
       value: request.value,
     };
   }
-  if (request.type === "destroy" || request.type === "move") {
+  if (request.type === "destroy") {
     return { mailboxId: request.mailboxId, messageId, type: request.type };
+  }
+  if (request.type === "move") {
+    return {
+      destinationMailboxId: request.destinationMailboxId,
+      messageId,
+      sourceMailboxId: request.sourceMailboxId,
+      type: request.type,
+    };
   }
   return { messageId, type: request.type };
 };
@@ -111,12 +123,21 @@ export const PATCH = async (request: Request) => {
           );
         }
       }
+      const moveContext = payload.type === "move"
+        ? authorizeMessageMoveMailboxes(await service.listMailboxes(), payload)
+        : null;
       return runBounded(payload, async (mutation) => {
         if (mutation.type === "destroy") {
           const message = await service.getMessage(mutation.messageId);
           if (!message.mailboxIds.includes(mutation.mailboxId)) {
             throw new Error("Message is outside the confirmed mailbox.");
           }
+        }
+        if (mutation.type === "move" && moveContext) {
+          authorizeMessageMoveMembership(
+            await service.getMessage(mutation.messageId),
+            moveContext,
+          );
         }
         await service.mutateMessage(mutation);
       });

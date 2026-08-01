@@ -11,7 +11,8 @@ const mailbox = (role: MailboxRole) => ({
   parentId: null,
   role,
   rights: {
-    mayCreateChild: true, mayDelete: false, mayRemoveItems: true, mayRename: false,
+    mayAddItems: true, mayCreateChild: true, mayDelete: false,
+    mayRemoveItems: true, mayRename: false,
   },
   sortOrder: 0,
   total: 1,
@@ -98,9 +99,9 @@ describe("bulk actions view model", () => {
       { type: "set-starred", value: true },
       { type: "set-starred", value: false },
       { type: "archive" },
-      { mailboxId: "spam", type: "move" },
+      { destinationMailboxId: "spam", sourceMailboxId: "inbox", type: "move" },
       { type: "delete" },
-      { mailboxId: "custom", type: "move" },
+      { destinationMailboxId: "custom", sourceMailboxId: "inbox", type: "move" },
     ]);
   });
 

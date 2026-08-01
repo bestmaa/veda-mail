@@ -12,13 +12,12 @@ import type {
 } from "@/domain/mail/mail";
 import { id } from "@/domain/shared/brand";
 import {
-  decodeMailboxId,
   decodeScopedImapMessageId,
   encodeScopedImapMessageId,
   imapUidValidityMatches,
 } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
-import { mutateImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
+import { mutateImapMessage } from "@/infrastructure/providers/imap-smtp/imap-message-mutation";
 import {
   normalizeAttachmentFilename,
   normalizeAttachmentMimeType,
@@ -104,46 +103,7 @@ export class ImapMailWriter {
   ) {}
 
   public async mutateMessage(mutation: MessageMutation): Promise<void> {
-    const reference = messageReference(
-      this.config,
-      mutation.messageId,
-      "Message not found.",
-    );
-    return withImapClient(this.config, async (client) => {
-      const opened = await client.mailboxOpen(reference.mailbox);
-      if (!imapUidValidityMatches(reference, opened.uidValidity)) {
-        throw new Error("Message not found.");
-      }
-      if (mutation.type === "destroy") {
-        const deleted = await client.messageDelete(reference.uid, { uid: true });
-        if (!deleted) throw new Error("Message not found.");
-        return;
-      }
-      if (mutation.type === "set-label") {
-        await mutateImapLabel(client, opened, reference.uid, mutation);
-        return;
-      }
-      if (mutation.type === "set-read" || mutation.type === "set-starred") {
-        const flag = mutation.type === "set-read" ? "\\Seen" : "\\Flagged";
-        const update = mutation.value
-          ? client.messageFlagsAdd.bind(client)
-          : client.messageFlagsRemove.bind(client);
-        await update(reference.uid, [flag], { uid: true });
-        return;
-      }
-      const target =
-        mutation.type === "move"
-          ? decodeMailboxId(mutation.mailboxId)
-          : rolePath(
-              await client.list(),
-              mutation.type === "delete"
-                ? "trash"
-                : mutation.type === "restore"
-                  ? "inbox"
-                  : "archive",
-            );
-      await client.messageMove(reference.uid, target, { uid: true });
-    });
+    return mutateImapMessage(this.config, mutation);
   }
 
   public async sendMessage(input: SendMessageInput): Promise<SendReceipt> {

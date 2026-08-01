@@ -41,8 +41,9 @@ export const bulkMessageMutationSchema = z.discriminatedUnion("type", [
     .strict(),
   z
     .object({
-      mailboxId: z.string().min(1).max(2_048).transform(id.mailbox),
+      destinationMailboxId: z.string().min(1).max(2_048).transform(id.mailbox),
       messageIds: messageIdsSchema,
+      sourceMailboxId: z.string().min(1).max(2_048).transform(id.mailbox),
       type: z.literal("move"),
     })
     .strict(),

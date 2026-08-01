@@ -69,6 +69,7 @@ const props = {
   messages: [
     {
       avatar: "S",
+      canDrag: true,
       canSelect: true,
       date: "Today",
       hasAttachment: false,
@@ -79,6 +80,9 @@ const props = {
       isStarred: false,
       isUnread: false,
       labels: [],
+      onDragEnd: vi.fn(),
+      onDragStart: vi.fn(),
+      onRequestMove: vi.fn(),
       onSelect: vi.fn(),
       onToggleSelected: vi.fn(),
       openLabel: "Open Example message",
@@ -88,6 +92,7 @@ const props = {
       subject: "Example message",
     },
   ],
+  moveAnnouncement: "",
   onLoadMore: vi.fn(),
   total: 2,
 } as const;
@@ -98,6 +103,9 @@ describe("message list pagination view", () => {
 
     expect(html).toContain("Load more messages");
     expect(html).toContain('aria-busy="false"');
+    expect(html).toContain("Drag a message to a mailbox");
+    expect(html).toContain('draggable="true"');
+    expect(html).toContain('aria-label="Move Example message"');
     expect(html).not.toContain('role="alert"');
   });
 

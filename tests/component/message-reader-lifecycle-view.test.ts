@@ -8,9 +8,11 @@ import { ReaderDestroyConfirmationView } from "@/presentation/features/mail-work
 
 const reader = {
   canArchive: false,
+  isLoading: false,
   isStarred: false,
   isUnread: false,
   labelActions: null,
+  messageId: "message-a",
 } as ReaderViewModel;
 const toolbar = (activeRole: "inbox" | "spam" | "trash") =>
   renderToStaticMarkup(createElement(MessageReaderToolbarView, {
@@ -21,6 +23,7 @@ const toolbar = (activeRole: "inbox" | "spam" | "trash") =>
     onClose: vi.fn(),
     onDelete: vi.fn(),
     onRequestDestroy: vi.fn(),
+    onRequestMove: vi.fn(),
     onRestore: vi.fn(),
     onToggleRead: vi.fn(),
     onToggleStar: vi.fn(),
@@ -47,8 +50,22 @@ describe("message reader lifecycle actions", () => {
     const html = toolbar("inbox");
 
     expect(html).toContain('aria-label="Delete"');
+    expect(html).toContain('aria-label="Move message"');
     expect(html).not.toContain("Permanently delete");
     expect(html).not.toContain("Restore to Inbox");
+  });
+
+  it("keeps Move disabled until the reader detail is authoritative", () => {
+    const html = renderToStaticMarkup(createElement(MessageReaderToolbarView, {
+      activeRole: "inbox", canPermanentlyDelete: false, isBusy: false,
+      onArchive: vi.fn(), onClose: vi.fn(), onDelete: vi.fn(),
+      onRequestDestroy: vi.fn(), onRequestMove: vi.fn(), onRestore: vi.fn(),
+      onToggleRead: vi.fn(), onToggleStar: vi.fn(),
+      reader: { ...reader, isLoading: true, messageId: "" },
+    }));
+
+    expect(html).toContain('aria-label="Move message"');
+    expect(html).toContain('disabled=""');
   });
 
   it("disables permanent delete without provider removal rights", () => {
@@ -57,7 +74,7 @@ describe("message reader lifecycle actions", () => {
       canPermanentlyDelete: false,
       isBusy: false,
       onArchive: vi.fn(), onClose: vi.fn(), onDelete: vi.fn(),
-      onRequestDestroy: vi.fn(), onRestore: vi.fn(), onToggleRead: vi.fn(),
+      onRequestDestroy: vi.fn(), onRequestMove: vi.fn(), onRestore: vi.fn(), onToggleRead: vi.fn(),
       onToggleStar: vi.fn(), reader,
     }));
 

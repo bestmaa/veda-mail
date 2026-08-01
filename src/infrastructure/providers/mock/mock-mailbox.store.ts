@@ -13,6 +13,7 @@ import { mockMailboxIds } from "@/infrastructure/providers/mock/mock-seed";
 type Definition = Omit<Mailbox, "total" | "unread">;
 
 const rights = (custom = false) => ({
+  mayAddItems: true,
   mayCreateChild: true,
   mayDelete: custom,
   mayRemoveItems: true,

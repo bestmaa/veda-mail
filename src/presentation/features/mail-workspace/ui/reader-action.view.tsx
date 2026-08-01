@@ -7,7 +7,7 @@ export const ReaderActionView = ({
   readonly children: React.ReactNode;
   readonly disabled?: boolean;
   readonly label: string;
-  readonly onClick: () => void;
+  readonly onClick: React.MouseEventHandler<HTMLButtonElement>;
 }) => (
   <button
     aria-label={label}

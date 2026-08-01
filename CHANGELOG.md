@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Permission-aware message move by internal drag/drop plus complete keyboard
+  and touch dialogs from both list and reader. Moves use exact source and
+  destination mailboxes, preserve failed selections across bounded 100-message
+  chunks, and enforce provider rights and current membership on the server;
+  JMAP uses state-conditioned membership patches and IMAP requires native MOVE
+  so unrelated deleted messages can never be expunged as a fallback
 - Dedicated Spam and Trash lifecycle UX with provider-neutral retention hints,
   role-aware bulk and reader actions, rights-aware irreversible confirmations,
   and resumable Empty Spam/Trash operations. Cleanup state is encrypted and

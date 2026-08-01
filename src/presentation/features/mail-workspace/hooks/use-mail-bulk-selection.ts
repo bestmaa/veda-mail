@@ -10,10 +10,10 @@ import type { LabelId, MailboxId, MessageId } from "@/domain/shared/brand";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import {
   retainAvailableSelection,
-  retainFailedSelection,
   selectLoadedMessages,
   toggleBulkSelection,
 } from "@/presentation/features/mail-workspace/mail-bulk-selection";
+import { chunkMessageIds } from "@/presentation/features/mail-workspace/message-move-policy";
 import { mailApi } from "@/transport/client/api-client";
 
 export type BulkMessageAction =
@@ -23,7 +23,12 @@ export type BulkMessageAction =
       readonly value: boolean;
     }
   | { readonly labelId: LabelId; readonly type: "set-label"; readonly value: boolean }
-  | { readonly mailboxId: MailboxId; readonly type: "destroy" | "move" };
+  | { readonly mailboxId: MailboxId; readonly type: "destroy" }
+  | {
+      readonly destinationMailboxId: MailboxId;
+      readonly sourceMailboxId: MailboxId;
+      readonly type: "move";
+    };
 
 interface MailBulkSelectionOptions {
   readonly currentViewRevision: () => number;
@@ -54,8 +59,16 @@ const mutationRequest = (
       value: action.value,
     };
   }
-  if (action.type === "destroy" || action.type === "move") {
+  if (action.type === "destroy") {
     return { mailboxId: action.mailboxId, messageIds, type: action.type };
+  }
+  if (action.type === "move") {
+    return {
+      destinationMailboxId: action.destinationMailboxId,
+      messageIds,
+      sourceMailboxId: action.sourceMailboxId,
+      type: action.type,
+    };
   }
   return { messageIds, type: action.type };
 };
@@ -120,21 +133,35 @@ export const useMailBulkSelection = ({
     setStatus("");
   }, [messages, selectedIds]);
 
-  const mutate = useCallback(
-    async (action: BulkMessageAction) => {
-      if (inFlight.current || !sessionScope || selectedIds.size === 0) return;
+  const mutateIds = useCallback(
+    async (
+      action: BulkMessageAction,
+      requestedIds: readonly MessageId[],
+    ) => {
+      const messageIds = [...new Set(requestedIds)];
+      if (inFlight.current || !sessionScope || messageIds.length === 0) return;
       const expectedViewRevision = currentViewRevision();
       const expectedOperation = ++operationId.current;
-      const messageIds = [...selectedIds];
+      const succeeded: MessageId[] = [];
+      const failed: MessageId[] = [];
       inFlight.current = true;
       setIsBusy(true);
       setError(null);
       setStatus("");
       try {
-        const result = await mailApi.mutateMessages(
-          mutationRequest(action, messageIds),
-          sessionScope,
-        );
+        for (const batch of chunkMessageIds(messageIds)) {
+          if (
+            expectedOperation !== operationId.current ||
+            currentViewRevision() !== expectedViewRevision ||
+            !isCurrentScope(sessionScope)
+          ) return;
+          const result = await mailApi.mutateMessages(
+            mutationRequest(action, batch),
+            sessionScope,
+          );
+          succeeded.push(...result.succeeded);
+          failed.push(...result.failed);
+        }
         if (
           expectedOperation !== operationId.current ||
           currentViewRevision() !== expectedViewRevision ||
@@ -142,19 +169,18 @@ export const useMailBulkSelection = ({
         ) {
           return;
         }
-        setSelectedIds((current) =>
-          retainFailedSelection(current, result.failed),
-        );
-        const succeededCount = result.succeeded.length;
-        const failedCount = result.failed.length;
+        setSelectedIds(() => new Set(failed));
+        const succeededCount = succeeded.length;
+        const failedCount = failed.length;
         if (succeededCount > 0) {
-          onSucceeded(result.succeeded);
+          onSucceeded(succeeded);
           refresh();
         }
+        const verb = action.type === "move" ? "moved" : "updated";
         setStatus(
           failedCount
-            ? `${succeededCount} updated; ${failedCount} failed and remain selected.`
-            : `${succeededCount} ${succeededCount === 1 ? "message" : "messages"} updated.`,
+            ? `${succeededCount} ${verb}; ${failedCount} failed and remain selected.`
+            : `${succeededCount} ${succeededCount === 1 ? "message" : "messages"} ${verb}.`,
         );
       } catch (nextError) {
         if (
@@ -165,6 +191,18 @@ export const useMailBulkSelection = ({
           return;
         }
         if (handleSessionFailure(nextError)) return;
+        const succeededIds = new Set(succeeded);
+        const unconfirmed = messageIds.filter((messageId) =>
+          !succeededIds.has(messageId),
+        );
+        setSelectedIds(new Set(unconfirmed));
+        if (succeeded.length > 0) {
+          onSucceeded(succeeded);
+          refresh();
+          setStatus(
+            `${succeeded.length} updated; ${unconfirmed.length} could not be confirmed and remain selected.`,
+          );
+        }
         setError(messageFor(nextError));
       } finally {
         if (expectedOperation === operationId.current) {
@@ -179,9 +217,13 @@ export const useMailBulkSelection = ({
       isCurrentScope,
       onSucceeded,
       refresh,
-      selectedIds,
       sessionScope,
     ],
+  );
+
+  const mutate = useCallback(
+    (action: BulkMessageAction) => mutateIds(action, [...selectedIds]),
+    [mutateIds, selectedIds],
   );
 
   const loadedIds = messages.map((message) => message.id);
@@ -193,6 +235,7 @@ export const useMailBulkSelection = ({
     error,
     isBusy,
     mutate,
+    mutateIds,
     selectedIds,
     status,
     toggle,

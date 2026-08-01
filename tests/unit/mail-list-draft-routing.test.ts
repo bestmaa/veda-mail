@@ -5,6 +5,20 @@ import { id } from "@/domain/shared/brand";
 import { createMailListViewModel } from "@/presentation/features/mail-workspace/mail-list.view-model";
 
 const draftsId = id.mailbox("drafts");
+const folderMoveProps = () => ({
+  canDrop: false,
+  isDropTarget: false,
+  onDragEnter: vi.fn(),
+  onDragLeave: vi.fn(),
+  onDragOver: vi.fn(),
+  onDrop: vi.fn(),
+});
+const messageMoveProps = () => ({
+  canDrag: false,
+  onDragEnd: vi.fn(),
+  onDragStart: vi.fn(),
+  onRequestMove: vi.fn(),
+});
 const workspace: MailWorkspace = {
   account: {
     email: "me@example.com",
@@ -56,6 +70,8 @@ describe("draft mailbox list routing", () => {
     const list = createMailListViewModel({
       activeMailboxId: draftsId,
       draftsEnabled: true,
+      folderMoveProps,
+      messageMoveProps,
       onOpenDraft,
       onManageMailbox: vi.fn(),
       onSelectMailbox: vi.fn(),
@@ -81,6 +97,8 @@ describe("draft mailbox list routing", () => {
     const list = createMailListViewModel({
       activeMailboxId: draftsId,
       draftsEnabled: false,
+      folderMoveProps,
+      messageMoveProps,
       onOpenDraft,
       onManageMailbox: vi.fn(),
       onSelectMailbox: vi.fn(),

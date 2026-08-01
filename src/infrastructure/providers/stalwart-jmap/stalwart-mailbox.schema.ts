@@ -7,6 +7,7 @@ export const jmapMailboxSchema = z
     id: z.string().min(1).max(2_048),
     myRights: z
       .object({
+        mayAddItems: z.boolean().optional(),
         mayCreateChild: z.boolean(),
         mayDelete: z.boolean(),
         mayRemoveItems: z.boolean().optional(),
