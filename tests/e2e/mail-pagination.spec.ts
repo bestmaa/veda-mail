@@ -7,19 +7,22 @@ useInstalledMailbox();
 test("loads the next cursor page without losing the open message", async ({
   page,
 }) => {
+  const fixtureCursor = "opaque-pagination-fixture";
   const requestedCursors: string[] = [];
   let firstFixture: Record<string, unknown> | null = null;
-  await page.route("**/api/v1/mail/workspace**", async (route) => {
-    const response = await route.fetch();
-    const envelope = (await response.json()) as {
-      data: {
-        messages: {
-          items: Array<Record<string, unknown>>;
-          nextCursor: string | null;
-          total: number;
-        };
+  const baselineResponse = await page.request.get("/api/v1/mail/workspace");
+  expect(baselineResponse.ok()).toBe(true);
+  const baseline = await baselineResponse.json() as {
+    data: {
+      messages: {
+        items: Array<Record<string, unknown>>;
+        nextCursor: string | null;
+        total: number;
       };
     };
+  };
+  await page.route("**/api/v1/mail/workspace**", async (route) => {
+    const envelope = structuredClone(baseline);
     const cursor = new URL(route.request().url()).searchParams.get("cursor");
     if (cursor) requestedCursors.push(cursor);
     const first = cursor ? firstFixture : envelope.data.messages.items[0];
@@ -38,8 +41,8 @@ test("loads the next cursor page without losing the open message", async ({
           nextCursor: null,
           total: 2,
         }
-      : { items: [first], nextCursor: "50", total: 2 };
-    await route.fulfill({ json: envelope, response });
+      : { items: [first], nextCursor: fixtureCursor, total: 2 };
+    await route.fulfill({ json: envelope, status: 200 });
   });
   await page.reload();
 
@@ -60,7 +63,7 @@ test("loads the next cursor page without losing the open message", async ({
   await expect(
     page.getByRole("heading", { name: "Your Stalwart workspace is ready" }),
   ).toBeVisible();
-  expect(requestedCursors).toEqual(["50"]);
+  expect(requestedCursors).toEqual([fixtureCursor]);
   await expect(
     page.getByRole("button", { name: "Load more messages" }),
   ).toHaveCount(0);

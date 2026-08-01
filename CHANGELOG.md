@@ -9,6 +9,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Account-private message-list preferences for compact, comfortable, or
+  spacious density, newest/oldest provider mailbox order, and optional bounded
+  preview snippets. Preferences are encrypted on the Veda Mail data volume;
+  list cursors are HMAC-authenticated, expire after 30 minutes, and are bound to
+  the mailbox, search, sort, preview mode, and fixed page size. Stalwart JMAP
+  requests a normalized preview only when enabled; Standard IMAP deliberately
+  leaves list previews empty because summary listing does not fetch message
+  bodies
 - Permission-aware message move by internal drag/drop plus complete keyboard
   and touch dialogs from both list and reader. Moves use exact source and
   destination mailboxes, preserve failed selections across bounded 100-message

@@ -76,7 +76,7 @@ export class ImapMailReader {
   public listMessages(query: MessageListQuery): Promise<MessagePage> {
     return withImapClient(this.config, async (client) => {
       const mailbox = decodeMailboxId(query.mailboxId);
-      const opened = await client.mailboxOpen(mailbox);
+      const opened = await client.mailboxOpen(mailbox, { readOnly: true });
       const offset = Number(query.cursor ?? "0");
       const matching = query.search
         ? await client.search({ text: query.search }, { uid: true })
@@ -84,7 +84,8 @@ export class ImapMailReader {
       const uids = matching === false ? [] : matching;
       const pageUids = uids
         .slice()
-        .sort((left, right) => right - left)
+        .sort((left, right) =>
+          query.sort === "oldest" ? left - right : right - left)
         .slice(offset, offset + query.limit);
       const items = pageUids.length
         ? await client.fetchAll(pageUids, summaryQuery, { uid: true })

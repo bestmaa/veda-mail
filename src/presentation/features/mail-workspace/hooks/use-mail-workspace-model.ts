@@ -24,17 +24,17 @@ import { useMailboxLifecycle } from "@/presentation/features/mail-workspace/hook
 import { useMessageMoveInteractions } from "@/presentation/features/mail-workspace/hooks/use-message-move-interactions";
 import { useWorkspacePrimaryActions } from "@/presentation/features/mail-workspace/hooks/use-workspace-primary-actions";
 import { createBrandingViewModel, type BrandingInput } from "@/presentation/shared/branding/branding.view-model";
+import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-preferences";
+import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 interface MailWorkspaceModelOptions {
-  readonly branding: BrandingInput; readonly canSignOut: boolean;
-  readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null;
-  readonly providerLabel: string; readonly signOutPath: string }
+  readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
+  readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
-  branding, canSignOut,
-  initialSessionScope, maxAttachmentBytes,
-  providerLabel, signOutPath,
+  branding, canSignOut, initialSessionScope, maxAttachmentBytes, providerLabel, signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
   const mail = useMailDataModel();
   const workspace = mail.workspace;
+  const messageListPreferences = useMessageListPreferencesModel(workspace?.messageListPreferences ?? DEFAULT_MESSAGE_LIST_PREFERENCES, mail.saveListPreferences);
   const sessionScope = workspace?.sessionScope ?? "";
   const recoveryAccountId = workspace?.account.id ?? null;
   const recoveryProviderId = workspace?.account.providerId ?? null;
@@ -52,8 +52,7 @@ export const useMailWorkspaceModel = ({
   const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure);
   const closeAttachmentPreview = attachmentPreview.close;
   const brandingView = createBrandingViewModel(branding);
-  const workspaceAccountName =
-    mail.workspace?.account.name ?? brandingView.productName;
+  const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
@@ -204,6 +203,7 @@ export const useMailWorkspaceModel = ({
     isLoadingMore: mail.isLoadingMore,
     isReaderMutating: mail.isReaderMutating || mail.bulk.isBusy,
     mailboxManagement, mailboxLifecycle, labelManagement,
+    messageListPreferences,
     messageMove: {
       announcement: messageMove.announcement,
       dialog: messageMove.dialog,

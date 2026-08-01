@@ -18,6 +18,7 @@ import { MessageReaderView } from "@/presentation/features/mail-workspace/ui/mes
 import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
 import { MailboxManagementView } from "@/presentation/features/mail-workspace/ui/mailbox-management.view";
 import { LabelManagementView } from "@/presentation/features/mail-workspace/ui/label-management.view";
+import { MessageListPreferencesDialogConnector } from "@/presentation/features/mail-workspace/connectors/message-list-preferences-dialog.connector";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -34,6 +35,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     props.mailboxLifecycle.confirmation.isOpen ||
     props.mailboxManagement.isOpen ||
     props.labelManagement.isOpen ||
+    props.messageListPreferences.dialog.isOpen ||
     props.messageMove.dialog.isOpen;
   return (
   <>
@@ -88,6 +90,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
           isLoadingMore={props.isLoadingMore}
           loadMoreError={props.loadMoreError}
           messages={props.messages}
+          preferences={props.messageListPreferences}
           mailboxLifecycle={props.mailboxLifecycle}
           moveAnnouncement={props.messageMove.announcement}
           onLoadMore={props.onLoadMore}
@@ -153,6 +156,9 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   />
   <MemberSignOutConfirmationConnector session={props.session} />
   <MessageMoveDialogConnector move={props.messageMove} />
+  <MessageListPreferencesDialogConnector
+    preferences={props.messageListPreferences}
+  />
   <MailboxManagementView management={props.mailboxManagement} />
   <LabelManagementView management={props.labelManagement} />
   </>

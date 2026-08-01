@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import type { MailWorkspace, MessageDetail } from "@/domain/mail/mail";
+import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
 
 interface ScopedMessage {
   readonly message: MessageDetail;
@@ -74,12 +75,24 @@ export const useMailSessionScopeState = () => {
     [],
   );
 
+  const commitPreferences = useCallback((
+    preferences: MessageListPreferences,
+    expectedScope: string,
+  ): boolean => {
+    if (!expectedScope || sessionScopeRef.current !== expectedScope) return false;
+    setWorkspace((current) => current?.sessionScope === expectedScope
+      ? { ...current, messageListPreferences: preferences }
+      : current);
+    return true;
+  }, []);
+
   return {
     acceptWorkspace,
     appendWorkspace,
     clear,
     clearMessage: useCallback(() => setSelection(null), []),
     commitMessage,
+    commitPreferences,
     currentScope: useCallback(() => sessionScopeRef.current, []),
     isCurrentScope: useCallback(
       (expectedScope: string) =>

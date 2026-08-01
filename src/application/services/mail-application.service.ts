@@ -11,6 +11,7 @@ import type {
   ProviderMailWorkspace,
   SendMessageInput,
 } from "@/domain/mail/mail";
+import type { MessageListSort } from "@/domain/mail/message-list-preferences";
 import type {
   MailboxId,
   MessageId,
@@ -19,9 +20,11 @@ import type {
 
 export interface WorkspaceQuery {
   readonly cursor?: string;
+  readonly includePreview: boolean;
   readonly limit: number;
   readonly mailboxId?: MailboxId;
   readonly search?: string;
+  readonly sort: MessageListSort;
 }
 
 export class MailApplicationService {

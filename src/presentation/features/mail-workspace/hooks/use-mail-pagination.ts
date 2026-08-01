@@ -37,13 +37,15 @@ export const useMailPagination = ({
   const requestId = useRef(0);
   const loading = useRef(false);
   const sessionScope = workspace?.sessionScope ?? "";
+  const preferences = workspace?.messageListPreferences;
 
   useEffect(() => {
     requestId.current += 1;
     loading.current = false;
     setIsLoadingMore(false);
     setLoadMoreError(null);
-  }, [activeMailboxId, appliedSearch, sessionScope]);
+  }, [activeMailboxId, appliedSearch, preferences?.showPreview,
+    preferences?.sort, sessionScope]);
 
   const onLoadMore = useCallback(async () => {
     const cursor = workspace?.messages.nextCursor;
@@ -60,6 +62,10 @@ export const useMailPagination = ({
           cursor,
           ...(activeMailboxId ? { mailboxId: activeMailboxId } : {}),
           ...(appliedSearch ? { search: appliedSearch } : {}),
+          ...(preferences ? {
+            showPreview: preferences.showPreview,
+            sort: preferences.sort,
+          } : {}),
         },
         requestScope,
       );
@@ -88,6 +94,7 @@ export const useMailPagination = ({
     appendWorkspace,
     currentScope,
     handleSessionFailure,
+    preferences,
     workspace?.messages.nextCursor,
     workspaceRequestId,
   ]);

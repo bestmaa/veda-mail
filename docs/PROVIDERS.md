@@ -13,6 +13,8 @@ today, not every feature the upstream server protocol could eventually supply.
 | --------------------------------------------- | --------------- | -------------------- |
 | Mailbox/message read                          | Yes             | Yes                  |
 | Cursor-paginated message lists                | Yes             | Yes                  |
+| Newest/oldest mailbox order                    | Yes             | Yes, UID order       |
+| Optional message-list preview                  | Yes             | No body fetch        |
 | Server-side text search                       | Yes             | Yes                  |
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
@@ -45,16 +47,27 @@ per body value, retain no more than 128 referenced body values within a 256,000
 character aggregate source budget, and cap each final text or sanitized HTML
 presentation at 256,000 characters with a visible truncation marker.
 
-Both adapters expose a provider-independent decimal position cursor and a
-fixed server-owned page size of 50. The public route rejects malformed,
-negative, non-canonical, or greater-than-32-bit cursor positions before a
-provider call. Stalwart maps the position to `Email/query`; Standard IMAP sorts
-matching UIDs newest-first before applying the position. The browser permits
-one next-page request at a time, drops duplicate message IDs across adjacent
-pages, rejects stale page completions after mailbox/search/session changes,
-and keeps an already open message selected. Refresh deliberately restarts from
-the first page so new-mail movement cannot silently rewrite an accumulated
-list.
+Both adapters use a fixed server-owned page size of 50 behind an opaque signed
+cursor. The public cursor expires after 30 minutes and is bound to its mailbox,
+search, sort, preview mode, and page size; clients cannot safely inspect,
+increment, or reuse it in another context. Stalwart maps its internal position
+to `Email/query` and orders `receivedAt` newest-first or oldest-first. Standard
+IMAP sorts matching UIDs descending or ascending before applying its position.
+UID order reflects mailbox arrival/order and is not guaranteed to equal the
+message's sender-controlled `Date` header. The browser permits one next-page
+request at a time, drops duplicate message IDs across adjacent pages, rejects
+stale page completions after mailbox/search/session/preference changes, and
+keeps an already open message selected. Refresh deliberately restarts from the
+first page so new-mail movement cannot silently rewrite an accumulated list.
+
+Density, order, and preview visibility are encrypted Veda Mail account
+preferences and require no provider setting. Stalwart requests JMAP `preview`
+only when enabled, then Veda Mail removes control/bidirectional characters,
+collapses whitespace, and enforces 320-character and 1,024-byte limits.
+Standard IMAP summary listing deliberately fetches no body or source bytes, so
+its message-list preview remains empty even when the preference is enabled.
+This limitation does not affect opening a message and is unrelated to the
+explicit malware-scanned attachment preview feature.
 
 Multi-select is also provider-independent and applies only to messages loaded
 in the current browser view. The strict bulk route accepts at most 100 unique

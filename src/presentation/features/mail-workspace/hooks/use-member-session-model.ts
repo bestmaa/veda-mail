@@ -65,6 +65,7 @@ export const useMemberSessionModel = ({
     inactivePrivacyState,
   );
   const scopeRef = useRef(sessionScope);
+  const previousScopeRef = useRef(sessionScope);
   const serverRequestsRef = useRef(new Set<string>());
   const cleanupRequestsRef = useRef(new Map<string, Promise<void>>());
   const privacyIsOpen =
@@ -82,7 +83,10 @@ export const useMemberSessionModel = ({
     setPrivacy(inactivePrivacyState);
   }, [sessionScope]);
 
-  const completeLocalCleanup = useCallback(async (requestScope: string) => {
+  const completeLocalCleanup = useCallback(async (
+    requestScope: string,
+    allowClearedScope = false,
+  ) => {
     if (!requestScope) return;
     if (scopeRef.current === requestScope) {
       setPrivacy({ error: null, phase: "purging", scope: requestScope });
@@ -110,10 +114,21 @@ export const useMemberSessionModel = ({
         cleanupRequestsRef.current.delete(requestScope);
       }
     }
-    if (scopeRef.current !== requestScope) return;
+    if (
+      scopeRef.current !== requestScope &&
+      !(allowClearedScope && !scopeRef.current)
+    ) return;
     router.replace(signOutPath);
     router.refresh();
   }, [purgeRecovery, router, signOutPath]);
+
+  useLayoutEffect(() => {
+    const previousScope = previousScopeRef.current;
+    previousScopeRef.current = sessionScope;
+    if (previousScope && !sessionScope) {
+      void completeLocalCleanup(previousScope, true);
+    }
+  }, [completeLocalCleanup, sessionScope]);
 
   const revokeAndCleanup = useCallback(async (
     requestScope: string,

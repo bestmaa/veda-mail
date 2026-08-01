@@ -1,0 +1,131 @@
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { id } from "@/domain/shared/brand";
+import type { InstallationDraft } from "@/server/installation/installation.store";
+import { installationStore } from "@/server/installation/installation.store";
+import { hashAdminPassword } from "@/server/installation/password-hash";
+import { messageListPreferencesFilePath } from "@/server/preferences/message-list-preferences-file";
+import { messageListPreferencesStore } from "@/server/preferences/message-list-preferences.store";
+
+const originalDirectory = process.env["VEDA_MAIL_DATA_DIR"];
+let directory = "";
+const owner = { email: "Member@Example.com", providerId: id.provider("mock") };
+const installation = async (): Promise<InstallationDraft> => ({
+  mailProfile: {
+    allowedDomains: ["example.com"], config: {}, displayName: "Mail",
+    providerId: id.provider("mock"),
+  },
+  organization: {
+    accentColor: "#ff6b57", logoFileName: null, organizationName: "Example",
+    primaryColor: "#27276f", productName: "Mail", publicRepositoryUrl: null,
+  },
+  owner: {
+    password: await hashAdminPassword("strong-password-123"), username: "owner",
+  },
+});
+
+beforeEach(async () => {
+  directory = await mkdtemp(path.join(os.tmpdir(), "veda-list-preferences-"));
+  process.env["VEDA_MAIL_DATA_DIR"] = directory;
+  await installationStore.complete(installation);
+});
+
+afterEach(async () => {
+  if (originalDirectory === undefined) delete process.env["VEDA_MAIL_DATA_DIR"];
+  else process.env["VEDA_MAIL_DATA_DIR"] = originalDirectory;
+  await rm(directory, { force: true, recursive: true });
+});
+
+describe("encrypted message list preferences store", () => {
+  it("defaults, isolates owners, encrypts values, and persists canonical choices", async () => {
+    await expect(messageListPreferencesStore.get(owner)).resolves.toEqual({
+      density: "comfortable", showPreview: true, sort: "newest",
+    });
+    const saved = { density: "compact", showPreview: false, sort: "oldest" } as const;
+    await expect(messageListPreferencesStore.set(owner, saved)).resolves.toEqual(saved);
+    await expect(messageListPreferencesStore.get(owner)).resolves.toEqual(saved);
+    await expect(messageListPreferencesStore.get({
+      email: "other@example.com", providerId: owner.providerId,
+    })).resolves.toEqual({
+      density: "comfortable", showPreview: true, sort: "newest",
+    });
+    await expect(messageListPreferencesStore.get({
+      email: owner.email, providerId: id.provider("other-provider"),
+    })).resolves.toEqual({
+      density: "comfortable", showPreview: true, sort: "newest",
+    });
+    await expect(messageListPreferencesStore.get({
+      email: "Member@example.COM", providerId: id.provider("MOCK"),
+    })).resolves.toEqual(saved);
+    const [contents, fileStats] = await Promise.all([
+      readFile(messageListPreferencesFilePath(), "utf8"),
+      stat(messageListPreferencesFilePath()),
+    ]);
+    expect(fileStats.mode & 0o777).toBe(0o600);
+    expect(contents).not.toContain("Member@Example.com");
+    expect(contents).not.toContain("compact");
+    expect(contents).not.toContain("oldest");
+  });
+
+  it("rejects values outside the strict preference schema", async () => {
+    for (const invalid of [
+      { density: "hostile", showPreview: true, sort: "newest" },
+      { density: "compact", showPreview: "yes", sort: "newest" },
+      { density: "compact", showPreview: true, sort: "sender" },
+      {
+        density: "compact",
+        providerToken: "must-not-persist",
+        showPreview: true,
+        sort: "newest",
+      },
+    ]) {
+      await expect(messageListPreferencesStore.set(owner, invalid as never))
+        .rejects.toThrow();
+    }
+    await expect(readFile(messageListPreferencesFilePath(), "utf8"))
+      .rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("serializes concurrent writes without crossing owner buckets", async () => {
+    const otherOwner = {
+      email: "other@example.com",
+      providerId: id.provider("mock"),
+    };
+    const first = {
+      density: "compact", showPreview: false, sort: "newest",
+    } as const;
+    const second = {
+      density: "comfortable", showPreview: true, sort: "oldest",
+    } as const;
+
+    await Promise.all([
+      messageListPreferencesStore.set(owner, first),
+      messageListPreferencesStore.set(otherOwner, second),
+    ]);
+
+    await expect(messageListPreferencesStore.get(owner)).resolves.toEqual(first);
+    await expect(messageListPreferencesStore.get(otherOwner)).resolves.toEqual(second);
+  });
+
+  it("fails closed with the stable unavailable contract for corrupted persistence", async () => {
+    await messageListPreferencesStore.set(owner, {
+      density: "compact", showPreview: false, sort: "oldest",
+    });
+    await writeFile(messageListPreferencesFilePath(), "{not-json", "utf8");
+
+    await expect(messageListPreferencesStore.get(owner)).rejects.toMatchObject({
+      code: "MESSAGE_LIST_PREFERENCES_UNAVAILABLE",
+      message: "Message list preferences are temporarily unavailable.",
+      status: 500,
+    });
+    await expect(messageListPreferencesStore.set(owner, {
+      density: "comfortable", showPreview: true, sort: "newest",
+    })).rejects.toMatchObject({
+      code: "MESSAGE_LIST_PREFERENCES_UNAVAILABLE",
+      status: 500,
+    });
+  });
+});

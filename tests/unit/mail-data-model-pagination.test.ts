@@ -50,7 +50,12 @@ describe("mail data cursor pagination", () => {
     model = render();
 
     expect(api.getWorkspace).toHaveBeenLastCalledWith(
-      { cursor: "50", mailboxId: inboxId },
+      {
+        cursor: "50",
+        mailboxId: inboxId,
+        showPreview: true,
+        sort: "newest",
+      },
       "scope-a",
     );
     expect(model.workspace?.messages.items.map((item) => item.id)).toEqual([

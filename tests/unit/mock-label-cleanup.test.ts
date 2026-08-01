@@ -9,7 +9,12 @@ const labelId = id.label("veda-label-aaaqeayeaudaocajbifqydiob4");
 describe("mock provider bounded label cleanup", () => {
   it("provides idempotent, resumable parity with production providers", async () => {
     const gateway = new MockMailGateway();
-    const page = await gateway.listMessages({ limit: 10, mailboxId: mockMailboxIds.inbox });
+    const page = await gateway.listMessages({
+      includePreview: true,
+      limit: 10,
+      mailboxId: mockMailboxIds.inbox,
+      sort: "newest",
+    });
     const targets = page.items.slice(0, 2);
     for (const message of targets) {
       await gateway.mutateMessage({

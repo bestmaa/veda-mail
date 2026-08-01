@@ -6,6 +6,7 @@ import { MockMailGateway } from "@/infrastructure/providers/mock/mock-mail.gatew
 import { mockMailboxIds } from "@/infrastructure/providers/mock/mock-seed";
 
 const composeId = id.draft("c61d80d4-13bb-4cfd-aee1-b2560ab99210");
+const listOptions = { includePreview: true, sort: "newest" as const };
 const content: DraftContent = {
   bcc: [{ email: "private@example.com", name: "Private" }],
   body: "Provider draft body",
@@ -29,6 +30,7 @@ describe("mock provider draft contract", () => {
       hasAttachments: false,
     });
     const listed = await gateway.listMessages({
+      ...listOptions,
       limit: 10,
       mailboxId: mockMailboxIds.drafts,
     });
@@ -56,6 +58,7 @@ describe("mock provider draft contract", () => {
       "Draft not found",
     );
     const afterDiscard = await gateway.listMessages({
+      ...listOptions,
       limit: 10,
       mailboxId: mockMailboxIds.drafts,
     });
@@ -101,6 +104,7 @@ describe("mock provider draft contract", () => {
     })).rejects.toThrow("changed since it was last loaded");
 
     const drafts = await gateway.listMessages({
+      ...listOptions,
       limit: 10,
       mailboxId: mockMailboxIds.drafts,
     });
@@ -128,6 +132,7 @@ describe("mock provider draft contract", () => {
       "Draft not found",
     );
     const drafts = await gateway.listMessages({
+      ...listOptions,
       limit: 10,
       mailboxId: mockMailboxIds.drafts,
     });

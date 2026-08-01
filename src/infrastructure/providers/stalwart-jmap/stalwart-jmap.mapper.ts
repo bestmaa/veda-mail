@@ -9,6 +9,7 @@ import type {
   MessageSummary,
 } from "@/domain/mail/mail";
 import { labelIdFromKeyword } from "@/domain/mail/label";
+import { normalizeMessageListPreview } from "@/domain/mail/message-list-preview";
 import { id } from "@/domain/shared/brand";
 import {
   jmapMessagePresentation,
@@ -98,7 +99,7 @@ export const mapMessageSummary = (email: JmapEmail): MessageSummary => ({
     return labelId ? [labelId] : [];
   }),
   mailboxIds: Object.keys(email.mailboxIds).map(id.mailbox),
-  preview: email.preview,
+  preview: normalizeMessageListPreview(email.preview),
   receivedAt: email.receivedAt,
   size: email.size,
   subject: email.subject || "(No subject)",

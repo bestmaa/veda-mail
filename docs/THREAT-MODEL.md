@@ -301,9 +301,13 @@ access-log retention and redaction controls.
 ### Mailbox cursor and stale-page isolation
 
 - A cursor is untrusted query input even when the preceding response produced
-  it. The route accepts only canonical non-negative decimal positions capped at
-  2,147,483,647 and fixes the provider page size at 50. Invalid cursors fail
-  before provider resolution.
+  it. The public value is capped at 2,048 characters and carries an opaque
+  provider cursor inside an HMAC-SHA-256-authenticated envelope. Its key derives
+  from the installation session secret and connection ID. The signed payload
+  expires after 30 minutes and binds mailbox, secret-keyed HMAC search digest,
+  newest/oldest order, preview mode, fixed 50-message page size, and format
+  version. Invalid, expired, or context-mismatched cursors return HTTP 409 and
+  require an authoritative page-one refresh.
 - The browser coalesces duplicate load-more actions. Each page captures both
   its page generation and the root workspace generation; mailbox, search,
   refresh, logout, expiry, or cross-tab session replacement invalidates the
@@ -313,12 +317,38 @@ access-log retention and redaction controls.
   append. A provider error retains prior pages and exposes an explicit retry
   instead of advancing the cursor locally.
 
-Residual risk: both included adapters currently use positions rather than a
-snapshot token. Concurrent delivery or deletion can move later results between
+Residual risk: signing prevents browser tampering and cross-context replay; it
+does not turn the included adapters' internal position cursors into provider
+snapshots. Concurrent delivery or deletion can move later results between
 requests. Deduplication prevents duplicate display but cannot reconstruct a
 message skipped by upstream position movement; a manual refresh restarts from
 the authoritative first page. Snapshot/query-state cursors remain future
 provider-capability work.
+
+### Message-list preferences and previews
+
+- Ownership is derived after authentication from the current gateway account
+  email and provider ID; the request cannot supply an owner. Same-origin,
+  session-scope, strict-schema, 1 KiB request-size, and independent global and
+  subject rate-limit checks protect `PATCH /api/v1/mail/preferences`.
+- `/data/message-list-preferences.json` uses an HMAC-derived account index and
+  AES-256-GCM values. The encryption key is HKDF-derived from the installation
+  session secret, and the owner index is authenticated as additional data.
+  File size and owner count are bounded; writes are mode-restricted, fsynced,
+  atomically renamed, and serialized within one process.
+- The workspace route compares browser-echoed sort/preview context with the
+  persisted preference. A mismatch fails with HTTP 409 before provider data is
+  accepted, while the signed cursor independently binds the same values.
+- Preview-off JMAP queries omit the provider `preview` property. Preview-on
+  values lose C0/C1 and bidirectional control characters, collapse whitespace,
+  and are capped at 320 characters and 1,024 UTF-8 bytes. Standard IMAP does
+  not fetch body/source data for summary rows and consequently returns no list
+  preview in this release.
+
+Residual risk: metadata access timing may still reveal that an authenticated
+member changed preferences, and a provider can observe JMAP preview requests
+when previews are enabled. Standard IMAP avoids that body-access expansion at
+the cost of unavailable snippets.
 
 ### Stored email signatures
 

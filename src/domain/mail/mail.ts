@@ -20,9 +20,9 @@ import type {
   MailLabelDeletion,
 } from "@/domain/mail/label";
 import type { MailboxEmptyOperation } from "@/domain/mail/mailbox-empty";
+import type { MessageListPreferences, MessageListSort } from "@/domain/mail/message-list-preferences";
 export type {
-  Mailbox,
-  MailboxMutation,
+  Mailbox, MailboxMutation,
   MailboxMutationResult,
   MailboxRights,
   MailboxRole,
@@ -102,9 +102,11 @@ export interface MessagePage {
 
 export interface MessageListQuery {
   readonly cursor?: string;
+  readonly includePreview: boolean;
   readonly limit: number;
   readonly mailboxId: MailboxId;
   readonly search?: string;
+  readonly sort: MessageListSort;
 }
 
 export type MessageMutation =
@@ -241,6 +243,7 @@ export interface MailWorkspace extends ProviderMailWorkspace {
   readonly labelDeletions?: readonly MailLabelDeletion[];
   readonly labels: readonly MailLabel[];
   readonly mailboxEmptyOperations?: readonly MailboxEmptyOperation[];
+  readonly messageListPreferences: MessageListPreferences;
   readonly sessionExpiresAt: string;
   readonly sessionScope: string;
 }

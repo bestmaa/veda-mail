@@ -31,13 +31,11 @@ import {
   readStalwartMailboxSnapshot,
   type StalwartMailboxSnapshot,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.reader";
-import {
-  JMAP_MAIL,
-  JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
-  MAX_JMAP_BODY_VALUE_BYTES,
-  type StalwartConfig,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
-const summaryProperties = [
+import { assertStalwartMessageListResult } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-list-result";
+import { JMAP_MAIL, JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
+  MAX_JMAP_BODY_VALUE_BYTES, type StalwartConfig } from
+  "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+const summaryPropertiesWithoutPreview = [
   "id",
   "threadId",
   "mailboxIds",
@@ -47,9 +45,9 @@ const summaryProperties = [
   "subject",
   "from",
   "to",
-  "preview",
   "hasAttachment",
 ] as const;
+const summaryProperties = [...summaryPropertiesWithoutPreview, "preview"] as const;
 const detailProperties = [
   ...summaryProperties,
   "cc",
@@ -101,7 +99,10 @@ export class StalwartMailReader {
             filter,
             limit: query.limit,
             position,
-            sort: [{ isAscending: false, property: "receivedAt" }],
+            sort: [{
+              isAscending: query.sort === "oldest",
+              property: "receivedAt",
+            }],
           },
           "query",
         ],
@@ -114,7 +115,9 @@ export class StalwartMailReader {
               resultOf: "query",
             },
             accountId,
-            properties: summaryProperties,
+            properties: query.includePreview
+              ? summaryProperties
+              : summaryPropertiesWithoutPreview,
           },
           "emails",
         ],
@@ -133,7 +136,9 @@ export class StalwartMailReader {
       "Email/get",
       jmapListResultSchema(jmapEmailSchema),
     );
-    const nextPosition = position + emailResult.list.length;
+    assertStalwartMessageListResult(accountId, position, query.limit,
+      queryResult, emailResult);
+    const nextPosition = position + queryResult.ids.length;
     return {
       items: emailResult.list.map(mapMessageSummary),
       nextCursor:
