@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { zipSync } from "fflate";
 
 import {
   ClamAvAttachmentScanner,
@@ -13,6 +14,16 @@ const content = async function* (bytes: Uint8Array) {
   yield bytes;
 };
 
+const eicarBytes = (): Buffer =>
+  Buffer.from(
+    [
+      "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0ND",
+      "KTd9JEVJQ0FSLVNUQU5EQVJELUFOVElW",
+      "SVJVUy1URVNULUZJTEUhJEgrSCo=",
+    ].join(""),
+    "base64",
+  );
+
 describe("live ClamAV integration", () => {
   liveTest(
     "accepts clean bytes and rejects the EICAR test signature",
@@ -26,14 +37,7 @@ describe("live ClamAV integration", () => {
       const clean = await scanner.scan(
         content(Buffer.from("Veda Mail live scanner smoke test.")),
       );
-      const eicar = Buffer.from(
-        [
-          "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0ND",
-          "KTd9JEVJQ0FSLVNUQU5EQVJELUFOVElW",
-          "SVJVUy1URVNULUZJTEUhJEgrSCo=",
-        ].join(""),
-        "base64",
-      );
+      const eicar = eicarBytes();
       const infected = await scanner.scan(content(eicar));
 
       expect(clean).toEqual({ verdict: "clean" });
@@ -76,5 +80,37 @@ describe("live ClamAV integration", () => {
         status: 422,
       });
     },
+  );
+
+  liveTest(
+    "blocks nested malware and archive expansion limit violations",
+    async () => {
+      const scanner = new ClamAvAttachmentScanner({
+        host: "127.0.0.1",
+        idleTimeoutMs: 30_000,
+        port,
+        verdictTimeoutMs: 30_000,
+      });
+      const nested = zipSync({
+        "inner.zip": zipSync({ "sample.txt": eicarBytes() }),
+      });
+      const expandedChunk = new Uint8Array(40 * 1024 * 1024);
+      const expansionLimit = zipSync(
+        {
+          "expanded-a.bin": expandedChunk,
+          "expanded-b.bin": expandedChunk,
+          "expanded-c.bin": expandedChunk,
+        },
+        { level: 9 },
+      );
+
+      await expect(scanner.scan(content(nested))).resolves.toMatchObject({
+        verdict: "infected",
+      });
+      await expect(
+        scanner.scan(content(expansionLimit)),
+      ).resolves.toMatchObject({ verdict: "infected" });
+    },
+    30_000,
   );
 });

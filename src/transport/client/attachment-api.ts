@@ -5,12 +5,15 @@ import type {
   DraftId,
   MessageId,
 } from "@/domain/shared/brand";
+import {
+  downloadAttachmentArchive,
+  preflightAttachmentArchive,
+} from "@/transport/client/attachment-archive-client";
 import { saveAttachmentResponse } from "@/transport/client/attachment-download-client";
 import { readAttachmentPreviewResponse } from "@/transport/client/attachment-preview-client";
 import { apiClientErrorFromResponse } from "@/transport/client/api-request";
 import { fetchInlineImage } from "@/transport/client/inline-image-api";
 import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
-import { API_ERROR_CODE_HEADER } from "@/transport/http/api-error";
 
 interface ApiEnvelope<TData> {
   readonly data: TData;
@@ -20,29 +23,10 @@ const assertOk = async (response: Response): Promise<void> => {
   if (!response.ok) throw await apiClientErrorFromResponse(response);
 };
 
-const archivePreflightFailure = (response: Response): string => {
-  if (
-    response.headers.get(API_ERROR_CODE_HEADER) === "MAIL_SESSION_CHANGED"
-  ) {
-    return "Mailbox session changed. Reload this page and try again.";
-  }
-  const messages: Readonly<Record<number, string>> = {
-    401: "Please sign in again before downloading attachments.",
-    404: "The message or one of its attachments is no longer available.",
-    409: "This message does not have attachments to download.",
-    413: "These attachments are too large to download together.",
-    429: "Another archive is busy. Please try again shortly.",
-    502: "The mail provider could not prepare these attachments.",
-    504: "The mail provider took too long. Please try again.",
-  };
-  return (
-    messages[response.status] ??
-    `Unable to prepare this ZIP (status ${response.status}).`
-  );
-};
-
 export const attachmentApi = {
   fetchInlineImage,
+  downloadAttachmentArchive,
+  preflightAttachmentArchive,
 
   async previewAttachment(
     href: string,
@@ -62,38 +46,6 @@ export const attachmentApi = {
     });
     await assertOk(response);
     return readAttachmentPreviewResponse(response);
-  },
-
-  async preflightAttachmentArchive(
-    href: string,
-    sessionScope: string,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    const response = await fetch(href, {
-      cache: "no-store",
-      credentials: "same-origin",
-      headers: mailSessionScopeHeaders(sessionScope),
-      method: "POST",
-      redirect: "error",
-      referrerPolicy: "no-referrer",
-      ...(signal ? { signal } : {}),
-    });
-    if (!response.ok) {
-      throw await apiClientErrorFromResponse(
-        response,
-        archivePreflightFailure(response),
-      );
-    }
-    const payload = (await response.json()) as ApiEnvelope<{
-      readonly ticket?: unknown;
-    }>;
-    if (
-      typeof payload.data?.ticket !== "string" ||
-      !/^[A-Za-z0-9_-]{43}$/u.test(payload.data.ticket)
-    ) {
-      throw new Error("The attachment archive ticket is invalid.");
-    }
-    return `${href}?ticket=${encodeURIComponent(payload.data.ticket)}`;
   },
 
   async downloadAttachment(

@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test } from "@playwright/test";
 
-import { useInstalledMailbox } from "./support/mail-fixture";
+import {
+  expectNoSeriousAccessibilityViolations,
+  useInstalledMailbox,
+} from "./support/mail-fixture";
 
 useInstalledMailbox();
 
@@ -112,4 +115,107 @@ test("recovers from a failed attachment download and clears the stale alert", as
   expect(createHash("sha256").update(received).digest("hex")).toBe(expectedHash);
   expect(attempts).toBe(2);
   await expect(alert).toHaveCount(0);
+});
+
+test("shows a threat verdict without claiming the attachment is safe", async ({
+  page,
+}) => {
+  await page.route(attachmentUrl, (route) => route.fulfill({
+    body: JSON.stringify({
+      error: {
+        code: "ATTACHMENT_THREAT_DETECTED",
+        message: "Threat detected. This attachment was blocked.",
+      },
+    }),
+    contentType: "application/json",
+    status: 422,
+  }));
+  await page
+    .getByRole("button", { name: "Open Revised product roadmap · Q3" })
+    .click();
+  const reader = page.getByRole("article");
+  let downloads = 0;
+  page.on("download", () => { downloads += 1; });
+
+  await reader.getByRole("button", { name: "Download Q3-roadmap.pdf" }).click();
+
+  await expect(reader.getByRole("alert")).toHaveText(
+    "Threat detected. This attachment was blocked.",
+  );
+  await expect(reader.getByText(/safe/iu)).toHaveCount(0);
+  expect(downloads).toBe(0);
+});
+
+test("announces scanning and recovers from scanner unavailability on mobile", async ({
+  page,
+}) => {
+  const longName = `${"सुरक्षारिपोर्ट".repeat(4)}.pdf`;
+  await page.setViewportSize({ height: 844, width: 390 });
+  await page.route("**/api/v1/mail/messages/msg-roadmap", async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      data: { attachments: Array<{ name: string }> };
+    };
+    if (payload.data.attachments[0]) payload.data.attachments[0].name = longName;
+    await route.fulfill({ json: payload, response });
+  });
+  let releaseFirst!: () => void;
+  const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  let attempts = 0;
+  await page.route(attachmentUrl, async (route) => {
+    attempts += 1;
+    if (attempts === 1) {
+      await firstGate;
+      await route.fulfill({
+        body: JSON.stringify({
+          error: {
+            code: "ATTACHMENT_SCANNER_UNAVAILABLE",
+            message: "The attachment scanner is unavailable. Try again.",
+          },
+        }),
+        contentType: "application/json",
+        status: 503,
+      });
+      return;
+    }
+    await route.fulfill({
+      body: expectedBytes,
+      headers: {
+        ...hardenedHeaders,
+        "content-length": String(expectedBytes.byteLength),
+        "content-type": "application/octet-stream",
+      },
+      status: 200,
+    });
+  });
+  await page
+    .getByRole("button", { name: "Open Revised product roadmap · Q3" })
+    .click();
+  const reader = page.getByRole("article");
+  const downloadButton = reader.getByRole("button", {
+    name: `Download ${longName}`,
+  });
+  await downloadButton.focus();
+  await page.keyboard.press("Enter");
+
+  await expect(downloadButton).toHaveAttribute("aria-busy", "true");
+  await expect(reader.getByRole("status")).toHaveText(
+    `Scanning ${longName} before download…`,
+  );
+  expect(await page.evaluate(() =>
+    document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+  )).toBe(true);
+  await expectNoSeriousAccessibilityViolations(page);
+  releaseFirst();
+  await expect(reader.getByRole("alert")).toHaveText(
+    "The attachment scanner is unavailable. Try again.",
+  );
+  await expect(downloadButton).toBeEnabled();
+  await expect(downloadButton).toBeFocused();
+
+  const downloadEvent = page.waitForEvent("download");
+  await downloadButton.click();
+  await downloadEvent;
+  await expect(reader.getByRole("alert")).toHaveCount(0);
+  expect(attempts).toBe(2);
 });

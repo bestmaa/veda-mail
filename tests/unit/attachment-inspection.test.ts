@@ -130,7 +130,7 @@ describe("attachment inspection", () => {
       verdictTimeoutMs: 1_000,
     });
     await expect(scanner.scan(content("data"))).rejects.toThrow(
-      "complete verdict",
+      "invalid verdict",
     );
   });
 
@@ -143,7 +143,7 @@ describe("attachment inspection", () => {
       verdictTimeoutMs: 1_000,
     });
     await expect(scanner.scan(content("data"))).rejects.toThrow(
-      "clean or infected",
+      "invalid verdict",
     );
   });
 

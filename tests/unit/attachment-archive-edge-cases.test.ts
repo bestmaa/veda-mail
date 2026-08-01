@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { zipSync } from "fflate";
 
 import type {
   AttachmentDownload,
@@ -37,6 +38,32 @@ const archive = (
 };
 
 describe("attachment archive stream edge cases", () => {
+  it("keeps a nested high-ratio archive byte-identical and opaque", async () => {
+    const nested = zipSync(
+      {
+        "../../escape.txt": new Uint8Array(2 * 1024 * 1024),
+        "/absolute.txt": Uint8Array.of(1, 2, 3),
+      },
+      { level: 9 },
+    );
+    const stream = archive({
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(nested);
+          controller.close();
+        },
+      }),
+      mimeType: "application/zip",
+      name: "nested.zip",
+      size: nested.byteLength,
+    });
+
+    const encoded = new Uint8Array(await new Response(stream).arrayBuffer());
+    const [entry] = parseStoreZip(encoded);
+    expect(entry?.name).toBe("edge.bin");
+    expect(entry?.bytes).toEqual(nested);
+  });
+
   it("cancels the eager provider body when never pulled", async () => {
     const cancelled = vi.fn();
     const stream = archive({

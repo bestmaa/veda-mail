@@ -3,7 +3,6 @@ import "server-only";
 import type { MailApplicationService } from "@/application/services/mail-application.service";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type {
-  AttachmentDownload,
   MessageAttachmentMetadata,
 } from "@/domain/mail/mail";
 import { MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES } from "@/domain/mail/received-attachment";
@@ -18,16 +17,22 @@ import { assertAttachmentArchiveMetadata } from "@/server/mail/attachment-archiv
 import { uniqueArchiveEntryNames } from "@/server/mail/attachment-archive-names";
 import { attachmentArchiveAbortError } from "@/server/mail/attachment-archive-source";
 import { createAttachmentArchiveStream } from "@/server/mail/attachment-archive-stream";
+import { stageAttachmentArchiveSources } from "@/server/mail/received-attachment-scan-archive";
+import { asReceivedAttachmentScanApiError } from "@/server/mail/received-attachment-scan-http";
+import { receivedAttachmentScanSpool } from "@/server/mail/received-attachment-scan-service";
+import type { ReceivedAttachmentScanSpool } from "@/server/mail/received-attachment-scan";
 import { ApiError } from "@/transport/http/api-error";
 
 const ARCHIVE_TIMEOUT_MS = 10 * 60 * 1_000;
 const ARCHIVE_PREFLIGHT_TIMEOUT_MS = 30_000;
 
 interface PrepareAttachmentArchiveInput {
+  readonly connectionId: string;
   readonly lease: AttachmentDownloadLease;
   readonly mail: MailApplicationService;
   readonly messageId: MessageId;
   readonly requestSignal: AbortSignal;
+  readonly scanSpool?: Pick<ReceivedAttachmentScanSpool, "stage">;
 }
 
 interface PreflightAttachmentArchiveInput {
@@ -108,39 +113,6 @@ const validateAttachments = (
   return attachments;
 };
 
-const awaitArchiveOperation = async <T>(
-  operation: Promise<T>,
-  signal: AbortSignal,
-  onLateValue?: (value: T) => void,
-): Promise<T> =>
-  new Promise((resolve, reject) => {
-    let settled = false;
-    const onAbort = (): void => {
-      if (settled) return;
-      settled = true;
-      reject(attachmentArchiveAbortError(signal));
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    operation.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        if (settled) {
-          onLateValue?.(value);
-          return;
-        }
-        settled = true;
-        resolve(value);
-      },
-      (error: unknown) => {
-        signal.removeEventListener("abort", onAbort);
-        if (settled) return;
-        settled = true;
-        reject(error);
-      },
-    );
-    if (signal.aborted) onAbort();
-  });
-
 const listArchiveAttachments = async (
   mail: MailApplicationService,
   messageId: MessageId,
@@ -152,17 +124,6 @@ const listArchiveAttachments = async (
   });
   if (signal.aborted) throw attachmentArchiveAbortError(signal);
   return validateAttachments(attachments);
-};
-
-const cancelDownload = (
-  download: AttachmentDownload,
-  reason: unknown,
-): void => {
-  try {
-    void download.body.cancel(reason).catch(() => undefined);
-  } catch {
-    // A malformed provider body must not prevent lease cleanup.
-  }
 };
 
 export const preflightAttachmentArchive = async (
@@ -189,7 +150,7 @@ export const prepareAttachmentArchive = async (
     operationController.signal,
     AbortSignal.timeout(ARCHIVE_TIMEOUT_MS),
   ]);
-  let firstDownload: AttachmentDownload | undefined;
+  let sources: Awaited<ReturnType<typeof stageAttachmentArchiveSources>> | undefined;
   try {
     if (signal.aborted) throw attachmentArchiveAbortError(signal);
     const attachments = await listArchiveAttachments(
@@ -204,22 +165,20 @@ export const prepareAttachmentArchive = async (
     const firstAttachment = attachments[0];
     const firstName = names[0];
     if (!firstAttachment || !firstName) throw invalidMetadata();
-    firstDownload = await awaitArchiveOperation(
-      input.mail.downloadAttachment({
-        attachmentId: firstAttachment.id,
-        maxBytes: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
-        messageId: input.messageId,
-        signal,
-      }),
+    sources = await stageAttachmentArchiveSources({
+      attachments,
+      connectionId: input.connectionId,
+      mail: input.mail,
+      messageId: input.messageId,
       signal,
-      (lateDownload) => {
-        cancelDownload(lateDownload, attachmentArchiveAbortError(signal));
-      },
-    );
+      spool: input.scanSpool ?? await receivedAttachmentScanSpool(),
+    });
+    const firstDownload = await sources.open(firstAttachment.id, signal);
     assertAttachmentArchiveDownloadSize(firstDownload.size);
     return createAttachmentArchiveStream({
       downloadAttachment: (downloadInput) =>
-        input.mail.downloadAttachment(downloadInput),
+        sources?.open(downloadInput.attachmentId, downloadInput.signal) ??
+        Promise.reject(invalidMetadata()),
       entries: attachments.map((attachment, index) => ({
         attachment,
         name: names[index] ?? "attachment.bin",
@@ -227,14 +186,20 @@ export const prepareAttachmentArchive = async (
       firstDownload,
       messageId: input.messageId,
       onCancel: (reason) => operationController.abort(reason),
-      onFinalize: () => input.lease.release(),
+      onFinalize: () => {
+        void sources?.dispose();
+        input.lease.release();
+      },
       signal,
     });
   } catch (error) {
-    const normalized = normalizePreparationError(error, signal);
+    const normalized = normalizePreparationError(
+      asReceivedAttachmentScanApiError(error),
+      signal,
+    );
     operationController.abort(error);
     try {
-      if (firstDownload) cancelDownload(firstDownload, normalized);
+      await sources?.dispose();
     } finally {
       input.lease.release();
     }

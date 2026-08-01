@@ -17,11 +17,13 @@ import {
   ClamAvAttachmentScanner,
   MagicNumberMimeDetector,
 } from "@/server/security/attachment-inspection";
+import { scheduleAttachmentScanner } from "@/server/security/attachment-scan-scheduler";
 import { getMailService } from "@/server/mail/mail-service";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalAttachments = globalThis as typeof globalThis & {
   __vedaMailAttachmentCleanupTimer?: NodeJS.Timeout;
+  __vedaMailAttachmentScanner?: AttachmentScanner;
   __vedaMailAttachmentService?: ReturnType<typeof createAttachmentQuarantine>;
 };
 const ATTACHMENT_DIRECTORY_PREFIX = "veda-mail-attachments-";
@@ -35,12 +37,20 @@ const cleanTestScanner: AttachmentScanner = {
   },
 };
 
-export const attachmentScanner = (): AttachmentScanner =>
-  process.env.NODE_ENV === "test" ||
-  (process.env.NODE_ENV !== "production" &&
-    process.env["VEDA_MAIL_ATTACHMENT_SCANNER"] === "test-clean")
-    ? cleanTestScanner
-    : new ClamAvAttachmentScanner();
+export const attachmentScanner = (): AttachmentScanner => {
+  if (globalAttachments.__vedaMailAttachmentScanner) {
+    return globalAttachments.__vedaMailAttachmentScanner;
+  }
+  const scanner =
+    process.env.NODE_ENV === "test" ||
+    (process.env.NODE_ENV !== "production" &&
+      process.env["VEDA_MAIL_ATTACHMENT_SCANNER"] === "test-clean")
+      ? cleanTestScanner
+      : new ClamAvAttachmentScanner();
+  globalAttachments.__vedaMailAttachmentScanner =
+    scheduleAttachmentScanner(scanner);
+  return globalAttachments.__vedaMailAttachmentScanner;
+};
 
 export const removeAttachmentOrphanDirectories = (
   root = tmpdir(),

@@ -6,7 +6,7 @@ import type {
 import type { MailboxRole } from "@/domain/mail/mail";
 import { MessageFrameConnector } from "@/presentation/features/mail-workspace/connectors/message-frame.connector";
 import { AttachmentPreviewDialogConnector } from "@/presentation/features/mail-workspace/connectors/attachment-preview-dialog.connector";
-import { ReceivedAttachmentListView } from "@/presentation/features/mail-workspace/ui/received-attachment-list.view";
+import { ReceivedAttachmentListConnector } from "@/presentation/features/mail-workspace/connectors/received-attachment-list.connector";
 import { MessageReaderToolbarView } from "@/presentation/features/mail-workspace/ui/message-reader-toolbar.view";
 
 interface MessageReaderViewProps {
@@ -85,7 +85,7 @@ export const MessageReaderView = ({
           ) : null}
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
             <ShieldCheck aria-hidden size={14} />
-            Sanitized message content
+            Sanitized message body
           </p>
           <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-[-0.04em] text-slate-900 md:text-[30px]">
             {reader.subject}
@@ -141,7 +141,7 @@ export const MessageReaderView = ({
             )}
           </div>
 
-          <ReceivedAttachmentListView
+          <ReceivedAttachmentListConnector
             attachments={reader.attachments}
             downloadAll={reader.downloadAll}
           />

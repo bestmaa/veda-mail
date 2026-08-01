@@ -94,7 +94,10 @@ describe("received attachment list component", () => {
 
     expect(preparing).toContain('aria-busy="true"');
     expect(preparing).toContain('role="status"');
-    expect(preparing).toContain("Preparing attachment ZIP…");
+    expect(preparing).toContain(
+      "Scanning and preparing all attachments before download…",
+    );
+    expect(preparing).not.toContain("Safe");
     expect(failed).toContain('role="alert"');
     expect(failed).toContain("Archive preparation failed.");
   });

@@ -4,8 +4,12 @@ import type { AttachmentViewModel } from "@/presentation/features/mail-workspace
 
 export const AttachmentCardView = ({
   attachment,
+  downloadButtonRef,
+  onDownload,
 }: {
   readonly attachment: AttachmentViewModel;
+  readonly downloadButtonRef?: { current: HTMLButtonElement | null };
+  readonly onDownload?: React.MouseEventHandler<HTMLButtonElement>;
 }) => {
   const feedbackId = `attachment-${attachment.id}-download-feedback`;
   return (
@@ -47,7 +51,8 @@ export const AttachmentCardView = ({
         aria-label={`Download ${attachment.name}`}
         className="flex h-11 items-center gap-1 rounded-lg px-2 text-xs font-bold text-indigo-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-wait disabled:opacity-60"
         disabled={attachment.isDownloading}
-        onClick={attachment.onDownload}
+        onClick={onDownload ?? attachment.onDownload}
+        ref={downloadButtonRef}
         type="button"
       >
         {attachment.isDownloading ? (
@@ -64,7 +69,7 @@ export const AttachmentCardView = ({
           id={feedbackId}
           role="status"
         >
-          Downloading {attachment.name}…
+          Scanning {attachment.name} before download…
         </p>
       ) : attachment.error ? (
         <p

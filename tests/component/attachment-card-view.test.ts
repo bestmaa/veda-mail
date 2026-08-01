@@ -70,7 +70,8 @@ describe("attachment card component", () => {
 
     expect(html.match(/aria-busy="true"/gu)).toHaveLength(2);
     expect(html).toContain('role="status"');
-    expect(html).toContain("Downloading notes.txt…");
+    expect(html).toContain("Scanning notes.txt before download…");
+    expect(html).not.toContain("Safe");
     expect(html).toContain("overflow-wrap:anywhere");
     expect(html).not.toContain("tabindex=");
   });

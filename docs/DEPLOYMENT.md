@@ -82,6 +82,15 @@ on the private Compose network; its signature database is kept in the
 `clamav-signatures` volume. To build the checked-out Veda Mail source instead,
 use `docker compose up --build -d`.
 
+Compose mounts the repository-pinned `config/clamd.conf` read-only and caps the
+sidecar at two CPUs, 3 GiB memory, 128 PIDs, and a 256 MiB no-exec temporary
+filesystem. The policy accepts at most a 50 MiB input and caps expanded scan
+content at 100 MiB, recursion at eight levels, contained files at 1,000, and
+ZIP scan time at 90 seconds. `AlertExceedsMax` and encrypted-content alerts are
+enabled, so ClamAV cannot silently skip a bounded or encrypted member and return
+an application-level clean verdict. `npm run check:clamav-config` verifies the
+source policy, and CI confirms the running container uses the exact file.
+
 ClamAV is fail-closed and may take several minutes to download/load signatures
 on its first start. Until it is healthy, normal mail remains available but
 attachment uploads return a recoverable scanner-unavailable error and received
@@ -99,6 +108,16 @@ and 1,000 active records. It expires after 30 minutes through a background
 sweep and is intentionally excluded from backups. Run one Veda Mail process
 per container; multi-replica operation requires a shared encrypted quarantine,
 session store, and coordinated rate limiter.
+
+Received-download ciphertext is a separate 15-minute, request-scoped spool
+with the same 512 MiB/1,000-record process ceiling and random mode-0600 files in
+a mode-0700 directory. Known and unknown provider lengths are supported under
+the 50 MiB file limit. Each active stage reserves that full ceiling until its
+actual clean length is known. Direct delivery and Download all use only the fully
+scanned staged copy, then delete it on EOF, cancellation or failure; a failed
+delete remains quota-accounted and is retried by the background sweep. Startup
+removes only bounded stale spool directories whose recorded owner process is no
+longer alive; neither plaintext nor ciphertext is included in backups.
 
 Message-list preferences create
 `/data/message-list-preferences.json` on first save. Keep it on the same durable

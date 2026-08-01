@@ -140,7 +140,7 @@ describe("attachment archive lifecycle", () => {
     consoleError.mockRestore();
   });
 
-  it("invalidates a partial ZIP on midstream failure", async () => {
+  it("blocks a ZIP before response bytes on a midstream scan failure", async () => {
     mocks.downloadAttachment.mockResolvedValueOnce({
       body: new ReadableStream<Uint8Array>({
         start(controller) {
@@ -154,22 +154,19 @@ describe("attachment archive lifecycle", () => {
     });
 
     const response = await GET(request(), context());
-    expect(response.status).toBe(200);
-    await expect(response.arrayBuffer()).rejects.toBeDefined();
+    expect(response.status).toBe(503);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    const payload = JSON.stringify(await response.json());
+    expect(payload).toContain("ATTACHMENT_SCANNER_UNAVAILABLE");
+    expect(payload).not.toContain("provider stream secret");
   });
 
   it("releases archive capacity immediately after browser cancellation", async () => {
-    const cancelled = vi.fn();
     mocks.downloadAttachment.mockResolvedValueOnce({
-      body: new ReadableStream<Uint8Array>({
-        cancel: cancelled,
-        pull(controller) {
-          controller.enqueue(Uint8Array.of(1));
-        },
-      }),
+      body: byteStream(Uint8Array.of(1, 2, 3)),
       mimeType: "application/octet-stream",
       name: "one.bin",
-      size: null,
+      size: 3,
     });
     const first = await GET(request(), context());
     const busy = await GET(request(), context());
@@ -190,6 +187,5 @@ describe("attachment archive lifecycle", () => {
     expect(retry.status).toBe(200);
     await retry.arrayBuffer();
     expect(mocks.consumeAttachmentArchiveTicket).toHaveBeenCalledTimes(2);
-    expect(cancelled).toHaveBeenCalledTimes(1);
   });
 });

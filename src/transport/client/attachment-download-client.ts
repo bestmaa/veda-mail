@@ -3,7 +3,10 @@ import {
   sanitizeReceivedAttachmentName,
 } from "@/domain/mail/received-attachment";
 
-const declaredDownloadBytes = (response: Response): number | null => {
+const declaredDownloadBytes = (
+  response: Response,
+  maxBytes: number,
+): number | null => {
   const value = response.headers.get("content-length");
   if (value === null) return null;
   if (!/^\d{1,10}$/u.test(value)) {
@@ -12,17 +15,20 @@ const declaredDownloadBytes = (response: Response): number | null => {
   const size = Number(value);
   if (
     !Number.isSafeInteger(size) ||
-    size > MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES
+    size > maxBytes
   ) {
     throw new Error("The attachment exceeds the safe download size.");
   }
   return size;
 };
 
-const readBoundedDownload = async (response: Response): Promise<Blob> => {
+const readBoundedDownload = async (
+  response: Response,
+  maxBytes: number,
+): Promise<Blob> => {
   let declared: number | null;
   try {
-    declared = declaredDownloadBytes(response);
+    declared = declaredDownloadBytes(response, maxBytes);
   } catch (error) {
     void response.body?.cancel(error).catch(() => undefined);
     throw error;
@@ -37,7 +43,7 @@ const readBoundedDownload = async (response: Response): Promise<Blob> => {
       if (result.done) break;
       received += result.value.byteLength;
       if (
-        received > MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES ||
+        received > maxBytes ||
         (declared !== null && received > declared)
       ) {
         throw new Error("The attachment exceeded its declared safe size.");
@@ -61,8 +67,9 @@ const readBoundedDownload = async (response: Response): Promise<Blob> => {
 export const saveAttachmentResponse = async (
   response: Response,
   fileName: string,
+  maxBytes = MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
 ): Promise<void> => {
-  const blob = await readBoundedDownload(response);
+  const blob = await readBoundedDownload(response, maxBytes);
   const url = URL.createObjectURL(blob);
   const revoke = (): void => {
     try {

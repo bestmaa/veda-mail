@@ -1,5 +1,7 @@
 import "server-only";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
+import { MAX_ATTACHMENT_ARCHIVE_BYTES, MAX_ATTACHMENT_ARCHIVE_OUTPUT_BYTES } from "@/domain/mail/attachment-archive-limits";
+export { MAX_ATTACHMENT_ARCHIVE_BYTES, MAX_ATTACHMENT_ARCHIVE_ENTRIES, MAX_ATTACHMENT_ARCHIVE_OUTPUT_BYTES } from "@/domain/mail/attachment-archive-limits";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -22,9 +24,6 @@ import {
   updateZipCrc32,
   type ZipCentralEntry,
 } from "@/server/mail/attachment-archive-zip";
-export const MAX_ATTACHMENT_ARCHIVE_ENTRIES = 100;
-export const MAX_ATTACHMENT_ARCHIVE_BYTES = 200 * 1024 * 1024;
-export const MAX_ATTACHMENT_ARCHIVE_OUTPUT_BYTES = 201 * 1024 * 1024;
 const MAX_EMPTY_CHUNKS_PER_ENTRY = 32;
 
 export interface AttachmentArchiveEntry {

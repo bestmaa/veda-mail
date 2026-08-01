@@ -25,17 +25,6 @@ const initialState: ArchiveDownloadState = {
   isPreparing: false,
 };
 
-const startNativeDownload = (href: string): void => {
-  const anchor = document.createElement("a");
-  anchor.download = "";
-  anchor.href = href;
-  anchor.hidden = true;
-  anchor.referrerPolicy = "no-referrer";
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-};
-
 export const useAttachmentArchiveDownload = (
   sessionScope: string,
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
@@ -63,8 +52,13 @@ export const useAttachmentArchiveDownload = (
         controller.signal,
       );
       if (controller.signal.aborted) return;
-      setState({ error: null, href, isPreparing: false });
-      startNativeDownload(downloadHref);
+      await mailApi.downloadAttachmentArchive(
+        downloadHref,
+        controller.signal,
+      );
+      if (!controller.signal.aborted) {
+        setState({ error: null, href, isPreparing: false });
+      }
     } catch (error) {
       if (controller.signal.aborted) return;
       if (handleSessionFailure(error)) return;

@@ -7,6 +7,7 @@ import type { AttachmentDownloadLease } from "@/server/mail/attachment-download-
 import { prepareAttachmentArchive } from "@/server/mail/attachment-archive";
 
 const messageId = id.message("archive-preparation");
+const connectionId = "archive-preparation-connection";
 const metadata = {
   disposition: "attachment" as const,
   id: id.attachment("attachment-preparation"),
@@ -38,6 +39,7 @@ describe("attachment archive preparation", () => {
     } as unknown as MailApplicationService;
 
     const pending = prepareAttachmentArchive({
+      connectionId,
       lease: lease(release),
       mail,
       messageId,
@@ -74,6 +76,7 @@ describe("attachment archive preparation", () => {
     } as unknown as MailApplicationService;
 
     const pending = prepareAttachmentArchive({
+      connectionId,
       lease: lease(release),
       mail,
       messageId,
@@ -102,6 +105,7 @@ describe("attachment archive preparation", () => {
     } as unknown as MailApplicationService;
 
     const pending = prepareAttachmentArchive({
+      connectionId,
       lease: lease(release),
       mail,
       messageId,
@@ -128,6 +132,7 @@ describe("attachment archive preparation", () => {
     } as unknown as MailApplicationService;
 
     const pending = prepareAttachmentArchive({
+      connectionId,
       lease: lease(release),
       mail,
       messageId,

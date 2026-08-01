@@ -26,6 +26,18 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/attachments", new Set(["parseAttachmentContentLength"])],
   ["@/server/mail-service/mail-service-profile.store", new Set(["mailServiceProfileStore"])],
   ["@/server/mail/attachment-original-import", new Set(["importOriginalAttachment"])],
+  [
+    "@/server/mail/received-attachment-scan-http",
+    new Set(["asReceivedAttachmentScanApiError"]),
+  ],
+  [
+    "@/server/mail/received-attachment-scan-operation",
+    new Set(["stageReceivedAttachmentDownload"]),
+  ],
+  [
+    "@/server/mail/received-attachment-scan-service",
+    new Set(["receivedAttachmentScanSpool"]),
+  ],
   ["@/server/mail/attachment-preview", new Set(["prepareTextAttachmentPreview"])],
   ["@/server/mail/inline-image", new Set(["prepareInlineImage"])],
   [
