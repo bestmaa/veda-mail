@@ -626,8 +626,14 @@ opaque, and the attachment ID is cryptographically scoped to the message;
 provider blob IDs and IMAP MIME-part locators never enter a URL or browser
 payload.
 
-The route streams through `MailGateway` under a 50 MiB decoded-byte ceiling and
-bounded concurrent-download budget. Every successful response is forced to
+The route fetches through `MailGateway` under a 50 MiB decoded-byte ceiling and
+bounded concurrent-download budget. Known- and unknown-length streams are
+consumed exactly once into a request-scoped AES-256-GCM spool with random
+mode-0600 filenames in a mode-0700 process directory. The spool hashes the
+plaintext while the same complete stream feeds the bounded ClamAV scheduler.
+Only a complete clean verdict creates a scope-bound, single-use serving handle;
+the browser never receives a provider re-fetch or a byte that was not scanned.
+Every successful response is forced to
 `application/octet-stream` plus an attachment-only, sanitized
 `Content-Disposition`. It is private and non-cacheable and carries `nosniff`,
 a sandbox CSP, and same-origin resource policy. Byte-range requests are
@@ -702,7 +708,11 @@ message presentation data to apply the same sanitizer and inline-image render
 cap as the reader. The existing per-attachment gateway operation then
 revalidates and opens each source sequentially.
 
-The server writes a classic ZIP stream in STORE mode with CRC-32 data
+Before creating a response, the server sequentially stages and scans every
+original entry into the same encrypted received-attachment quarantine. A later
+infected, unavailable, oversized, truncated, or corrupt entry therefore blocks
+the operation before any local ZIP header or payload byte exists. The server
+then writes the verified copies into a classic ZIP stream in STORE mode with CRC-32 data
 descriptors, fixed privacy-safe metadata, regular-file attributes, and one
 flat, sanitized, collision-safe UTF-8 name per attachment. It never buffers a
 complete archive, creates a plaintext temporary file, follows a provider path,
@@ -712,6 +722,14 @@ four global archive leases, one lease per member, and the shared download
 budget. Any cancellation, dishonest length, no-progress stream, or provider
 failure stops later fetches and omits the central directory, leaving no
 success-looking partial ZIP.
+
+All upload, import, preview, inline-image, direct-download, and archive scans
+share a process-global four-active/32-waiter FIFO scheduler. Queue wait,
+connection, socket-idle, whole-scan, and verdict deadlines fail closed and
+release permits on every terminal path. The Compose-managed `clamd.conf` also
+caps a 50 MiB input, 100 MiB expanded scan, eight recursion levels, 1,000
+contained files, scan time, parser limits, threads and queue depth. Encrypted
+content or any ClamAV limit breach produces a blocked verdict.
 
 ## Plain-text attachment preview boundary
 

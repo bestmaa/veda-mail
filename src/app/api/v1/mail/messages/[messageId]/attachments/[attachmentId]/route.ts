@@ -16,6 +16,9 @@ import {
   parseAttachmentDownloadRouteParams,
 } from "@/server/mail/attachment-download-http";
 import { getMailService } from "@/server/mail/mail-service";
+import { asReceivedAttachmentScanApiError } from "@/server/mail/received-attachment-scan-http";
+import { stageReceivedAttachmentDownload } from "@/server/mail/received-attachment-scan-operation";
+import { receivedAttachmentScanSpool } from "@/server/mail/received-attachment-scan-service";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -72,6 +75,22 @@ export const GET = async (request: Request, context: RouteContext) => {
         messageId: id.message(params.messageId),
         signal: request.signal,
       });
+      const prepared = await stageReceivedAttachmentDownload(
+        download,
+        {
+          attachmentId: params.attachmentId,
+          connectionId: connection.id,
+          messageId: params.messageId,
+        },
+        await receivedAttachmentScanSpool(),
+        request.signal,
+      );
+      try {
+        download = await prepared.open(request.signal);
+      } catch (error) {
+        await prepared.dispose();
+        throw error;
+      }
       const response = createAttachmentDownloadResponse(
         download,
         lease,
@@ -80,7 +99,9 @@ export const GET = async (request: Request, context: RouteContext) => {
       lease = undefined;
       return response;
     } catch (error) {
-      throw asAttachmentDownloadApiError(error);
+      throw asAttachmentDownloadApiError(
+        asReceivedAttachmentScanApiError(error),
+      );
     }
   } catch (error) {
     lease?.release();

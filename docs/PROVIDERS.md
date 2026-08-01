@@ -213,13 +213,15 @@ The browser receives only an opaque attachment ID scoped to its message. JMAP
 downloads require and verify the provider's exact content length while
 streaming. IMAP downloads revalidate `UIDVALIDITY` and `BODYSTRUCTURE`, resolve
 the server-only MIME part, and stream without claiming a `Content-Length`.
-Veda Mail forces both paths to a non-cacheable, non-transformable attachment
-response; the browser rejects malformed, oversized, dishonest, or truncated
-streams before handing bytes to its download manager. Download all first
+Veda Mail consumes either provider stream once into an encrypted, scope-bound
+temporary spool, hashes it, and requires a complete clean ClamAV verdict before
+the same bytes can enter a non-cacheable, non-transformable attachment response.
+Download all first
 performs a signal-aware provider classification lookup that may
 inspect bounded message presentation data so it returns exactly the current
-visible/downloadable file-card metadata. It then streams each revalidated
-attachment sequentially into one STORE-mode ZIP. The browser supplies only the
+visible/downloadable file-card metadata. It then stages and scans each
+revalidated attachment sequentially; only after all entries are clean does it
+stream their verified copies into one STORE-mode ZIP. The browser supplies only the
 opaque message ID; generated names are flat, sanitized, and collision-safe. The
 archive is capped at 100 files, 50 MiB per file, and 200 MiB actual decoded
 payload. Byte ranges are not implemented.
@@ -277,11 +279,12 @@ fails as not found.
 
 No Stalwart server change is required. Veda Mail uses the authenticated JMAP
 session's existing download URL and keeps its blob ID inside the adapter.
-Direct received-attachment downloads are not passed through the outbound
-ClamAV quarantine; members must continue to treat unexpected downloads as
-untrusted files. Generated Download all ZIPs preserve that policy and never
-expand nested archives. Forwarded originals do pass through quarantine before
-send.
+Direct received-attachment downloads and every Download all entry use a
+separate request-scoped encrypted ClamAV quarantine sized for received mail.
+They never reuse the lower outbound draft quarantine and never re-fetch a clean
+provider object. Generated ZIPs preserve nested archives byte-identically and
+never expand them. Forwarded originals continue through the outbound
+quarantine before send.
 
 | Adapter              | Use it for                                                | Authentication                               |
 | -------------------- | --------------------------------------------------------- | -------------------------------------------- |

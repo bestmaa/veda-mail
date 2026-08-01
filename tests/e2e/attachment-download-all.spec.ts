@@ -62,6 +62,7 @@ test("downloads every attachment as one safe byte-identical ZIP", async ({
   const archiveDownload = await event;
 
   expect(archiveDownload.suggestedFilename()).toBe("attachments.zip");
+  await expect(downloadAll).toBeFocused();
   const path = await archiveDownload.path();
   expect(path).not.toBeNull();
   const archive = await readFile(path ?? "");
@@ -182,7 +183,7 @@ test("shows an actionable error when ZIP preflight fails", async ({ page }) => {
   expect(downloads).toBe(0);
 });
 
-test("never names a post-preflight JSON failure attachments.zip", async ({
+test("shows a post-preflight failure as an accessible retry state", async ({
   page,
 }) => {
   await page
@@ -190,16 +191,26 @@ test("never names a post-preflight JSON failure attachments.zip", async ({
       name: "Open Archive provider failure recovery fixture",
     })
     .click();
-  const event = page.waitForEvent("download");
-  await page
-    .getByRole("button", {
-      name: "Download all 2 attachments as a ZIP file",
-    })
-    .click();
-  const failedDownload = await event;
+  const downloadAll = page.getByRole("button", {
+    name: "Download all 2 attachments as a ZIP file",
+  });
+  let downloads = 0;
+  page.on("download", () => {
+    downloads += 1;
+  });
+  await downloadAll.focus();
+  await downloadAll.click();
 
-  expect(failedDownload.suggestedFilename()).toBe(
-    "attachment-archive-error.json",
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "archive could not be retrieved from the provider",
+    }),
+  ).toBeVisible();
+  await expect(downloadAll).toBeFocused();
+  expect(downloads).toBe(0);
+  await expect(downloadAll).toBeEnabled();
+  await expect(downloadAll).toHaveAttribute(
+    "aria-describedby",
+    "received-attachments-archive-feedback",
   );
-  expect(failedDownload.suggestedFilename()).not.toBe("attachments.zip");
 });

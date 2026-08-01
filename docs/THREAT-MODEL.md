@@ -699,6 +699,13 @@ limiter and encrypted shared session repository.
   length is available; an unknown-length stream remains byte-capped. IMAP
   revalidates mailbox `UIDVALIDITY` and current `BODYSTRUCTURE` before resolving
   and streaming the server-held MIME part.
+- Direct and Download all delivery is fail-closed behind a separate encrypted
+  received-attachment spool. The exact provider stream is length-bounded,
+  SHA-256 hashed, AES-256-GCM staged, and completely consumed by ClamAV before
+  the same scope-bound ciphertext may be decrypted for delivery. Provider bytes
+  are never tee'd to a browser and scanner and are never re-fetched after a
+  verdict. The process reserves the per-file ceiling during staging and retains
+  quota accounting until ciphertext deletion succeeds.
 - Download all accepts only an opaque message ID and performs an authoritative,
   signal-aware provider classification that may inspect bounded message
   presentation data to match the reader's sanitizer and inline-image render
@@ -720,6 +727,10 @@ limiter and encrypted shared session repository.
 - The generated outer ZIP never expands or compresses an attached archive.
   Nested archives remain byte-identical opaque files, avoiding traversal,
   decompression bombs, recursion, and server compression amplification.
+- Every original archive entry is scanned before the first outer-ZIP byte is
+  emitted. Repository-pinned clamd limits cap expanded scan bytes, recursion,
+  contained files and scan time; encrypted or limit-exceeded input is treated
+  as blocked, never as clean.
 - Forwarding an original attachment accepts only message-scoped opaque route
   IDs plus a fresh draft ID. The server re-fetches the current provider object,
   stages decoded bytes within the verified outbound limit and a shared
@@ -767,14 +778,13 @@ limiter and encrypted shared session repository.
   messages carrying the Deleted flag. Ambiguous provider failures remain
   selected and require authoritative refresh before a user retries.
 
-Residual risk: received attachments are hostile provider content. Direct and
-Download all responses are transport-only and are not scanned, so members
-should scan unexpected downloads before opening them. Forwarding and the
-bounded plain-text preview and inline CID render path do pass through ClamAV,
-but a clean signature verdict is defense-in-depth rather than proof of safety.
-Complex preview formats and byte ranges remain unavailable. Download all has
-an explicit no-expansion policy; it is not a malware verdict. ClamAV must have
-enough memory for signature reloads; operator monitoring is required.
+Residual risk: a clean signature verdict is defense-in-depth, not proof that a
+file is harmless. Members should still treat unexpected attachments cautiously.
+Direct, Download all, forwarding, plain-text preview and inline CID rendering
+now fail closed behind ClamAV, while complex preview formats and byte ranges
+remain unavailable. Download all never expands nested archives in the Veda Mail
+process. ClamAV still requires current signatures, sufficient reload memory and
+operator monitoring.
 
 ### Rules and forwarding
 

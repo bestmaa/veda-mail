@@ -72,6 +72,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - Authenticated received-attachment downloads for JMAP and IMAP, with
   message-scoped opaque identifiers, bounded streaming, and truthful provider
   capability metadata
+- Fail-closed malware inspection for received downloads. Known- or
+  unknown-length provider bytes are staged once into a request-scoped,
+  AES-256-GCM encrypted spool, hashed and completely scanned before the same
+  clean copy can be served. Infection, scanner outage, timeout, dishonest
+  length, corruption, quota pressure, or cancellation releases no attachment
+  bytes and removes the ciphertext
 - Server-streamed Download all archives for JMAP and IMAP, with authoritative
   metadata lookup, root-only collision-safe filenames, STORE-mode CRC-verified
   ZIP entries, byte/count/deadline limits, cancellation-safe concurrency, and
@@ -81,6 +87,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
   encrypted outbound quarantine
 - Official ClamAV sidecar pinned to a zero-HIGH/CRITICAL `linux/amd64` digest
   with a persistent signature database and fail-closed platform preflight
+- A repository-pinned ClamAV policy with bounded input, expanded scan bytes,
+  recursion, contained files, scan time, threads, queue, CPU, memory, PIDs and
+  temporary storage. Encrypted content and limit-exceeded scans are blocked
+  instead of being reported clean
 - CC and BCC composing, including CC-only and BCC-only delivery
 - Reply All with identity exclusion, recipient deduplication, and
   provider-derived `In-Reply-To` and `References` headers
@@ -108,6 +118,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Download all now fully stages and scans every original attachment before the
+  first ZIP byte is emitted. The generated archive still stores nested archives
+  as byte-identical opaque files and never expands provider content in the Veda
+  Mail process
+- All attachment inspection paths share one bounded FIFO scanner scheduler with
+  explicit queue, connect, idle, absolute-operation, and verdict deadlines
 - Download all now exchanges the scoped authenticated preflight for a 30-second,
   256-bit, single-use ticket bound to the exact connection and message. The
   reusable mailbox-session scope no longer appears in native-download URLs;

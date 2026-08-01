@@ -1,11 +1,12 @@
 import { Download, Paperclip } from "lucide-react";
 
 import type { AttachmentViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
-import { AttachmentCardView } from "@/presentation/features/mail-workspace/ui/attachment-card.view";
+import { AttachmentCardConnector } from "@/presentation/features/mail-workspace/connectors/attachment-card.connector";
 
 export const ReceivedAttachmentListView = ({
   attachments,
   downloadAll,
+  downloadAllButtonRef,
 }: {
   readonly attachments: readonly AttachmentViewModel[];
   readonly downloadAll: {
@@ -13,6 +14,7 @@ export const ReceivedAttachmentListView = ({
     readonly isPreparing: boolean;
     readonly onClick: () => void;
   } | null;
+  readonly downloadAllButtonRef?: React.Ref<HTMLButtonElement>;
 }) => {
   const archiveFeedbackId = "received-attachments-archive-feedback";
   return attachments.length > 0 ? (
@@ -40,6 +42,7 @@ export const ReceivedAttachmentListView = ({
             className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-indigo-700 transition hover:border-indigo-200 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-wait disabled:opacity-60"
             disabled={downloadAll.isPreparing}
             onClick={downloadAll.onClick}
+            ref={downloadAllButtonRef}
             type="button"
           >
             <Download aria-hidden size={16} />
@@ -53,7 +56,7 @@ export const ReceivedAttachmentListView = ({
           id={archiveFeedbackId}
           role="status"
         >
-          Preparing attachment ZIP…
+          Scanning and preparing all attachments before download…
         </p>
       ) : downloadAll?.error ? (
         <p
@@ -67,7 +70,7 @@ export const ReceivedAttachmentListView = ({
       <ul className="grid gap-2 sm:grid-cols-2">
         {attachments.map((attachment) => (
           <li className="min-w-0" key={attachment.id}>
-            <AttachmentCardView attachment={attachment} />
+            <AttachmentCardConnector attachment={attachment} />
           </li>
         ))}
       </ul>

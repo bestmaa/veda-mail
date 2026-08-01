@@ -168,6 +168,17 @@ jobs:
             exit 1
           fi
 
+          expected_config="$(sha256sum config/clamd.conf | awk '{print $1}')"
+          running_config="$(
+            docker exec "$container_id" cat /etc/clamav/clamd.conf \
+              | sha256sum \
+              | awk '{print $1}'
+          )"
+          if [[ "$running_config" != "$expected_config" ]]; then
+            echo "Running ClamAV did not load the repository-pinned configuration." >&2
+            exit 1
+          fi
+
           npm exec -- vitest run tests/integration/clamav-live.test.ts
 
   codeql:

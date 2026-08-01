@@ -140,6 +140,18 @@ scope never appears in a native-download URL. JMAP downloads also support
 standards-compliant unknown-length identity streams while retaining exact
 verification whenever a length is known and the existing byte ceiling always.
 
+The received-malware vertical slice is also implemented for direct and Download
+all delivery: the exact known- or unknown-length provider stream enters an
+AES-256-GCM, scope-bound, single-use spool; all entries must receive a complete
+clean ClamAV verdict before any attachment or ZIP byte is emitted. Shared scan
+concurrency and connect/idle/absolute/verdict deadlines fail closed. A pinned
+`clamd.conf` blocks encrypted or limit-exceeded content and bounds expanded
+archive bytes, recursion, files, parser work, CPU, memory, PIDs and temporary
+storage. Unit, adversarial, route, browser, real JMAP/IMAP adapter and live
+ClamAV nested/limit fixtures cover the implementation. The malware-scanner
+checkbox remains open only until the immutable release is deployed and the live
+mailbox evidence above plus production scanner health are recorded.
+
 ## M3 — Draft-safe, rich composing
 
 - [ ] Provider-backed create, update, list, open, and discard drafts

@@ -68,6 +68,7 @@ export const GET = async (request: Request, context: RouteContext) => {
     });
     const mail = await getMailService(connection);
     body = await prepareAttachmentArchive({
+      connectionId: connection.id,
       lease,
       mail,
       messageId: id.message(params.messageId),

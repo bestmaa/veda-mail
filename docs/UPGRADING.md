@@ -20,6 +20,15 @@ is required. Preserve both methods on the archive route and disable query-string
 logging where practical. Open tabs from an older image must be reloaded after
 deployment because the former HEAD/session-scope query protocol is rejected.
 
+Received direct downloads and Download all now require a complete ClamAV
+verdict before delivery. Upgrade the entire Compose definition and keep
+`config/clamd.conf` mounted read-only at `/etc/clamav/clamd.conf`; updating only
+the Veda Mail image would omit the reviewed archive-expansion and encrypted-file
+policy. The new encrypted received-file spool is process-local temporary data,
+requires no `/data` migration, and is removed after EOF, cancellation, failure,
+or its 15-minute post-verdict TTL. Reload older browser tabs so their status text accurately
+reports scanning before download.
+
 The administrator mailbox-user release adds the optional server-only
 `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` and its required exact HTTPS
 `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding. Without both, the new Users
@@ -106,6 +115,12 @@ The secure-attachment release adds an official ClamAV sidecar and the
 only the Veda Mail image line. First startup downloads and loads signatures,
 which can take several minutes and requires substantial memory. Do not bypass
 the scanner by pointing `VEDA_MAIL_CLAMAV_HOST` at an untrusted service.
+The repository-pinned `config/clamd.conf` must remain mounted read-only. Its
+50 MiB input, 100 MiB expanded-scan, recursion, contained-file and scan-time
+limits fail closed through `AlertExceedsMax`; encrypted archives/documents are
+also blocked. Preserve the default ClamAV CPU, 3 GiB memory, 128 PID and 256 MiB
+no-exec temporary-filesystem limits unless a reviewed deployment profile
+documents stricter or larger bounds.
 
 The approved ClamAV digest is currently `linux/amd64`-only. Although the Veda
 Mail application image also supports `linux/arm64`, secure-attachment
