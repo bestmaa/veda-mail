@@ -23,7 +23,9 @@ import { StalwartMailWriter } from "@/infrastructure/providers/stalwart-jmap/sta
 import { StalwartMailboxManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.manager";
 import { StalwartDraftStore } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.store";
 import { DraftHasAttachmentsError } from "@/domain/mail/draft-errors";
+import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { cleanupStalwartLabel } from "@/infrastructure/providers/stalwart-jmap/stalwart-label-cleanup";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
@@ -33,7 +35,7 @@ export class StalwartMailGateway implements MailGateway {
   private readonly mailboxes: StalwartMailboxManager;
   private readonly writer: StalwartMailWriter;
 
-  public constructor(config: StalwartConfig) {
+  public constructor(private readonly config: StalwartConfig) {
     this.client = new StalwartJmapClient(config);
     this.reader = new StalwartMailReader(this.client, config);
     this.mailboxes = new StalwartMailboxManager(this.client, this.reader);
@@ -44,6 +46,15 @@ export class StalwartMailGateway implements MailGateway {
 
   public discardDraft(...input: Parameters<StalwartDraftStore["discard"]>) {
     return this.drafts.discard(...input);
+  }
+
+  public cleanupLabel(input: LabelCleanupInput) {
+    return cleanupStalwartLabel(
+      this.client,
+      this.reader,
+      input,
+      `${this.config.baseUrl}\0${this.config.username}\0${this.config.secret}`,
+    );
   }
 
   public changePassword(input: MemberPasswordChange) {

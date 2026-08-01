@@ -1,4 +1,4 @@
-import { LogOut, MoreHorizontal, PenLine, Plus, Settings, X } from "lucide-react";
+import { LoaderCircle, LogOut, MoreHorizontal, PenLine, Plus, Settings, X } from "lucide-react";
 
 import type {
   FolderViewModel,
@@ -154,7 +154,14 @@ export const MailSidebarView = ({
                   className="size-3 shrink-0 rounded-full"
                   style={{ backgroundColor: label.color }}
                 />
-                <span className="min-w-0 flex-1 truncate">{label.name}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {label.name}
+                  {labelManagement.deletingLabelIds.has(label.id) ? (
+                    <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-200">
+                      deleting
+                    </span>
+                  ) : null}
+                </span>
                 <button
                   aria-label={`Manage ${label.name} label`}
                   className="absolute right-1.5 top-1 grid size-8 place-items-center rounded-lg text-indigo-100/70 opacity-100 hover:bg-white/10 hover:text-white md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
@@ -162,7 +169,9 @@ export const MailSidebarView = ({
                   title={`Manage ${label.name} label`}
                   type="button"
                 >
-                  <MoreHorizontal aria-hidden size={17} />
+                  {labelManagement.deletingLabelIds.has(label.id)
+                    ? <LoaderCircle aria-hidden className="animate-spin" size={16} />
+                    : <MoreHorizontal aria-hidden size={17} />}
                 </button>
               </div>
             ))}

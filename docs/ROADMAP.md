@@ -210,8 +210,10 @@ are implemented for both included adapters. Opaque stable IDs map to JMAP
 keywords or capability-checked IMAP user flags; the encrypted account catalog,
 strict scoped APIs, state/right/capacity checks, post-mutation verification,
 accessible UI, and provider/security tests are complete. The checkbox remains
-open until the release image is deployed and verified and resumable two-phase
-label deletion is delivered.
+open until the release image is deployed and verified. Resumable two-phase
+deletion now blocks new applications, persists bounded provider progress behind
+an expiring lease, survives interruption, requires two empty checks, and
+retains a tombstone.
 
 Selection is explicitly limited to loaded messages, excludes editable Drafts,
 survives only within the current mailbox/search/session view, and retains only

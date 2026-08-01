@@ -5,9 +5,23 @@ import { isCanonicalLabelName } from "@/domain/mail/label-policy";
 import { z } from "zod";
 
 const labelIdSchema = z.string().regex(/^veda-label-[a-z2-7]{26}$/u);
+const deletionLeaseSchema = z.object({
+  expiresAt: z.string().datetime(),
+  id: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
+}).strict();
+const labelDeletionSchema = z.object({
+  cursor: z.string().max(4_096).nullable(),
+  emptyChecks: z.number().int().min(0).max(2),
+  lease: deletionLeaseSchema.nullable(),
+  processed: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  removed: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  startedAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+}).strict();
 const storedLabelSchema = z.object({
   color: z.enum(LABEL_COLORS),
   createdAt: z.string().datetime(),
+  deletion: labelDeletionSchema.optional(),
   name: z.string().min(1).max(100).refine(isCanonicalLabelName),
   revision: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
   status: z.enum(["active", "deleting"]),
@@ -39,6 +53,7 @@ export const labelCatalogFileSchema = z.object({
 }).strict();
 
 export type StoredLabelCatalog = z.infer<typeof storedLabelCatalogSchema>;
+export type StoredLabelDeletion = z.infer<typeof labelDeletionSchema>;
 export type LabelCatalogFile = z.infer<typeof labelCatalogFileSchema>;
 export type EncryptedLabelCatalog = LabelCatalogFile["owners"][string];
 

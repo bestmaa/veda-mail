@@ -259,6 +259,12 @@ lose updates. Scaling requires a shared encrypted session repository,
 distributed limiter, atomic shared send ledger, and transactional replacement
 for all per-member metadata stores.
 
+Portable-label deletion needs no worker or new environment variable. Cleanup
+advances in bounded authenticated requests while the member mailbox is open;
+encrypted progress resumes after a restart or later sign-in. Keep the single
+writable replica rule so in-flight label mutations and deletion share the same
+owner/label operation queue.
+
 ## Post-deployment checks
 
 ```bash

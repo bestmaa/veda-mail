@@ -45,6 +45,14 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/labels/label-catalog.store", new Set(["labelCatalogStore"])],
   ["@/server/labels/label-http", new Set(["labelHttpError"])],
   [
+    "@/server/labels/label-operation.service",
+    new Set([
+      "deleteLabelBatch",
+      "mutateBulkMessageLabels",
+      "mutateMessageLabel",
+    ]),
+  ],
+  [
     "@/server/mailboxes/mailbox-http",
     new Set(["decorateMailboxesSafely", "mailboxHttpError", "mailboxOwner"]),
   ],

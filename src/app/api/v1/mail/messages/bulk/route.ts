@@ -8,8 +8,8 @@ import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
-import { labelCatalogStore } from "@/server/labels/label-catalog.store";
 import { labelHttpError } from "@/server/labels/label-http";
+import { mutateBulkMessageLabels } from "@/server/labels/label-operation.service";
 import { mailboxOwner } from "@/server/mailboxes/mailbox-http";
 import {
   assertRequestRateLimit,
@@ -91,32 +91,37 @@ export const PATCH = async (request: Request) => {
     );
     const service = await getMailService(connection);
     if (payload.type === "set-label") {
-      await labelCatalogStore.requireActive(
+      const result = await mutateBulkMessageLabels(
+        service,
         await mailboxOwner(service),
-        payload.labelId,
+        payload,
       );
+      return apiSuccess(result);
     }
-    if (payload.type === "destroy") {
-      const source = (await service.listMailboxes()).find(
-        (mailbox) => mailbox.id === payload.mailboxId,
-      );
-      if (source?.role !== "spam" && source?.role !== "trash") {
-        throw new ApiError(
-          "Permanent deletion is allowed only from Spam or Trash.",
-          "PERMANENT_DELETE_FORBIDDEN",
-          400,
+    const mutate = async (): Promise<BulkMessageMutationResult> => {
+      if (payload.type === "destroy") {
+        const source = (await service.listMailboxes()).find(
+          (mailbox) => mailbox.id === payload.mailboxId,
         );
-      }
-    }
-    const result = await runBounded(payload, async (mutation) => {
-      if (mutation.type === "destroy") {
-        const message = await service.getMessage(mutation.messageId);
-        if (!message.mailboxIds.includes(mutation.mailboxId)) {
-          throw new Error("Message is outside the confirmed mailbox.");
+        if (source?.role !== "spam" && source?.role !== "trash") {
+          throw new ApiError(
+            "Permanent deletion is allowed only from Spam or Trash.",
+            "PERMANENT_DELETE_FORBIDDEN",
+            400,
+          );
         }
       }
-      await service.mutateMessage(mutation);
-    });
+      return runBounded(payload, async (mutation) => {
+        if (mutation.type === "destroy") {
+          const message = await service.getMessage(mutation.messageId);
+          if (!message.mailboxIds.includes(mutation.mailboxId)) {
+            throw new Error("Message is outside the confirmed mailbox.");
+          }
+        }
+        await service.mutateMessage(mutation);
+      });
+    };
+    const result = await mutate();
     return apiSuccess(result);
   } catch (error) {
     return apiFailure(labelHttpError(error), "Unable to update the selected messages.");

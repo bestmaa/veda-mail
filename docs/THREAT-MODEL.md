@@ -415,12 +415,24 @@ use the JMAP adapter. The appearance writer is process-local, so one writable
   mailbox access. Catalog writes and label mutations fail closed. Provider
   exceptions are converted to bounded application errors and never expose
   credentials or raw upstream responses.
+- Deletion is fail-closed and resumable. Marking a record `deleting` blocks new
+  applications before cleanup starts. Provider work is capped at 100 messages
+  per request behind an expiring random lease; cursor and count schemas are
+  bounded, stale completions are rejected, failures release or expire the
+  lease, and two independently persisted empty checks are required before the
+  encrypted record is replaced by a tombstone. UI confirmation states that
+  messages and mailbox membership remain untouched.
+- Provider cursors are canonical, HMAC-authenticated, and bound to the current
+  provider/account/label credential scope. Credential rotation invalidates and
+  safely restarts the idempotent sweep. A process-local owner/label queue holds
+  active single and bulk applications through provider completion, preventing
+  deletion from finalizing behind an already-authorized in-flight mutation.
 
 Residual risk: the encrypted catalog writer is process-local and requires one
 writable Veda Mail replica. IMAP has no account-global message identity, so a
-copied message may carry an independent label flag. Label deletion remains
-disabled until resumable JMAP/IMAP cleanup can prove zero remaining uses before
-finalizing a permanent tombstone.
+copied message may carry an independent label flag. A remote client can race by
+reapplying a raw provider keyword after final verification; the tombstoned ID
+does not become a Veda label and later cleanup remains an operator concern.
 
 ### Availability and resource exhaustion
 

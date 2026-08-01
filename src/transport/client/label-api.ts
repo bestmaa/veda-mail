@@ -1,4 +1,8 @@
-import type { LabelColor, MailLabel } from "@/domain/mail/label";
+import type {
+  LabelColor,
+  MailLabel,
+  MailLabelDeletion,
+} from "@/domain/mail/label";
 import type { LabelId } from "@/domain/shared/brand";
 import { fetchData } from "@/transport/client/api-request";
 import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
@@ -14,6 +18,18 @@ export const labelApi = {
       body: JSON.stringify(input),
       headers: mailSessionScopeHeaders(sessionScope),
       method: "POST",
+    });
+  },
+
+  deleteLabel(labelId: LabelId, sessionScope: string) {
+    return fetchData<{
+      readonly deletion: MailLabelDeletion;
+      readonly done: boolean;
+      readonly labels: readonly MailLabel[];
+    }>(endpoint, {
+      body: JSON.stringify({ labelId }),
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "DELETE",
     });
   },
 

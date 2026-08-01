@@ -159,8 +159,14 @@ with `installation.json`; an older image ignores it. No provider migration,
 port, or environment variable is required. JMAP accounts use standard Email
 keywords and IMAP accounts use standard user flags only when provider
 capabilities allow them. Keep one writer for the mounted `/data` volume. Label
-deletion is not enabled in this release, so rollback does not need to reconcile
-provider keywords with catalog tombstones.
+deletion now stores an optional bounded cleanup cursor, expiring lease, counts,
+and tombstone in the same encrypted catalog; the version-1 schema remains
+backward compatible and needs no migration. If rollback occurs while a label is
+`deleting`, the older image leaves that provider keyword and catalog state
+untouched. Reinstall the newer image and open the mailbox to resume cleanup. A
+mailbox credential change invalidates the authenticated cleanup cursor; the
+next attempt automatically restarts the bounded idempotent sweep from its safe
+beginning while retaining the accumulated progress counters.
 
 Then verify:
 

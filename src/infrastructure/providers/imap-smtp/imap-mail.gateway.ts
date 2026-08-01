@@ -2,6 +2,7 @@ import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { DraftSaveInput } from "@/domain/mail/draft";
+import type { LabelCleanupInput } from "@/domain/mail/label";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -20,6 +21,8 @@ import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
 import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
 import { ImapMailboxManager } from "@/infrastructure/providers/imap-smtp/imap-mailbox.manager";
+import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
+import { cleanupImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-cleanup";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 
@@ -33,7 +36,7 @@ export class ImapSmtpMailGateway implements MailGateway {
   private readonly mailboxes: ImapMailboxManager;
   private readonly writer: ImapMailWriter;
 
-  public constructor(config: ImapSmtpMemberConfig) {
+  public constructor(private readonly config: ImapSmtpMemberConfig) {
     this.attachmentCapability = new SmtpAttachmentCapability(config);
     this.reader = new ImapMailReader(config);
     this.mailboxes = new ImapMailboxManager(config);
@@ -43,6 +46,14 @@ export class ImapSmtpMailGateway implements MailGateway {
   public async changePassword(_input: MemberPasswordChange): Promise<void> {
     void _input;
     unsupported("Password changes");
+  }
+
+  public cleanupLabel(input: LabelCleanupInput) {
+    return withImapClient(this.config, (client) => cleanupImapLabel(
+      client,
+      input,
+      `${this.config.imapHost}\0${this.config.imapPort}\0${this.config.username}\0${this.config.secret}`,
+    ));
   }
 
   public async discardDraft(

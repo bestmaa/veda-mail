@@ -19,7 +19,11 @@ import type {
   DraftDetail,
   DraftSaveInput,
 } from "@/domain/mail/draft";
-import type { LabelCapability } from "@/domain/mail/label";
+import type {
+  LabelCapability,
+  LabelCleanupInput,
+  LabelCleanupResult,
+} from "@/domain/mail/label";
 import type {
   MemberAuthenticationResult,
   MemberCredentials,
@@ -36,6 +40,7 @@ import type { MailboxId, MessageId, ProviderDraftId } from "@/domain/shared/bran
 
 export interface MailGateway {
   changePassword(input: MemberPasswordChange): Promise<void>;
+  cleanupLabel(input: LabelCleanupInput): Promise<LabelCleanupResult>;
   discardDraft(
     providerDraftId: ProviderDraftId,
     expectedRevision: string,

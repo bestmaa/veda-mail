@@ -27,3 +27,7 @@ export const updateLabelSchema = z.object({
   labelId: labelIdSchema,
   name: labelNameSchema.optional(),
 }).strict().refine(({ color, name }) => color !== undefined || name !== undefined);
+
+export const deleteLabelSchema = z.object({
+  labelId: labelIdSchema,
+}).strict();

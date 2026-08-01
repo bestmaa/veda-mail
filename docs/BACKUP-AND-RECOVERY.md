@@ -15,8 +15,8 @@ the supplied Compose deployment.
   `member-signatures.json`
 - Per-provider/mailbox custom folder colors encrypted in
   `mailbox-appearance.json`
-- Per-provider/mailbox portable label names, colors, and opaque IDs encrypted
-  in `mail-label-catalog.json`
+- Per-provider/mailbox portable label names, colors, opaque IDs, resumable
+  deletion progress, and tombstones encrypted in `mail-label-catalog.json`
 - Organization and product branding
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
