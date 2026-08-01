@@ -60,6 +60,7 @@ export interface JmapResponse {
 export interface JmapMailbox {
   readonly id: string;
   readonly myRights?: {
+    readonly mayAddItems?: boolean | undefined;
     readonly mayCreateChild: boolean;
     readonly mayDelete: boolean;
     readonly mayRemoveItems?: boolean | undefined;

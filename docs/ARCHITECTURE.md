@@ -724,6 +724,28 @@ timeout, provider, quota, type, scan, or storage failure cancels the source,
 removes the reservation, and releases every resource lease. A later send uses
 the same claim, integrity-check, retry, and consume path as a local upload.
 
+## Message move boundary
+
+List drag/drop and the list/reader keyboard-touch dialogs converge on the same
+bulk mutation coordinator. The coordinator deduplicates IDs, sends at most 100
+per request, refreshes authoritative state, removes only succeeded IDs from
+selection, and reports partial failures. Target labels use bounded mailbox
+breadcrumbs; Drafts, Sent, the source mailbox, non-selectable destinations, and
+mailboxes without `mayAddItems` are excluded.
+
+Every request names an exact source and destination. The route reloads the
+mailbox rights snapshot and each message's current membership before calling a
+provider. JMAP changes only the two addressed membership keys under an
+`ifInState` precondition with one bounded state-mismatch refresh. IMAP scopes
+the message ID to the exact source mailbox and UIDVALIDITY, verifies the UID,
+and requires native MOVE; it never emulates a move with COPY plus unscoped
+EXPUNGE.
+
+Native drag data contains only a random, short-lived token. Message IDs and
+content remain in a session/view/source-bound in-memory intent that is cleared
+on drop, cancel, navigation, or session change. External and stale drops cannot
+invoke the mutation path.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

@@ -331,6 +331,23 @@ After saving, test with a dedicated mailbox:
     address, warns against resending to everyone, and all-rejected delivery
     leaves no Sent copy.
 13. Archive, star, move, and trash a test message.
+14. Move one message and a multi-selection by drag/drop, then repeat from the
+    keyboard/touch Move control. Confirm partial failures remain selected.
+
+## Message move requirements
+
+JMAP providers must expose `Mailbox/myRights.mayAddItems` and
+`mayRemoveItems`. Veda reads the current Email state and membership, then uses
+a state-conditioned `Email/set` patch for only the exact source and destination
+membership keys. A single state-mismatch retry refreshes that snapshot; other
+mailbox memberships are retained.
+
+The standard adapter requires the server to advertise native IMAP MOVE. Veda
+verifies the canonical source mailbox, UIDVALIDITY, exact UID, destination
+existence, and selectability before moving. It intentionally does not fall back
+to COPY plus EXPUNGE, even on servers where that means move is unavailable,
+because plain EXPUNGE can remove unrelated messages. No Stalwart configuration
+change is required beyond ordinary JMAP mailbox rights.
 
 ## Common provider examples
 

@@ -138,7 +138,6 @@ export class MockMailGateway implements MailGateway {
       total: matching.length,
     };
   }
-
   public async mutateMessage(mutation: MessageMutation): Promise<void> {
     const index = this.messages.findIndex(
       (message) => message.id === mutation.messageId,
@@ -170,7 +169,10 @@ export class MockMailGateway implements MailGateway {
     } else if (mutation.type === "delete") {
       nextMailbox = mockMailboxIds.trash;
     } else if (mutation.type === "move") {
-      nextMailbox = mutation.mailboxId;
+      if (!current.mailboxIds.includes(mutation.sourceMailboxId)) {
+        throw new Error("The message is outside the selected source mailbox.");
+      }
+      nextMailbox = mutation.destinationMailboxId;
     }
     this.messages[index] = { ...current, mailboxIds: [nextMailbox] };
   }
@@ -237,11 +239,9 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async testConnection(): Promise<void> {}
-
   public async updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void> {
     void input;
   }
-
   public async updateMemberProfile(input: MemberProfileUpdate) {
     this.profile = { ...this.profile, displayName: input.displayName };
     return this.profile;

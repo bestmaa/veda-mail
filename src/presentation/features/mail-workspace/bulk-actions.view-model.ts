@@ -1,6 +1,7 @@
 import type { MailWorkspace } from "@/domain/mail/mail";
 import { id, type MailboxId } from "@/domain/shared/brand";
 import type { useMailBulkSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-bulk-selection";
+import { messageMoveTargets } from "@/presentation/features/mail-workspace/message-move-policy";
 
 export interface BulkActionsViewModel {
   readonly allLoadedSelected: boolean;
@@ -101,16 +102,10 @@ export const createBulkActionsViewModel = ({
           !deletingLabelIds.has(labelId),
         )
       : [],
-    moveTargets: (workspace?.mailboxes ?? [])
-      .filter(
-        (mailbox) =>
-          mailbox.id !== activeMailbox?.id &&
-          mailbox.role !== "drafts" &&
-          mailbox.role !== "sent" &&
-          (!lifecycleMailbox ||
-            (mailbox.role !== "spam" && mailbox.role !== "trash")),
-      )
-      .map((mailbox) => ({ id: mailbox.id, label: mailbox.name })),
+    moveTargets: messageMoveTargets(
+      workspace?.mailboxes ?? [],
+      activeMailbox?.id ?? null,
+    ),
     onArchive: () => void bulk.mutate({ type: "archive" }),
     onApplyLabel: (labelId: string) =>
       void bulk.mutate({ labelId: id.label(labelId), type: "set-label", value: true }),
@@ -120,14 +115,24 @@ export const createBulkActionsViewModel = ({
     onMarkUnread: () =>
       void bulk.mutate({ type: "set-read", value: false }),
     onMove: (mailboxId: string) =>
-      void bulk.mutate({ mailboxId: id.mailbox(mailboxId), type: "move" }),
+      activeMailbox
+        ? void bulk.mutate({
+            destinationMailboxId: id.mailbox(mailboxId),
+            sourceMailboxId: activeMailbox.id,
+            type: "move",
+          })
+        : undefined,
     onRequestDestroy: destroyConfirmation.onRequest,
     onRemoveLabel: (labelId: string) =>
       void bulk.mutate({ labelId: id.label(labelId), type: "set-label", value: false }),
     onRestore: () => void bulk.mutate({ type: "restore" }),
     onSpam: () => {
-      if (spamTarget) {
-        void bulk.mutate({ mailboxId: spamTarget.id, type: "move" });
+      if (spamTarget && activeMailbox) {
+        void bulk.mutate({
+          destinationMailboxId: spamTarget.id,
+          sourceMailboxId: activeMailbox.id,
+          type: "move",
+        });
       }
     },
     onStar: () =>

@@ -81,6 +81,7 @@ export const mapImapMailbox = (mailbox: ListResponse): Mailbox => {
       : null,
     role,
     rights: {
+      mayAddItems: !mailbox.flags.has("\\Noselect"),
       mayCreateChild: !mailbox.flags.has("\\Noinferiors"),
       mayDelete: role === "custom",
       mayRemoveItems: true,

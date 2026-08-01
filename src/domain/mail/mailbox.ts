@@ -24,6 +24,7 @@ export type MailboxRole =
   "archive" | "drafts" | "inbox" | "sent" | "spam" | "trash" | "custom";
 
 export interface MailboxRights {
+  readonly mayAddItems?: boolean;
   readonly mayCreateChild: boolean;
   readonly mayDelete: boolean;
   readonly mayRemoveItems?: boolean;

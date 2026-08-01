@@ -13,9 +13,11 @@ import type { MailLabel } from "@/domain/mail/label";
 import type { MailboxRole } from "@/domain/mail/mail";
 import type { FolderViewModel } from "@/presentation/features/mail-workspace/folder.view-model";
 import type { MailboxLifecycleViewModel } from "@/presentation/features/mail-workspace/mailbox-lifecycle.view-model";
+import type { MessageMoveViewModel } from "@/presentation/features/mail-workspace/message-move.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
+  readonly canDrag: boolean;
   readonly canSelect: boolean;
   readonly date: string;
   readonly hasAttachment: boolean;
@@ -26,6 +28,9 @@ export interface MessageItemViewModel {
   readonly isStarred: boolean;
   readonly isUnread: boolean;
   readonly labels: readonly MessageLabelViewModel[];
+  readonly onDragEnd: DragEventHandler<HTMLElement>;
+  readonly onDragStart: DragEventHandler<HTMLElement>;
+  readonly onRequestMove: MouseEventHandler<HTMLButtonElement>;
   readonly onSelect: () => void;
   readonly onToggleSelected: () => void;
   readonly openLabel: string;
@@ -203,12 +208,8 @@ export type DeliveryNoticeViewModel = DeliveryNoticeViewModelBase &
   );
 
 export interface MailWorkspaceViewProps {
-  readonly account: {
-    readonly avatar: string;
-    readonly email: string;
-    readonly name: string;
-    readonly provider: string;
-  };
+  readonly account: { readonly avatar: string; readonly email: string;
+    readonly name: string; readonly provider: string };
   readonly branding: BrandingViewModel; readonly canPermanentlyDelete: boolean;
   readonly activeFolder: string; readonly activeRole: MailboxRole | null;
   readonly bulkActions: BulkActionsViewModel; readonly composer: ComposerViewModel;
@@ -217,12 +218,10 @@ export interface MailWorkspaceViewProps {
   readonly isLoading: boolean; readonly isLoadingMore: boolean;
   readonly mailboxManagement: MailboxManagementViewModel; readonly labelManagement: LabelManagementViewModel;
   readonly mailboxLifecycle: MailboxLifecycleViewModel; readonly loadMoreError: string | null;
+  readonly messageMove: MessageMoveViewModel;
   readonly messages: readonly MessageItemViewModel[];
-  readonly navigation: {
-    readonly isOpen: boolean;
-    readonly onClose: () => void;
-    readonly onOpen: () => void;
-  };
+  readonly navigation: { readonly isOpen: boolean; readonly onClose: () => void;
+    readonly onOpen: () => void };
   readonly onArchive: () => void;
   readonly onCloseReader: () => void;
   readonly onCompose: () => void;

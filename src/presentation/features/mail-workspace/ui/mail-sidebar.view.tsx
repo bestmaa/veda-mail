@@ -92,8 +92,24 @@ export const MailSidebarView = ({
       </div>
       <div className="space-y-1">
         {folders.map((folder) => (
-          <div className="group relative" key={folder.id}>
+          <div
+            className={`group relative rounded-xl ${
+              folder.isDropTarget
+                ? "ring-2 ring-amber-300 ring-offset-2 ring-offset-[#27285f]"
+                : folder.canDrop
+                  ? "ring-1 ring-white/40"
+                  : ""
+            }`}
+            key={folder.id}
+            onDragEnter={folder.onDragEnter}
+            onDragLeave={folder.onDragLeave}
+            onDragOver={folder.onDragOver}
+            onDrop={folder.onDrop}
+          >
             <button
+              aria-label={folder.isDropTarget
+                ? `Drop to move messages to ${folder.label}`
+                : folder.label}
               className={`flex h-11 w-full items-center gap-3 rounded-xl pr-3 text-sm transition ${
                 folder.isActive
                   ? "bg-white/12 font-semibold text-white"
@@ -110,6 +126,11 @@ export const MailSidebarView = ({
                 <MailboxIconView icon={folder.icon} />
               </span>
               <span className="min-w-0 flex-1 truncate text-left">{folder.label}</span>
+              {folder.isDropTarget ? (
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-amber-200">
+                  Drop to move
+                </span>
+              ) : null}
               {folder.count > 0 ? (
                 <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] tabular-nums text-indigo-100/90">
                   {folder.count}

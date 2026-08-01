@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   client: {
+    capabilities: new Map<string, boolean>([["UIDPLUS", true]]),
     fetchOne: vi.fn(),
     mailboxOpen: vi.fn(),
     messageFlagsAdd: vi.fn(),

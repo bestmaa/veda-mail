@@ -24,6 +24,7 @@ interface MessageListViewProps {
   readonly loadMoreError: string | null;
   readonly mailboxLifecycle: MailboxLifecycleViewModel;
   readonly messages: readonly MessageItemViewModel[];
+  readonly moveAnnouncement: string;
   readonly onLoadMore: () => void;
   readonly total: number;
 }
@@ -39,6 +40,7 @@ export const MessageListView = ({
   loadMoreError,
   mailboxLifecycle,
   messages,
+  moveAnnouncement,
   onLoadMore,
   total,
 }: MessageListViewProps) => (
@@ -85,8 +87,13 @@ export const MessageListView = ({
         <MailboxLifecycleBannerView lifecycle={mailboxLifecycle} />
       ) : null}
       <BulkActionsToolbarView bulk={bulkActions} />
+      {messages.some(({ canDrag }) => canDrag) ? (
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Drag a message to a mailbox, or select messages and use Move to.
+        </p>
+      ) : null}
       <div aria-live="polite" className="sr-only">
-        {bulkActions.status}
+        {[bulkActions.status, moveAnnouncement].filter(Boolean).join(" ")}
       </div>
       {bulkActions.error ? (
         <p className="mt-2 text-xs font-semibold text-red-700" role="alert">

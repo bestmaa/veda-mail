@@ -3,6 +3,7 @@ import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { getMailService } from "@/server/mail/mail-service";
+import { moveMessage } from "@/server/messages/message-move.service";
 import { labelHttpError } from "@/server/labels/label-http";
 import { mutateMessageLabel } from "@/server/labels/label-operation.service";
 import { mailboxOwner } from "@/server/mailboxes/mailbox-http";
@@ -53,6 +54,8 @@ export const PATCH = async (request: Request, context: RouteContext) => {
     if (mutation.type === "set-label") {
       const owner = await mailboxOwner(service);
       await mutateMessageLabel(service, owner, mutation);
+    } else if (mutation.type === "move") {
+      await moveMessage(service, mutation);
     } else {
       await service.mutateMessage(mutation);
     }

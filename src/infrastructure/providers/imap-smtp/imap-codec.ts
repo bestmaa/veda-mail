@@ -28,8 +28,16 @@ const decode = (value: string): unknown =>
 export const encodeMailboxId = (mailbox: string): string =>
   encode({ mailbox });
 
-export const decodeMailboxId = (value: string): string =>
-  z.object({ mailbox: z.string().min(1).max(1024) }).parse(decode(value)).mailbox;
+export const decodeMailboxId = (value: string): string => {
+  const mailbox = z
+    .object({ mailbox: z.string().min(1).max(1024) })
+    .strict()
+    .parse(decode(value)).mailbox;
+  if (encodeMailboxId(mailbox) !== value) {
+    throw new Error("IMAP mailbox reference is invalid.");
+  }
+  return mailbox;
+};
 
 export const imapMessageAccountScope = (
   config: Pick<

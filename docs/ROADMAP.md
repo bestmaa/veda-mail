@@ -205,6 +205,13 @@ in an account-isolated encrypted `/data/mailbox-appearance.json` sidecar and
 migrate across IMAP rename IDs. One residual IMAP race remains because the
 protocol has no atomic “delete only if still empty” primitive.
 
+Drag/drop and the complete keyboard/touch move alternative are implemented
+and locally verified for list, multi-select, reader, partial-failure, and
+mobile flows. The browser carries only an opaque per-drag token, requests use
+exact source/destination mailbox IDs in bounded 100-message chunks, and the
+server rechecks mailbox rights plus current membership. The checkbox remains
+open until the immutable release is deployed and verified in production.
+
 Portable label create, rename, recolor, display, bulk/single apply, and remove
 are implemented for both included adapters. Opaque stable IDs map to JMAP
 keywords or capability-checked IMAP user flags; the encrypted account catalog,

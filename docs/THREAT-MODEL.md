@@ -702,6 +702,21 @@ limiter and encrypted shared session repository.
 - Preparation has a 90-second composite deadline and response delivery has a
   separate 30-second absolute deadline, so hung dependencies and slow clients
   cannot retain either preview lease indefinitely.
+- Message drag data exposes no message ID, mailbox ID, subject, sender, or body:
+  it contains only a random one-drag token. The corresponding intent is kept in
+  memory and bound to the current authenticated session scope, mailbox/search
+  view, exact source mailbox, and loaded IDs. External, replayed, cross-view,
+  and cross-session drops fail closed.
+- Move authorization is server-owned. Both source `mayRemoveItems` and
+  destination `mayAddItems`, excluded Drafts/Sent roles, exact current source
+  membership, and absent destination membership are rechecked before provider
+  mutation. Browser target filtering is usability only.
+- JMAP move patches only the named source and destination membership properties
+  under the current Email state; unrelated mailbox membership is preserved.
+  IMAP move requires native MOVE after exact mailbox/UIDVALIDITY/UID lookup.
+  COPY plus plain EXPUNGE is forbidden because it could destroy unrelated
+  messages carrying the Deleted flag. Ambiguous provider failures remain
+  selected and require authoritative refresh before a user retries.
 
 Residual risk: received attachments are hostile provider content. Direct and
 Download all responses are transport-only and are not scanned, so members
