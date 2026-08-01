@@ -82,6 +82,7 @@ describe("mail workspace route", () => {
     await expect(response.json()).resolves.toEqual({
       data: {
         ...workspace,
+        labelDeletions: [],
         labels: [],
         sessionExpiresAt: connectionExpiresAt(mocks.connection),
         sessionScope: mailSessionScope(mocks.connection),

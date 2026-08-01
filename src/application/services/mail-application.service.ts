@@ -1,5 +1,6 @@
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { DraftSaveInput } from "@/domain/mail/draft";
+import type { LabelCleanupInput } from "@/domain/mail/label";
 import type {
   AttachmentDownloadInput,
   Mailbox,
@@ -42,6 +43,10 @@ export class MailApplicationService {
 
   public getMessage(messageId: MessageId) {
     return this.gateway.getMessage(messageId);
+  }
+
+  public cleanupLabel(input: LabelCleanupInput) {
+    return this.gateway.cleanupLabel(input);
   }
 
   public getAccount() {

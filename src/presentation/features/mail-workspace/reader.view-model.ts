@@ -48,6 +48,7 @@ export const createReaderViewModel = (input: {
   readonly attachmentDownload: ReaderAttachmentDownloadModel;
   readonly attachmentPreview: ReaderAttachmentPreviewModel;
   readonly canArchive: boolean;
+  readonly deletingLabelIds: ReadonlySet<LabelId>;
   readonly isLoading: boolean;
   readonly message: MessageDetail | null;
   readonly labelCapability: LabelCapability;
@@ -95,6 +96,9 @@ export const createReaderViewModel = (input: {
   const message = input.message;
   const appliedLabelIds = new Set(message.labelIds ?? []);
   const appliedLabels = input.labels.filter(({ id }) => appliedLabelIds.has(id));
+  const mutableLabels = input.labels.filter(
+    ({ id }) => !input.deletingLabelIds.has(id),
+  );
   const visibleAttachments = message.attachments.filter(
     ({ disposition }) => disposition === "attachment",
   );
@@ -148,10 +152,12 @@ export const createReaderViewModel = (input: {
     isStarred: message.isStarred,
     isUnread: message.isUnread,
     labelActions: input.labelCapability === "supported" ? {
-      applyOptions: input.labels.filter(({ id }) => !appliedLabelIds.has(id)),
+      applyOptions: mutableLabels.filter(({ id }) => !appliedLabelIds.has(id)),
       onApply: (labelId) => input.onSetLabel(labelId as LabelId, true),
       onRemove: (labelId) => input.onSetLabel(labelId as LabelId, false),
-      removeOptions: appliedLabels,
+      removeOptions: appliedLabels.filter(
+        ({ id }) => !input.deletingLabelIds.has(id),
+      ),
     } : null,
     labels: appliedLabels,
     messageId: message.id,

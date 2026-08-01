@@ -68,6 +68,9 @@ export const createBulkActionsViewModel = ({
   const spamTarget = targetFor("spam");
   const trashTarget = targetFor("trash");
   const disabled = activeMailbox?.role === "drafts";
+  const deletingLabelIds = new Set(
+    (workspace?.labelDeletions ?? []).map(({ labelId }) => labelId),
+  );
   return {
     allLoadedSelected: !disabled && bulk.allLoadedSelected,
     canArchive:
@@ -89,7 +92,11 @@ export const createBulkActionsViewModel = ({
     },
     error: bulk.error,
     isBusy: bulk.isBusy,
-    labels: workspace?.labelCapability === "supported" ? workspace.labels : [],
+    labels: workspace?.labelCapability === "supported"
+      ? workspace.labels.filter(({ id: labelId }) =>
+          !deletingLabelIds.has(labelId),
+        )
+      : [],
     moveTargets: (workspace?.mailboxes ?? [])
       .filter(
         (mailbox) =>

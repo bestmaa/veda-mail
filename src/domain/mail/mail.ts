@@ -14,7 +14,11 @@ import type {
   SavedProviderDraft,
 } from "@/domain/mail/draft";
 import type { Mailbox } from "@/domain/mail/mailbox";
-import type { LabelCapability, MailLabel } from "@/domain/mail/label";
+import type {
+  LabelCapability,
+  MailLabel,
+  MailLabelDeletion,
+} from "@/domain/mail/label";
 export type {
   Mailbox,
   MailboxMutation,
@@ -231,6 +235,7 @@ export interface ProviderMailWorkspace {
 }
 
 export interface MailWorkspace extends ProviderMailWorkspace {
+  readonly labelDeletions?: readonly MailLabelDeletion[];
   readonly labels: readonly MailLabel[];
   readonly sessionExpiresAt: string;
   readonly sessionScope: string;

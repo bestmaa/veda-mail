@@ -10,6 +10,7 @@ import { installationStore } from "@/server/installation/installation.store";
 import { hashAdminPassword } from "@/server/installation/password-hash";
 import { labelCatalogFilePath } from "@/server/labels/label-catalog-file";
 import { labelCatalogStore } from "@/server/labels/label-catalog.store";
+import { labelDeletionCatalogStore } from "@/server/labels/label-deletion-catalog.store";
 
 const originalDirectory = process.env["VEDA_MAIL_DATA_DIR"];
 let directory = "";
@@ -86,5 +87,103 @@ describe("encrypted label catalog", () => {
     await expect(labelCatalogStore.list(owner)).rejects.toMatchObject({
       code: "LABELS_UNAVAILABLE",
     });
+  });
+
+  it("leases resumable deletion, rejects new use, and finalizes after two empty checks", async () => {
+    const [label] = await labelCatalogStore.create(owner, {
+      color: "#4f46e5", name: "Customers",
+    });
+    const claim = await labelDeletionCatalogStore.claim(owner, label!.id);
+
+    await expect(labelCatalogStore.requireActive(owner, label!.id)).rejects.toMatchObject({
+      failure: "missing",
+    });
+    expect(await labelCatalogStore.list(owner)).toEqual([label]);
+    expect(await labelDeletionCatalogStore.list(owner)).toMatchObject([{
+      labelId: label!.id, processed: 0, removed: 0,
+    }]);
+    await expect(
+      labelDeletionCatalogStore.claim(owner, label!.id),
+    ).rejects.toMatchObject({ code: "LABEL_DELETION_BUSY" });
+
+    const first = await labelDeletionCatalogStore.record(owner, claim, {
+      complete: false,
+      cursor: "provider-cursor",
+      processed: 100,
+      removed: 3,
+    });
+    expect(first).toMatchObject({ done: false, deletion: { processed: 100, removed: 3 } });
+
+    const secondClaim = await labelDeletionCatalogStore.claim(owner, label!.id);
+    expect(secondClaim.cursor).toBe("provider-cursor");
+    const firstEmpty = await labelDeletionCatalogStore.record(owner, secondClaim, {
+      complete: true, cursor: null, processed: 0, removed: 0,
+    });
+    expect(firstEmpty.done).toBe(false);
+
+    const verificationClaim = await labelDeletionCatalogStore.claim(owner, label!.id);
+    expect(verificationClaim.cursor).toBeNull();
+    const continued = await labelDeletionCatalogStore.record(owner, verificationClaim, {
+      complete: false, cursor: "verification-cursor", processed: 0, removed: 0,
+    });
+    expect(continued.done).toBe(false);
+    const finalClaim = await labelDeletionCatalogStore.claim(owner, label!.id);
+    const finalized = await labelDeletionCatalogStore.record(owner, finalClaim, {
+      complete: true, cursor: null, processed: 0, removed: 0,
+    });
+    expect(finalized.done).toBe(true);
+    expect(finalized.labels).toEqual([]);
+    expect(await labelCatalogStore.list(owner)).toEqual([]);
+    await expect(
+      labelDeletionCatalogStore.claim(owner, label!.id),
+    ).rejects.toMatchObject({ failure: "missing" });
+  });
+
+  it("releases a failed deletion lease and rejects invalid provider progress", async () => {
+    const [label] = await labelCatalogStore.create(owner, {
+      color: "#4f46e5", name: "Customers",
+    });
+    const claim = await labelDeletionCatalogStore.claim(owner, label!.id);
+    await expect(labelDeletionCatalogStore.record(owner, claim, {
+      complete: false, cursor: null, processed: 2, removed: 3,
+    })).rejects.toMatchObject({ code: "LABEL_DELETION_INVALID_PROGRESS" });
+    await labelDeletionCatalogStore.release(owner, claim);
+    await expect(labelDeletionCatalogStore.claim(owner, label!.id)).resolves.toMatchObject({
+      cursor: null,
+    });
+  });
+
+  it("restarts a credential-bound provider cursor without losing counts", async () => {
+    const [label] = await labelCatalogStore.create(owner, {
+      color: "#4f46e5", name: "Customers",
+    });
+    const claim = await labelDeletionCatalogStore.claim(owner, label!.id);
+    await labelDeletionCatalogStore.record(owner, claim, {
+      complete: false, cursor: "signed-cursor", processed: 8, removed: 2,
+    });
+    const resumed = await labelDeletionCatalogStore.claim(owner, label!.id);
+    expect(resumed.cursor).toBe("signed-cursor");
+    await labelDeletionCatalogStore.restart(owner, resumed);
+
+    const restarted = await labelDeletionCatalogStore.claim(owner, label!.id);
+    expect(restarted.cursor).toBeNull();
+    expect(await labelDeletionCatalogStore.list(owner)).toMatchObject([{
+      processed: 8, removed: 2,
+    }]);
+  });
+
+  it("reserves a deleting label name until cleanup finalizes", async () => {
+    const [deleting] = await labelCatalogStore.create(owner, {
+      color: "#4f46e5", name: "Customers",
+    });
+    await labelDeletionCatalogStore.claim(owner, deleting!.id);
+    const labels = await labelCatalogStore.create(owner, {
+      color: "#64748b", name: "Prospects",
+    });
+    const prospects = labels.find(({ name }) => name === "Prospects")!;
+
+    await expect(labelCatalogStore.update(owner, prospects.id, {
+      name: "customers",
+    })).rejects.toMatchObject({ failure: "conflict" });
   });
 });

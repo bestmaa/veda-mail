@@ -3,6 +3,7 @@ import { assertMailSessionScope } from "@/server/connections/mail-session-scope"
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { labelCatalogStore } from "@/server/labels/label-catalog.store";
 import { labelHttpError } from "@/server/labels/label-http";
+import { deleteLabelBatch } from "@/server/labels/label-operation.service";
 import { getMailService } from "@/server/mail/mail-service";
 import { mailboxOwner } from "@/server/mailboxes/mailbox-http";
 import {
@@ -10,7 +11,11 @@ import {
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
-import { createLabelSchema, updateLabelSchema } from "@/transport/http/label.schema";
+import {
+  createLabelSchema,
+  deleteLabelSchema,
+  updateLabelSchema,
+} from "@/transport/http/label.schema";
 import { readJsonBody } from "@/transport/http/read-json-body";
 
 export const runtime = "nodejs";
@@ -54,5 +59,24 @@ export const PATCH = async (request: Request) => {
     });
   } catch (error) {
     return apiFailure(labelHttpError(error), "Unable to update this label.");
+  }
+};
+
+export const DELETE = async (request: Request) => {
+  try {
+    assertSameOrigin(request);
+    assertRequestRateLimit(request, "label-deletion", 10_000, 600, 60 * 1_000);
+    const connection = await getCurrentConnection();
+    assertMailSessionScope(request, connection);
+    assertSubjectRateLimit("label-deletion", connection.id, 600, 15 * 60 * 1_000);
+    const service = await getMailService(connection);
+    const owner = await mailboxOwner(service);
+    const payload = deleteLabelSchema.parse(
+      await readJsonBody(request, MAX_REQUEST_BYTES),
+    );
+    const update = await deleteLabelBatch(service, owner, payload.labelId);
+    return apiSuccess(update, { status: update.done ? 200 : 202 });
+  } catch (error) {
+    return apiFailure(labelHttpError(error), "Unable to delete this label.");
   }
 };

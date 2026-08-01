@@ -462,8 +462,18 @@ independent flags and are not presented as JMAP-style account-global objects.
 
 The sidebar provides accessible create/rename/recolor controls; selected rows
 and the reader provide apply/remove controls. Unknown provider keywords never
-become catalog labels. Label deletion is intentionally not advertised until
-two-phase provider cleanup and a non-reusable tombstone are implemented.
+become catalog labels. Deletion first marks the encrypted catalog record as
+`deleting`, which immediately rejects new applications and edits. A one-minute
+lease protects each bounded provider cleanup batch; its opaque provider cursor,
+counts, and timestamps are durably recorded after the provider confirms the
+batch. Provider cursors are HMAC-authenticated and bound to the provider,
+account, label, and current credential; a credential rotation safely restarts
+the idempotent sweep. An owner/label operation queue serializes in-flight label
+applications against cleanup on the supported single-writer deployment.
+Workspace loads expose only bounded progress metadata and automatically resume
+interrupted work. Finalization requires two separate empty provider
+checks, removes the catalog record, and retains a non-reusable tombstone. The
+message itself and its mailbox membership are never deleted.
 
 With the supplied Compose layout, signature books live in
 `/data/member-signatures.json`. The outer file contains keyed owner buckets but

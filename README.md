@@ -27,7 +27,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   star/unstar, archive, spam, trash, restore, move, and confirmed permanent
   delete across JMAP and IMAP
 - Account-private portable labels with create/rename/recolor, visible chips,
-  and single or bulk apply/remove through JMAP keywords or verified IMAP flags
+  single or bulk apply/remove, and resumable verified deletion through JMAP
+  keywords or IMAP user flags
 - Safe rich-text composing with headings, emphasis, lists, isolated links,
   plain-text mode, and a server-derived readable text alternative
 - Multiple named plain or sanitized-rich signatures per mailbox identity, with

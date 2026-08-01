@@ -11,20 +11,25 @@ const model = (
 ): LabelManagementViewModel => ({
   color: "#4f46e5",
   colors: ["#64748b", "#4f46e5"],
+  deletingLabelIds: new Set(),
   error: null,
+  isConfirmingDelete: false,
   isOpen: true,
   isSaving: false,
   isSupported: true,
+  isTargetDeleting: false,
   labels: [{ color: "#4f46e5", id: id.label("veda-label-aaaqeayeaudaocajbifqydiob4"), name: "Clients" }],
   mode: "edit",
   name: "Clients",
   onClose: vi.fn(),
   onColorChange: vi.fn(),
   onDialogKeyDown: vi.fn(),
+  onDelete: vi.fn(),
   onNameChange: vi.fn(),
   onSubmit: vi.fn(),
   openCreate: vi.fn(),
   openEdit: vi.fn(),
+  requestDelete: vi.fn(),
   title: "Edit label",
   ...overrides,
 });
@@ -42,6 +47,7 @@ describe("label management view", () => {
     expect(html).toContain('maxLength="100"');
     expect(html).toContain("Clients");
     expect(html).toContain("Save");
+    expect(html).toContain("Delete label");
   });
 
   it("locks controls and announces provider errors while saving", () => {
@@ -52,5 +58,20 @@ describe("label management view", () => {
     expect(html).toContain('role="alert"');
     expect(html).toContain("Label conflict.");
     expect(html.match(/disabled=""/gu)?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("requires explicit confirmation and explains resumable cleanup", () => {
+    const confirmation = renderToStaticMarkup(createElement(LabelManagementView, {
+      management: model({ isConfirmingDelete: true }),
+    }));
+    expect(confirmation).toContain("Confirm delete");
+    expect(confirmation).toContain("resumable verified cleanup");
+
+    const progress = renderToStaticMarkup(createElement(LabelManagementView, {
+      management: model({ isTargetDeleting: true }),
+    }));
+    expect(progress).toContain("Deletion is in progress");
+    expect(progress).toContain("Continue cleanup");
+    expect(progress).toContain("Close");
   });
 });

@@ -8,14 +8,14 @@ import {
 
 useInstalledMailbox();
 
-const labelResponse = (method: "PATCH" | "POST") => (response: Response) =>
+const labelResponse = (method: "DELETE" | "PATCH" | "POST") => (response: Response) =>
   response.url().endsWith("/api/v1/mail/labels") &&
   response.request().method() === method;
 const messageMutation = (response: Response) =>
   /\/api\/v1\/mail\/messages\/(?:bulk|[^/]+)$/u.test(new URL(response.url()).pathname) &&
   response.request().method() === "PATCH";
 
-test("creates, edits, applies, and removes a portable label", async ({ page }) => {
+test("creates, edits, applies, removes, and deletes a portable label", async ({ page }) => {
   const initialName = `E2E label ${Date.now()}`;
   const editedName = `${initialName} edited`;
 
@@ -70,4 +70,15 @@ test("creates, edits, applies, and removes a portable label", async ({ page }) =
   await page.getByLabel("Remove label from message").selectOption({ label: editedName });
   expect((await mutate).ok()).toBe(true);
   await expect(page.getByLabel("Message labels").getByText(editedName)).toHaveCount(0);
+
+  await page.getByRole("button", { name: `Manage ${editedName} label` }).click();
+  dialog = page.getByRole("dialog", { name: "Edit label" });
+  await dialog.getByRole("button", { name: "Delete label" }).click();
+  await expect(dialog.getByText("Delete this label?")).toBeVisible();
+  const deletion = page.waitForResponse(labelResponse("DELETE"));
+  await dialog.getByRole("button", { name: "Confirm delete" }).click();
+  expect([200, 202]).toContain((await deletion).status());
+  await expect(page.getByRole("button", {
+    name: `Manage ${editedName} label`,
+  })).toHaveCount(0, { timeout: 15_000 });
 });

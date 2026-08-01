@@ -101,6 +101,7 @@ export const useMailWorkspaceModel = ({
   );
   const mailboxManagement = useMailboxWorkspaceManagement(mail);
   const labelManagement = useLabelManagement({
+    deletions: workspace?.labelDeletions ?? [],
     handleSessionFailure: mail.handleSessionFailure,
     isSupported: workspace?.labelCapability === "supported",
     labels: workspace?.labels ?? [],
@@ -130,7 +131,6 @@ export const useMailWorkspaceModel = ({
     destroyConfirmation,
     workspace,
   });
-
   useEffect(() => {
     closeAttachmentPreview();
   }, [closeAttachmentPreview, mail.selectedMessage?.id]);
@@ -146,6 +146,7 @@ export const useMailWorkspaceModel = ({
             (mailbox) => mailbox.role === "archive",
           ),
         ),
+        deletingLabelIds: new Set((workspace?.labelDeletions ?? []).map(({ labelId }) => labelId)),
         handleSessionFailure: mail.handleSessionFailure,
         isLoading: mail.isReaderLoading,
         message: mail.selectedMessage,
@@ -158,7 +159,7 @@ export const useMailWorkspaceModel = ({
     [mail.isReaderLoading, mail.readerError, mail.selectedMessage,
       mail.handleSessionFailure, mail.workspace?.mailboxes, archiveDownload,
       attachmentDownload, attachmentPreview, sessionScope,
-      workspace?.labelCapability, workspace?.labels, mail.setLabel],
+      workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel],
   );
 
   const accountName = settings.profileName ?? workspaceAccountName;

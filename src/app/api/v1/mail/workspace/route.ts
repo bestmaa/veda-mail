@@ -9,6 +9,7 @@ import {
 } from "@/server/connections/mail-session-scope";
 import { getMailService } from "@/server/mail/mail-service";
 import { labelCatalogStore } from "@/server/labels/label-catalog.store";
+import { labelDeletionCatalogStore } from "@/server/labels/label-deletion-catalog.store";
 import { decorateMailboxesSafely } from "@/server/mailboxes/mailbox-http";
 import {
   assertRequestRateLimit,
@@ -53,12 +54,13 @@ export const GET = async (request: Request) => {
       email: workspace.account.email,
       providerId: workspace.account.providerId,
     };
-    const [mailboxes, labels] = await Promise.all([
+    const [mailboxes, labels, labelDeletions] = await Promise.all([
       decorateMailboxesSafely(
         owner,
         workspace.mailboxes,
       ),
       labelCatalogStore.list(owner).catch(() => []),
+      labelDeletionCatalogStore.list(owner).catch(() => []),
     ]);
     if (!connectionStore.isActive(connection)) {
       throw new ApiError(
@@ -69,6 +71,7 @@ export const GET = async (request: Request) => {
     }
     return apiSuccess({
       ...workspace,
+      labelDeletions,
       labels,
       mailboxes,
       sessionExpiresAt: connectionExpiresAt(connection),

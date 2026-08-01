@@ -138,4 +138,33 @@ describe("bulk actions view model", () => {
     expect(model.canTrash).toBe(false);
     expect(model.canDestroy).toBe(false);
   });
+
+  it("hides a deleting label from new bulk mutations", () => {
+    const selection = bulk();
+    const deletingId = id.label("veda-label-aaaqeayeaudaocajbifqydiob4");
+    const activeId = id.label("veda-label-aebagbafaydqqcikbmga2dqpca");
+    const model = createBulkActionsViewModel({
+      activeMailboxId: id.mailbox("inbox"),
+      bulk: selection,
+      destroyConfirmation: confirmation(selection),
+      workspace: {
+        ...workspace,
+        labelDeletions: [{
+          labelId: deletingId,
+          processed: 10,
+          removed: 2,
+          startedAt: "2026-08-01T00:00:00.000Z",
+          updatedAt: "2026-08-01T00:00:01.000Z",
+        }],
+        labels: [
+          { color: "#ef4444", id: deletingId, name: "Deleting" },
+          { color: "#10b981", id: activeId, name: "Active" },
+        ],
+      },
+    });
+
+    expect(model.labels).toEqual([
+      { color: "#10b981", id: activeId, name: "Active" },
+    ]);
+  });
 });

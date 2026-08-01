@@ -12,6 +12,7 @@ import type {
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
+import type { LabelCleanupInput } from "@/domain/mail/label";
 import { id } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type {
@@ -31,6 +32,7 @@ import {
 import { mockArchiveFailureMessageId } from "@/infrastructure/providers/mock/mock-archive-fixture";
 import { MockDraftStore } from "@/infrastructure/providers/mock/mock-draft.store";
 import { MockMailboxStore } from "@/infrastructure/providers/mock/mock-mailbox.store";
+import { cleanupMockLabel } from "@/infrastructure/providers/mock/mock-label-cleanup";
 
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
@@ -51,6 +53,9 @@ export class MockMailGateway implements MailGateway {
   };
   public async changePassword(input: MemberPasswordChange): Promise<void> {
     void input;
+  }
+  public async cleanupLabel(input: LabelCleanupInput) {
+    return cleanupMockLabel(this.messages, input);
   }
   public async downloadAttachment(
     input: AttachmentDownloadInput,

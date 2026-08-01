@@ -20,7 +20,38 @@ export interface MailLabel {
   readonly name: string;
 }
 
+export interface MailLabelDeletion {
+  readonly labelId: LabelId;
+  readonly processed: number;
+  readonly removed: number;
+  readonly startedAt: string;
+  readonly updatedAt: string;
+}
+
 export type LabelCapability = "supported" | "unsupported";
+
+export const LABEL_CLEANUP_MAX_BATCH = 100;
+export const LABEL_CLEANUP_MAX_CURSOR_CHARACTERS = 2_048;
+
+export interface LabelCleanupInput {
+  readonly cursor?: string;
+  readonly labelId: LabelId;
+  readonly limit: number;
+}
+
+export interface LabelCleanupResult {
+  readonly complete: boolean;
+  readonly cursor: string | null;
+  readonly processed: number;
+  readonly removed: number;
+}
+
+export class LabelCleanupCursorError extends Error {
+  public constructor() {
+    super("Label cleanup cursor is invalid.");
+    this.name = "LabelCleanupCursorError";
+  }
+}
 
 export interface LabelOwner {
   readonly email: string;
@@ -61,4 +92,25 @@ export const createLabelId = (randomHex: string): LabelId => {
 export const labelIdFromKeyword = (value: string): LabelId | null => {
   const normalized = value.toLowerCase();
   return LABEL_ID.test(normalized) ? id.label(normalized) : null;
+};
+
+export const assertLabelCleanupInput = (input: LabelCleanupInput): void => {
+  if (labelIdFromKeyword(input.labelId) !== input.labelId) {
+    throw new Error("Label cleanup identifier is invalid.");
+  }
+  if (
+    !Number.isInteger(input.limit) ||
+    input.limit < 1 ||
+    input.limit > LABEL_CLEANUP_MAX_BATCH
+  ) {
+    throw new Error("Label cleanup batch size is invalid.");
+  }
+  if (
+    input.cursor !== undefined &&
+    (input.cursor.length < 1 ||
+      input.cursor.length > LABEL_CLEANUP_MAX_CURSOR_CHARACTERS ||
+      !/^[A-Za-z0-9_-]+$/u.test(input.cursor))
+  ) {
+    throw new Error("Label cleanup cursor is invalid.");
+  }
 };

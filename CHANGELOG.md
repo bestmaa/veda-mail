@@ -13,8 +13,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
   stable opaque JMAP keyword/IMAP user-flag mappings, create/rename/recolor UI,
   single and bulk apply/remove controls, capability/right/capacity checks,
   conditional JMAP updates, verified IMAP STORE operations, and strict scoped
-  APIs. Deletion remains disabled pending resumable provider cleanup
-
+  APIs
+- Two-phase portable-label deletion with explicit confirmation, durable
+  encrypted progress, expiring single-batch leases, bounded JMAP/IMAP cleanup,
+  HMAC-authenticated cursors, credential-rotation restart, in-flight mutation
+  serialization, automatic resume, two empty verification passes, and retained
+  tombstones
 - Provider-independent interrupted-compose recovery plus capability-gated
   provider autosave. Raw recipients and body content stay in a strictly
   validated, session/owner-bound IndexedDB journal; session storage contains
