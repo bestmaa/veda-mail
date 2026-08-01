@@ -13,6 +13,7 @@ import { MemberSessionPrivacyCurtainView } from "@/presentation/features/mail-wo
 import { MessageListView } from "@/presentation/features/mail-workspace/ui/message-list.view";
 import { MessageReaderView } from "@/presentation/features/mail-workspace/ui/message-reader.view";
 import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
+import { MailboxManagementView } from "@/presentation/features/mail-workspace/ui/mailbox-management.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -24,7 +25,8 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   }
   const topLevelModalOpen = props.composer.recoveryPrompt.isOpen ||
     props.session.confirmation.isOpen ||
-    props.bulkActions.destroyConfirmation.isOpen;
+    props.bulkActions.destroyConfirmation.isOpen ||
+    props.mailboxManagement.isOpen;
   return (
   <>
   <main
@@ -58,6 +60,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
         folders={props.folders}
         isComposerReady={props.isComposerReady}
         isMobileOpen={props.navigation.isOpen}
+        mailboxManagement={props.mailboxManagement}
         onCloseNavigation={props.navigation.onClose}
         onCompose={props.onCompose}
         session={props.session}
@@ -127,6 +130,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   <ComposerRecoveryPromptConnector prompt={props.composer.recoveryPrompt} />
   <BulkDestroyConfirmationConnector bulk={props.bulkActions} />
   <MemberSignOutConfirmationConnector session={props.session} />
+  <MailboxManagementView management={props.mailboxManagement} />
   </>
   );
 };

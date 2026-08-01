@@ -18,6 +18,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["zod", new Set(["z"])],
   ["@/bootstrap/provider-registry", new Set(["getProviderRegistry"])],
   ["@/domain/mail/send-receipt", new Set(["canonicalizeSendReceipt"])],
+  ["@/domain/mail/mailbox-policy", new Set(["assertMailboxMutation"])],
   ["@/domain/shared/brand", new Set(["id"])],
   ["@/server/connections/connection-store", new Set(["connectionStore"])],
   ["@/server/auth/member-two-factor", new Set(["memberTwoFactorSecurity"])],
@@ -40,6 +41,11 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ],
   ["@/server/mail/attachment-send-memory-budget", new Set(["attachmentSendMemoryBudget"])],
   ["@/server/mail/outgoing-mail-content", new Set(["canonicalizeOutgoingMailContent"])],
+  ["@/server/mailboxes/mailbox-appearance.store", new Set(["mailboxAppearanceStore"])],
+  [
+    "@/server/mailboxes/mailbox-http",
+    new Set(["decorateMailboxesSafely", "mailboxHttpError", "mailboxOwner"]),
+  ],
   ["@/server/mail/protected", new Set(["readProtectedMailbox"])],
   [
     "@/server/mail/send-idempotency",
@@ -80,6 +86,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/signatures/email-signature.schema", new Set(["parseEmailSignaturePutOperation"])],
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
   ["@/transport/http/request-schemas", new Set(["*"])],
+  ["@/transport/http/mailbox-mutation.schema", new Set(["*"])],
   [
     "@/transport/http/draft-schemas",
     new Set([

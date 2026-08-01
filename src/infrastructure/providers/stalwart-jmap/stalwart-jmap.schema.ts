@@ -140,16 +140,6 @@ export const jmapReplyContextSchema = z
   })
   .passthrough();
 
-export const jmapMailboxSchema = z
-  .object({
-    id: z.string().min(1),
-    name: z.string(),
-    role: z.string().nullable().optional(),
-    totalEmails: z.number().int().nonnegative(),
-    unreadEmails: z.number().int().nonnegative(),
-  })
-  .passthrough();
-
 export const jmapSessionSchema = z
   .object({
     accounts: z.record(

@@ -6,6 +6,7 @@ import type {
   MessageAttachmentListInput,
   MessageListQuery,
   MessageMutation,
+  MailboxMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MessageId } from "@/domain/shared/brand";
@@ -19,6 +20,7 @@ import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/sta
 import { maximumJmapUploadBytes } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { StalwartMailWriter } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.writer";
+import { StalwartMailboxManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.manager";
 import { StalwartDraftStore } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.store";
 import { DraftHasAttachmentsError } from "@/domain/mail/draft-errors";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
@@ -28,11 +30,13 @@ export class StalwartMailGateway implements MailGateway {
   private readonly client: StalwartJmapClient;
   private readonly drafts: StalwartDraftStore;
   private readonly reader: StalwartMailReader;
+  private readonly mailboxes: StalwartMailboxManager;
   private readonly writer: StalwartMailWriter;
 
   public constructor(config: StalwartConfig) {
     this.client = new StalwartJmapClient(config);
     this.reader = new StalwartMailReader(this.client, config);
+    this.mailboxes = new StalwartMailboxManager(this.client, this.reader);
     this.drafts = new StalwartDraftStore(this.client, this.reader);
     this.writer = new StalwartMailWriter(this.client, this.reader);
     this.accountManager = new StalwartAccountManager(this.client, this.reader);
@@ -92,6 +96,10 @@ export class StalwartMailGateway implements MailGateway {
 
   public mutateMessage(mutation: MessageMutation) {
     return this.writer.mutateMessage(mutation);
+  }
+
+  public mutateMailbox(mutation: MailboxMutation) {
+    return this.mailboxes.mutate(mutation);
   }
 
   public saveDraft(...input: Parameters<StalwartDraftStore["save"]>) {

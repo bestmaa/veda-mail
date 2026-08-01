@@ -15,6 +15,9 @@ const workspace: MailWorkspace = {
   draftCapability: { status: "supported" },
   mailboxes: [{
     color: "#6366f1", id: draftsId, name: "Drafts", role: "drafts",
+    parentId: null,
+    rights: { mayCreateChild: true, mayDelete: false, mayRename: false },
+    sortOrder: 0,
     total: 1, unread: 0,
   }],
   messages: {
@@ -47,6 +50,7 @@ describe("draft mailbox list routing", () => {
       activeMailboxId: draftsId,
       draftsEnabled: true,
       onOpenDraft,
+      onManageMailbox: vi.fn(),
       onSelectMailbox: vi.fn(),
       onSelectMessage,
       onToggleMessage: vi.fn(),
@@ -70,6 +74,7 @@ describe("draft mailbox list routing", () => {
       activeMailboxId: draftsId,
       draftsEnabled: false,
       onOpenDraft,
+      onManageMailbox: vi.fn(),
       onSelectMailbox: vi.fn(),
       onSelectMessage,
       onToggleMessage: vi.fn(),

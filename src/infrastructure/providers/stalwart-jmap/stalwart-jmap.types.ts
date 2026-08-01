@@ -59,8 +59,15 @@ export interface JmapResponse {
 
 export interface JmapMailbox {
   readonly id: string;
+  readonly myRights?: {
+    readonly mayCreateChild: boolean;
+    readonly mayDelete: boolean;
+    readonly mayRename: boolean;
+  } | undefined;
   readonly name: string;
+  readonly parentId?: string | null | undefined;
   readonly role?: string | null | undefined;
+  readonly sortOrder?: number | undefined;
   readonly totalEmails: number;
   readonly unreadEmails: number;
 }

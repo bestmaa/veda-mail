@@ -1,4 +1,4 @@
-import { LogOut, PenLine, Settings, X } from "lucide-react";
+import { LogOut, MoreHorizontal, PenLine, Plus, Settings, X } from "lucide-react";
 
 import type {
   FolderViewModel,
@@ -12,6 +12,7 @@ interface MailSidebarViewProps {
   readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean;
   readonly isMobileOpen: boolean;
+  readonly mailboxManagement: MailWorkspaceViewProps["mailboxManagement"];
   readonly onCloseNavigation: () => void;
   readonly onCompose: () => void;
   readonly session: MailWorkspaceViewProps["session"];
@@ -24,6 +25,7 @@ export const MailSidebarView = ({
   folders,
   isComposerReady,
   isMobileOpen,
+  mailboxManagement,
   onCloseNavigation,
   onCompose,
   session,
@@ -72,34 +74,58 @@ export const MailSidebarView = ({
     </button>
 
     <nav aria-label="Mail folders" className="mt-6 min-h-0 flex-1 overflow-y-auto px-3">
-      <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-100/80">
-        Mailboxes
-      </p>
+      <div className="mb-2 flex items-center justify-between px-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-100/80">
+          Mailboxes
+        </p>
+        <button
+          aria-label="Create mailbox"
+          className="grid size-8 place-items-center rounded-lg text-indigo-100/80 hover:bg-white/10 hover:text-white"
+          onClick={() => mailboxManagement.openCreate()}
+          title="Create mailbox"
+          type="button"
+        >
+          <Plus aria-hidden size={17} />
+        </button>
+      </div>
       <div className="space-y-1">
         {folders.map((folder) => (
-          <button
-            className={`group flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm transition ${
-              folder.isActive
-                ? "bg-white/12 font-semibold text-white"
-                : "text-indigo-100/90 hover:bg-white/6 hover:text-white"
-            }`}
-            key={folder.id}
-            onClick={folder.onSelect}
-            type="button"
-          >
-            <span
-              className="grid size-8 place-items-center rounded-lg bg-white/6"
-              style={{ color: folder.color }}
+          <div className="group relative" key={folder.id}>
+            <button
+              className={`flex h-11 w-full items-center gap-3 rounded-xl pr-3 text-sm transition ${
+                folder.isActive
+                  ? "bg-white/12 font-semibold text-white"
+                  : "text-indigo-100/90 hover:bg-white/6 hover:text-white"
+              } ${folder.canManage ? "pr-11" : ""}`}
+              onClick={folder.onSelect}
+              style={{ paddingLeft: `${12 + Math.min(folder.depth, 6) * 14}px` }}
+              type="button"
             >
-              <MailboxIconView icon={folder.icon} />
-            </span>
-            <span className="flex-1 text-left">{folder.label}</span>
-            {folder.count > 0 ? (
-              <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] tabular-nums text-indigo-100/90">
-                {folder.count}
+              <span
+                className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/6"
+                style={{ color: folder.color }}
+              >
+                <MailboxIconView icon={folder.icon} />
               </span>
+              <span className="min-w-0 flex-1 truncate text-left">{folder.label}</span>
+              {folder.count > 0 ? (
+                <span className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] tabular-nums text-indigo-100/90">
+                  {folder.count}
+                </span>
+              ) : null}
+            </button>
+            {folder.canManage ? (
+              <button
+                aria-label={`Manage ${folder.label}`}
+                className="absolute right-1.5 top-1.5 grid size-8 place-items-center rounded-lg text-indigo-100/70 opacity-100 hover:bg-white/10 hover:text-white md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                onClick={folder.onManage}
+                title={`Manage ${folder.label}`}
+                type="button"
+              >
+                <MoreHorizontal aria-hidden size={17} />
+              </button>
             ) : null}
-          </button>
+          </div>
         ))}
       </div>
     </nav>

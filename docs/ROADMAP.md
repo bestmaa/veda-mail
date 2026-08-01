@@ -174,7 +174,7 @@ broader shortcut/accessibility audit listed above.
 - [x] Cursor pagination/infinite loading with stable selection
 - [x] Multi-select and bulk read/unread, star, archive, spam, trash, restore,
   move, and permanent-delete actions
-- [ ] Create, rename, recolor, nest, and delete custom folders/mailboxes
+- [x] Create, rename, recolor, nest, and delete custom folders/mailboxes
 - [ ] Portable labels model with a documented IMAP mapping
 - [ ] Dedicated spam and trash behavior, empty-folder action, retention hints,
   and safe permanent-delete confirmation
@@ -193,6 +193,18 @@ reader selection. Offset movement during concurrent provider mutation remains
 documented; refresh restarts from the authoritative first page.
 
 Loaded-page multi-select and bulk actions are complete for both adapters.
+
+Custom mailbox management is complete for both adapters. The sidebar exposes
+accessible create/edit controls, hierarchy, a bounded color palette, and a
+two-step delete confirmation. JMAP uses state-conditioned `Mailbox/set` with
+native `parentId` and rights; IMAP uses delimiter-safe CREATE/RENAME/DELETE and
+rechecks STATUS immediately before deletion. System folders are immutable,
+names and depth are bounded, sibling collisions and cycles are rejected, and
+only empty childless custom folders may be deleted. Non-standard colors live
+in an account-isolated encrypted `/data/mailbox-appearance.json` sidecar and
+migrate across IMAP rename IDs. One residual IMAP race remains because the
+protocol has no atomic “delete only if still empty” primitive.
+
 Selection is explicitly limited to loaded messages, excludes editable Drafts,
 survives only within the current mailbox/search/session view, and retains only
 provider failures after a partial result. Strict unique batches are capped at

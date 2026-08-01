@@ -252,11 +252,11 @@ claims do not apply to that sidecar.
 
 Keep one replica. Member sessions, rate limits, delivery notices, and the send
 idempotency ledger are process-local. The encrypted
-`/data/member-signatures.json` store also uses a process-local serialized
-revision compare-and-write path; multiple replicas sharing that writable file
-can lose updates. Scaling requires a shared encrypted session repository,
+`/data/member-signatures.json` and `/data/mailbox-appearance.json` stores also
+use process-local serialized compare-and-write paths; multiple replicas sharing
+those writable files can lose updates. Scaling requires a shared encrypted session repository,
 distributed limiter, atomic shared send ledger, and transactional replacement
-for the signature file store.
+for both per-member metadata stores.
 
 ## Post-deployment checks
 

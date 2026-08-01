@@ -18,17 +18,19 @@ import {
   normalizeStalwartAttachmentLookupError,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-attachment.reader";
 import {
-  mapMailbox,
   mapMessageDetail,
   mapMessageSummary,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.mapper";
 import {
   jmapEmailSchema,
   jmapListResultSchema,
-  jmapMailboxSchema,
   jmapQueryResultSchema,
   jmapReplyContextSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
+import {
+  readStalwartMailboxSnapshot,
+  type StalwartMailboxSnapshot,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.reader";
 import {
   JMAP_MAIL,
   JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
@@ -76,18 +78,11 @@ export class StalwartMailReader {
   }
 
   public async listMailboxes(): Promise<readonly Mailbox[]> {
-    const { accountId } = await this.getAccountContext();
-    const response = await this.client.request(
-      [["Mailbox/get", { accountId, properties: null }, "mailboxes"]],
-      [JMAP_MAIL],
-    );
-    const result = this.client.result(
-      response,
-      "mailboxes",
-      "Mailbox/get",
-      jmapListResultSchema(jmapMailboxSchema),
-    );
-    return result.list.map(mapMailbox);
+    return (await this.getMailboxSnapshot()).mailboxes;
+  }
+
+  public async getMailboxSnapshot(): Promise<StalwartMailboxSnapshot> {
+    return readStalwartMailboxSnapshot(this.client, await this.getAccountId());
   }
 
   public async listMessages(query: MessageListQuery): Promise<MessagePage> {

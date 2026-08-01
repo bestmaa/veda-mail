@@ -12,6 +12,14 @@ import type {
   DraftCapability,
   SavedProviderDraft,
 } from "@/domain/mail/draft";
+import type { Mailbox } from "@/domain/mail/mailbox";
+export type {
+  Mailbox,
+  MailboxMutation,
+  MailboxMutationResult,
+  MailboxRights,
+  MailboxRole,
+} from "@/domain/mail/mailbox";
 
 export const MAX_OUTGOING_CONTENT_CHARACTERS = 256_000;
 export const MAX_OUTGOING_CONTENT_UTF8_BYTES = 256_000;
@@ -19,21 +27,9 @@ export const MAX_OUTGOING_CONTENT_COMBINED_CHARACTERS = 512_000;
 export const MAX_OUTGOING_CONTENT_COMBINED_UTF8_BYTES = 512_000;
 export const MAX_OUTGOING_HTML_NODES = 1_000;
 
-export type MailboxRole =
-  "archive" | "drafts" | "inbox" | "sent" | "spam" | "trash" | "custom";
-
 export interface MailAddress {
   readonly email: string;
   readonly name: string | null;
-}
-
-export interface Mailbox {
-  readonly color: string;
-  readonly id: MailboxId;
-  readonly name: string;
-  readonly role: MailboxRole;
-  readonly total: number;
-  readonly unread: number;
 }
 
 export type ReceivedAttachmentDisposition = "attachment" | "inline";

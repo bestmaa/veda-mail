@@ -4,6 +4,7 @@ import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
   AttachmentDownloadInput,
   Mailbox,
+  MailboxMutation,
   MessageDetail,
   MessageAttachmentListInput,
   MessageListQuery,
@@ -29,29 +30,12 @@ import {
 } from "@/infrastructure/providers/mock/mock-seed";
 import { mockArchiveFailureMessageId } from "@/infrastructure/providers/mock/mock-archive-fixture";
 import { MockDraftStore } from "@/infrastructure/providers/mock/mock-draft.store";
-
-const mailboxDefinitions = [
-  { color: "#4f46e5", id: mockMailboxIds.inbox, name: "Inbox", role: "inbox" },
-  { color: "#0ea5e9", id: mockMailboxIds.sent, name: "Sent", role: "sent" },
-  {
-    color: "#f59e0b",
-    id: mockMailboxIds.drafts,
-    name: "Drafts",
-    role: "drafts",
-  },
-  {
-    color: "#10b981",
-    id: mockMailboxIds.archive,
-    name: "Archive",
-    role: "archive",
-  },
-  { color: "#f97316", id: mockMailboxIds.spam, name: "Spam", role: "spam" },
-  { color: "#ef4444", id: mockMailboxIds.trash, name: "Trash", role: "trash" },
-] as const;
+import { MockMailboxStore } from "@/infrastructure/providers/mock/mock-mailbox.store";
 
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
+  private readonly mailboxes = new MockMailboxStore();
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
   public readonly getDraft = this.drafts.get.bind(this.drafts);
   public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
@@ -117,16 +101,7 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async listMailboxes(): Promise<readonly Mailbox[]> {
-    return mailboxDefinitions.map((definition) => {
-      const messages = [...this.messages, ...this.drafts.messages()].filter((message) =>
-        message.mailboxIds.includes(definition.id),
-      );
-      return {
-        ...definition,
-        total: messages.length,
-        unread: messages.filter((message) => message.isUnread).length,
-      };
-    });
+    return this.mailboxes.list([...this.messages, ...this.drafts.messages()]);
   }
 
   public async listMessages(query: MessageListQuery) {
@@ -181,6 +156,13 @@ export class MockMailGateway implements MailGateway {
       nextMailbox = mutation.mailboxId;
     }
     this.messages[index] = { ...current, mailboxIds: [nextMailbox] };
+  }
+
+  public async mutateMailbox(mutation: MailboxMutation) {
+    return this.mailboxes.mutate(
+      mutation,
+      [...this.messages, ...this.drafts.messages()],
+    );
   }
 
   public async sendMessage(input: SendMessageInput) {

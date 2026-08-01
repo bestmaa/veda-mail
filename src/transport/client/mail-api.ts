@@ -3,10 +3,12 @@ import type {
   BulkMessageMutationResult,
   ComposeInput,
   MailWorkspace,
+  Mailbox,
   MessageDetail,
   MessageMutation,
   SendReceipt,
 } from "@/domain/mail/mail";
+import type { MailboxColor } from "@/domain/mail/mailbox";
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import type {
   DraftId,
@@ -40,6 +42,12 @@ interface DraftUpdateInput {
   readonly expectedRevision: string;
 }
 
+export interface MailboxApiMutationResult {
+  readonly appearanceSaved: boolean;
+  readonly mailboxId: MailboxId | null;
+  readonly mailboxes: readonly Mailbox[];
+}
+
 const draftEndpoint = (draftId?: ProviderDraftId): string =>
   `/api/v1/mail/drafts${
     draftId ? `/${encodeURIComponent(draftId)}` : ""
@@ -62,6 +70,21 @@ export const mailApi = {
     });
   },
 
+  createMailbox(
+    input: {
+      readonly color: MailboxColor;
+      readonly name: string;
+      readonly parentId: MailboxId | null;
+    },
+    sessionScope: string,
+  ) {
+    return fetchData<MailboxApiMutationResult>("/api/v1/mail/mailboxes", {
+      body: JSON.stringify(input),
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "POST",
+    });
+  },
+
   deleteDraft(
     draftId: ProviderDraftId,
     expectedRevision: string,
@@ -80,6 +103,14 @@ export const mailApi = {
         ...(signal ? { signal } : {}),
       },
     );
+  },
+
+  deleteMailbox(mailboxId: MailboxId, sessionScope: string) {
+    return fetchData<MailboxApiMutationResult>("/api/v1/mail/mailboxes", {
+      body: JSON.stringify({ mailboxId }),
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "DELETE",
+    });
   },
 
   getDraft(
@@ -167,6 +198,22 @@ export const mailApi = {
       headers: mailSessionScopeHeaders(sessionScope),
       method: "PUT",
       ...(signal ? { signal } : {}),
+    });
+  },
+
+  updateMailbox(
+    input: {
+      readonly color?: MailboxColor;
+      readonly mailboxId: MailboxId;
+      readonly name?: string;
+      readonly parentId?: MailboxId | null;
+    },
+    sessionScope: string,
+  ) {
+    return fetchData<MailboxApiMutationResult>("/api/v1/mail/mailboxes", {
+      body: JSON.stringify(input),
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "PATCH",
     });
   },
 };
