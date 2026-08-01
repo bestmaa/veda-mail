@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import { id } from "@/domain/shared/brand";
 import { ApiClientError } from "@/transport/client/api-request";
@@ -51,9 +50,8 @@ import { useComposerDraft } from "@/presentation/features/mail-workspace/hooks/u
 
 const composeId = id.draft("compose-a");
 const providerId = id.providerDraft("provider-a");
-const content = (body: string): DraftContent => ({
-  bcc: [], body, cc: [], subject: "Subject", to: [],
-});
+const content = (body: string): DraftContent => (
+  { bcc: [], body, cc: [], subject: "Subject", to: [] });
 const detail = (overrides: Partial<DraftDetail> = {}): DraftDetail => ({
   composeId,
   content: content("saved"),
@@ -66,12 +64,28 @@ const detail = (overrides: Partial<DraftDetail> = {}): DraftDetail => ({
   ...overrides,
 });
 
-beforeEach(() => {
-  hooks.reset();
-  vi.clearAllMocks();
-});
-
+beforeEach(() => { hooks.reset(); vi.clearAllMocks(); });
 describe("composer draft hook", () => {
+  it("immediately blocks resend and discard after an uncertain send", () => {
+    const render = () => {
+      hooks.begin();
+      return useComposerDraft({ accountKey: "account-a", composeId,
+        content: content("draft"), enabled: false,
+        handleSessionFailure: () => false, hasLocalAttachments: false,
+        onDiscarded: vi.fn(), onHydrate: vi.fn(), onSaved: vi.fn() });
+    };
+    let draft = render();
+    draft.markSendUncertain();
+    draft = render();
+    const lockedGeneration = draft.contentGeneration;
+    expect([draft.canDiscard, draft.canEdit, draft.canSend,
+      draft.requiresRecovery, draft.terminalRecovery])
+      .toEqual([false, false, false, true, "send"]);
+    expect(draft.error).toContain("Check Sent");
+    draft.markUnsaved(); draft.markProgrammaticChange();
+    draft = render();
+    expect(draft.contentGeneration).toBe(lockedGeneration);
+  });
   it("adopts a create response without marking edits made during save as saved", async () => {
     const pending = Promise.withResolvers<DraftDetail>();
     api.createDraft.mockReturnValueOnce(pending.promise);
@@ -114,7 +128,6 @@ describe("composer draft hook", () => {
       composeId, expectedRevision: "revision-b", id: providerId,
     });
   });
-
   it.each([
     { hasAttachments: true },
     { hasTruncatedContent: true },
@@ -142,7 +155,6 @@ describe("composer draft hook", () => {
     expect(draft.canEdit).toBe(false);
     expect(draft.providerDraft).toBeNull();
   });
-
   it("requires recovery after a create response is lost", async () => {
     api.createDraft.mockRejectedValueOnce(new Error("Connection lost"));
     const render = () => {
@@ -171,18 +183,13 @@ describe("composer draft hook", () => {
     expect(draft.canSend).toBe(true);
     expect(draft.canDiscard).toBe(true);
   });
-
-  it("recovers the exact lost update and keeps later content dirty", async () => {
-    const recoveredId = id.providerDraft("provider-b");
+  it("stops exact recovery after a definitive conflict and keeps later content", async () => {
     api.getDraft.mockResolvedValueOnce(detail());
     api.updateDraft
       .mockRejectedValueOnce(new Error("Connection lost"))
       .mockRejectedValueOnce(new ApiClientError(
         "This saved draft changed.", 409, "MAIL_DRAFT_CONFLICT",
-      ))
-      .mockResolvedValueOnce(detail({
-        content: content("attempted"), id: recoveredId, revision: "revision-b",
-      }));
+      ));
     const render = (body: string) => {
       hooks.begin();
       return useComposerDraft({
@@ -209,16 +216,12 @@ describe("composer draft hook", () => {
     await expect(draft.retry()).resolves.toBe(false);
     draft = render("newer");
     expect(draft.error).toContain("local changes are still here");
-    expect(draft.canDiscard).toBe(false);
-    await expect(draft.retry()).resolves.toBe(true);
-    expect(api.updateDraft).toHaveBeenNthCalledWith(3, providerId, {
-      composeId, content: content("attempted"), expectedRevision: "revision-a",
-    }, "account-a", expect.any(AbortSignal));
-    draft = render("newer");
     expect(draft.requiresRecovery).toBe(false);
-    expect(draft.phase).toBe("unsaved");
+    expect(draft.phase).toBe("conflict");
+    expect(draft.canDiscard).toBe(true);
     expect(draft.canSave).toBe(true);
     expect(draft.providerDraft).toBeNull();
+    expect(api.updateDraft).toHaveBeenCalledTimes(2);
   });
 
   it("deduplicates an in-flight revision-safe discard", async () => {

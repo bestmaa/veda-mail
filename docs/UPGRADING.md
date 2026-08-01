@@ -48,6 +48,17 @@ provider attachments are intentionally read-only. Veda Mail does not silently
 normalize and overwrite metadata it cannot reproduce exactly. Local quarantine
 attachments also cannot be added to a saved provider draft in this release.
 
+Interrupted-compose recovery requires no environment variable, Stalwart key,
+server migration, or `/data` change. The browser upgrades its private IndexedDB
+store automatically and binds records to the current server-issued member
+session expiry. Existing Standard IMAP/SMTP accounts gain local reload and
+closed-tab recovery, but still do not gain provider-durable draft autosave.
+Recovery content is device/browser-local, expires with the member session, and
+is not included in server volume backups. Exact-session cleanup is attempted on
+sign-out, server-issued expiry, and session invalidation; a browser cleanup
+failure is surfaced and remains retryable without repeating server sign-out.
+Attachment bytes are never persisted there.
+
 ## Compose upgrade
 
 For a source checkout:

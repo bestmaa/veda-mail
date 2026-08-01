@@ -1,27 +1,27 @@
 "use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
-
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import type { DraftId, ProviderDraftId } from "@/domain/shared/brand";
+import type { ComposerRecoverySnapshot } from "@/presentation/features/mail-workspace/composer-recovery.types";
 import {
-  completeDraftSave,
   composerDraftAvailability,
-  DRAFT_RECOVERY_CONFLICT_MESSAGE,
   draftFailureMessage,
   draftRequestAborted,
+  INTERRUPTED_SEND_RECOVERY_MESSAGE,
   isDraftConflict,
   LOCAL_ATTACHMENT_DRAFT_MESSAGE,
   providerDraftEditBlock,
   type ComposerDraftPhase,
+  type ComposerDraftRetryKind,
+  type ComposerTerminalRecoveryKind,
 } from "@/presentation/features/mail-workspace/composer-draft-state";
-import {
-  composerDraftSaveAttempt,
-  issueComposerDraftSaveAttempt,
-  type ComposerDraftSaveAttempt,
-} from "@/presentation/features/mail-workspace/composer-draft-save-attempt";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+import { useComposerDraftDiscard } from "@/presentation/features/mail-workspace/hooks/use-composer-draft-discard";
+import { useComposerDraftPersistence } from "@/presentation/features/mail-workspace/hooks/use-composer-draft-persistence";
 import { useComposerDraftRequest } from "@/presentation/features/mail-workspace/hooks/use-composer-draft-request";
+import { useComposerDraftRestore } from "@/presentation/features/mail-workspace/hooks/use-composer-draft-restore";
+import { useComposerTerminalDiscardReplay } from "@/presentation/features/mail-workspace/hooks/use-composer-terminal-discard-replay";
+import type { ComposerRecoveryJournalPort } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-journal";
 import { mailApi } from "@/transport/client/api-client";
 
 interface ComposerDraftOptions {
@@ -31,49 +31,82 @@ interface ComposerDraftOptions {
   readonly hasLocalAttachments: boolean; readonly onDiscarded: () => void;
   readonly onHydrate: (draft: DraftDetail) => void;
   readonly onSaved: (draft: DraftDetail) => void;
+  readonly recovery?: ComposerRecoveryJournalPort;
+  readonly recoverySnapshot?: ComposerRecoverySnapshot;
 }
 
 export const useComposerDraft = ({
   accountKey, composeId, content, enabled, handleSessionFailure,
-  hasLocalAttachments, onDiscarded, onHydrate, onSaved,
+  hasLocalAttachments, onDiscarded, onHydrate, onSaved, recovery,
+  recoverySnapshot,
 }: ComposerDraftOptions) => {
   const [phase, setPhase] = useState<ComposerDraftPhase>("unsaved");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<DraftDetail | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [hasUserEdits, setHasUserEdits] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [requiresRecovery, setRequiresRecovery] = useState(false);
+  const [retryKind, setRetryKind] = useState<ComposerDraftRetryKind>("none");
+  const [terminalRecovery, setTerminalRecovery] =
+    useState<ComposerTerminalRecoveryKind | null>(null);
   const [requestedId, setRequestedId] = useState<ProviderDraftId | null>(null);
+  const [generation, setGeneration] = useState(0);
   const contentGeneration = useRef(0);
-  const recoveryAttempt = useRef<ComposerDraftSaveAttempt | null>(null);
-  const discardInFlight = useRef(false);
-  const saveInFlight = useRef(false);
-  const { begin, finish, invalidate, isCurrent } = useComposerDraftRequest(accountKey);
+  const request = useComposerDraftRequest(accountKey);
+  const { begin, finish, invalidate, isCurrent } = request;
+  const persistence = useComposerDraftPersistence({
+    accountKey, composeId, content, contentGeneration, enabled,
+    handleSessionFailure, hasLocalAttachments, onHydrate, onSaved,
+    ...(recovery ? { recovery } : {}),
+    ...(recoverySnapshot ? { recoverySnapshot } : {}),
+    requestedId, request, requiresRecovery, saved, setError,
+    setHasUserEdits, setIsDirty, setPhase, setRequiresRecovery, setSaved,
+    setRetryKind,
+  });
+  const resetPersistence = persistence.reset;
+  const restorePending = persistence.restorePending;
+  const isSaveInFlight = persistence.isInFlight;
 
   const reset = useCallback(() => {
     invalidate();
     contentGeneration.current = 0;
-    recoveryAttempt.current = null;
+    setGeneration(0);
+    resetPersistence();
     setError(null);
+    setHasUserEdits(false);
     setIsDirty(false);
     setIsDiscarding(false);
     setIsLoading(false);
     setPhase("unsaved");
     setRequestedId(null);
     setRequiresRecovery(false);
+    setRetryKind("none");
     setSaved(null);
-  }, [invalidate]);
-
+    setTerminalRecovery(null);
+  }, [invalidate, resetPersistence]);
   useEffect(() => reset, [reset]);
   useEffect(() => { reset(); }, [accountKey, reset]);
-
   const markUnsaved = useCallback(() => {
+    if (terminalRecovery) return;
     contentGeneration.current += 1;
+    setGeneration(contentGeneration.current);
+    setHasUserEdits(true);
     setIsDirty(true);
     setError(null);
-    setPhase("unsaved");
-  }, []);
+    setRetryKind("none");
+    if (!isSaveInFlight()) setPhase("unsaved");
+  }, [isSaveInFlight, terminalRecovery]);
+  const markProgrammaticChange = useCallback(() => {
+    if (terminalRecovery) return;
+    contentGeneration.current += 1;
+    setGeneration(contentGeneration.current);
+    setIsDirty(true);
+    setError(null);
+    setRetryKind("none");
+    if (!isSaveInFlight()) setPhase("unsaved");
+  }, [isSaveInFlight, terminalRecovery]);
 
   useEffect(() => {
     if (hasLocalAttachments || error !== LOCAL_ATTACHMENT_DRAFT_MESSAGE) return;
@@ -94,12 +127,15 @@ export const useComposerDraft = ({
         if (!isCurrent(operation)) return false;
         setSaved(draft);
         contentGeneration.current = 0;
+        setHasUserEdits(false);
         setIsDirty(false);
         setRequiresRecovery(false);
+        setRetryKind("none");
         onHydrate(draft);
         const editBlock = providerDraftEditBlock(draft);
         if (editBlock) {
           setError(editBlock);
+          setRetryKind("blocked");
           setPhase("error");
           return false;
         }
@@ -111,6 +147,7 @@ export const useComposerDraft = ({
         }
         if (handleSessionFailure(nextError)) return false;
         setError(draftFailureMessage(nextError));
+        setRetryKind("blocked");
         setPhase(isDraftConflict(nextError) ? "conflict" : "error");
         return false;
       } finally {
@@ -120,116 +157,72 @@ export const useComposerDraft = ({
     [begin, finish, handleSessionFailure, isCurrent, onHydrate],
   );
 
-  const persist = useCallback(async (
-    attempt: ComposerDraftSaveAttempt,
-    isRecovery: boolean,
-  ): Promise<boolean> => {
-    if (saveInFlight.current) return false;
-    const operation = begin();
-    saveInFlight.current = true;
-    setError(null);
-    setPhase("saving");
+  const restore = useComposerDraftRestore({
+    contentGenerationRef: contentGeneration, handleSessionFailure, onHydrate,
+    request, reset,
+    restorePending, setError, setGeneration, setHasUserEdits, setIsDirty,
+    setIsLoading, setPhase, setRequestedId, setRequiresRecovery, setRetryKind,
+    setSaved,
+    setTerminalRecovery,
+  });
+  const replayTerminalDiscard = useComposerTerminalDiscardReplay({
+    accountKey, handleSessionFailure, onDiscarded, request,
+  });
+  const resolveTerminalRecovery = useCallback(async () => {
+    if (!terminalRecovery || !recovery) return false;
     try {
-      const next = await issueComposerDraftSaveAttempt(
-        attempt, operation.accountKey, operation.controller.signal,
-      );
-      if (!isCurrent(operation)) return false;
-      recoveryAttempt.current = null;
-      setSaved(next);
+      if (!await recovery.resumeTerminal()) {
+        throw new Error("Couldn’t preserve this recovery copy.");
+      }
       setRequiresRecovery(false);
-      const completion = completeDraftSave(
-        attempt.contentGeneration, contentGeneration.current);
-      if (!completion.isDirty) onHydrate(next);
-      setIsDirty(completion.isDirty);
-      setPhase(completion.phase);
-      onSaved(next);
+      setRetryKind("none");
+      setTerminalRecovery(null);
+      setError(null);
+      setPhase("unsaved");
       return true;
     } catch (nextError) {
-      if (draftRequestAborted(nextError) || !isCurrent(operation)) {
-        return false;
-      }
-      if (handleSessionFailure(nextError)) return false;
-      recoveryAttempt.current = attempt;
-      setRequiresRecovery(true);
-      setError(isRecovery && isDraftConflict(nextError)
-        ? DRAFT_RECOVERY_CONFLICT_MESSAGE
-        : draftFailureMessage(nextError));
-      setPhase(isDraftConflict(nextError) ? "conflict" : "error");
-      return false;
-    } finally {
-      saveInFlight.current = false;
-      finish(operation);
-    }
-  }, [begin, finish, handleSessionFailure, isCurrent, onHydrate, onSaved]);
-
-  const save = useCallback(async (): Promise<boolean> => {
-    if (!enabled || !accountKey || requiresRecovery || (requestedId && !saved)) return false;
-    const editBlock = providerDraftEditBlock(saved);
-    if (editBlock || hasLocalAttachments) {
-      setError(editBlock ?? LOCAL_ATTACHMENT_DRAFT_MESSAGE);
-      setPhase("error");
-      return false;
-    }
-    return persist(composerDraftSaveAttempt(
-      composeId, content, contentGeneration.current, saved,
-    ), false);
-  }, [accountKey, composeId, content, enabled, hasLocalAttachments,
-    persist, requestedId, requiresRecovery, saved]);
-
-  const recover = useCallback((): Promise<boolean> => {
-    const attempt = recoveryAttempt.current;
-    return attempt ? persist(attempt, true) : Promise.resolve(false);
-  }, [persist]);
-
-  const discard = useCallback(async (): Promise<boolean> => {
-    if (requiresRecovery || (requestedId && !saved)) return false;
-    if (discardInFlight.current) return false;
-    discardInFlight.current = true;
-    if (!saved) {
-      reset();
-      onDiscarded();
-      discardInFlight.current = false;
-      return true;
-    }
-    const operation = begin();
-    setError(null);
-    setIsDiscarding(true);
-    try {
-      await mailApi.deleteDraft(
-        saved.id, saved.revision, operation.accountKey, operation.controller.signal,
-      );
-      if (!isCurrent(operation)) return false;
-      reset();
-      onDiscarded();
-      return true;
-    } catch (nextError) {
-      if (draftRequestAborted(nextError) || !isCurrent(operation)) {
-        return false;
-      }
-      if (handleSessionFailure(nextError)) return false;
       setError(draftFailureMessage(nextError));
-      setPhase(isDraftConflict(nextError) ? "conflict" : "error");
       return false;
-    } finally {
-      discardInFlight.current = false;
-      if (finish(operation)) setIsDiscarding(false);
     }
-  }, [begin, finish, handleSessionFailure, isCurrent, onDiscarded,
-    requestedId, requiresRecovery, reset, saved]);
+  }, [recovery, terminalRecovery]);
+  const markSendUncertain = useCallback(() => {
+    setRequiresRecovery(true);
+    setRetryKind("blocked");
+    setTerminalRecovery("send");
+    setError(INTERRUPTED_SEND_RECOVERY_MESSAGE);
+    setPhase("error");
+  }, []);
+
+  const discard = useComposerDraftDiscard({
+    accountKey, composeId, contentGeneration: generation,
+    handleSessionFailure, onDiscarded,
+    ...(recovery ? { recovery } : {}), request,
+    ...(recoverySnapshot ? { recoverySnapshot } : {}),
+    requested: requestedId !== null, requiresRecovery, reset, saved,
+    setError, setIsDiscarding, setPhase,
+  });
 
   const visiblePhase = hasLocalAttachments && phase === "saved" ? "unsaved" : phase;
   const availability = composerDraftAvailability({ hasLocalAttachments, isDirty,
-    providerDraftRequested: requestedId !== null, requiresRecovery, saved });
+    providerDraftRequested: requestedId !== null, requiresRecovery, saved,
+    terminalRecovery });
   return {
     ...availability,
+    autosave: persistence.autosave,
+    canAttach: !saved && requestedId === null && phase !== "saving" &&
+      !requiresRecovery,
     discard,
     enabled,
     error,
+    contentGeneration: generation,
+    hasUserEdits,
     hasUnsavedChanges: isDirty || hasLocalAttachments || requiresRecovery,
     isDiscarding, isLoading,
     load,
+    markSendUncertain,
     markSent: reset,
     markUnsaved,
+    markProgrammaticChange,
     phase: visiblePhase,
     loadFailed: requestedId !== null && !saved && !isLoading,
     providerDraft: saved?.composeId && availability.canSend
@@ -240,10 +233,17 @@ export const useComposerDraft = ({
       ? () => load(saved?.id ?? requestedId!)
       : null,
     requiresRecovery,
+    replayTerminalDiscard,
+    terminalRecovery,
+    retryKind,
+    restore,
     reset,
-    retry: requiresRecovery
-      ? recover
-      : requestedId && !saved ? () => load(requestedId) : save,
-    save,
+    clearRecovery: recovery?.clearForClose ?? (() => Promise.resolve()),
+    retry: terminalRecovery
+      ? resolveTerminalRecovery
+      : requiresRecovery
+      ? persistence.recover
+      : requestedId && !saved ? () => load(requestedId) : persistence.save,
+    save: persistence.save,
   };
 };

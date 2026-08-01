@@ -3,18 +3,18 @@ import type {
   ClipboardEventHandler,
   DragEventHandler,
   FormEventHandler,
-  KeyboardEventHandler,
-  MouseEventHandler,
+  KeyboardEventHandler, MouseEventHandler,
 } from "react";
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
-import type { ComposerDraftPhase } from "@/presentation/features/mail-workspace/composer-draft-state";
+import type { ComposerDraftPhase, ComposerTerminalRecoveryKind } from "@/presentation/features/mail-workspace/composer-draft-state";
+import type { ComposerDraftStatus } from "@/presentation/features/mail-workspace/composer-draft-status";
+import type { ComposerRecoveryPromptViewModel } from "@/presentation/features/mail-workspace/composer-recovery-prompt.view-model";
 
 export type MailboxIconName =
   "archive" | "custom" | "drafts" | "inbox" | "sent" | "spam" | "trash";
-
 export interface FolderViewModel {
   readonly color: string;
   readonly count: number;
@@ -97,7 +97,7 @@ export interface ComposerViewModel {
   readonly closeConfirmation: ComposerConfirmationViewModel;
   readonly discardConfirmation: ComposerConfirmationViewModel;
   readonly draft: {
-    readonly canDiscard: boolean;
+    readonly canAttach: boolean; readonly canDiscard: boolean;
     readonly canEdit: boolean;
     readonly canSave: boolean;
     readonly canSend: boolean;
@@ -110,7 +110,8 @@ export interface ComposerViewModel {
     readonly onSave: () => void;
     readonly phase: ComposerDraftPhase;
     readonly requiresRecovery: boolean;
-    readonly sendBlockedMessage: string | null;
+    readonly sendBlockedMessage: string | null; readonly status: ComposerDraftStatus | null;
+    readonly terminalRecovery: ComposerTerminalRecoveryKind | null;
   };
   readonly error: string | null;
   readonly focusBody: boolean;
@@ -124,6 +125,7 @@ export interface ComposerViewModel {
   readonly onRetryAttachmentCapability: () => void;
   readonly onToggleBcc: () => void;
   readonly onToggleCc: () => void;
+  readonly recoveryPrompt: ComposerRecoveryPromptViewModel;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
   readonly showBcc: boolean;
   readonly showCc: boolean;
@@ -178,9 +180,13 @@ export interface ComposerAttachmentViewModel {
 }
 
 export interface MemberSessionViewModel {
-  readonly canSignOut: boolean;
+  readonly canSignOut: boolean; readonly confirmation: ComposerConfirmationViewModel;
   readonly isSigningOut: boolean;
   readonly onSignOut: () => void;
+  readonly privacyCurtain: {
+    readonly error: string | null; readonly isOpen: boolean;
+    readonly isPurging: boolean; readonly onRetryCleanup: () => void;
+  };
 }
 
 interface DeliveryNoticeViewModelBase {

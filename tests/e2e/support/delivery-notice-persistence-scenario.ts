@@ -153,6 +153,7 @@ export const verifyDeliveryNoticePersistence = async ({
   await page.reload();
   await hydrationRequest;
   await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Sign out everywhere" }).click();
   await expect(page.getByLabel("Email address")).toBeVisible();
   releaseHydration();
   await expect(

@@ -22,16 +22,25 @@ const model = (): ComposerViewModel => ({
   closeConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   discardConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   draft: {
-    canDiscard: true, canEdit: true, canSave: false, canSend: true,
+    canAttach: true, canDiscard: true, canEdit: true, canSave: false, canSend: true,
     enabled: true, error: null, loadFailed: false, onReload: null,
     onRequestDiscard: vi.fn(), onRetry: vi.fn(), onSave: vi.fn(),
     phase: "saved", requiresRecovery: false, sendBlockedMessage: null,
+    status: { announcement: "Saved", label: "Saved", tone: "muted" },
+    terminalRecovery: null,
   },
   error: null, focusBody: false, isAttachmentCapabilityRefreshing: false,
   isBusy: false, isOpen: true, isSending: false, isUploading: false,
   maxAttachmentBytes: 1_000, onClose: vi.fn(),
   onRetryAttachmentCapability: vi.fn(), onSubmit: vi.fn(),
   onToggleBcc: vi.fn(), onToggleCc: vi.fn(), showBcc: false, showCc: false,
+  recoveryPrompt: {
+    description: "Interrupted draft available.", error: null,
+    hadLocalAttachments: false, initialFocus: "primary", isLoading: false,
+    isOpen: false, onDismiss: vi.fn(), onPrimary: vi.fn(),
+    onSecondary: vi.fn(), primaryLabel: "Restore draft",
+    secondaryLabel: "Discard recovery copy", title: "Restore interrupted draft?",
+  },
   subject: "", subjectInput: vi.fn(), title: "Edit draft",
   to: "recipient@example.com", toInput: vi.fn(),
 });
@@ -47,6 +56,21 @@ describe("composer provider draft controls", () => {
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain(">Saved</span>");
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Save draft/);
+  });
+
+  it("keeps the editor usable while a background draft save is pending", () => {
+    const base = model();
+    const html = render({
+      ...base,
+      draft: { ...base.draft, canAttach: false, canSave: false, phase: "saving" },
+    });
+    for (const id of ["composer-to", "composer-message-body"]) {
+      const field = html.match(new RegExp(`<[^>]+id="${id}"[^>]*>`))?.[0];
+      expect(field).not.toContain('disabled=""');
+    }
+    expect(html.match(/<button[^>]*id="composer-close"[^>]*>/)?.[0]).toContain('disabled=""');
+    expect(html.match(/<input[^>]*id="composer-attachments"[^>]*>/)?.[0]).toContain('disabled=""');
+    expect(html.match(/<button[^>]*id="composer-discard"[^>]*>/)?.[0]).toContain('disabled=""');
   });
 
   it("renders distinct close and permanent-discard confirmations", () => {
@@ -85,8 +109,8 @@ describe("composer provider draft controls", () => {
     }
     expect(html.match(/<input[^>]*id="composer-attachments"[^>]*>/)?.[0])
       .toContain('disabled=""');
-    expect(html.match(/id="composer-close"[^>]*>/)?.[0]).not.toContain('disabled=""');
-    expect(html.match(/id="composer-discard"[^>]*>/)?.[0]).not.toContain('disabled=""');
+    expect(html.match(/<button[^>]*id="composer-close"[^>]*>/)?.[0]).not.toContain('disabled=""');
+    expect(html.match(/<button[^>]*id="composer-discard"[^>]*>/)?.[0]).not.toContain('disabled=""');
   });
 
   it("keeps uncertain draft content copyable while only discard remains enabled", () => {
@@ -108,9 +132,23 @@ describe("composer provider draft controls", () => {
     expect(html).toContain("Copy this recovered content");
     expect(html).toContain('value="Uncertain delivery"');
     expect(html).toContain('readOnly=""');
-    expect(html.match(/id="composer-discard"[^>]*>/)?.[0]).not.toContain('disabled=""');
+    expect(html.match(/<button[^>]*id="composer-discard"[^>]*>/)?.[0]).not.toContain('disabled=""');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Send/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Save draft/);
+  });
+
+  it("shows local status and interrupted-send recovery without provider drafts", () => {
+    const base = model();
+    const html = render({ ...base, draft: {
+      ...base.draft, canEdit: false, canSave: false, enabled: false, phase: "error",
+      requiresRecovery: true, status: {
+        announcement: "Saved locally", label: "Saved locally", tone: "muted",
+      }, terminalRecovery: "send",
+    } });
+    expect(html).not.toContain("Save draft");
+    expect(html).toContain("Saved locally");
+    expect(html).toContain("I checked Sent");
+    expect(html).toContain('readOnly=""');
   });
 
   it("disables confirmation actions while discard is in flight", () => {

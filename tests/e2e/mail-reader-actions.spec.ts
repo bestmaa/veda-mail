@@ -73,8 +73,7 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
   await expect(
     dialog.getByRole("textbox", { exact: true, name: "Message body" }),
   ).toContainText(/---------- Forwarded message ----------/);
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeHidden();
+  await closeUnsavedComposer(page, dialog);
   await expect(forward).toBeFocused();
 });
 

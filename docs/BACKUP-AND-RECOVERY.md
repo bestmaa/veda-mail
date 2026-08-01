@@ -24,6 +24,15 @@ It does not contain mailbox messages or durable copies of member passwords.
 Messages remain on the configured mail server. Active member sessions are
 process-memory only and disappear on restart.
 
+Interrupted-compose recovery is browser-local IndexedDB state bound to one
+member session. It is not stored in `/data`, is not included in server backups,
+and expires with that session. Veda Mail attempts exact-session cleanup on
+sign-out, server-issued expiry, or session invalidation. If browser cleanup
+fails, mailbox content stays hidden and the member is told to retry secure
+cleanup or clear the site's browser data. Members should save a provider draft
+when they need cross-device durability; local attachment bytes are never part
+of browser recovery.
+
 The optional `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` is a deployment secret,
 and `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binds its destination. Neither is
 `/data` state; manage them through the platform secret manager. Restoring

@@ -12,7 +12,7 @@ import {
 
 useInstalledMailbox();
 
-test("traps focus, locks a pending send, and retains a failed draft", async ({
+test("traps focus and safely locks an ambiguous provider send", async ({
   page,
 }) => {
   const composeTrigger = page.getByRole("button", { name: "New message" });
@@ -75,14 +75,32 @@ test("traps focus, locks a pending send, and retains a failed draft", async ({
   await expect(dialog).toBeVisible();
 
   releaseSend();
-  await expect(dialog.getByRole("alert")).toHaveText(
-    "Mail provider is temporarily unavailable.",
+  await expect(dialog.getByRole("alert")).toContainText(
+    "This message may already have been sent.",
   );
+  await expect(dialog.getByRole("alert")).toContainText("Check Sent");
   await expect(toInput).toHaveValue("recipient@example.com");
   await expect(bodyInput).toContainText(
     "Keep this draft after every recoverable error.",
   );
+  await expect(toInput).toHaveAttribute("readonly", "");
+  await expect(bodyInput).toHaveAttribute("aria-readonly", "true");
+  await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeDisabled();
+  await expect(discard).toBeDisabled();
+
+  const resume = dialog.getByRole("button", {
+    name: "I checked Sent — resume as draft",
+  });
+  await expect(resume).toBeVisible();
+  await resume.click();
+  await expect(resume).toBeHidden();
+  await expect(toInput).not.toHaveAttribute("readonly", "");
+  await expect(bodyInput).toHaveAttribute("aria-readonly", "false");
   await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeEnabled();
+  await expect(toInput).toHaveValue("recipient@example.com");
+  await expect(bodyInput).toContainText(
+    "Keep this draft after every recoverable error.",
+  );
   await expectNoSeriousAccessibilityViolations(page);
 });
 

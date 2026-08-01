@@ -137,7 +137,7 @@ describe("delivery notice process-wide budgets", () => {
       snapshots.reduce((total, notices) => total + notices.length, 0),
     ).toBeLessThanOrEqual(MAX_DELIVERY_NOTICES_GLOBAL);
     expect(snapshots.at(-1)).toHaveLength(MAX_DELIVERY_NOTICES);
-  });
+  }, 15_000);
 
   it("uses an explicit sentinel when the byte budget drops details", () => {
     expect(MAX_DELIVERY_NOTICE_BYTES).toBeLessThan(

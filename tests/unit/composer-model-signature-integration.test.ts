@@ -161,7 +161,7 @@ beforeEach(() => {
 });
 
 describe("composer model signature integration", () => {
-  it("seeds, clears, and reseeds signatures for new and reply contexts", () => {
+  it("seeds, clears, and reseeds signatures for new and reply contexts", async () => {
     const render = () => {
       hooks.begin();
       return useComposerModel(vi.fn(), 1_000, book, "account-a");
@@ -188,7 +188,7 @@ describe("composer model signature integration", () => {
     composer.close();
     composer = render();
     expect(composer.closeConfirmationOpen).toBe(true);
-    composer.onConfirmClose();
+    await composer.onConfirmClose();
     composer = render();
     expect(composer.isOpen).toBe(false);
     expect(composer.signatures.configuration).toBeNull();
@@ -211,7 +211,7 @@ describe("composer model signature integration", () => {
     expect(composer.isOpen).toBe(true);
   });
 
-  it("closes a genuinely blank new composer without a dirty confirmation", () => {
+  it("closes a genuinely blank new composer without a dirty confirmation", async () => {
     const render = () => {
       hooks.begin();
       return useComposerModel(vi.fn(), 1_000, null, "account-a");
@@ -220,6 +220,7 @@ describe("composer model signature integration", () => {
     composer.open();
     composer = render();
     composer.close();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     composer = render();
 
     expect(composer.closeConfirmationOpen).toBe(false);

@@ -9,13 +9,12 @@ import {
 import type { DraftContent } from "@/domain/mail/draft";
 import type { ComposeInput } from "@/domain/mail/mail";
 import { formatAddressInput } from "@/domain/mail/compose";
+import type {
+  ComposerRecoverySnapshot,
+  ComposerTitle,
+} from "@/presentation/features/mail-workspace/composer-recovery.types";
 
-export type ComposerTitle =
-  | "Edit draft"
-  | "Forward message"
-  | "New message"
-  | "Reply all"
-  | "Reply";
+export type { ComposerTitle } from "@/presentation/features/mail-workspace/composer-recovery.types";
 
 export const useComposerFields = (onChange: () => void) => {
   const [to, setTo] = useState("");
@@ -52,6 +51,17 @@ export const useComposerFields = (onChange: () => void) => {
     [],
   );
 
+  const restoreRecovery = useCallback((snapshot: ComposerRecoverySnapshot) => {
+    setTo(snapshot.to);
+    setCc(snapshot.cc);
+    setBcc(snapshot.bcc);
+    setShowCc(Boolean(snapshot.cc.trim()));
+    setShowBcc(Boolean(snapshot.bcc.trim()));
+    setSubject(snapshot.subject);
+    setInReplyTo(snapshot.inReplyTo);
+    setTitle(snapshot.title);
+  }, []);
+
   const input = useCallback(
     (setter: (value: string) => void): ChangeEventHandler<HTMLInputElement> =>
       (event) => {
@@ -77,6 +87,7 @@ export const useComposerFields = (onChange: () => void) => {
       setShowCc((visible) => (cc.trim() ? true : !visible));
     }, [cc]),
     reset,
+    restoreRecovery,
     setTitle,
     showBcc,
     showCc,

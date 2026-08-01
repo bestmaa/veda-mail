@@ -11,6 +11,7 @@ import {
   CONNECTION_COOKIE,
   getCurrentConnection,
 } from "@/server/connections/connection-session";
+import { MEMBER_CONNECTION_TTL_SECONDS } from "@/server/connections/connection-lifetime";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { assertSameOrigin } from "@/server/installation/request-origin";
@@ -33,7 +34,6 @@ import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 
 export const runtime = "nodejs";
 
-const MEMBER_SESSION_TTL_SECONDS = 60 * 60 * 12;
 const MAX_MEMBER_LOGIN_BODY_BYTES = 16 * 1024;
 
 const anonymousSession = {
@@ -78,6 +78,13 @@ export const GET = async () => {
     const connection = await getCurrentConnection();
     const account = await (await resolveGateway(connection)).getAccount();
     const profile = await activeProfile();
+    if (!connectionStore.isActive(connection)) {
+      throw new ApiError(
+        "This mail connection expired. Connect the account again.",
+        "MEMBER_SESSION_EXPIRED",
+        401,
+      );
+    }
     return apiSuccess(memberSession(account, profile));
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -206,7 +213,7 @@ export const POST = async (request: Request) => {
     });
     response.cookies.set(CONNECTION_COOKIE, connection.id, {
       ...cookieOptions,
-      maxAge: MEMBER_SESSION_TTL_SECONDS,
+      maxAge: MEMBER_CONNECTION_TTL_SECONDS,
     });
     return response;
   } catch (error) {

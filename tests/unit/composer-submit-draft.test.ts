@@ -8,6 +8,10 @@ import { RECOVER_DRAFT_BEFORE_SEND_MESSAGE } from "@/presentation/features/mail-
 import type { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import type { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import type { useComposerFields } from "@/presentation/features/mail-workspace/hooks/use-composer-fields";
+import type {
+  ComposerRecoveryCheckpoint,
+  ComposerRecoveryJournalPort,
+} from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-journal";
 
 const sendMessage = vi.hoisted(() => vi.fn());
 vi.mock("react", async (importOriginal) => ({
@@ -19,6 +23,9 @@ vi.mock("@/transport/client/api-client", () => ({
 }));
 
 import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
+
+const recovery = {} as ComposerRecoveryJournalPort;
+const recoveryCheckpoint = {} as ComposerRecoveryCheckpoint;
 
 describe("saved provider draft submit", () => {
   it("does not orphan a saved draft by sending local attachments without its provider reference", async () => {
@@ -58,9 +65,11 @@ describe("saved provider draft submit", () => {
       isDraftBusy: false,
       isDraftReadOnly: false,
       onDraftSent: vi.fn(),
+      onSendUncertain: vi.fn(),
       onSent: vi.fn(),
       openAccountKey: "account-a",
       providerDraft,
+      recovery, recoveryCheckpoint,
       resetFields: vi.fn(),
       restoreFocus: vi.fn(),
       setError,
@@ -87,9 +96,11 @@ describe("saved provider draft submit", () => {
       isDraftBusy: false,
       isDraftReadOnly: false,
       onDraftSent: vi.fn(),
+      onSendUncertain: vi.fn(),
       onSent: vi.fn(),
       openAccountKey: "account-a",
       providerDraft: null,
+      recovery, recoveryCheckpoint,
       resetFields: vi.fn(),
       restoreFocus: vi.fn(),
       setError,

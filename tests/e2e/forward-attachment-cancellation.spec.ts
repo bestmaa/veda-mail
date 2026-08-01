@@ -75,6 +75,13 @@ test("closing aborts queued imports and isolates the next draft", async ({
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await expect.poll(() => requested.length).toBe(1);
   await dialog.getByRole("button", { name: "Close composer" }).click();
+  const closePrompt = dialog.getByRole("alertdialog", {
+    name: "Close with unsaved changes?",
+  });
+  await expect(closePrompt).toBeVisible();
+  await closePrompt
+    .getByRole("button", { name: "Close without saving" })
+    .click();
   await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "New message" }).click();
   await expect(dialog).toBeVisible();

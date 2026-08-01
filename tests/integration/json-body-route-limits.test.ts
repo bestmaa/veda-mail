@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   assertRequestRateLimit: vi.fn(),
   assertSubjectRateLimit: vi.fn(),
   connectionCreate: vi.fn(),
+  connectionIsActive: vi.fn(),
   connectionRemove: vi.fn(),
   getCurrentConnection: vi.fn(),
   getMailServiceProfile: vi.fn(),
@@ -63,6 +64,7 @@ vi.mock("@/server/connections/connection-session", () => ({
 vi.mock("@/server/connections/connection-store", () => ({
   connectionStore: {
     create: mocks.connectionCreate,
+    isActive: mocks.connectionIsActive,
     remove: mocks.connectionRemove,
   },
 }));

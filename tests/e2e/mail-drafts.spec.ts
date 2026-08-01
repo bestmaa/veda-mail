@@ -53,8 +53,11 @@ const enableProviderDrafts = async (page: Page) => {
   await expect(page.getByRole("button", { name: "New message" })).toBeVisible();
 };
 
-test("manually saves, keeps later edits dirty, and distinctly discards", async ({ page }) => {
+test("manually saves, autosaves later edits, and distinctly discards", async ({ page }) => {
   let createCount = 0;
+  let currentRevision = providerDraft.revision;
+  let discardedRevision: string | null = null;
+  let updateCount = 0;
   await page.route("**/api/v1/mail/attachments", (route) => route.fulfill({
     json: { data: { id: "upload-a", uploadUrl: "/api/v1/mail/attachments/upload-a" } },
     status: 201,
@@ -77,8 +80,22 @@ test("manually saves, keeps later edits dirty, and distinctly discards", async (
   });
   await page.route(`**/api/v1/mail/drafts/${providerDraft.id}`, async (route) => {
     if (route.request().method() === "DELETE") {
-      expect(route.request().postDataJSON()).toEqual({ expectedRevision: "revision-a" });
+      discardedRevision = route.request().postDataJSON().expectedRevision;
       return route.fulfill({ status: 204 });
+    }
+    if (route.request().method() === "PUT") {
+      const input = route.request().postDataJSON();
+      expect(input.expectedRevision).toBe(currentRevision);
+      updateCount += 1;
+      currentRevision = `revision-autosave-${updateCount}`;
+      return route.fulfill({
+        json: { data: {
+          ...providerDraft,
+          composeId: input.composeId,
+          content: input.content,
+          revision: currentRevision,
+        } },
+      });
     }
     return route.fulfill({ json: { data: providerDraft } });
   });
@@ -102,11 +119,15 @@ test("manually saves, keeps later edits dirty, and distinctly discards", async (
   await dialog.getByRole("button", { name: "Remove local.txt" }).click();
 
   await save.click();
-  await expect(dialog.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Saved", { exact: true }).first()).toBeVisible();
   expect(createCount).toBe(1);
   await expect(save).toBeDisabled();
   await dialog.getByRole("textbox", { exact: true, name: "Subject" }).fill("Newer edit");
-  await expect(dialog.getByText("Unsaved", { exact: true })).toBeVisible();
+  await expect.poll(() => updateCount).toBe(1);
+  await expect(dialog.getByText("Saved", { exact: true }).first()).toBeVisible();
+  await dialog
+    .getByRole("textbox", { exact: true, name: "Subject" })
+    .fill("Unsaved close edit");
 
   await dialog.getByRole("button", { name: "Close composer" }).click();
   const closePrompt = dialog.getByRole("alertdialog");
@@ -120,6 +141,7 @@ test("manually saves, keeps later edits dirty, and distinctly discards", async (
   await expect(discardPrompt.getByText("Discard draft permanently")).toBeVisible();
   await discardPrompt.getByRole("button", { name: "Discard draft permanently" }).click();
   await expect(dialog).toBeHidden();
+  expect(discardedRevision).toBe("revision-autosave-1");
   await expect(composeTrigger).toBeFocused();
 });
 
@@ -141,7 +163,10 @@ test("opens a Drafts row through GET and requires Save after rich normalization"
   await expect(dialog.getByRole("textbox", { exact: true, name: "Bcc" })).toHaveValue("hidden@example.com");
   await expect(dialog.getByRole("textbox", { exact: true, name: "Message body" })).toContainText("Saved rich body");
   await expect(dialog.getByText("Unsaved", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("Save changes before sending this provider draft.")).toBeVisible();
+  await expect(dialog.getByText(
+    "Save changes before sending this provider draft.",
+    { exact: true },
+  )).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Save draft" })).toBeEnabled();
   await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeDisabled();
   expect(getCount).toBe(1);

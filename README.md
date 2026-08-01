@@ -28,10 +28,13 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Multiple named plain or sanitized-rich signatures per mailbox identity, with
   separate new-message and reply/forward defaults plus an exact-once composer
   picker
-- Manual Stalwart JMAP provider drafts with visible save/recovery state,
+- Stalwart JMAP provider drafts with debounced autosave, visible recovery state,
   Drafts-list editing, exact revision conflicts, explicit discard, and
   save-first send; incomplete, attachment-bearing, or unsupported-header/MIME
   drafts fail closed without destructive rewriting
+- Session-bound browser recovery for interrupted compose sessions on every
+  provider, including closed-tab discovery, offline/local status, exact
+  send/discard interruption guards, bounded retention, and sign-out cleanup
 - Encrypted, ClamAV-scanned attachment upload and byte-identical send through
   JMAP or IMAP/SMTP, with safe names, MIME detection, quotas, and cancellation
 - Authenticated, message-scoped received-attachment downloads streamed through

@@ -41,7 +41,17 @@ export const useMailWorkspaceModel = ({
   signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
   const mail = useMailDataModel();
-  const sessionScope = mail.workspace?.sessionScope ?? "";
+  const workspace = mail.workspace;
+  const sessionScope = workspace?.sessionScope ?? "";
+  const recoveryAccountId = workspace?.account.id ?? null;
+  const recoveryProviderId = workspace?.account.providerId ?? null;
+  const recoveryExpiresAt = workspace?.sessionExpiresAt ?? null;
+  const recoveryOwner = useMemo(() =>
+    recoveryAccountId && recoveryProviderId && recoveryExpiresAt && sessionScope
+      ? { accountId: recoveryAccountId, providerId: recoveryProviderId,
+          sessionExpiresAt: recoveryExpiresAt, sessionScope }
+      : null,
+  [recoveryAccountId, recoveryExpiresAt, recoveryProviderId, sessionScope]);
   const partialDelivery = usePartialDeliveryNotice(
     mail.refresh,
     sessionScope,
@@ -52,12 +62,6 @@ export const useMailWorkspaceModel = ({
   const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
   const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure);
   const closeAttachmentPreview = attachmentPreview.close;
-  const session = useMemberSessionModel(
-    canSignOut,
-    signOutPath,
-    sessionScope,
-    mail.handleSessionFailure,
-  );
   const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName =
     mail.workspace?.account.name ?? brandingView.productName;
@@ -84,7 +88,16 @@ export const useMailWorkspaceModel = ({
     mail.handleSessionFailure,
     draftsEnabled,
     mail.refresh,
+    recoveryOwner,
   );
+  const session = useMemberSessionModel({
+    canSignOut,
+    handleSessionFailure: mail.handleSessionFailure,
+    requiresConfirmation: Boolean(sessionScope),
+    sessionExpiresAt: recoveryExpiresAt ?? "",
+    sessionScope,
+    signOutPath,
+  });
   const settings = useAccountSettingsModel(
     accountEmail,
     workspaceAccountName,
@@ -208,8 +221,10 @@ export const useMailWorkspaceModel = ({
     searchValue: mail.searchValue,
     session: {
       canSignOut: session.canSignOut,
+      confirmation: session.confirmation,
       isSigningOut: session.isSigningOut,
       onSignOut: session.onSignOut,
+      privacyCurtain: session.privacyCurtain,
     },
     settings,
     total: mail.workspace?.messages.total ?? 0,

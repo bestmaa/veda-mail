@@ -212,9 +212,17 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
     .getByRole("textbox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await dialog.getByRole("button", { name: /^Send$/ }).click();
-  await expect(dialog.getByRole("alert")).toHaveText(
-    "Mail provider is temporarily unavailable.",
+  await expect(dialog.getByRole("alert")).toContainText(
+    "This message may already have been sent.",
   );
+  await expect(dialog.getByRole("alert")).toContainText("Check Sent");
+  await expect(dialog.getByText("application/pdf")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeDisabled();
+  expect(sends).toHaveLength(1);
+  await dialog
+    .getByRole("button", { name: "I checked Sent — resume as draft" })
+    .click();
+  await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeEnabled();
   await expect(dialog.getByText("application/pdf")).toBeVisible();
   await sendComposer(page);
 

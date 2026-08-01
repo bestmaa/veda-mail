@@ -1,17 +1,35 @@
 import { PenLine } from "lucide-react";
 
+import { ComposerRecoveryPromptConnector } from "@/presentation/features/mail-workspace/connectors/composer-recovery-prompt.connector";
+import { MemberSignOutConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/member-sign-out-confirmation.connector";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { AccountSettingsView } from "@/presentation/features/mail-workspace/ui/account-settings.view";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
 import { EmptyReaderView } from "@/presentation/features/mail-workspace/ui/empty-reader.view";
 import { MailHeaderView } from "@/presentation/features/mail-workspace/ui/mail-header.view";
 import { MailSidebarView } from "@/presentation/features/mail-workspace/ui/mail-sidebar.view";
+import { MemberSessionPrivacyCurtainView } from "@/presentation/features/mail-workspace/ui/member-session-privacy-curtain.view";
 import { MessageListView } from "@/presentation/features/mail-workspace/ui/message-list.view";
 import { MessageReaderView } from "@/presentation/features/mail-workspace/ui/message-reader.view";
 import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
 
-export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
-  <main className="h-dvh min-h-[620px] overflow-hidden bg-[#f8f9fc] text-slate-900" style={props.branding.brandStyle}>
+export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
+  if (props.session.privacyCurtain.isOpen) {
+    return (
+      <MemberSessionPrivacyCurtainView
+        privacy={props.session.privacyCurtain}
+      />
+    );
+  }
+  const topLevelModalOpen = props.composer.recoveryPrompt.isOpen ||
+    props.session.confirmation.isOpen;
+  return (
+  <>
+  <main
+    className="h-dvh min-h-[620px] overflow-hidden bg-[#f8f9fc] text-slate-900"
+    style={props.branding.brandStyle}
+    {...(topLevelModalOpen ? { "aria-hidden": true, inert: true } : {})}
+  >
     <MailHeaderView
       account={props.account}
       branding={props.branding}
@@ -99,4 +117,8 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => (
     />
     <AccountSettingsView settings={props.settings} />
   </main>
-);
+  <ComposerRecoveryPromptConnector prompt={props.composer.recoveryPrompt} />
+  <MemberSignOutConfirmationConnector session={props.session} />
+  </>
+  );
+};

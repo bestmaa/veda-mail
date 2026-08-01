@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   assertRequestRateLimit: vi.fn(),
   assertSubjectRateLimit: vi.fn(),
   connectionCreate: vi.fn(),
+  connectionIsActive: vi.fn(),
   connectionRemove: vi.fn(),
   connectionUpdate: vi.fn(),
   enrollmentCreate: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock("@/server/connections/connection-session", () => ({
 vi.mock("@/server/connections/connection-store", () => ({
   connectionStore: {
     create: mocks.connectionCreate,
+    isActive: mocks.connectionIsActive,
     remove: mocks.connectionRemove,
     updateConfig: mocks.connectionUpdate,
   },
@@ -72,7 +74,10 @@ import {
   PATCH as updateProfile,
   PUT as changePassword,
 } from "@/app/api/v1/member/settings/route";
-import { DELETE as signOut } from "@/app/api/v1/member/session/route";
+import {
+  DELETE as signOut,
+  GET as readSession,
+} from "@/app/api/v1/member/session/route";
 import {
   DELETE as disableTwoFactor,
   POST as startTwoFactor,
@@ -113,6 +118,7 @@ const request = (
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getCurrentConnection.mockResolvedValue(connection);
+  mocks.connectionIsActive.mockReturnValue(true);
 });
 
 describe("member account session scope routes", () => {
@@ -166,5 +172,29 @@ describe("member account session scope routes", () => {
     expect(response.status).toBe(204);
     expect(mocks.enrollmentRemove).not.toHaveBeenCalled();
     expect(mocks.connectionRemove).not.toHaveBeenCalled();
+  });
+
+  it("does not return account data after the connection expires in flight", async () => {
+    mocks.resolveGateway.mockResolvedValue({
+      getAccount: vi.fn().mockResolvedValue({
+        email: "member@example.com",
+        id: "account-1",
+        name: "Member",
+        providerId: "mock",
+      }),
+    });
+    mocks.profileGet.mockResolvedValue({
+      displayName: "Member mailbox",
+      providerId: "mock",
+    });
+    mocks.connectionIsActive.mockReturnValue(false);
+
+    const response = await readSession();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { account: null, authenticated: false, service: null },
+    });
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 });

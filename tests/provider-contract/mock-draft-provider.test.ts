@@ -79,6 +79,38 @@ describe("mock provider draft contract", () => {
     ).rejects.toThrow("changed since it was last loaded");
   });
 
+  it("reconciles an exact lost update without duplicating its replacement", async () => {
+    const gateway = new MockMailGateway();
+    const created = await gateway.saveDraft({ composeId, content });
+    const update = {
+      composeId,
+      content: { ...content, body: "Autosaved replacement" },
+      expectedRevision: created.revision,
+      providerDraftId: created.id,
+    } as const;
+    const replacement = await gateway.saveDraft(update);
+
+    await expect(gateway.saveDraft(update)).resolves.toEqual(replacement);
+    await expect(gateway.saveDraft({
+      ...update,
+      content: { ...update.content, body: "Changed retry intent" },
+    })).rejects.toThrow("changed since it was last loaded");
+    await expect(gateway.saveDraft({
+      ...update,
+      expectedRevision: "different-base-revision",
+    })).rejects.toThrow("changed since it was last loaded");
+
+    const drafts = await gateway.listMessages({
+      limit: 10,
+      mailboxId: mockMailboxIds.drafts,
+    });
+    expect(drafts.items.filter(({ id: draftId }) =>
+      String(draftId) === String(replacement.id))).toHaveLength(1);
+    await expect(gateway.getDraft(created.id)).rejects.toThrow(
+      "Draft not found",
+    );
+  });
+
   it("hands a saved draft to send without leaving a Drafts ghost", async () => {
     const gateway = new MockMailGateway();
     const created = await gateway.saveDraft({ composeId, content });

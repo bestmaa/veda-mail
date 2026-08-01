@@ -1,10 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-
 import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
-
 const composer = (
   overrides: Partial<ComposerViewModel> = {},
 ): ComposerViewModel => ({
@@ -38,13 +36,10 @@ const composer = (
   closeConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   discardConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   draft: {
-    canDiscard: true,
-    canEdit: true,
-    canSave: false,
-    canSend: true,
-    enabled: false,
-    error: null,
-    loadFailed: false,
+    canAttach: true, canDiscard: true,
+    canEdit: true, canSave: false,
+    canSend: true, enabled: false,
+    error: null, loadFailed: false,
     onReload: null,
     onRequestDiscard: vi.fn(),
     onRetry: vi.fn(),
@@ -52,6 +47,7 @@ const composer = (
     phase: "unsaved",
     requiresRecovery: false,
     sendBlockedMessage: null,
+    status: { announcement: "Unsaved", label: "Unsaved", tone: "muted" }, terminalRecovery: null,
   },
   error: null,
   focusBody: false,
@@ -66,6 +62,14 @@ const composer = (
   onSubmit: vi.fn(),
   onToggleBcc: vi.fn(),
   onToggleCc: vi.fn(),
+  recoveryPrompt: {
+    description: "Interrupted draft available.", error: null,
+    hadLocalAttachments: false, initialFocus: "primary",
+    isLoading: false, isOpen: false, onDismiss: vi.fn(),
+    onPrimary: vi.fn(), onSecondary: vi.fn(),
+    primaryLabel: "Restore draft", secondaryLabel: "Discard recovery copy",
+    title: "Restore interrupted draft?",
+  },
   showBcc: false,
   showCc: false,
   subject: "",
@@ -75,12 +79,10 @@ const composer = (
   toInput: vi.fn(),
   ...overrides,
 });
-
 const renderComposer = (model: ComposerViewModel): string =>
   renderToStaticMarkup(
     createElement(ComposerView, { composer: model, deliveryNotice: null }),
   );
-
 describe("composer component", () => {
   it("renders nothing while closed", () => {
     expect(renderComposer(composer({ isOpen: false }))).toBe("");
@@ -88,7 +90,6 @@ describe("composer component", () => {
 
   it("exposes disclosure state and keeps To optional", () => {
     const html = renderComposer(composer());
-
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-label="Compose message"');
     expect(html).toContain('role="toolbar"');
@@ -109,9 +110,7 @@ describe("composer component", () => {
   it("exposes pressed state only on formatting toggles", () => {
     const html = renderComposer(composer());
     const button = (label: string) =>
-      html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>`, "u"))
-        ?.[0];
-
+      html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>`, "u"))?.[0];
     expect(button("Bold")).toContain('aria-pressed="false"');
     expect(button("Bulleted list")).toContain('aria-pressed="false"');
     expect(button("Insert link")).toContain('aria-pressed="false"');

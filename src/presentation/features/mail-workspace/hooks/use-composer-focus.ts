@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
+import { isTopModalDialog } from "@/presentation/shared/hooks/use-modal-dialog-focus";
+
 export const useComposerReturnFocus = () => {
   const returnFocus = useRef<HTMLElement | null>(null);
   return {
@@ -25,11 +27,10 @@ export const useComposerFocusTrap = (
   useEffect(() => {
     if (!isOpen || !isSending) return;
     const frame = window.requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(
-          '[role="dialog"][aria-label="Compose message"]',
-        )
-        ?.focus();
+      const dialog = document.querySelector<HTMLElement>(
+        '[role="dialog"][aria-label="Compose message"]',
+      );
+      if (dialog && isTopModalDialog(dialog)) dialog.focus();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [isOpen, isSending]);
@@ -37,14 +38,15 @@ export const useComposerFocusTrap = (
   useEffect(() => {
     if (!isOpen) return;
     const handleDialogKeys = (event: KeyboardEvent) => {
+      const dialog = document.querySelector<HTMLElement>(
+        '[role="dialog"][aria-label="Compose message"]',
+      );
+      if (!dialog || !isTopModalDialog(dialog)) return;
       if (event.key === "Escape") {
         onEscape();
         return;
       }
       if (event.key !== "Tab") return;
-      const dialog = document.querySelector<HTMLElement>(
-        '[role="dialog"][aria-label="Compose message"]',
-      );
       if (isSending && dialog) {
         event.preventDefault();
         dialog.focus();
@@ -66,7 +68,6 @@ export const useComposerFocusTrap = (
       );
       const first = focusable[0];
       const last = focusable.at(-1);
-      if (!dialog) return;
       if (!first || !last) {
         event.preventDefault();
         dialog.focus();
