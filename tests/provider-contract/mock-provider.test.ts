@@ -8,6 +8,8 @@ import {
   mockRoadmapAttachment,
 } from "@/infrastructure/providers/mock/mock-seed";
 
+const listOptions = { includePreview: true, sort: "newest" as const };
+
 describe("mock provider contract", () => {
   it("lists mailboxes and paginated messages", async () => {
     const gateway = new MockMailGateway();
@@ -16,12 +18,29 @@ describe("mock provider contract", () => {
 
     expect(inbox).toBeDefined();
     const page = await gateway.listMessages({
+      ...listOptions,
       limit: 2,
       mailboxId: inbox?.id ?? id.mailbox("missing"),
     });
     expect(page.items).toHaveLength(2);
     expect(page.total).toBeGreaterThan(2);
     expect(page.nextCursor).toBe("2");
+  });
+
+  it("sorts the complete mailbox both ways and omits hidden previews", async () => {
+    const gateway = new MockMailGateway();
+    const inbox = (await gateway.listMailboxes()).find(({ role }) => role === "inbox")!;
+    const newest = await gateway.listMessages({
+      includePreview: true, limit: 50, mailboxId: inbox.id, sort: "newest",
+    });
+    const oldest = await gateway.listMessages({
+      includePreview: false, limit: 50, mailboxId: inbox.id, sort: "oldest",
+    });
+    expect(oldest.items.map(({ id: messageId }) => messageId)).toEqual(
+      newest.items.map(({ id: messageId }) => messageId).reverse(),
+    );
+    expect(newest.items.some(({ preview }) => preview.length > 0)).toBe(true);
+    expect(oldest.items.every(({ preview }) => preview === "")).toBe(true);
   });
 
   it("supports read, star, archive and send mutations", async () => {
@@ -31,6 +50,7 @@ describe("mock provider contract", () => {
     );
     expect(inbox).toBeDefined();
     const page = await gateway.listMessages({
+      ...listOptions,
       limit: 10,
       mailboxId: inbox?.id ?? id.mailbox("missing"),
     });
@@ -59,6 +79,7 @@ describe("mock provider contract", () => {
       (mailbox) => mailbox.role === "archive",
     );
     const archived = await gateway.listMessages({
+      ...listOptions,
       limit: 20,
       mailboxId: archive?.id ?? id.mailbox("missing"),
     });

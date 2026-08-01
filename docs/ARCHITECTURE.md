@@ -361,11 +361,20 @@ cannot authorize a request without the current member cookie.
 
 ## Mailbox cursor pagination
 
-The workspace route owns the page size (50) and accepts only a canonical
-decimal position from 0 through 2,147,483,647. Browser-supplied cursors are
-therefore bounded and validated before the adapter is resolved. Both included
-adapters return the next position through the provider-independent
-`MessagePage` contract; the client never derives or increments it itself.
+The workspace route owns the page size (50). It exposes only an opaque,
+HMAC-SHA-256-authenticated cursor with a 30-minute lifetime, never a raw adapter
+position. The signed payload binds the provider cursor to the connection,
+mailbox, keyed search digest, newest/oldest order, preview mode, page size, and
+format version. The route rejects an oversized, malformed, expired, or
+context-mismatched cursor with HTTP 409 `MESSAGE_LIST_CURSOR_EXPIRED`; the
+client must refresh page one instead of changing or incrementing a cursor.
+
+The current JMAP and IMAP adapters still paginate internally by bounded
+positions. JMAP orders `receivedAt` ascending or descending. IMAP orders UIDs
+ascending or descending, which represents mailbox arrival/order semantics and
+is not guaranteed to match the sender-controlled `Date` header. The opaque
+route cursor preserves this provider-specific meaning without exposing or
+trusting it at the browser boundary.
 
 The mail model separates root mailbox/search refresh generations from page
 request generations. It permits one page request in flight, ignores a late
@@ -375,6 +384,38 @@ record is stored independently of the accumulated list, so adding a page does
 not close or replace the message being read. A recoverable provider failure
 leaves the accepted pages intact and reuses the same server cursor only after
 an explicit retry. Full refresh replaces the accumulated list with page one.
+
+## Message-list preferences and previews
+
+The authenticated account owns exactly one message-list preference record:
+`compact`, `comfortable`, or `spacious` density; `newest` or `oldest` order;
+and whether a summary preview is requested. The browser cannot select another
+owner. The strict same-origin, session-scoped PATCH route accepts only those
+three fields at `PATCH /api/v1/mail/preferences`, with a 1 KiB body and separate
+request/subject rate limits.
+
+`/data/message-list-preferences.json` stores an HMAC-derived account index and
+AES-256-GCM-encrypted preference value. Its key is derived from the installation
+session secret with HKDF, and the owner index is authenticated as additional
+data. Writes use a mode-0600 temporary file, fsync, and atomic rename inside a
+mode-0700 data directory. The bounded store accepts at most 10,000 owners and a
+16 MiB file; missing or unreadable account state falls back to comfortable,
+newest, preview-on defaults. The writer is process-serialized, so a writable
+data volume remains single-replica.
+
+The workspace response carries the effective server preference. A later list
+query may echo sort and preview context, but the route returns HTTP 409
+`MESSAGE_LIST_PREFERENCES_CHANGED` if either differs from persisted state. A
+sort/preview save refreshes page one and invalidates old cursors; a density-only
+change is presentation-local and need not call the provider.
+
+Stalwart JMAP requests its `preview` property only when previews are enabled.
+Before reaching the browser, a preview has control and bidirectional formatting
+characters removed, whitespace collapsed, and is capped at 320 characters and
+1,024 UTF-8 bytes. Standard IMAP list summaries intentionally request no
+source/body bytes and therefore expose an empty preview in this release. This
+message-list snippet is separate from the explicit, scanned attachment-preview
+flow.
 
 ## Bounded bulk mailbox mutations
 

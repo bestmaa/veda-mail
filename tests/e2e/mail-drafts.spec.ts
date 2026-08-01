@@ -26,9 +26,11 @@ const providerDraft = {
 };
 
 const enableProviderDrafts = async (page: Page) => {
+  const baselineResponse = await page.request.get("/api/v1/mail/workspace");
+  expect(baselineResponse.ok()).toBe(true);
+  const baseline = await baselineResponse.json();
   await page.route("**/api/v1/mail/workspace**", async (route) => {
-    const response = await route.fetch();
-    const envelope = await response.json();
+    const envelope = structuredClone(baseline);
     envelope.data.draftCapability = { status: "supported" };
     const drafts = envelope.data.mailboxes.find(
       (mailbox: { role: string }) => mailbox.role === "drafts",
@@ -47,7 +49,7 @@ const enableProviderDrafts = async (page: Page) => {
         total: 1,
       };
     }
-    await route.fulfill({ json: envelope, response });
+    await route.fulfill({ json: envelope, status: 200 });
   });
   await page.reload();
   await expect(page.getByRole("button", { name: "New message" })).toBeVisible();

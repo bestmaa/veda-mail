@@ -33,6 +33,7 @@ import { MockDraftStore } from "@/infrastructure/providers/mock/mock-draft.store
 import { MockMailboxStore } from "@/infrastructure/providers/mock/mock-mailbox.store";
 import { cleanupMockLabel } from "@/infrastructure/providers/mock/mock-label-cleanup";
 import { emptyMockMailbox } from "@/infrastructure/providers/mock/mock-mailbox-empty";
+import { listMockMessages } from "@/infrastructure/providers/mock/mock-message-list";
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
@@ -115,28 +116,10 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async listMessages(query: MessageListQuery) {
-    const needle = query.search?.trim().toLocaleLowerCase();
-    const matching = [...this.messages, ...this.drafts.messages()]
-      .filter((message) => message.mailboxIds.includes(query.mailboxId))
-      .filter((message) => {
-        if (!needle) {
-          return true;
-        }
-        const senders = message.from.map((address) => address.email).join(" ");
-        return `${message.subject} ${message.preview} ${senders}`
-          .toLocaleLowerCase()
-          .includes(needle);
-      })
-      .sort((left, right) => right.receivedAt.localeCompare(left.receivedAt));
-    const offset = Number(query.cursor ?? "0");
-    const items = matching.slice(offset, offset + query.limit);
-    const nextOffset = offset + items.length;
-
-    return {
-      items: structuredClone(items),
-      nextCursor: nextOffset < matching.length ? String(nextOffset) : null,
-      total: matching.length,
-    };
+    return listMockMessages(
+      [...this.messages, ...this.drafts.messages()],
+      query,
+    );
   }
   public async mutateMessage(mutation: MessageMutation): Promise<void> {
     const index = this.messages.findIndex(

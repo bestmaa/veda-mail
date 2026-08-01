@@ -37,6 +37,9 @@ const workspace: MailWorkspace = {
     mailbox("sent"),
     mailbox("custom"),
   ],
+  messageListPreferences: {
+    density: "comfortable", showPreview: true, sort: "newest",
+  },
   messages: { items: [], nextCursor: null, total: 0 },
   sessionExpiresAt: "2026-08-01T00:00:00.000Z",
   sessionScope: "scope-a",

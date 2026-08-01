@@ -14,6 +14,7 @@ import type { MailboxRole } from "@/domain/mail/mail";
 import type { FolderViewModel } from "@/presentation/features/mail-workspace/folder.view-model";
 import type { MailboxLifecycleViewModel } from "@/presentation/features/mail-workspace/mailbox-lifecycle.view-model";
 import type { MessageMoveViewModel } from "@/presentation/features/mail-workspace/message-move.view-model";
+import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -218,7 +219,7 @@ export interface MailWorkspaceViewProps {
   readonly isLoading: boolean; readonly isLoadingMore: boolean;
   readonly mailboxManagement: MailboxManagementViewModel; readonly labelManagement: LabelManagementViewModel;
   readonly mailboxLifecycle: MailboxLifecycleViewModel; readonly loadMoreError: string | null;
-  readonly messageMove: MessageMoveViewModel;
+  readonly messageMove: MessageMoveViewModel; readonly messageListPreferences: MessageListPreferencesViewModel;
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: { readonly isOpen: boolean; readonly onClose: () => void;
     readonly onOpen: () => void };

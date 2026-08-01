@@ -8,6 +8,7 @@ import type {
   MessageMutation,
   SendReceipt,
 } from "@/domain/mail/mail";
+import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
 import type { MailboxColor } from "@/domain/mail/mailbox";
 import type { MailboxEmptyUpdate } from "@/domain/mail/mailbox-empty";
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
@@ -147,6 +148,8 @@ export const mailApi = {
       readonly cursor?: string;
       readonly mailboxId?: MailboxId;
       readonly search?: string;
+      readonly showPreview?: boolean;
+      readonly sort?: MessageListPreferences["sort"];
     },
     sessionScope?: string,
   ) {
@@ -154,12 +157,25 @@ export const mailApi = {
     if (input.cursor) params.set("cursor", input.cursor);
     if (input.mailboxId) params.set("mailboxId", input.mailboxId);
     if (input.search) params.set("search", input.search);
+    if (input.showPreview !== undefined) {
+      params.set("preview", input.showPreview ? "show" : "hide");
+    }
+    if (input.sort) params.set("sort", input.sort);
     const query = params.size ? `?${params.toString()}` : "";
     return fetchData<MailWorkspace>(
       `/api/v1/mail/workspace${query}`,
       sessionScope
         ? { headers: mailSessionScopeHeaders(sessionScope) }
         : undefined,
+    );
+  },
+
+  saveMessageListPreferences(preferences: MessageListPreferences, sessionScope: string) {
+    return fetchData<{ readonly preferences: MessageListPreferences }>(
+      "/api/v1/mail/preferences", {
+        body: JSON.stringify(preferences), headers: mailSessionScopeHeaders(sessionScope),
+        method: "PATCH",
+      },
     );
   },
 

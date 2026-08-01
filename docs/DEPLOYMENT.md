@@ -100,6 +100,14 @@ sweep and is intentionally excluded from backups. Run one Veda Mail process
 per container; multi-replica operation requires a shared encrypted quarantine,
 session store, and coordinated rate limiter.
 
+Message-list preferences create
+`/data/message-list-preferences.json` on first save. Keep it on the same durable
+volume as `installation.json`: its AES-256-GCM key derives from that
+installation's session secret, so neither file is portable by itself. The
+writer uses atomic replacement but is process-serialized; keep one Veda Mail
+writer per mounted `/data` volume. No Stalwart setting, provider-profile
+migration, database/schema migration, or additional network port is required.
+
 The default bind is `127.0.0.1:3000`. Keep it that way behind a local reverse
 proxy. To bind another host port:
 

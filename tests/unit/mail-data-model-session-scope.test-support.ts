@@ -58,6 +58,7 @@ const apiState = vi.hoisted(() => ({
   getWorkspace: vi.fn(),
   mutateMessage: vi.fn(),
   mutateMessages: vi.fn(),
+  saveMessageListPreferences: vi.fn(),
 }));
 
 vi.mock("react", async (importOriginal) => ({
@@ -75,6 +76,7 @@ vi.mock("@/transport/client/api-client", () => ({
     getWorkspace: apiState.getWorkspace,
     mutateMessage: apiState.mutateMessage,
     mutateMessages: apiState.mutateMessages,
+    saveMessageListPreferences: apiState.saveMessageListPreferences,
   },
 }));
 
@@ -110,6 +112,9 @@ export const workspace = (sessionScope: string): MailWorkspace => ({
       unread: 0,
     },
   ],
+  messageListPreferences: {
+    density: "comfortable", showPreview: true, sort: "newest",
+  },
   messages: { items: [], nextCursor: null, total: 0 },
   sessionExpiresAt: "2026-08-01T00:00:00.000Z",
   sessionScope,
@@ -157,4 +162,5 @@ export const resetMailDataModelHarness = () => {
   api.getWorkspace.mockReset();
   api.mutateMessage.mockReset();
   api.mutateMessages.mockReset();
+  api.saveMessageListPreferences.mockReset();
 };

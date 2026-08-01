@@ -23,6 +23,17 @@ The feature adds a bounded `/data/mail-user-provisioning-idempotency.json`
 file on first creation attempt; older versions ignore it. Back it up with the
 matching installation and do not delete a pending entry to force a retry.
 
+Message-list preferences add
+`/data/message-list-preferences.json` on first save. It contains encrypted,
+account-isolated density, newest/oldest order, and preview settings. Back it up
+together with `installation.json`, because its key derives from that
+installation's session secret; do not copy either file independently. The
+process-serialized writer has the same single-replica writable-volume
+requirement as other Veda Mail preference stores. Older rollback images ignore
+the file. No environment variable, provider migration, Stalwart change, or new
+port is required. Existing accounts default to comfortable density,
+newest-first order, and previews enabled.
+
 Manual provider-backed drafts require no new environment variable, Stalwart
 API key, mailbox migration, database/schema migration, or port. The feature is
 runtime-enabled only when the authenticated JMAP account is writable and has a

@@ -94,6 +94,27 @@ const props = {
   ],
   moveAnnouncement: "",
   onLoadMore: vi.fn(),
+  preferences: {
+    announcement: "",
+    density: "comfortable" as const,
+    dialog: {
+      density: "comfortable" as const,
+      error: null,
+      isDirty: false,
+      isOpen: false,
+      isSaving: false,
+      onClose: vi.fn(),
+      onDensityChange: vi.fn(),
+      onPreviewChange: vi.fn(),
+      onSortChange: vi.fn(),
+      onSubmit: vi.fn(),
+      showPreview: true,
+      sort: "newest" as const,
+    },
+    onOpen: vi.fn(),
+    showPreview: true,
+    sort: "newest" as const,
+  },
   total: 2,
 } as const;
 
@@ -153,5 +174,21 @@ describe("message list pagination view", () => {
     expect(html).toContain('aria-label="Message labels"');
     expect(html).toContain("Clients");
     expect(html).not.toContain("veda-label-aaaqeayeaudaocajbifqydiob4");
+  });
+
+  it("applies density and removes hidden preview content from the DOM", () => {
+    const html = renderToStaticMarkup(createElement(MessageListView, {
+      ...props,
+      preferences: {
+        ...props.preferences,
+        density: "compact",
+        showPreview: false,
+      },
+    }));
+
+    expect(html).toContain('data-density="compact"');
+    expect(html).toContain("min-h-11 p-2");
+    expect(html).not.toContain(">Preview<");
+    expect(html).toContain("Message list options");
   });
 });

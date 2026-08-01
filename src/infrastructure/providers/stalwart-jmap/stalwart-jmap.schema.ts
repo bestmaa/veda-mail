@@ -180,6 +180,7 @@ export const jmapListResultSchema = <T extends z.ZodType>(itemSchema: T) =>
 
 export const jmapQueryResultSchema = z
   .object({
+    accountId: z.string().min(1),
     ids: z.array(z.string()).max(1_024),
     position: z.number().int().nonnegative(),
     queryState: z.string(),

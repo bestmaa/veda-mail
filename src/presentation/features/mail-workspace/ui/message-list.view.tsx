@@ -2,6 +2,7 @@ import {
   Check,
   Inbox,
   Minus,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import type { MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
@@ -12,6 +13,7 @@ import { BulkActionsToolbarView } from "@/presentation/features/mail-workspace/u
 import { MailboxLifecycleBannerView } from "@/presentation/features/mail-workspace/ui/mailbox-lifecycle-banner.view";
 import { MessageListSkeletonView } from "@/presentation/features/mail-workspace/ui/message-list-skeleton.view";
 import { MessageRowView } from "@/presentation/features/mail-workspace/ui/message-row.view";
+import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
 
 interface MessageListViewProps {
   readonly activeFolder: string;
@@ -26,6 +28,7 @@ interface MessageListViewProps {
   readonly messages: readonly MessageItemViewModel[];
   readonly moveAnnouncement: string;
   readonly onLoadMore: () => void;
+  readonly preferences: MessageListPreferencesViewModel;
   readonly total: number;
 }
 
@@ -42,6 +45,7 @@ export const MessageListView = ({
   messages,
   moveAnnouncement,
   onLoadMore,
+  preferences,
   total,
 }: MessageListViewProps) => (
   <section className="flex min-h-0 flex-col border-r border-slate-200 bg-[#f8f9fc]">
@@ -79,9 +83,21 @@ export const MessageListView = ({
             </h1>
           </div>
         </div>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-          {total} messages
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+            {total} messages
+          </span>
+          <button
+            aria-haspopup="dialog"
+            className="grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            onClick={preferences.onOpen}
+            title="Message list options"
+            type="button"
+          >
+            <SlidersHorizontal aria-hidden size={18} />
+            <span className="sr-only">Message list options</span>
+          </button>
+        </div>
       </div>
       {activeRole === "spam" || activeRole === "trash" ? (
         <MailboxLifecycleBannerView lifecycle={mailboxLifecycle} />
@@ -93,7 +109,8 @@ export const MessageListView = ({
         </p>
       ) : null}
       <div aria-live="polite" className="sr-only">
-        {[bulkActions.status, moveAnnouncement].filter(Boolean).join(" ")}
+        {[bulkActions.status, moveAnnouncement, preferences.announcement]
+          .filter(Boolean).join(" ")}
       </div>
       {bulkActions.error ? (
         <p className="mt-2 text-xs font-semibold text-red-700" role="alert">
@@ -104,7 +121,6 @@ export const MessageListView = ({
 
     <div
       aria-busy={isLoading}
-      aria-live="polite"
       className="min-h-0 flex-1 overflow-y-auto"
     >
       {isLoading ? <MessageListSkeletonView /> : null}
@@ -132,9 +148,18 @@ export const MessageListView = ({
         </div>
       ) : null}
       {!isLoading && !error && messages.length > 0 ? (
-        <div className="space-y-2 p-3">
+        <div className={{
+          compact: "space-y-1 p-2",
+          comfortable: "space-y-2 p-3",
+          spacious: "space-y-3 p-4",
+        }[preferences.density]} data-density={preferences.density}>
           {messages.map((message) => (
-            <MessageRowView key={message.id} message={message} />
+            <MessageRowView
+              density={preferences.density}
+              key={message.id}
+              message={message}
+              showPreview={preferences.showPreview}
+            />
           ))}
           {hasMore ? (
             <div className="flex flex-col items-center gap-2 py-3 text-center">

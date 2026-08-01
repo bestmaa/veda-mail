@@ -40,6 +40,9 @@ const workspace: MailWorkspace = {
     sortOrder: 0,
     total: 1, unread: 0,
   }],
+  messageListPreferences: {
+    density: "comfortable", showPreview: true, sort: "newest",
+  },
   messages: {
     items: [{
       from: [],

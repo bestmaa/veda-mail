@@ -1,27 +1,19 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEventHandler, type MouseEventHandler } from "react";
 import { id, type MailboxId } from "@/domain/shared/brand";
+import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
 import { isMailSessionFailure } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useMailMessageMutations } from "@/presentation/features/mail-workspace/hooks/use-mail-message-mutations";
 import { useMailDataBulkSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-data-bulk-selection";
 import { useMailPagination } from "@/presentation/features/mail-workspace/hooks/use-mail-pagination";
 import { useMailSessionScopeState } from "@/presentation/features/mail-workspace/hooks/use-mail-session-scope-state";
+import { useMessageListPreferencesSave } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-save";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : "Something went wrong.";
 export const useMailDataModel = () => {
-  const {
-    acceptWorkspace,
-    appendWorkspace,
-    clear: clearScope,
-    clearMessage,
-    commitMessage,
-    currentScope,
-    isCurrentScope,
-    selectedMessage,
-    sessionScope,
-    workspace,
-  } = useMailSessionScopeState();
+  const { acceptWorkspace, appendWorkspace, clear: clearScope, clearMessage, commitMessage,
+    commitPreferences, currentScope, isCurrentScope, selectedMessage, sessionScope, workspace } = useMailSessionScopeState();
   const [activeMailboxId, setActiveMailboxId] = useState<MailboxId | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -69,6 +61,7 @@ export const useMailDataModel = () => {
   const loadWorkspace = useCallback(
     async (override?: {
       readonly mailboxId: MailboxId | null;
+      readonly preferences?: MessageListPreferences;
       readonly search: string;
     }) => {
       if (sessionInvalidated.current) return;
@@ -83,6 +76,10 @@ export const useMailDataModel = () => {
           {
             ...(mailboxId ? { mailboxId } : {}),
             ...(search ? { search } : {}),
+            ...(override?.preferences ? {
+              showPreview: override.preferences.showPreview,
+              sort: override.preferences.sort,
+            } : {}),
           },
           requestScope || undefined,
         );
@@ -120,6 +117,9 @@ export const useMailDataModel = () => {
     void loadWorkspace();
   }, [loadWorkspace]);
   const refresh = useCallback(() => void loadWorkspace(), [loadWorkspace]);
+  const saveListPreferences = useMessageListPreferencesSave({ activeMailboxId,
+    appliedSearch, commitPreferences, current: workspace?.messageListPreferences,
+    currentScope, handleSessionFailure, isCurrentScope, loadWorkspace });
   const bulk = useMailDataBulkSelection({
     activeMailboxId,
     appliedSearch,
@@ -234,6 +234,7 @@ export const useMailDataModel = () => {
     destroy: mutations.destroy,
     restore: mutations.restore,
     searchValue,
+    saveListPreferences,
     setLabel: mutations.setLabel,
     sessionScope,
     selectMailbox,
@@ -241,7 +242,7 @@ export const useMailDataModel = () => {
     selectedMessage,
     toggleRead: mutations.toggleRead,
     toggleStar: mutations.toggleStar,
-    viewKey: `${activeMailboxId ?? ""}\n${appliedSearch}`,
+    viewKey: `${activeMailboxId ?? ""}\n${appliedSearch}\n${workspace?.messageListPreferences.sort ?? "newest"}`,
     workspace,
   };
 };

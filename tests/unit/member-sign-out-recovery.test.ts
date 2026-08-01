@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { MEMBER_SESSION_RECOVERY_PURGE_ERROR } from "@/presentation/features/mail-workspace/member-session-recovery";
 const hooks = vi.hoisted(() => {
   const initialized = new Set<number>();
@@ -95,15 +94,16 @@ const render = (
   });
 };
 beforeEach(() => {
-  hooks.reset();
-  api.signOut.mockReset();
-  lifecycle.reset();
-  revocationBus.publish.mockReset();
-  revocationBus.subscribe.mockClear();
-  router.replace.mockReset();
-  router.refresh.mockReset();
+  hooks.reset(); api.signOut.mockReset(); lifecycle.reset(); revocationBus.publish.mockReset();
+  revocationBus.subscribe.mockClear(); router.replace.mockReset(); router.refresh.mockReset();
 });
 describe("member sign-out recovery lifecycle", () => {
+  it("purges and redirects when server invalidation clears scope before broadcast", async () => {
+    const purgeRecovery = vi.fn().mockResolvedValue(undefined); render("scope-a", purgeRecovery); render("", purgeRecovery);
+    await Promise.resolve(); await Promise.resolve();
+    expect(purgeRecovery).toHaveBeenCalledWith("scope-a"); expect(router.replace).toHaveBeenCalledWith("/member/sign-in");
+    expect(router.refresh).toHaveBeenCalledOnce();
+  });
   it("requires explicit confirmation before purging unsaved recovery", async () => {
     const purgeRecovery = vi.fn().mockResolvedValue(undefined);
     api.signOut.mockResolvedValue(undefined);

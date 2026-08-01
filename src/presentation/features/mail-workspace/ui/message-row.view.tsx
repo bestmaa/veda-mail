@@ -1,14 +1,42 @@
 import { FolderInput, GripVertical, Paperclip, Star } from "lucide-react";
 
 import type { MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import type { MessageListDensity } from "@/domain/mail/message-list-preferences";
+
+const densityClasses = {
+  compact: {
+    avatar: "size-8",
+    content: "gap-2",
+    preview: "line-clamp-1 leading-4",
+    row: "min-h-11 p-2",
+  },
+  comfortable: {
+    avatar: "size-9",
+    content: "gap-3",
+    preview: "line-clamp-2 leading-5",
+    row: "p-3.5",
+  },
+  spacious: {
+    avatar: "size-10",
+    content: "gap-4",
+    preview: "line-clamp-2 leading-6",
+    row: "p-5",
+  },
+} as const;
 
 export const MessageRowView = ({
   message,
+  density,
+  showPreview,
 }: {
+  readonly density: MessageListDensity;
   readonly message: MessageItemViewModel;
+  readonly showPreview: boolean;
 }) => (
   <article
-    className={`group relative rounded-2xl border p-3.5 transition ${
+    className={`group relative rounded-2xl border transition ${
+      densityClasses[density].row
+    } ${
       message.isSelected
         ? "border-indigo-300 bg-indigo-50 shadow-sm ring-1 ring-indigo-200"
         : message.isActive
@@ -19,7 +47,9 @@ export const MessageRowView = ({
     onDragEnd={message.onDragEnd}
     onDragStart={message.onDragStart}
   >
-    <div className="pointer-events-none relative flex items-start gap-3">
+    <div className={`pointer-events-none relative flex items-start ${
+      densityClasses[density].content
+    }`}>
       {message.canSelect ? (
         <input
           aria-label={message.selectLabel}
@@ -31,7 +61,9 @@ export const MessageRowView = ({
         />
       ) : null}
       <span
-        className={`grid size-9 shrink-0 place-items-center rounded-xl text-[11px] font-extrabold ${
+        className={`grid shrink-0 place-items-center rounded-xl text-[11px] font-extrabold ${
+          densityClasses[density].avatar
+        } ${
           message.isUnread
             ? "bg-[#2f3274] text-white"
             : "bg-slate-100 text-slate-600"
@@ -82,9 +114,13 @@ export const MessageRowView = ({
             />
           ) : null}
         </div>
-        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">
-          {message.preview}
-        </p>
+        {showPreview && message.preview ? (
+          <p className={`mt-1 text-xs text-slate-600 ${
+            densityClasses[density].preview
+          }`}>
+            {message.preview}
+          </p>
+        ) : null}
         {message.labels.length ? (
           <div aria-label="Message labels" className="mt-2 flex flex-wrap gap-1.5">
             {message.labels.map((label) => (
@@ -109,7 +145,7 @@ export const MessageRowView = ({
     {message.canDrag ? (
       <button
         aria-label={`Move ${message.subject}`}
-        className="absolute bottom-2 right-2 z-20 grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 opacity-100 shadow-sm hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+        className="absolute bottom-1 right-1 z-20 grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 opacity-100 shadow-sm hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 md:bottom-2 md:right-2 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
         onClick={message.onRequestMove}
         title={`Move ${message.subject}`}
         type="button"

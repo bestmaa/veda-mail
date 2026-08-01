@@ -50,6 +50,8 @@ export const useMailDataBulkSelection = ({
     onSucceeded,
     refresh,
     sessionScope,
-    viewKey: `${activeMailboxId ?? ""}\n${appliedSearch}`,
+    viewKey: `${activeMailboxId ?? ""}\n${appliedSearch}\n${
+      workspace?.messageListPreferences.sort ?? "newest"
+    }`,
   });
 };

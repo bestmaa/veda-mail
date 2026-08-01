@@ -186,11 +186,18 @@ Acceptance: operations on large selections are bounded, cancellable where
 possible, and report which messages failed without corrupting local state.
 
 Cursor pagination is complete for both included adapters with a server-owned
-50-message page size, bounded canonical cursors, an accessible Load more
-control, duplicate-request coalescing, cross-page message-ID deduplication,
-stale mailbox/search/session response rejection, recoverable retry, and stable
-reader selection. Offset movement during concurrent provider mutation remains
-documented; refresh restarts from the authoritative first page.
+50-message page size, bounded signed context-specific cursors, an accessible
+Load more control, duplicate-request coalescing, cross-page message-ID
+deduplication, stale mailbox/search/session response rejection, recoverable
+retry, and stable reader selection. Offset movement during concurrent provider
+mutation remains documented; refresh restarts from the authoritative first
+page.
+
+The density/sort/preview slice is implemented locally with three density modes,
+newest/oldest provider mailbox order, encrypted account preferences, and
+privacy-bounded JMAP previews. The milestone remains unchecked until production
+deployment and verification are complete; Standard IMAP also truthfully shows
+no list snippet because its summary path does not fetch message bodies.
 
 Loaded-page multi-select and bulk actions are complete for both adapters.
 
