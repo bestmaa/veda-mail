@@ -1,4 +1,4 @@
-import type { MailWorkspace } from "@/domain/mail/mail";
+import type { MailboxRole, MailWorkspace } from "@/domain/mail/mail";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 import type { FolderViewModel, MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { formatMessageDate, formatSender, initials } from "@/presentation/shared/formatters/mail-formatters";
@@ -32,6 +32,7 @@ export const createMailListViewModel = ({
   workspace,
 }: MailListOptions): {
   readonly activeFolder: string;
+  readonly activeRole: MailboxRole | null;
   readonly folders: readonly FolderViewModel[];
   readonly messages: readonly MessageItemViewModel[];
 } => {
@@ -44,6 +45,7 @@ export const createMailListViewModel = ({
   );
   return {
     activeFolder: activeMailbox?.name ?? "Inbox",
+    activeRole: activeMailbox?.role ?? null,
     folders: flattenMailboxTree(workspace?.mailboxes ?? []).map(({ depth, mailbox }) => ({
       canManage: mailbox.role === "custom" && mailbox.rights.mayRename,
       color: mailbox.color,

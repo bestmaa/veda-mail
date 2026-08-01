@@ -24,8 +24,10 @@ import { StalwartMailboxManager } from "@/infrastructure/providers/stalwart-jmap
 import { StalwartDraftStore } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.store";
 import { DraftHasAttachmentsError } from "@/domain/mail/draft-errors";
 import type { LabelCleanupInput } from "@/domain/mail/label";
+import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { cleanupStalwartLabel } from "@/infrastructure/providers/stalwart-jmap/stalwart-label-cleanup";
+import { emptyStalwartMailbox } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox-empty";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
@@ -54,6 +56,15 @@ export class StalwartMailGateway implements MailGateway {
       this.reader,
       input,
       `${this.config.baseUrl}\0${this.config.username}\0${this.config.secret}`,
+    );
+  }
+
+  public emptyMailbox(input: MailboxEmptyInput, cursorSecret: string) {
+    return emptyStalwartMailbox(
+      this.client,
+      this.reader,
+      input,
+      cursorSecret,
     );
   }
 

@@ -61,9 +61,10 @@ export interface JmapMailbox {
   readonly id: string;
   readonly myRights?: {
     readonly mayCreateChild: boolean;
-      readonly mayDelete: boolean;
-      readonly mayRename: boolean;
-      readonly maySetKeywords?: boolean | undefined;
+    readonly mayDelete: boolean;
+    readonly mayRemoveItems?: boolean | undefined;
+    readonly mayRename: boolean;
+    readonly maySetKeywords?: boolean | undefined;
   } | undefined;
   readonly name: string;
   readonly parentId?: string | null | undefined;

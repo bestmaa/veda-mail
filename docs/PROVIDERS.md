@@ -18,6 +18,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Bounded bulk actions and permanent delete    | Yes             | Yes                  |
+| Resumable Empty Spam/Trash snapshot           | Yes             | Yes, UIDPLUS required |
 | Profile/password/provider 2FA management      | Yes             | No                   |
 | Admin user list/detail/create                 | Yes, optional   | Unsupported          |
 | Manual provider-backed drafts                 | Yes             | Unsupported          |
@@ -66,6 +67,15 @@ move to the provider mailbox mapped to the `spam` role. Permanent delete is
 shown only in Spam or Trash and requires an explicit confirmation. No provider
 profile, Stalwart setting, schema migration, or additional network port is
 required.
+
+Empty Spam/Trash uses a distinct prepare-first operation and removes at most
+100 messages per provider call. JMAP records the confirmation query state and
+aborts if `Email/queryChanges` reports a later addition, even when that message
+has an older received date. Standard IMAP captures `UIDNEXT - 1`, validates
+`UIDVALIDITY` and optional OBJECTID on every resume, scans only bounded UID
+windows, and requires UIDPLUS targeted expunge. A server without UIDPLUS can
+still use ordinary Trash moves, but Veda Mail will fail closed instead of
+offering unsafe whole-mailbox expunge semantics.
 
 Both adapters also receive the same server-canonicalized content contract:
 required readable `body` plus optional safe `htmlBody`. When rich content is

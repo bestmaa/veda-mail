@@ -83,6 +83,7 @@ export const mapImapMailbox = (mailbox: ListResponse): Mailbox => {
     rights: {
       mayCreateChild: !mailbox.flags.has("\\Noinferiors"),
       mayDelete: role === "custom",
+      mayRemoveItems: true,
       mayRename: role === "custom",
     },
     sortOrder: 0,

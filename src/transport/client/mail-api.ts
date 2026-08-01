@@ -9,6 +9,7 @@ import type {
   SendReceipt,
 } from "@/domain/mail/mail";
 import type { MailboxColor } from "@/domain/mail/mailbox";
+import type { MailboxEmptyUpdate } from "@/domain/mail/mailbox-empty";
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import type {
   DraftId,
@@ -112,6 +113,14 @@ export const mailApi = {
       body: JSON.stringify({ mailboxId }),
       headers: mailSessionScopeHeaders(sessionScope),
       method: "DELETE",
+    });
+  },
+
+  emptyMailbox(mailboxId: MailboxId, sessionScope: string) {
+    return fetchData<MailboxEmptyUpdate>("/api/v1/mail/mailboxes/empty", {
+      body: JSON.stringify({ mailboxId }),
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "POST",
     });
   },
 

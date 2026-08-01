@@ -9,6 +9,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Dedicated Spam and Trash lifecycle UX with provider-neutral retention hints,
+  role-aware bulk and reader actions, rights-aware irreversible confirmations,
+  and resumable Empty Spam/Trash operations. Cleanup state is encrypted and
+  server-owned; JMAP query-state snapshots abort on post-confirmation additions,
+  while IMAP binds an initial UID ceiling to UIDVALIDITY/OBJECTID and requires
+  exact UIDPLUS expunge, so later arrivals and unrelated deleted messages remain
+  untouched
 - Provider-portable account labels with encrypted owner-isolated catalogs,
   stable opaque JMAP keyword/IMAP user-flag mappings, create/rename/recolor UI,
   single and bulk apply/remove controls, capability/right/capacity checks,

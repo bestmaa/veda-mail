@@ -215,11 +215,10 @@ export const useMailDataModel = () => {
       clearMessage();
       setIsReaderLoading(false);
     }, [clearMessage]),
-    error,
+    error, hasActiveSearch: Boolean(appliedSearch),
     handleSessionFailure,
-    isLoading,
-    isLoadingMore: pagination.isLoadingMore,
-    isReaderLoading,
+    isLoading, isLoadingMore: pagination.isLoadingMore,
+    isReaderLoading, isReaderMutating: mutations.isBusy,
     onRefresh,
     onLoadMore: pagination.onLoadMore,
     onSearchClear: useCallback(() => {
@@ -232,10 +231,11 @@ export const useMailDataModel = () => {
       [],
     ),
     onSearchSubmit,
-    readerError,
-    loadMoreError: pagination.loadMoreError,
+    readerError, loadMoreError: pagination.loadMoreError,
     refresh,
     remove: mutations.remove,
+    destroy: mutations.destroy,
+    restore: mutations.restore,
     searchValue,
     setLabel: mutations.setLabel,
     sessionScope,

@@ -1,6 +1,7 @@
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { DraftSaveInput } from "@/domain/mail/draft";
 import type { LabelCleanupInput } from "@/domain/mail/label";
+import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type {
   AttachmentDownloadInput,
   Mailbox,
@@ -47,6 +48,10 @@ export class MailApplicationService {
 
   public cleanupLabel(input: LabelCleanupInput) {
     return this.gateway.cleanupLabel(input);
+  }
+
+  public emptyMailbox(input: MailboxEmptyInput, cursorSecret: string) {
+    return this.gateway.emptyMailbox(input, cursorSecret);
   }
 
   public getAccount() {

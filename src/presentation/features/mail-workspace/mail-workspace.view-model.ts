@@ -10,7 +10,9 @@ import type { BulkActionsViewModel } from "@/presentation/features/mail-workspac
 import type { MailboxManagementViewModel } from "@/presentation/features/mail-workspace/mailbox-management.view-model";
 import type { LabelManagementViewModel } from "@/presentation/features/mail-workspace/label-management.view-model";
 import type { MailLabel } from "@/domain/mail/label";
+import type { MailboxRole } from "@/domain/mail/mail";
 import type { FolderViewModel } from "@/presentation/features/mail-workspace/folder.view-model";
+import type { MailboxLifecycleViewModel } from "@/presentation/features/mail-workspace/mailbox-lifecycle.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -81,7 +83,6 @@ export interface ReaderViewModel {
   readonly subject: string;
   readonly to: string;
 }
-
 export interface ComposerViewModel {
   readonly attachmentCapabilityUnavailable: boolean;
   readonly attachments: readonly ComposerAttachmentViewModel[];
@@ -132,13 +133,11 @@ export interface ComposerViewModel {
   readonly toInput: ChangeEventHandler<HTMLInputElement>;
   readonly title: string;
 }
-
 export interface ComposerConfirmationViewModel {
   readonly isOpen: boolean;
   readonly onCancel: () => void;
   readonly onConfirm: () => void;
 }
-
 export interface ComposerBodyViewModel {
   readonly cancelPlainMode: () => void;
   readonly confirmPlainMode: () => void;
@@ -210,16 +209,14 @@ export interface MailWorkspaceViewProps {
     readonly name: string;
     readonly provider: string;
   };
-  readonly branding: BrandingViewModel;
-  readonly activeFolder: string;
-  readonly bulkActions: BulkActionsViewModel;
-  readonly composer: ComposerViewModel;
-  readonly error: string | null;
-  readonly folders: readonly FolderViewModel[];
-  readonly isComposerReady: boolean;
+  readonly branding: BrandingViewModel; readonly canPermanentlyDelete: boolean;
+  readonly activeFolder: string; readonly activeRole: MailboxRole | null;
+  readonly bulkActions: BulkActionsViewModel; readonly composer: ComposerViewModel;
+  readonly error: string | null; readonly folders: readonly FolderViewModel[];
+  readonly isComposerReady: boolean; readonly isReaderMutating: boolean;
   readonly isLoading: boolean; readonly isLoadingMore: boolean;
   readonly mailboxManagement: MailboxManagementViewModel; readonly labelManagement: LabelManagementViewModel;
-  readonly loadMoreError: string | null;
+  readonly mailboxLifecycle: MailboxLifecycleViewModel; readonly loadMoreError: string | null;
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: {
     readonly isOpen: boolean;
@@ -235,12 +232,15 @@ export interface MailWorkspaceViewProps {
   readonly onLoadMore: () => void;
   readonly onReply: () => void;
   readonly onReplyAll: () => void;
+  readonly onRequestReaderDestroy: () => void;
+  readonly onRestore: () => void;
   readonly onSearchClear: () => void;
   readonly onSearchSubmit: FormEventHandler<HTMLFormElement>;
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly deliveryNotice: DeliveryNoticeViewModel | null;
   readonly reader: ReaderViewModel | null;
+  readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
   readonly searchInput: ChangeEventHandler<HTMLInputElement>;
   readonly searchValue: string;
   readonly session: MemberSessionViewModel;

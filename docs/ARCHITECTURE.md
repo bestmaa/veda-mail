@@ -407,6 +407,23 @@ against a stale check. It is guarded by an inert-background, focus-managed
 alert dialog. Cancellation performs no
 provider request; confirmation is irreversible.
 
+`POST /api/v1/mail/mailboxes/empty` is a separate strict 8 KiB, same-origin,
+session-scoped operation for Spam and Trash only. The first confirmed call is
+prepare-only: it durably stores a provider snapshot cursor in the encrypted
+owner catalog before any deletion. Later calls claim one expiring single-writer
+lease and remove at most 100 provider targets. Only prepared operations are
+exposed for automatic resume, and a preparation failure or process loss requires
+fresh confirmation rather than silently widening the snapshot.
+
+The JMAP adapter binds the cursor to account, mailbox, cutoff, and query state.
+It checks `Email/queryChanges` before and after every state-conditioned destroy;
+any post-confirmation addition or unbounded change history expires the snapshot.
+The IMAP adapter binds the cursor to the canonical mailbox, `UIDVALIDITY`,
+optional OBJECTID, and the confirmation-time `UIDNEXT - 1`. It walks bounded
+4,096-UID windows, requires UIDPLUS exact expunge, and never issues plain
+EXPUNGE. Provider cursors are HMAC-authenticated with an installation-derived,
+owner-scoped key and never enter the browser or workspace response.
+
 ## Custom mailbox administration
 
 `POST`, `PATCH`, and `DELETE /api/v1/mail/mailboxes` accept strict 16 KiB JSON

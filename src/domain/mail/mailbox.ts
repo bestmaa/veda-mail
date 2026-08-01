@@ -26,6 +26,7 @@ export type MailboxRole =
 export interface MailboxRights {
   readonly mayCreateChild: boolean;
   readonly mayDelete: boolean;
+  readonly mayRemoveItems?: boolean;
   readonly mayRename: boolean;
   readonly maySetKeywords?: boolean;
 }

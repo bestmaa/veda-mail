@@ -36,7 +36,9 @@ const bulk = (overrides: Partial<BulkActionsViewModel> = {}) => ({
   onToggleAllLoaded: vi.fn(),
   onTrash: vi.fn(),
   onUnstar: vi.fn(),
+  restoreLabel: "Restore selected messages from Trash to Inbox",
   selectedCount: 2,
+  spamLabel: "Move selected messages to Spam",
   status: "",
   ...overrides,
 });
@@ -53,9 +55,35 @@ describe("message list bulk action toolbar", () => {
     expect(html).toContain('aria-label="Mark selected messages as unread"');
     expect(html).toContain('aria-label="Star selected messages"');
     expect(html).toContain('aria-label="Archive selected messages"');
-    expect(html).toContain('aria-label="Report selected messages as spam"');
+    expect(html).toContain('aria-label="Move selected messages to Spam"');
     expect(html).toContain('aria-label="Move selected messages"');
     expect(html).toContain("2 selected");
+  });
+
+  it("uses dedicated Not spam and Trash restore labels", () => {
+    const spam = renderToStaticMarkup(createElement(BulkActionsToolbarView, {
+      bulk: bulk({
+        canArchive: false,
+        canRestore: true,
+        canSpam: false,
+        canTrash: false,
+        restoreLabel: "Mark selected messages as not spam",
+      }),
+    }));
+    const trash = renderToStaticMarkup(createElement(BulkActionsToolbarView, {
+      bulk: bulk({
+        canArchive: false,
+        canRestore: true,
+        canSpam: false,
+        canTrash: false,
+      }),
+    }));
+
+    expect(spam).toContain('aria-label="Mark selected messages as not spam"');
+    expect(spam).not.toContain("Move selected messages to Spam");
+    expect(trash).toContain(
+      'aria-label="Restore selected messages from Trash to Inbox"',
+    );
   });
 
   it("locks every mutation control while a batch is in flight", () => {

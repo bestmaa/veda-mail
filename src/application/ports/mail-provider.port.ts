@@ -25,6 +25,10 @@ import type {
   LabelCleanupResult,
 } from "@/domain/mail/label";
 import type {
+  MailboxEmptyInput,
+  MailboxEmptyResult,
+} from "@/domain/mail/mailbox-empty";
+import type {
   MemberAuthenticationResult,
   MemberCredentials,
   ProviderConnection,
@@ -41,6 +45,10 @@ import type { MailboxId, MessageId, ProviderDraftId } from "@/domain/shared/bran
 export interface MailGateway {
   changePassword(input: MemberPasswordChange): Promise<void>;
   cleanupLabel(input: LabelCleanupInput): Promise<LabelCleanupResult>;
+  emptyMailbox(
+    input: MailboxEmptyInput,
+    cursorSecret: string,
+  ): Promise<MailboxEmptyResult>;
   discardDraft(
     providerDraftId: ProviderDraftId,
     expectedRevision: string,
