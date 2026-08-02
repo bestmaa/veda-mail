@@ -147,6 +147,7 @@ try {
       NODE_ENV: "production",
       PORT: String(port),
       VEDA_MAIL_DATA_DIR: dataRoot,
+      VEDA_MAIL_JOB_KEY: Buffer.alloc(32, 11).toString("base64"),
       VEDA_MAIL_PUBLIC_URL: origin,
       VEDA_MAIL_SETUP_TOKEN: "production-security-smoke-token",
     },

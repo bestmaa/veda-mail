@@ -9,6 +9,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-independent scheduled send for both JMAP and IMAP/SMTP. Scheduling
+  first persists the exact provider-backed draft, then stores a bounded
+  canonical job and provider connection in an AES-256-GCM envelope under a
+  dedicated external key. The durable worker supports future UTC times,
+  cancel/reschedule, bounded retries, restart recovery, and review-only
+  ambiguous outcomes without automatically risking a duplicate delivery; the
+  accessible Scheduled manager exposes state and recovery guidance
 - Provider-independent reusable email templates with encrypted, owner-isolated
   local persistence and optimistic revision conflicts. The composer can create,
   update, delete, insert at the current selection, or explicitly replace only

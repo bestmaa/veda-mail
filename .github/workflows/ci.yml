@@ -34,6 +34,7 @@ jobs:
     timeout-minutes: 20
     env:
       VEDA_MAIL_SETUP_TOKEN: ci-only-token-not-used-in-production
+      VEDA_MAIL_JOB_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       VEDA_MAIL_DATA_DIR: /tmp/veda-mail-data
 
     steps:
@@ -79,6 +80,7 @@ jobs:
       VEDA_MAIL_ALLOWED_PROVIDER_HOSTS: mail.example.com
       VEDA_MAIL_PUBLIC_URL: https://webmail.example.com
       VEDA_MAIL_SETUP_TOKEN: ci-only-token-not-used-in-production
+      VEDA_MAIL_JOB_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       VEDA_MAIL_TEST_CLAMAV_PORT: "3310"
 
     steps:

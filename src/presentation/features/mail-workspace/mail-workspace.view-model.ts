@@ -16,6 +16,7 @@ import type { FolderViewModel } from "@/presentation/features/mail-workspace/fol
 import type { MailboxLifecycleViewModel } from "@/presentation/features/mail-workspace/mailbox-lifecycle.view-model";
 import type { MessageMoveViewModel } from "@/presentation/features/mail-workspace/message-move.view-model";
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
+import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@/presentation/features/mail-workspace/composer-schedule.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -132,6 +133,7 @@ export interface ComposerViewModel {
   readonly onToggleBcc: () => void;
   readonly onToggleCc: () => void;
   readonly recoveryPrompt: ComposerRecoveryPromptViewModel;
+  readonly schedule: ComposerScheduleViewModel;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
   readonly showBcc: boolean;
   readonly showCc: boolean;
@@ -191,14 +193,12 @@ export interface MemberSessionViewModel {
     readonly isPurging: boolean; readonly onRetryCleanup: () => void;
   };
 }
-
 interface DeliveryNoticeViewModelBase {
   readonly dismissError: string | null;
   readonly isDismissing: boolean;
   readonly onDismiss: () => void;
   readonly pendingCount: number;
 }
-
 export type DeliveryNoticeViewModel = DeliveryNoticeViewModelBase &
   (
     | {
@@ -208,7 +208,6 @@ export type DeliveryNoticeViewModel = DeliveryNoticeViewModelBase &
     | { readonly kind: "overflow" }
     | { readonly kind: "uncertain" }
   );
-
 export interface MailWorkspaceViewProps {
   readonly account: { readonly avatar: string; readonly email: string;
     readonly name: string; readonly provider: string };
@@ -244,6 +243,7 @@ export interface MailWorkspaceViewProps {
   readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
   readonly searchInput: ChangeEventHandler<HTMLInputElement>;
   readonly searchValue: string;
+  readonly scheduled: ScheduledSendManagerViewModel;
   readonly session: MemberSessionViewModel;
   readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean;
 }

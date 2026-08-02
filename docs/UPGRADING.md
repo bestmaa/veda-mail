@@ -13,6 +13,12 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+Scheduled send adds the required external `VEDA_MAIL_JOB_KEY` deployment secret
+and `/data/scheduled-jobs.json`. Generate the key with `openssl rand -base64 32`
+before starting the new Compose definition, store it outside `/data`, and back
+up both independently. Older releases ignore the queue file. Do not roll back
+while jobs remain, because the old process cannot execute or manage them.
+
 Download all now exchanges the mailbox-session header for a 30-second,
 single-use archive ticket through POST before starting the native GET. No
 environment variable, Stalwart setting, provider migration, or `/data` change
@@ -250,7 +256,9 @@ Do not run old and new versions concurrently against the same `/data` volume.
 ## Session impact
 
 Deployments and restarts sign out members because provider credentials are
-kept only in process memory. Warn users before planned maintenance.
+normally kept only in process memory. Encrypted scheduled jobs continue when
+the exact `VEDA_MAIL_JOB_KEY` is preserved. Warn users before maintenance and
+check the queue for review-only interrupted sends after an ungraceful stop.
 
 ## Development verification
 

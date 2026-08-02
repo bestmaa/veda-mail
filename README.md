@@ -43,6 +43,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   identity, with explicit caret-aware Insert and confirmed subject/body Replace;
   recipients, attachments, reply context, draft identity, and managed signatures
   are never stored in a template
+- Provider-independent scheduled send backed by an encrypted durable queue,
+  provider-saved drafts, absolute UTC times, reschedule/cancel controls,
+  bounded retry/dead-letter handling, and duplicate-safe uncertain recovery
 - Stalwart JMAP provider drafts with debounced autosave, visible recovery state,
   Drafts-list editing, exact revision conflicts, explicit discard, and
   save-first send; incomplete, attachment-bearing, or unsupported-header/MIME
@@ -95,7 +98,10 @@ IMAP/SMTP mail server.
 git clone https://github.com/bestmaa/veda-mail.git
 cd veda-mail
 cp .env.example .env
+# Run the first command twice and keep each output separate.
 openssl rand -hex 32
+openssl rand -hex 32
+openssl rand -base64 32
 ```
 
 If OpenSSL is unavailable, generate it with Docker:
@@ -103,14 +109,18 @@ If OpenSSL is unavailable, generate it with Docker:
 ```bash
 docker run --rm node:24-alpine node -e \
   "console.log(require('crypto').randomBytes(32).toString('hex'))"
+docker run --rm node:24-alpine node -e \
+  "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-In `.env`, set the generated `VEDA_MAIL_SETUP_TOKEN`, every provider hostname,
-and the public Veda Mail URL:
+In `.env`, set the two different hex outputs as the setup and recovery tokens,
+the base64 output as the scheduled-job key, every provider hostname, and the
+public Veda Mail URL:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
+VEDA_MAIL_JOB_KEY=your-base64-encoded-32-byte-key
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 ```
@@ -241,9 +251,11 @@ backup codes are stored only as salted digests. The ledger contains safe
 results and keyed fingerprints, never initial mailbox passwords or the
 Stalwart management key. `/data` does not contain mailbox messages.
 
-Member provider credentials are process-memory only. A restart signs members
-out. Run one replica unless you add a shared encrypted session repository and
-distributed rate limiter plus transactional signature and template stores.
+Member provider credentials are process-memory only except for the minimum
+encrypted copy in an explicitly scheduled job. A restart signs members out but
+the background queue continues. Run one replica unless you add a shared
+encrypted session repository, rate limiter, and transactional metadata/job
+stores.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

@@ -611,6 +611,31 @@ creation removes that managed signature from the stored rich snapshot. The
 complete result crosses the normal draft/send canonicalization boundary again;
 no Stalwart setting, provider extension, mailbox migration, or new port exists.
 
+## Durable scheduled-send boundary
+
+`POST /api/v1/mail/scheduled` accepts only an exact-revision provider-backed
+draft after the standard mailbox-scope, origin, recipient, header, rich-content,
+and draft-integrity checks. The browser cannot submit a provider configuration,
+credential, owner identity, attachment byte, or arbitrary job state. JMAP and
+IMAP/SMTP therefore share one queue contract while retaining their reviewed
+saved-draft send paths.
+
+The queue persists `/data/scheduled-jobs.json` with mode 0600, fsync, and atomic
+replacement. Each owner book contains the canonical send request, provider
+connection, absolute UTC time, bounded retry state, and lease, all inside an
+AES-256-GCM envelope. Owner indexing and encryption use distinct HKDF contexts
+from the external `VEDA_MAIL_JOB_KEY`; a keyed file verifier detects an incorrect
+restore key. No scheduled content or provider secret appears outside ciphertext.
+
+The Node instrumentation worker scans at a bounded interval and durably changes
+one due job to `sending` before provider I/O. Accepted delivery removes it;
+definite or exhausted failure remains visible; transient failure uses bounded
+backoff; ambiguous delivery and interrupted leases become review-only
+`uncertain`. This at-most-once recovery rule avoids duplicate SMTP delivery when
+portable exact-once proof is impossible. The encrypted credential exception is
+limited to explicitly scheduled jobs and deleted with the job. One application
+replica remains the supported boundary.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never
@@ -865,12 +890,14 @@ npm run check:lines
   a 30-minute TTL; a one-minute background sweep expires them without another
   request, and production startup removes bounded orphan quarantine
   directories. They are not mailbox storage or backup content.
-- Member connections and gateway credentials are memory-only for 12 hours.
+- Member connections and ordinary gateway credentials are memory-only for 12
+  hours. Explicit scheduled jobs carry a bounded encrypted credential copy as
+  described above.
 - Restarting the process intentionally signs every member out.
 - A multi-replica deployment needs a shared encrypted session repository and
   coordinated rate limiter, plus transactional replacements for the
-  process-serialized signature and template files, behind the existing server
-  boundary.
+  process-serialized signature, template, and scheduled-job files, behind the
+  existing server boundary.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

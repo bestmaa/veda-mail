@@ -27,16 +27,22 @@ cd veda-mail
 cp .env.example .env
 ```
 
-Generate the one-time installation claim token:
+Generate separate installation, recovery, and scheduled-job secrets. Keep all
+three outputs distinct:
 
 ```bash
 openssl rand -hex 32
+openssl rand -hex 32
+openssl rand -base64 32
 ```
 
 If OpenSSL is unavailable, use:
 
 ```bash
 npm run setup:token
+npm run setup:token
+docker run --rm node:24-alpine node -e \
+  "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 Put the value in `.env`:
@@ -45,6 +51,7 @@ Put the value in `.env`:
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_DATA_DIR=/data
+VEDA_MAIL_JOB_KEY=your-base64-encoded-32-byte-key
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
@@ -57,7 +64,10 @@ provider hostnames only, without schemes, paths, or ports.
 When the optional management key is set, its management origin is also
 required and must be the exact HTTPS origin of the configured Stalwart URL.
 `VEDA_MAIL_PUBLIC_URL` is the public Veda Mail origin, not the provider URL,
-and must use HTTPS without a trailing slash. Do not quote values or commit
+and must use HTTPS without a trailing slash.
+`VEDA_MAIL_JOB_KEY` is a separate 32-byte encryption root for scheduled jobs;
+store it in the deployment secret manager, never in `/data`, and preserve it
+across restarts and restores. Do not quote values or commit
 `.env`.
 
 Start the service:

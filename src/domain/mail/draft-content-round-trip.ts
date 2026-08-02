@@ -45,3 +45,22 @@ export const hasCanonicalDraftContent = (content: DraftContent): boolean => {
   }
   return true;
 };
+
+const comparableDraftContent = (content: DraftContent) => ({
+  bcc: content.bcc,
+  body: content.body,
+  cc: content.cc,
+  htmlBody: content.htmlBody ?? null,
+  inReplyTo: content.inReplyTo ?? null,
+  subject: content.subject,
+  to: content.to,
+});
+
+export const sameCanonicalDraftContent = (
+  left: DraftContent,
+  right: DraftContent,
+): boolean =>
+  hasCanonicalDraftContent(left) &&
+  hasCanonicalDraftContent(right) &&
+  JSON.stringify(comparableDraftContent(left)) ===
+    JSON.stringify(comparableDraftContent(right));

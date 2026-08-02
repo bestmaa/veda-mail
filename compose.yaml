@@ -14,6 +14,7 @@ services:
       VEDA_MAIL_TRUST_PROXY_HEADERS: ${VEDA_MAIL_TRUST_PROXY_HEADERS:-false}
       VEDA_MAIL_PUBLIC_URL: ${VEDA_MAIL_PUBLIC_URL:-http://localhost:3000}
       VEDA_MAIL_DATA_DIR: /data
+      VEDA_MAIL_JOB_KEY: ${VEDA_MAIL_JOB_KEY:?Set a base64-encoded 32-byte scheduled-job key}
       VEDA_MAIL_CLAMAV_HOST: ${VEDA_MAIL_CLAMAV_HOST:-clamav}
       VEDA_MAIL_CLAMAV_PORT: ${VEDA_MAIL_CLAMAV_PORT:-3310}
     ports:

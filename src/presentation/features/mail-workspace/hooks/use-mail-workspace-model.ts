@@ -27,6 +27,7 @@ import { useWorkspacePrimaryActions } from "@/presentation/features/mail-workspa
 import { createBrandingViewModel, type BrandingInput } from "@/presentation/shared/branding/branding.view-model";
 import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-preferences";
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
+import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
   readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
@@ -54,8 +55,7 @@ export const useMailWorkspaceModel = ({
   const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
-  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure);
-  const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure);
+  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
   const isComposerReady =
     Boolean(sessionScope) &&
@@ -73,7 +73,7 @@ export const useMailWorkspaceModel = ({
     mail.handleSessionFailure,
     draftsEnabled,
     mail.refresh,
-    recoveryOwner, emailTemplates,
+    recoveryOwner, emailTemplates, scheduled.isAvailable,
   );
   const session = useMemberSessionModel({
     canSignOut,
@@ -236,7 +236,7 @@ export const useMailWorkspaceModel = ({
     reader,
     readerDestroyConfirmation,
     searchInput: mail.onSearchInput,
-    searchValue: mail.searchValue,
+    searchValue: mail.searchValue, scheduled,
     session: {
       canSignOut: session.canSignOut,
       confirmation: session.confirmation,

@@ -14,12 +14,12 @@ import { useComposerFields, type ComposerTitle } from "@/presentation/features/m
 import { useComposerFocusTrap, useComposerReturnFocus } from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
 import { useComposerRecovery } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery";
 import { useComposerRecoveryFlow } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-flow";
+import { useComposerSchedule } from "@/presentation/features/mail-workspace/hooks/use-composer-schedule";
 import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
 import { useComposerSignatures } from "@/presentation/features/mail-workspace/hooks/use-composer-signatures";
 import { useComposerTemplates } from "@/presentation/features/mail-workspace/hooks/use-composer-templates";
 import type { EmailTemplatesModel } from "@/presentation/features/mail-workspace/hooks/use-email-templates-model";
 import { ignoreMailSessionFailure, type MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
-
 const hasDefaultSignature = (
   book: EmailSignatureBook | null,
   context: "newMessageId" | "replyForwardId",
@@ -42,6 +42,7 @@ export const useComposerModel = (
   onDraftChanged: () => void = () => undefined,
   recoveryOwner: ComposerRecoveryOwner | null = null,
   emailTemplates: EmailTemplatesModel = emptyTemplates,
+  scheduledSendEnabled = true,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openAccountKey, setOpenAccountKey] = useState("");
@@ -118,7 +119,6 @@ export const useComposerModel = (
   useLayoutEffect(() => {
     markProgrammaticRef.current = draft.markProgrammaticChange;
   }, [draft.markProgrammaticChange]);
-
   const returnFocus = useComposerReturnFocus();
   const resetEditor = useCallback(() => {
     fields.reset();
@@ -135,12 +135,26 @@ export const useComposerModel = (
     openAccountKey, resetEditor, returnFocus, setConfirmClose,
     setConfirmDiscard, setError, setIsOpen,
   });
+  const onScheduled = useCallback(async () => {
+    await draft.clearRecovery().catch(() => undefined);
+    draft.markSent();
+    onDraftChanged();
+    setIsOpen(false);
+    resetEditor();
+    attachments.discard(false);
+    returnFocus.restore();
+  }, [attachments, draft, onDraftChanged, resetEditor, returnFocus]);
+  const schedule = useComposerSchedule({
+    attachments, body, draft, enabled: scheduledSendEnabled, fields, handleSessionFailure,
+    isAccountCurrent: (key) => accountKeyRef.current === key,
+    onScheduled, openAccountKey,
+  });
   const recoveryFlow = useComposerRecoveryFlow({
     accountKey, attachments, autosaveEnabled: draftsEnabled, draft, enabled: Boolean(recoveryOwner),
     hydration: recovery.hydration, isComposerReady, isOpen,
     journal: recovery.journal, openAccountKey,
-    paused: close.isClosing || isSending || confirmClose || confirmDiscard ||
-      templates.isApplying,
+    paused: close.isClosing || isSending || schedule.isScheduling ||
+      schedule.isOpen || confirmClose || confirmDiscard || templates.isApplying,
     resetEditor, returnFocus,
     setConfirmClose, setConfirmDiscard, setError, setIsOpen, setOpenAccountKey,
   });
@@ -186,7 +200,6 @@ export const useComposerModel = (
     if (!beginOpen("Edit draft")) return;
     void draft.load(id.providerDraft(providerDraftId));
   }, [beginOpen, draft]);
-
   const isOpenForAccount = isOpen && openAccountKey === accountKey;
   useEffect(() => {
     if (!isOpen || openAccountKey === accountKey) return;
@@ -196,8 +209,8 @@ export const useComposerModel = (
     attachments.discard(true);
     resetEditor();
   }, [accountKey, attachments, draft, isOpen, openAccountKey, resetEditor]);
-  const isBusy = close.isClosing || isSending || draft.isDiscarding ||
-    draft.isLoading || templates.isApplying;
+  const isBusy = close.isClosing || isSending || schedule.isScheduling ||
+    draft.isDiscarding || draft.isLoading || templates.isApplying;
   useComposerFocusTrap(isOpenForAccount, isBusy, close.requestClose);
   const recoveryCheckpoint = { composeId: attachments.draftId,
     generation: draft.contentGeneration, snapshot: recovery.hydration.snapshot };
@@ -231,6 +244,6 @@ export const useComposerModel = (
     requiresSignOutConfirmation:
       draft.hasUnsavedChanges || recoveryFlow.hasPersistedRecovery,
     removeAttachment: attachments.remove, retryAttachment: attachments.retry,
-    signatures, templates,
+    schedule, signatures, templates,
   };
 };

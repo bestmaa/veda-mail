@@ -337,6 +337,15 @@ unsupported predicates are reported rather than silently ignored.
 Acceptance: restart, duplicate-delivery, daylight-saving, and provider-outage
 tests prove scheduled work is not lost or executed twice.
 
+The provider-independent scheduled-send implementation is complete locally:
+exact-revision provider drafts, encrypted credential/content envelopes under an
+external deployment key, atomic leases, six-attempt bounded backoff,
+dead-letter and review-only uncertain states, UTC/IANA-time-zone UI,
+cancel/reschedule management, restart recovery, and security/component/route
+tests cover both provider paths through their shared saved-draft send contract.
+The checkbox remains open until the immutable image is published, deployed, and
+live JMAP plus IMAP/SMTP schedule/cancel/restart evidence is recorded.
+
 ## M7 — Notifications, offline resilience, and accessibility
 
 - [ ] New-mail refresh using JMAP events/push where available and bounded polling

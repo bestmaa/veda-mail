@@ -239,5 +239,6 @@ export const useComposerDraft = ({
       ? persistence.recover
       : requestedId && !saved ? () => load(requestedId) : persistence.save,
     save: persistence.save,
+    saveDetail: persistence.saveDetail,
   };
 };

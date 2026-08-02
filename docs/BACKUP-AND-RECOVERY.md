@@ -25,10 +25,19 @@ the supplied Compose deployment.
   atomic installation record
 - Bounded `mail-user-provisioning-idempotency.json` safe results and keyed
   intent fingerprints; it contains no initial mailbox password
+- Encrypted scheduled-message content, provider-draft references, retry state,
+  and the minimum provider credential required by the background worker in
+  `scheduled-jobs.json`
 
-It does not contain mailbox messages or durable copies of member passwords.
-Messages remain on the configured mail server. Active member sessions are
-process-memory only and disappear on restart.
+It does not contain mailbox messages. Messages remain on the configured mail
+server. Active member sessions are process-memory only and disappear on
+restart. The deliberate exception for provider credentials is an encrypted,
+bounded scheduled job; it is deleted after confirmed delivery or cancellation.
+
+`VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
+deployment secret manager. A `/data` backup without that exact key cannot
+recover scheduled jobs. Never rotate it while jobs remain: empty the queue,
+stop the service, rotate the key, and then restart.
 
 Interrupted-compose recovery is browser-local IndexedDB state bound to one
 member session. It is not stored in `/data`, is not included in server backups,

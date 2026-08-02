@@ -45,14 +45,19 @@ package is public.
 git clone https://github.com/bestmaa/veda-mail.git
 cd veda-mail
 cp .env.example .env
+# Keep all three outputs separate.
 openssl rand -hex 32
+openssl rand -hex 32
+openssl rand -base64 32
 ```
 
-Set the generated token and deployment-specific production values in `.env`:
+Set the first two hex outputs as different setup/recovery tokens, the base64
+output as the scheduled-job key, and the deployment-specific values in `.env`:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
+VEDA_MAIL_JOB_KEY=the-base64-output-from-openssl
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
@@ -151,6 +156,7 @@ Do not expose the container directly to the internet over HTTP.
 VEDA_MAIL_SETUP_TOKEN=<openssl rand -hex 32>
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=<a separate openssl rand -hex 32 value>
 VEDA_MAIL_DATA_DIR=/data
+VEDA_MAIL_JOB_KEY=<a separate base64-encoded 32-byte key>
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=<optional dedicated Stalwart API key>
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
