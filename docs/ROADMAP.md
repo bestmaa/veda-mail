@@ -154,8 +154,8 @@ mailbox evidence above plus production scanner health are recorded.
 
 ## M3 — Draft-safe, rich composing
 
-- [x] Provider-backed create, update, list, open, and discard drafts, including
-  provider-durable attachment autosave and saved-draft attachment sending
+- [x] Provider-backed create, update, list, open, and discard drafts
+- [ ] Provider-durable attachment autosave and saved-draft attachment sending
 - [x] Debounced autosave with visible saving/saved/offline/error status
 - [x] Restore an interrupted compose session without duplicating a draft
 - [x] Safe rich-text editor v1: headings, emphasis, lists, isolated links,
@@ -189,6 +189,12 @@ send/discard protection. Uploads remain encrypted, session/compose-bound
 quarantine objects until a successful provider save consumes them; the returned
 provider attachment inventory then survives reload and can be retained or
 removed by opaque ID without exposing JMAP blob IDs or IMAP MIME locators.
+The attachment slice was merged as `3f2a421` and published as multi-platform
+image digest
+`sha256:242a80237308861ba848035aa834dc21f14404044054b83ff99638cd08f9e643`.
+Its production deployment and live health/critical-flow evidence remain open:
+both the Dokploy hostname `panel.wovvtec.site` and public mail hostname
+`mail.wovvtec.site` returned authoritative DNS `NXDOMAIN` on 2026-08-02.
 Completing this milestone still requires templates, delayed send, and the
 broader shortcut/accessibility audit listed above.
 
