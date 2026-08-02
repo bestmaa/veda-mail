@@ -194,6 +194,14 @@ and its arm64 manifest is
 both carry the exact merge revision and repository source labels. Live
 production schedule/undo evidence—and therefore the checkbox—remains blocked
 by the DNS condition below.
+The keyboard and assistive-technology slice is locally complete: encrypted
+opt-in preferences with backward migration, an accessible focus-trapped guide,
+search/compose/list/reader commands, editable/composer/modal suppression,
+rights-aware action reuse, `aria-keyshortcuts`, polite announcements, skip
+navigation, reader focus handoff/return, narrow-screen preference scrolling,
+and automated policy/component/browser accessibility coverage. Permanent delete
+has no global shortcut. Its checkbox remains open until an immutable release
+and live production keyboard plus screen-reader smoke evidence are recorded.
 Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
 vertical slices: create, update, Drafts-list/open, discard, save-first send,
   lost-response reconciliation, serialized autosave, visible state, durable

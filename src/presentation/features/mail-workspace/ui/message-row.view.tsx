@@ -140,6 +140,7 @@ export const MessageRowView = ({
     <button
       aria-label={message.openLabel}
       className="absolute inset-0 z-0 rounded-2xl"
+      data-message-id={message.id}
       onClick={message.onSelect}
       type="button"
     />

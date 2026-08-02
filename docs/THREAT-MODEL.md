@@ -923,6 +923,25 @@ operator monitoring.
   store and distributed lease are implemented.
 - Never advertise a durable feature while work exists only in process memory.
 
+## Keyboard shortcut and focus threats
+
+Single-key commands can otherwise mutate mail while a member is typing, let a
+background modal receive unintended actions, or bypass the affordance and
+confirmation policy of visible controls. Veda Mail therefore keeps shortcuts
+off for migrated and new accounts until the member opts in. The listener
+rejects editable descendants, rich composition, open modals, modifier keys,
+repeats, and already-consumed events. It invokes only the same rights-aware
+view-model actions as visible buttons; permanent deletion is deliberately not
+assigned a global key.
+
+The shortcut guide is reachable by a labelled button even while shortcuts are
+off. It traps focus and makes the inert application unavailable to assistive
+technology. Reader transitions focus a programmatic subject heading only after
+loading and return to the exact list trigger when possible. Tests cover editor
+suppression, modal suppression, focus containment/return, safe unavailable
+actions, preference migration, strict writes, live announcements, and automated
+serious/critical accessibility scans.
+
 ## Logging and observability
 
 Logs may contain opaque request, connection, provider, and error identifiers,

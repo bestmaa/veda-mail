@@ -19,7 +19,8 @@ const same = (
 ): boolean => left.density === right.density &&
   left.showPreview === right.showPreview && left.sort === right.sort &&
   left.confirmBeforeSend === right.confirmBeforeSend &&
-  left.undoSendSeconds === right.undoSendSeconds;
+  left.undoSendSeconds === right.undoSendSeconds &&
+  left.keyboardShortcuts === right.keyboardShortcuts;
 
 const savedAnnouncement = (preferences: MessageListPreferences): string =>
   `Mailbox preferences saved. ${
@@ -53,6 +54,7 @@ export const useMessageListPreferencesModel = (
     announcement,
     confirmBeforeSend: current.confirmBeforeSend,
     density: current.density,
+    keyboardShortcuts: current.keyboardShortcuts,
     dialog: {
       confirmBeforeSend: draft.confirmBeforeSend,
       density: draft.density,
@@ -60,12 +62,16 @@ export const useMessageListPreferencesModel = (
       isDirty: !same(current, draft),
       isOpen,
       isSaving,
+      keyboardShortcuts: draft.keyboardShortcuts,
       onClose,
       onConfirmBeforeSendChange: useCallback((confirmBeforeSend: boolean) => {
         setDraft((value) => ({ ...value, confirmBeforeSend }));
       }, []),
       onDensityChange: useCallback((density: MessageListDensity) => {
         setDraft((value) => ({ ...value, density }));
+      }, []),
+      onKeyboardShortcutsChange: useCallback((keyboardShortcuts: boolean) => {
+        setDraft((value) => ({ ...value, keyboardShortcuts }));
       }, []),
       onPreviewChange: useCallback((showPreview: boolean) => {
         setDraft((value) => ({ ...value, showPreview }));

@@ -1,4 +1,4 @@
-import { Menu, RefreshCw, Search, Settings, X } from "lucide-react";
+import { Keyboard, Menu, RefreshCw, Search, Settings, X } from "lucide-react";
 
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { BrandMarkView } from "@/presentation/shared/branding/ui/brand-mark.view";
@@ -7,6 +7,7 @@ type MailHeaderViewProps = Pick<
   MailWorkspaceViewProps,
   | "account"
   | "branding"
+  | "keyboardShortcuts"
   | "navigation"
   | "onRefresh"
   | "onSearchClear"
@@ -19,6 +20,7 @@ type MailHeaderViewProps = Pick<
 export const MailHeaderView = ({
   account,
   branding,
+  keyboardShortcuts,
   navigation,
   onRefresh,
   onSearchClear,
@@ -55,9 +57,11 @@ export const MailHeaderView = ({
       <Search aria-hidden className="shrink-0 text-slate-500" size={18} />
       <input
         aria-label="Search mail"
+        aria-keyshortcuts={keyboardShortcuts.enabled ? "/" : undefined}
         className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
         onChange={searchInput}
         placeholder="Search mail, people, or attachments"
+        data-mail-search
         type="search"
         value={searchValue}
       />
@@ -74,6 +78,17 @@ export const MailHeaderView = ({
     </form>
 
     <div className="flex items-center gap-1.5">
+      <button
+        aria-keyshortcuts={keyboardShortcuts.enabled ? "?" : undefined}
+        aria-label="Open keyboard shortcut guide"
+        className="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+        data-keyboard-shortcuts-trigger
+        onClick={keyboardShortcuts.onOpen}
+        title="Keyboard shortcuts"
+        type="button"
+      >
+        <Keyboard aria-hidden size={18} />
+      </button>
       <button
         aria-label="Refresh mail"
         className="grid size-10 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"

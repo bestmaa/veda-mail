@@ -24,7 +24,7 @@ const saveSendingPreferences = async (
   const response = await page.request.patch("/api/v1/mail/preferences", {
     data: {
       confirmBeforeSend, density: "comfortable", showPreview: true,
-      sort: "newest", undoSendSeconds,
+      keyboardShortcuts: false, sort: "newest", undoSendSeconds,
     },
     headers: { ...headers, origin: "http://127.0.0.1:3101" },
   });

@@ -873,6 +873,28 @@ content remain in a session/view/source-bound in-memory intent that is cleared
 on drop, cancel, navigation, or session change. External and stale drops cannot
 invoke the mutation path.
 
+## Keyboard command boundary
+
+Mailbox-wide single-key commands are opt-in through the same encrypted,
+account-isolated preference record as density and sending choices. Older
+three-field and pre-shortcut five-field plaintext shapes are accepted only
+inside the authenticated encrypted record, then projected in memory with
+shortcuts off. The strict HTTP write contract requires the complete current
+shape and rejects unknown or incorrectly typed fields.
+
+The browser listener normalizes only unmodified, non-repeated keys. It rejects
+events originating in an input, textarea, select, contenteditable descendant,
+textbox, or combobox, and suspends every command while the composer or any
+modal is open. Commands call the same capability-, rights-, session-, and
+confirmation-aware view-model actions as visible controls; they are not an
+alternate mutation API. Unavailable actions do nothing.
+
+The shortcut guide is a focus-trapped modal reachable without enabling the
+listener. Enabled visible controls expose `aria-keyshortcuts`, outcomes use a
+polite live region, opening a message moves focus to its subject after loading,
+and closing returns focus to the exact message trigger or the mailbox heading.
+A first-focus skip link bypasses global navigation without requiring shortcuts.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

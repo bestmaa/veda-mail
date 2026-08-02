@@ -36,6 +36,7 @@ const origin = "https://mail.example.com";
 const validPreferences = {
   confirmBeforeSend: true,
   density: "compact",
+  keyboardShortcuts: true,
   showPreview: false,
   sort: "oldest",
   undoSendSeconds: 10,
@@ -182,6 +183,7 @@ describe("message list preferences route", () => {
     [{ density: "compact", showPreview: true, sort: "sender" }, "unknown sort"],
     [{ ...validPreferences, undoSendSeconds: 15 }, "unsupported undo delay"],
     [{ ...validPreferences, confirmBeforeSend: "yes" }, "non-boolean confirmation"],
+    [{ ...validPreferences, keyboardShortcuts: "yes" }, "non-boolean shortcuts"],
     [{ ...validPreferences, mailboxId: "inbox-secret" }, "unknown key"],
     [null, "null body"],
     [[], "array body"],

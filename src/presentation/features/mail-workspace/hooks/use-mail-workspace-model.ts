@@ -28,6 +28,7 @@ import { createBrandingViewModel, type BrandingInput } from "@/presentation/shar
 import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-preferences";
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
+import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
   readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
@@ -177,22 +178,19 @@ export const useMailWorkspaceModel = ({
   );
   const accountName = settings.profileName ?? workspaceAccountName;
   const primaryActions = useWorkspacePrimaryActions({
-    accountEmail,
-    isComposerReady,
-    openCompose: composer.open,
-    openForward: composer.openForward,
-    openReply: composer.openReply,
+    accountEmail, isComposerReady, openCompose: composer.open,
+    openForward: composer.openForward, openReply: composer.openReply,
     openReplyAll: composer.openReplyAll,
     requestReaderMove: messageMove.requestReaderMove,
     selectedMessage: mail.selectedMessage,
   });
+  const keyboardShortcuts = useWorkspaceKeyboardShortcuts(
+    composer, isComposerReady, mail, mailList, messageListPreferences,
+    primaryActions, reader,
+  );
   return {
-    account: {
-      avatar: initials(accountName),
-      email: accountEmail,
-      name: accountName,
-      provider: providerLabel,
-    },
+    account: { avatar: initials(accountName), email: accountEmail,
+      name: accountName, provider: providerLabel },
     branding: brandingView, ...mailList, bulkActions,
     canPermanentlyDelete,
     composer: createComposerViewModel(composer),
@@ -203,6 +201,7 @@ export const useMailWorkspaceModel = ({
     isComposerReady,
     isLoading: mail.isLoading,
     isLoadingMore: mail.isLoadingMore,
+    keyboardShortcuts,
     isReaderMutating: mail.isReaderMutating || mail.bulk.isBusy,
     mailboxManagement, mailboxLifecycle, labelManagement,
     messageListPreferences,

@@ -9,6 +9,7 @@ import type {
 
 export interface MessageListPreferencesViewModel {
   readonly announcement: string;
+  readonly confirmBeforeSend: boolean;
   readonly density: MessageListDensity;
   readonly dialog: {
     readonly confirmBeforeSend: boolean;
@@ -17,9 +18,11 @@ export interface MessageListPreferencesViewModel {
     readonly isDirty: boolean;
     readonly isOpen: boolean;
     readonly isSaving: boolean;
+    readonly keyboardShortcuts: boolean;
     readonly onClose: () => void;
     readonly onConfirmBeforeSendChange: (enabled: boolean) => void;
     readonly onDensityChange: (density: MessageListDensity) => void;
+    readonly onKeyboardShortcutsChange: (enabled: boolean) => void;
     readonly onPreviewChange: (showPreview: boolean) => void;
     readonly onSortChange: (sort: MessageListSort) => void;
     readonly onSubmit: FormEventHandler<HTMLFormElement>;
@@ -28,7 +31,7 @@ export interface MessageListPreferencesViewModel {
     readonly sort: MessageListSort;
     readonly undoSendSeconds: UndoSendDelay;
   };
-  readonly confirmBeforeSend: boolean;
+  readonly keyboardShortcuts: boolean;
   readonly onOpen: () => void;
   readonly showPreview: boolean;
   readonly sort: MessageListSort;

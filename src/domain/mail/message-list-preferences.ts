@@ -16,6 +16,7 @@ export type UndoSendDelay = (typeof UNDO_SEND_DELAYS)[number];
 export interface MessageListPreferences {
   readonly confirmBeforeSend: boolean;
   readonly density: MessageListDensity;
+  readonly keyboardShortcuts: boolean;
   readonly showPreview: boolean;
   readonly sort: MessageListSort;
   readonly undoSendSeconds: UndoSendDelay;
@@ -29,6 +30,7 @@ export interface MessageListPreferencesOwner {
 export const DEFAULT_MESSAGE_LIST_PREFERENCES: MessageListPreferences = {
   confirmBeforeSend: false,
   density: "comfortable",
+  keyboardShortcuts: false,
   showPreview: true,
   sort: "newest",
   undoSendSeconds: 0,

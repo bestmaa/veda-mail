@@ -49,6 +49,10 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Account-private send confirmation and 5/10/20/30-second Undo Send. Undo
   atomically cancels only a pending encrypted job and restores the exact saved
   provider draft; it never claims to recall provider-accepted mail
+- Opt-in account-private mailbox shortcuts for search, compose, loaded-message
+  traversal, archive, star, read status, reply, reply all, and forward, with an
+  accessible guide, safe editor/modal suppression, focus handoff, skip link,
+  and screen-reader announcements
 - Stalwart JMAP provider drafts with debounced autosave, visible recovery state,
   Drafts-list editing, exact revision conflicts, explicit discard, and
   save-first send; incomplete, attachment-bearing, or unsupported-header/MIME

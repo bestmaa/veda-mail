@@ -7,8 +7,21 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Playwright regression batches use the stable Next.js webpack development
+  server after an upstream Turbopack aggregation panic terminated long CI runs
+  mid-download and left later composer requests permanently unavailable
+
 ### Added
 
+- Opt-in, encrypted per-account mailbox shortcuts with an accessible `?` guide,
+  search/compose navigation, loaded-message traversal, reader actions, and
+  `aria-keyshortcuts` discovery. Single-key commands are suppressed in every
+  editable surface, rich composer, modal, modified/repeated key event, and
+  unavailable action; reader/list focus handoff, live announcements, a skip
+  link, and bounded small-screen preference scrolling complete the keyboard
+  and assistive-technology slice
 - Account-private send confirmation and provider-independent Undo Send with
   configurable 5/10/20/30-second windows. Delayed sends first persist the exact
   provider draft and then enter the encrypted durable queue; the global
