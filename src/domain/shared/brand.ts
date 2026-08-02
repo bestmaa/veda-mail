@@ -15,6 +15,7 @@ export type MailboxId = Brand<string, "MailboxId">;
 export type MessageId = Brand<string, "MessageId">;
 export type ProviderId = Brand<string, "ProviderId">;
 export type SignatureId = Brand<string, "SignatureId">;
+export type TemplateId = Brand<string, "TemplateId">;
 export type ThreadId = Brand<string, "ThreadId">;
 
 export const id = {
@@ -29,5 +30,6 @@ export const id = {
   message: (value: string) => value as MessageId,
   provider: (value: string) => value as ProviderId,
   signature: (value: string) => value as SignatureId,
+  template: (value: string) => value as TemplateId,
   thread: (value: string) => value as ThreadId,
 };

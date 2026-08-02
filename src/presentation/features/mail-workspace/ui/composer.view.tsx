@@ -6,6 +6,7 @@ import { ComposerBodyView } from "@/presentation/features/mail-workspace/ui/comp
 import { ComposerDraftConfirmationsView } from "@/presentation/features/mail-workspace/ui/composer-draft-confirmations.view";
 import { ComposerFooterView } from "@/presentation/features/mail-workspace/ui/composer-footer.view";
 import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspace/ui/partial-delivery-notice.view";
+import { ComposerTemplateDialogsView } from "@/presentation/features/mail-workspace/ui/composer-template-dialogs.view";
 
 export const ComposerView = ({
   composer,
@@ -16,7 +17,8 @@ export const ComposerView = ({
 }) => {
   if (!composer.isOpen) return null;
   const confirmationOpen =
-    composer.closeConfirmation.isOpen || composer.discardConfirmation.isOpen;
+    composer.closeConfirmation.isOpen || composer.discardConfirmation.isOpen ||
+    composer.body.templates.dialog !== null;
   const editorReadOnly = !composer.draft.canEdit;
   return (
     <>
@@ -81,6 +83,7 @@ export const ComposerView = ({
             <ComposerFooterView composer={composer} />
           </form>
         </div>
+        <ComposerTemplateDialogsView templates={composer.body.templates} />
         <ComposerDraftConfirmationsView composer={composer} />
       </section>
     </>

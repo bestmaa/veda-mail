@@ -6,6 +6,7 @@ import type { MailWorkspaceViewProps } from "@/presentation/features/mail-worksp
 import { useComposerModel } from "@/presentation/features/mail-workspace/hooks/use-composer-model";
 import { useEmailSignatureSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-email-signature-settings-model";
 import { useEmailSignaturesModel } from "@/presentation/features/mail-workspace/hooks/use-email-signatures-model";
+import { useEmailTemplatesModel } from "@/presentation/features/mail-workspace/hooks/use-email-templates-model";
 import { useMailDataModel } from "@/presentation/features/mail-workspace/hooks/use-mail-data-model";
 import { useMemberSessionModel } from "@/presentation/features/mail-workspace/hooks/use-member-session-model";
 import { useMobileNavigationModel } from "@/presentation/features/mail-workspace/hooks/use-mobile-navigation-model";
@@ -54,6 +55,7 @@ export const useMailWorkspaceModel = ({
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure);
+  const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
   const isComposerReady =
     Boolean(sessionScope) &&
@@ -71,7 +73,7 @@ export const useMailWorkspaceModel = ({
     mail.handleSessionFailure,
     draftsEnabled,
     mail.refresh,
-    recoveryOwner,
+    recoveryOwner, emailTemplates,
   );
   const session = useMemberSessionModel({
     canSignOut,
@@ -241,9 +243,7 @@ export const useMailWorkspaceModel = ({
       isSigningOut: session.isSigningOut,
       onSignOut: session.onSignOut,
       privacyCurtain: session.privacyCurtain,
-    },
-    settings,
-    total: mail.workspace?.messages.total ?? 0,
-    hasMoreMessages: Boolean(mail.workspace?.messages.nextCursor),
+    }, settings,
+    total: mail.workspace?.messages.total ?? 0, hasMoreMessages: Boolean(mail.workspace?.messages.nextCursor),
   };
 };

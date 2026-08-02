@@ -16,6 +16,8 @@ import { useComposerRecovery } from "@/presentation/features/mail-workspace/hook
 import { useComposerRecoveryFlow } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-flow";
 import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
 import { useComposerSignatures } from "@/presentation/features/mail-workspace/hooks/use-composer-signatures";
+import { useComposerTemplates } from "@/presentation/features/mail-workspace/hooks/use-composer-templates";
+import type { EmailTemplatesModel } from "@/presentation/features/mail-workspace/hooks/use-email-templates-model";
 import { ignoreMailSessionFailure, type MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 
 const hasDefaultSignature = (
@@ -23,6 +25,11 @@ const hasDefaultSignature = (
   context: "newMessageId" | "replyForwardId",
 ) => Boolean(book?.signatures.some(({ id: signatureId }) =>
   signatureId === book.defaults[context]));
+const emptyTemplates: EmailTemplatesModel = {
+  book: null, clearError: () => undefined, error: null,
+  hasSessionChanged: false, isLoading: false, isSaving: false,
+  mutate: async () => null, phase: "idle", retry: () => undefined,
+};
 export const useComposerModel = (
   onSent: (receipt: SendReceipt, submittedEmails: readonly string[]) => void,
   maxAttachmentBytes: number | null,
@@ -34,6 +41,7 @@ export const useComposerModel = (
   draftsEnabled = false,
   onDraftChanged: () => void = () => undefined,
   recoveryOwner: ComposerRecoveryOwner | null = null,
+  emailTemplates: EmailTemplatesModel = emptyTemplates,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openAccountKey, setOpenAccountKey] = useState("");
@@ -59,6 +67,10 @@ export const useComposerModel = (
   const body = useComposerBody(
     isSending, signatures.detach, markUnsaved, markProgrammatic,
   );
+  const templates = useComposerTemplates({
+    body, disabled: isSending, fields, templates: emailTemplates,
+  });
+  const resetTemplates = templates.reset;
   const recovery = useComposerRecovery(
     recoveryOwner, fields, body, signatures, attachments,
   );
@@ -76,9 +88,10 @@ export const useComposerModel = (
         !savedDraft.hasTruncatedContent,
     );
     signatures.reset();
+    resetTemplates();
     attachments.adoptProviderDraft(savedDraft);
     setError(null);
-  }, [attachments, body, fields, signatures]);
+  }, [attachments, body, fields, resetTemplates, signatures]);
   const draft = useComposerDraft({
     accountKey,
     attachmentIds: attachments.attachmentIds,
@@ -111,11 +124,12 @@ export const useComposerModel = (
     fields.reset();
     body.reset();
     signatures.reset();
+    resetTemplates();
     setOpenAccountKey("");
     setConfirmClose(false);
     setConfirmDiscard(false);
     setError(null);
-  }, [body, fields, signatures]);
+  }, [body, fields, resetTemplates, signatures]);
   const close = useComposerClose({
     accountKeyRef, attachments, confirmClose, confirmDiscard, draft, isSending,
     openAccountKey, resetEditor, returnFocus, setConfirmClose,
@@ -125,7 +139,8 @@ export const useComposerModel = (
     accountKey, attachments, autosaveEnabled: draftsEnabled, draft, enabled: Boolean(recoveryOwner),
     hydration: recovery.hydration, isComposerReady, isOpen,
     journal: recovery.journal, openAccountKey,
-    paused: close.isClosing || isSending || confirmClose || confirmDiscard,
+    paused: close.isClosing || isSending || confirmClose || confirmDiscard ||
+      templates.isApplying,
     resetEditor, returnFocus,
     setConfirmClose, setConfirmDiscard, setError, setIsOpen, setOpenAccountKey,
   });
@@ -181,7 +196,8 @@ export const useComposerModel = (
     attachments.discard(true);
     resetEditor();
   }, [accountKey, attachments, draft, isOpen, openAccountKey, resetEditor]);
-  const isBusy = close.isClosing || isSending || draft.isDiscarding || draft.isLoading;
+  const isBusy = close.isClosing || isSending || draft.isDiscarding ||
+    draft.isLoading || templates.isApplying;
   useComposerFocusTrap(isOpenForAccount, isBusy, close.requestClose);
   const recoveryCheckpoint = { composeId: attachments.draftId,
     generation: draft.contentGeneration, snapshot: recovery.hydration.snapshot };
@@ -190,7 +206,7 @@ export const useComposerModel = (
     draftSendBlockedMessage: draft.sendBlockedMessage,
     isAccountCurrent: (key) => accountKeyRef.current === key,
     isDraftBusy: close.isClosing || draft.isDiscarding || draft.isLoading ||
-      draft.phase === "saving",
+      draft.phase === "saving" || templates.isApplying,
     isDraftReadOnly: !draft.canEdit,
     onDraftSent: () => { draft.markSent(); onDraftChanged(); },
     onSendUncertain: draft.markSendUncertain,
@@ -214,6 +230,7 @@ export const useComposerModel = (
     onSubmit, open, openForward, openReply, openReplyAll, openSavedDraft,
     requiresSignOutConfirmation:
       draft.hasUnsavedChanges || recoveryFlow.hasPersistedRecovery,
-    removeAttachment: attachments.remove, retryAttachment: attachments.retry, signatures,
+    removeAttachment: attachments.remove, retryAttachment: attachments.retry,
+    signatures, templates,
   };
 };

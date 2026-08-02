@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-independent reusable email templates with encrypted, owner-isolated
+  local persistence and optimistic revision conflicts. The composer can create,
+  update, delete, insert at the current selection, or explicitly replace only
+  subject/body after a destructive confirmation. Templates never store
+  recipients, attachments, reply metadata, provider IDs, or managed signatures;
+  rich content is sanitized before encryption and again at draft/send time
 - Provider-durable draft attachments for Stalwart JMAP and Standard IMAP/SMTP.
   Clean quarantine uploads now autosave into the provider Drafts mailbox,
   survive reload, can be retained or removed through exact draft-scoped opaque

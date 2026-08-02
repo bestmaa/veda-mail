@@ -85,7 +85,7 @@ export const saveSignatureDefaults = (
     replyForwardId,
   });
 
-const removeTestSignatures = async (page: Page): Promise<void> => {
+export const removeTestSignatures = async (page: Page): Promise<void> => {
   let book = await readSignatureBook(page);
   for (const signature of book.signatures.filter(({ name }) =>
     name.startsWith(testSignaturePrefix),
@@ -100,7 +100,7 @@ const removeTestSignatures = async (page: Page): Promise<void> => {
 
 export const reloadMailbox = async (page: Page): Promise<void> => {
   await page.reload();
-  const compose = page.getByRole("button", { name: "New message" });
+  const compose = page.getByRole("button", { exact: true, name: "New message" });
   await expect(compose).toBeVisible();
   await expect(compose).toBeEnabled();
 };

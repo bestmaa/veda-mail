@@ -7,11 +7,21 @@ import { $getRoot, type LexicalEditor } from "lexical";
 import { useEffect, useLayoutEffect, useRef } from "react";
 
 import type { RichComposerSnapshot } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
+import { COMPOSER_SIGNATURE_ATTRIBUTE } from "@/presentation/features/mail-workspace/composer-signature.node";
 
-const snapshot = (editor: LexicalEditor): RichComposerSnapshot => ({
-  html: $generateHtmlFromNodes(editor),
-  text: $getRoot().getTextContent(),
-});
+const snapshot = (editor: LexicalEditor): RichComposerSnapshot => {
+  const html = $generateHtmlFromNodes(editor);
+  const document = new DOMParser().parseFromString(html, "text/html");
+  for (const signature of document.querySelectorAll(
+    `[${COMPOSER_SIGNATURE_ATTRIBUTE}]`,
+  )) signature.remove();
+  return {
+    html,
+    templateHtml: document.body.innerHTML,
+    templateText: document.body.textContent ?? "",
+    text: $getRoot().getTextContent(),
+  };
+};
 
 export const ComposerEditorStateBridgeConnector = ({
   disabled,

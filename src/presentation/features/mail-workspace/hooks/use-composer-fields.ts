@@ -72,6 +72,9 @@ export const useComposerFields = (onChange: () => void) => {
   );
 
   return {
+    applyTemplateSubject: useCallback((value: string) => {
+      setSubject(value);
+    }, []),
     bcc,
     cc,
     hydrate,

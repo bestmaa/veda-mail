@@ -283,7 +283,7 @@ claims do not apply to that sidecar.
 
 Keep one replica. Member sessions, rate limits, delivery notices, and the send
 idempotency ledger are process-local. The encrypted
-`/data/member-signatures.json`, `/data/mailbox-appearance.json`, and
+`/data/member-signatures.json`, `/data/member-templates.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
 lose updates. Scaling requires a shared encrypted session repository,
@@ -315,6 +315,11 @@ Verify:
 - A member can save plain and rich signatures, choose new-message and
   reply/forward defaults, reload without losing them, and send the expected
   sanitized plain/HTML content through the configured provider.
+- A member can create, reload, update, and delete a plain/rich template; Insert
+  changes only the body at the current selection, while confirmed Replace
+  changes only subject/body and preserves recipients, attachments, reply/draft
+  identity, and one managed signature. Verify one resulting JMAP and one IMAP/
+  SMTP draft/send through the ordinary provider path.
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
 - The received attachment downloads byte-identically, is not cached by the
   proxy, and is served with attachment disposition and `nosniff`.

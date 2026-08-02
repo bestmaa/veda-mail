@@ -400,6 +400,36 @@ the supported deployment therefore has exactly one signature-store writer.
 Backups must keep `installation.json` and `member-signatures.json` together
 because the installation session secret is required for decryption.
 
+### Stored reusable email templates
+
+- Template ownership is derived only from the current verified provider
+  connection and gateway account. Every read/write requires the exact browser
+  mailbox scope; same-origin is checked before authentication for writes.
+- `/data/member-templates.json` contains HMAC-indexed, independently
+  AES-256-GCM-encrypted owner books under template-specific HKDF/HMAC contexts.
+  Owner AAD prevents ciphertext swapping, and strict canonical parsing after
+  decryption makes tampering, corruption, and unknown versions fail closed.
+- Strict operations reject mass-assigned owner/provider/recipient/attachment/
+  draft/schedule fields. Names and subjects reject invalid Unicode, header,
+  control, and bidi characters; names are NFKC case-insensitively unique.
+- Limits cover request bytes, 50 templates, per-field and combined content,
+  HTML nodes/depth, a 4 MiB owner book, 10,000 owner buckets, encrypted record
+  size, and a 64 MiB file. Request and verified-account rate limits constrain
+  authenticated disk and CPU abuse.
+- Sanitization occurs before persistence, canonicality is verified after
+  decryption, and the composed message is sanitized again before provider draft
+  or send. Stored v1 templates cannot contain recipients, attachments, remote
+  media, provider IDs, send actions, or managed signature markers/content.
+- Replace requires an explicit warning whenever current subject/body content
+  exists and preserves recipients, attachments, reply context, draft identity,
+  and the managed signature. Insert cannot mutate a signature crossed by a text
+  selection and never changes the subject. Neither action can send mail.
+
+Residual risk: the whole-file compare-and-write queue is process-local, so the
+supported deployment has one writable Veda Mail replica. Ciphertext lengths and
+access timing reveal bounded metadata. Backups must keep `installation.json`
+and `member-templates.json` in the same whole-volume snapshot.
+
 ### Custom mailbox administration
 
 - The mutation route accepts no owner identity. It derives the current account

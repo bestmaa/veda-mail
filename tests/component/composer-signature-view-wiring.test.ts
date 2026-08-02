@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { id } from "@/domain/shared/brand";
 import type { ComposerBodyViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerBodyView } from "@/presentation/features/mail-workspace/ui/composer-body.view";
+import { composerTemplateViewModel } from "../support/composer-template-view-model";
 
 const signatureId = id.signature("work");
 const signature = {
@@ -41,6 +42,7 @@ const body = (
   signatureAnnouncement: "",
   signatureDetached: false,
   text: "",
+  templates: composerTemplateViewModel(),
   ...overrides,
 });
 

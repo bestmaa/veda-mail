@@ -39,6 +39,10 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Multiple named plain or sanitized-rich signatures per mailbox identity, with
   separate new-message and reply/forward defaults plus an exact-once composer
   picker
+- Encrypted reusable plain or sanitized-rich email templates per mailbox
+  identity, with explicit caret-aware Insert and confirmed subject/body Replace;
+  recipients, attachments, reply context, draft identity, and managed signatures
+  are never stored in a template
 - Stalwart JMAP provider drafts with debounced autosave, visible recovery state,
   Drafts-list editing, exact revision conflicts, explicit discard, and
   save-first send; incomplete, attachment-bearing, or unsupported-header/MIME
@@ -230,7 +234,8 @@ it is never accepted by a public HTTP endpoint.
 The `/data` volume contains installation state, the scrypt administrator
 password hash, a random session-signing secret, organization branding, and
 provider configuration. It also contains encrypted per-identity signature
-books and defaults plus a bounded mailbox-provisioning idempotency ledger.
+books and defaults, encrypted per-identity reusable-template books, plus a
+bounded mailbox-provisioning idempotency ledger.
 Enabled administrator and member authenticator secrets are encrypted and
 backup codes are stored only as salted digests. The ledger contains safe
 results and keyed fingerprints, never initial mailbox passwords or the
@@ -238,7 +243,7 @@ Stalwart management key. `/data` does not contain mailbox messages.
 
 Member provider credentials are process-memory only. A restart signs members
 out. Run one replica unless you add a shared encrypted session repository and
-distributed rate limiter plus a transactional signature store.
+distributed rate limiter plus transactional signature and template stores.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

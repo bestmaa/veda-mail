@@ -12,6 +12,7 @@ export const useComposerRecoveryCheckpoint = ({
   generation,
   hasDurableIntent,
   isOpen,
+  paused = false,
   port,
   snapshot,
 }: {
@@ -20,11 +21,13 @@ export const useComposerRecoveryCheckpoint = ({
   readonly generation: number;
   readonly hasDurableIntent: boolean;
   readonly isOpen: boolean;
+  readonly paused?: boolean;
   readonly port: ComposerRecoveryJournalPort;
   readonly snapshot: ComposerRecoverySnapshot;
 }) => {
   useEffect(() => {
-    if (!enabled || !isOpen || !hasDurableIntent) return;
+    if (!enabled || !isOpen || !hasDurableIntent || paused) return;
     void port.checkpoint({ composeId, generation, snapshot });
-  }, [composeId, enabled, generation, hasDurableIntent, isOpen, port, snapshot]);
+  }, [composeId, enabled, generation, hasDurableIntent, isOpen, paused, port,
+    snapshot]);
 };

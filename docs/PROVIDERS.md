@@ -117,6 +117,15 @@ extension, or new port is required. Because these are Veda-local preferences,
 they do not automatically appear in Stalwart's own webmail, a desktop client,
 or another Veda Mail deployment unless the matching `/data` state is restored.
 
+Reusable templates follow the same provider-independent boundary in the
+separate encrypted `/data/member-templates.json` store. Insert changes only the
+composer body; confirmed Replace changes only subject/body. Recipients,
+attachments, reply metadata, draft identity, provider identifiers, and managed
+signatures are never template fields. JMAP and IMAP/SMTP receive only the normal
+sanitized draft or outgoing message after a template has been applied, so no
+provider capability, Stalwart API, mailbox migration, or transport extension is
+needed.
+
 Both adapters expose a runtime-gated manual draft workflow. Veda Mail can
 create, open, update, discard, and send provider-backed drafts in the
 account's provider Drafts mailbox. For JMAP, a stable compose UUID and

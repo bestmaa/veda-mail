@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
+import { composerTemplateViewModel } from "../support/composer-template-view-model";
 
 const model = (): ComposerViewModel => ({
   attachmentCapabilityUnavailable: false,
@@ -17,6 +18,7 @@ const model = (): ComposerViewModel => ({
     onRichChange: vi.fn(), onRichInitialize: vi.fn(), onToggleMode: vi.fn(),
     onWarningKeyDown: vi.fn(), plainTransferStatus: "", signature: null,
     signatureAnnouncement: "", signatureDetached: false, text: "Body",
+    templates: composerTemplateViewModel(),
   },
   cc: "", ccInput: vi.fn(),
   closeConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },

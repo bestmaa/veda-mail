@@ -23,6 +23,7 @@ import { useMemo } from "react";
 import { ComposerEditorStateBridgeConnector } from "@/presentation/features/mail-workspace/connectors/composer-editor-state-bridge.connector";
 import { ComposerPlainTransferConnector } from "@/presentation/features/mail-workspace/connectors/composer-plain-transfer.connector";
 import { ComposerSignatureControlsConnector } from "@/presentation/features/mail-workspace/connectors/composer-signature-controls.connector";
+import { ComposerTemplateConnector } from "@/presentation/features/mail-workspace/connectors/composer-template.connector";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
 import { $initializeComposerSignatureSlot } from "@/presentation/features/mail-workspace/composer-signature-editor";
 import { EmailSignatureNode } from "@/presentation/features/mail-workspace/composer-signature.node";
@@ -30,6 +31,7 @@ import { useComposerEditorToolbar } from "@/presentation/features/mail-workspace
 import type { RichComposerSnapshot } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import { ComposerFormattingToolbarView } from "@/presentation/features/mail-workspace/ui/composer-formatting-toolbar.view";
 import { ComposerLinkEditorView } from "@/presentation/features/mail-workspace/ui/composer-link-editor.view";
+import type { ComposerTemplateApplication } from "@/presentation/features/mail-workspace/composer-template-editor";
 
 const theme: EditorThemeClasses = {
   heading: {
@@ -101,24 +103,28 @@ const FormattingConnector = ({ disabled }: { readonly disabled: boolean }) => {
 
 export const ComposerRichTextEditorConnector = ({
   autoFocus,
+  application = null,
   disabled,
   initialHtml,
   label = "Message body",
   namespace = "VedaMailComposer",
   onChange,
   onInitialize,
+  onTemplateApplied = () => undefined,
   placeholder = "Write a clear message…",
   readOnly = false,
   required = true,
   signature,
 }: {
   readonly autoFocus: boolean;
+  readonly application?: ComposerTemplateApplication | null;
   readonly disabled: boolean;
   readonly initialHtml: string;
   readonly label?: string;
   readonly namespace?: string;
   readonly onChange: (snapshot: RichComposerSnapshot) => void;
   readonly onInitialize?: (snapshot: RichComposerSnapshot) => void;
+  readonly onTemplateApplied?: (nonce: number) => void;
   readonly placeholder?: string;
   readonly readOnly?: boolean;
   readonly required?: boolean;
@@ -168,6 +174,11 @@ export const ComposerRichTextEditorConnector = ({
           disabled={disabled || readOnly}
         />
       ) : null}
+      <ComposerTemplateConnector
+        application={application}
+        disabled={disabled || readOnly}
+        onApplied={onTemplateApplied}
+      />
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <RichTextPlugin
           contentEditable={
