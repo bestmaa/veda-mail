@@ -200,8 +200,17 @@ search/compose/list/reader commands, editable/composer/modal suppression,
 rights-aware action reuse, `aria-keyshortcuts`, polite announcements, skip
 navigation, reader focus handoff/return, narrow-screen preference scrolling,
 and automated policy/component/browser accessibility coverage. Permanent delete
-has no global shortcut. Its checkbox remains open until an immutable release
-and live production keyboard plus screen-reader smoke evidence are recorded.
+has no global shortcut. The slice was merged in PR #65 as `dcb6bc9`, and
+release run `30754347225` published the scanned, attested amd64/arm64 image
+index
+`sha256:8706ba16583433eec494290f941acfcb52e427d903b6e901ed6fceeaa1721a84`.
+Its amd64 manifest is
+`sha256:a5cadfcd63dccf8ac8bef6a338f15a84baefd61764e85823d4da83f88e39e0df`
+and its arm64 manifest is
+`sha256:a219d04ceeba9186ef9a0c3d02799ee43a8a3fceb3054eb0ec182ede44dab32d`;
+both carry the exact merge revision and repository source labels. Its checkbox
+remains open until live production keyboard plus screen-reader smoke evidence
+is recorded.
 Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
 vertical slices: create, update, Drafts-list/open, discard, save-first send,
   lost-response reconciliation, serialized autosave, visible state, durable
