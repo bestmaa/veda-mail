@@ -183,8 +183,17 @@ The send-confirmation and Undo Send implementation is locally complete:
 encrypted backward-compatible account preferences, exact provider-draft save,
 5/10/20/30-second durable queue jobs, atomic pre-lease cancellation, global
 countdown, exact draft restore, duplicate-submit locking, accessibility checks,
-and JMAP/IMAP-portable browser coverage. The checkbox remains open until its
-immutable release and live production schedule/undo evidence are recorded.
+and JMAP/IMAP-portable browser coverage. The slice was merged in PR #63 as
+`000e4bd`, and release run `30748850631` published
+the scanned, attested amd64/arm64 image index
+`sha256:79461c3a139473e0e65b9a2c32ddf4424ba7614a1a06e030f95a33c0f0d7d0d2`.
+Its amd64 manifest is
+`sha256:599bc0e5d6d2f98a162c67d0f8c861d8a9d58ace6fe5c7c0ba8c7aed4f3ff660`
+and its arm64 manifest is
+`sha256:f995524d9af0e0d8085616a398ac691cd8dde2ef50f6f0f3c8dff291f080c9c2`;
+both carry the exact merge revision and repository source labels. Live
+production schedule/undo evidence—and therefore the checkbox—remains blocked
+by the DNS condition below.
 Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
 vertical slices: create, update, Drafts-list/open, discard, save-first send,
   lost-response reconciliation, serialized autosave, visible state, durable
