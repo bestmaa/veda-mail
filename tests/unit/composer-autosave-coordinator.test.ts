@@ -94,16 +94,20 @@ describe("composer autosave timing", () => {
     }));
   });
 
-  it("never autosaves absent user intent, with attachments, or while paused", async () => {
+  it("saves attachments after intent but not without intent or while paused", async () => {
     const harness = makeHarness({ hasUserEdits: false });
     harness.update();
     await vi.advanceTimersByTimeAsync(30_000);
+    expect(harness.autosave).not.toHaveBeenCalled();
+
     harness.update({ hasLocalAttachments: true, hasUserEdits: true });
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(COMPOSER_AUTOSAVE_IDLE_MS);
+    expect(harness.autosave).toHaveBeenCalledOnce();
+
     harness.update({ hasLocalAttachments: false, paused: true });
     await vi.advanceTimersByTimeAsync(30_000);
 
-    expect(harness.autosave).not.toHaveBeenCalled();
+    expect(harness.autosave).toHaveBeenCalledOnce();
     expect(harness.statuses.at(-1)?.phase).toBe("paused");
   });
 });

@@ -7,7 +7,7 @@ export class DraftConflictError extends Error {
 
 export class DraftHasAttachmentsError extends Error {
   public constructor() {
-    super("Drafts with provider attachments cannot be replaced yet.");
+    super("Local attachments must be saved into the provider draft first.");
     this.name = "DraftHasAttachmentsError";
   }
 }

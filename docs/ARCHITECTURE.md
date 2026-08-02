@@ -259,18 +259,19 @@ metadata; a concurrent external edit conflicts rather than being discarded.
 
 Imported content is editable only when the provider returns a complete ordered
 header inventory, equivalent ungrouped address projections, and a bounded
-canonical plain-text or plain/HTML MIME structure. Duplicate or unknown
+canonical plain-text, plain/HTML, or mixed attachment MIME structure. Duplicate or unknown
 behavior-bearing headers, named address groups, malformed reply metadata,
 unsupported MIME parameters/part metadata, excessive nesting, missing or
-truncated body values, and provider or local attachments all fail closed as
-non-editable. Provider HTML still crosses the existing sanitized presentation
-and outgoing canonicalization boundaries, so unsupported content is never
-partially rewritten.
+truncated body values, and attachment inventories above 10 files or 18 MiB all
+fail closed as non-editable. Provider HTML still crosses the existing sanitized
+presentation and outgoing canonicalization boundaries, so unsupported content
+is never partially rewritten. New attachments enter only through the encrypted,
+scanned quarantine; retained attachments are exact draft-scoped opaque IDs.
 
 Sending a provider draft is manual-save-first. Identity and mailbox preflights
 complete before a final reload validates the exact draft ID, revision, compose
-marker, visible content, sender identity, body completeness, and attachment
-absence. Veda first conditionally claims that old Email so concurrent clients
+marker, visible content, sender identity, body completeness, and ordered
+attachment inventory. Veda first conditionally claims that old Email so concurrent clients
 cannot both send it. Account-global compose-marker membership is then required
 to contain exactly that claimed Email, including after every reconciliation or
 retry. One JMAP batch creates a fresh send copy and submits it through the RFC
@@ -298,8 +299,9 @@ Each record is capped at 3 MiB, uses compare-and-swap storage revisions, and is
 protected by record and scope tombstones so a stale tab cannot recreate purged
 content. Expired records are removed in bounded indexed batches, tombstones are
 retained for seven days, and no more than the four newest valid records for the
-session are retained. Attachment bytes and upload capabilities remain tab-only
-and are never copied into the journal. A durable send terminal stores only a
+session are retained. Unsaved attachment bytes and upload capabilities remain
+tab-only and are never copied into the journal; provider-saved attachment
+metadata is restored from the authoritative draft. A durable send terminal stores only a
 canonical SHA-256 request fingerprint plus any provider-draft revision binding;
 the send request remains in memory. Sign-out, server-issued expiry, and session
 invalidation revoke only the exact scope. The revocation is broadcast

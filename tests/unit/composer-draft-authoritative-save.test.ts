@@ -160,9 +160,11 @@ describe("composer authoritative draft save response", () => {
     draft = render();
     await expect(draft.save()).resolves.toBe(true);
     expect(api.updateDraft).toHaveBeenCalledWith(providerId, {
+      attachmentIds: [],
       composeId,
       content: content("canonical plus edit"),
       expectedRevision: "revision-a",
+      retainedAttachmentIds: [],
     }, "account-a", expect.any(AbortSignal));
     draft = render();
     expect(draft.providerDraft?.expectedRevision).toBe("revision-b");

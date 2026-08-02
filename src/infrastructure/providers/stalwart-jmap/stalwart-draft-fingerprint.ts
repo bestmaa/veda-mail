@@ -12,6 +12,7 @@ export const VEDA_CONTENT_KEYWORD_PREFIX = "veda-content-sha256-";
 export const VEDA_SEND_CLAIM_KEYWORD_PREFIX = "veda-send-claim-";
 export const VEDA_REPLACEMENT_KEYWORD_PREFIX = "veda-replace-v1-";
 export const VEDA_CREATE_KEYWORD_PREFIX = "veda-create-v1-";
+export const VEDA_ATTACHMENT_INTENT_KEYWORD_PREFIX = "veda-attachments-v1-";
 
 const VEDA_DRAFT_KEYWORD_PREFIXES = [
   VEDA_COMPOSE_KEYWORD_PREFIX,
@@ -19,6 +20,7 @@ const VEDA_DRAFT_KEYWORD_PREFIXES = [
   VEDA_SEND_CLAIM_KEYWORD_PREFIX,
   VEDA_REPLACEMENT_KEYWORD_PREFIX,
   VEDA_CREATE_KEYWORD_PREFIX,
+  VEDA_ATTACHMENT_INTENT_KEYWORD_PREFIX,
 ] as const;
 
 export const isVedaDraftKeyword = (keyword: string): boolean =>
@@ -53,8 +55,12 @@ export const jmapDraftContentFingerprint = (content: DraftContent): string =>
 export const jmapDraftContentKeyword = (content: DraftContent): string =>
   `${VEDA_CONTENT_KEYWORD_PREFIX}${jmapDraftContentFingerprint(content)}`;
 
+export const jmapDraftAttachmentIntentKeyword = (fingerprint: string): string =>
+  `${VEDA_ATTACHMENT_INTENT_KEYWORD_PREFIX}${fingerprint}`;
+
 export const jmapDraftCreateKeyword = (input: {
   readonly accountId: string;
+  readonly attachmentIntent?: string;
   readonly composeId: DraftId;
   readonly content: DraftContent;
 }): string =>
@@ -63,6 +69,7 @@ export const jmapDraftCreateKeyword = (input: {
     .update(
       JSON.stringify({
         accountId: input.accountId,
+        attachmentIntent: input.attachmentIntent ?? null,
         composeId: canonicalDraftComposeId(input.composeId),
         content: jmapDraftContentFingerprint(input.content),
         inReplyTo: input.content.inReplyTo ?? null,
@@ -90,6 +97,7 @@ const replacementMetadata = (email: JmapDraftEmail) => ({
 
 export const jmapDraftReplacementKeyword = (input: {
   readonly accountId: string;
+  readonly attachmentIntent?: string;
   readonly composeId: DraftId;
   readonly content: DraftContent;
   readonly metadata: JmapDraftEmail;
@@ -101,6 +109,7 @@ export const jmapDraftReplacementKeyword = (input: {
     .update(
       JSON.stringify({
         accountId: input.accountId,
+        attachmentIntent: input.attachmentIntent ?? null,
         composeId: canonicalDraftComposeId(input.composeId),
         content: jmapDraftContentFingerprint(input.content),
         metadata: replacementMetadata(input.metadata),

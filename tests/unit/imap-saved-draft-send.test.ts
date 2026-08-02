@@ -60,7 +60,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   prepare = vi
     .spyOn(ImapDraftStore.prototype, "prepareSend")
-    .mockResolvedValue(detail);
+    .mockResolvedValue({ attachments: [], detail, source: Buffer.alloc(0), uid: 1 });
   discard = vi
     .spyOn(ImapDraftStore.prototype, "discard")
     .mockResolvedValue(undefined);

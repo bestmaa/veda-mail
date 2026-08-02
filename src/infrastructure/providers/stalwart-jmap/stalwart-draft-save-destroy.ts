@@ -5,7 +5,6 @@ import { hasCanonicalDraftContent } from "@/domain/mail/draft-content-round-trip
 import {
   DraftConflictError,
   DraftContentTruncatedError,
-  DraftHasAttachmentsError,
   DraftNotFoundError,
   DraftUnavailableError,
 } from "@/domain/mail/draft-errors";
@@ -63,7 +62,6 @@ export const assertEditableExisting = (
   ) {
     throw new DraftConflictError();
   }
-  if (fresh.detail.hasAttachments) throw new DraftHasAttachmentsError();
   if (fresh.detail.hasTruncatedContent) {
     throw new DraftContentTruncatedError();
   }

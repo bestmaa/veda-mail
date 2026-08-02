@@ -607,14 +607,30 @@ limiter and encrypted shared session repository.
   In-Reply-To, and References; multiple, mismatched, or incomplete candidates
   fail closed. Mutable old metadata is revalidated before cleanup so a
   concurrent client change is not silently lost.
-- Body completeness is proven before editing. Global/per-value truncation,
-  missing referenced body values, provider attachments, and local quarantine
-  attachments block destructive save/send. The same gate requires a complete
+- Body completeness is proven before editing. Global/per-value truncation and
+  missing referenced body values block destructive save/send. The same gate
+  requires a complete
   ordered and unique allowlisted header inventory, equivalent ungrouped address
   projections, valid Message-ID/reply metadata, and a depth/part-bounded
-  canonical text or text/HTML MIME structure with no unsupported part metadata.
+  canonical text, text/HTML, or mixed attachment MIME structure with no
+  unsupported part metadata.
   The member may close the composer or explicitly discard the exact revision
   without losing unseen content.
+- Draft attachment mutation accepts at most ten entries and 18 MiB of decoded
+  bytes across retained and new files. New files must already have a clean
+  quarantine verdict; the route claims their exact account/session/compose
+  scope, holds the shared plaintext-memory lease, re-verifies ciphertext length
+  and SHA-256, and consumes them only after the provider save succeeds. A
+  definite failure releases the claim. The browser can retain only opaque IDs
+  returned for the exact loaded provider draft, so it cannot nominate JMAP blob
+  IDs, IMAP UIDs, or MIME part locators.
+- JMAP stores a canonical mixed tree over verified blob references. Attachment
+  intent participates in create/replacement reconciliation, and the exact
+  ordered blob/name/type inventory is reloaded across immutable replacement,
+  send claim, and saved-draft submission. IMAP composes ordinary canonical MIME,
+  includes the attachment body in its private MIME digest, binds each opaque ID
+  to account, draft, ordinal, normalized metadata and content hash, and verifies
+  the decoded attachment fingerprint after APPEND before deleting an old UID.
 - JMAP saved-draft send is save-first. After identity and mailbox preflights, the
   server reloads the exact immutable draft, verifies identity, content,
   revision, markers, and mailbox role, then conditionally adds a unique send
@@ -654,8 +670,10 @@ limiter and encrypted shared session repository.
   closed. Sign-out, server-issued expiry, and session invalidation revoke only
   the exact session scope.
 - Attachment bytes, temporary upload capabilities, and source-file handles are
-  never persisted. Recovery records only whether local attachments existed and
-  requires the member to add them again. A durable terminal send marker contains
+  never persisted in browser recovery. Recovery records only whether unsaved
+  local attachments existed and requires the member to add them again; an
+  attachment that completed provider autosave is restored from provider metadata.
+  A durable terminal send marker contains
   only a canonical SHA-256 request fingerprint and any provider-draft revision
   binding, never a second copy of recipients, content, or upload identifiers.
 - Provider autosave is serialized to one in-flight request plus one latest
@@ -700,6 +718,11 @@ limiter and encrypted shared session repository.
   process.
 - Browser requests carry only quarantine IDs; JMAP blob IDs and IMAP part
   locators remain inside their provider adapter.
+- Draft saves reuse the same inspected quarantine and memory-budget path as
+  direct sends. A provider save consumes selected quarantine objects only after
+  verified success; failure releases them. Later draft edits use only exact
+  draft-scoped opaque attachment IDs, and saved-draft send reloads the
+  authoritative provider inventory instead of trusting browser metadata.
 - Provider limits fail closed: JMAP requires the RFC-mandated nonnegative
   `maxSizeUpload`; SMTP uses authenticated EHLO `SIZE` and an optional lower
   administrator ceiling. SMTP picker limits reserve base64/MIME overhead and

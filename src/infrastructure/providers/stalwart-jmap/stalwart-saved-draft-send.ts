@@ -24,6 +24,8 @@ import {
   loadClaimedStalwartDraft,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-claim-acquire";
 import { sendClaimedStalwartDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-replacement";
+import { sameStoredJmapDraftAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-attachments";
+import type { StalwartDraftRecord } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.reader";
 
 const uncertainReceipt = (
   source: StalwartDraftSendSource,
@@ -39,6 +41,7 @@ const assertTrustedSource = (
   input: SendMessageInput,
   source: StalwartDraftSendSource,
   context: SavedDraftSubmissionContext,
+  expected: StalwartDraftRecord = source.record,
 ): void => {
   const from = source.record.email.from ?? [];
   if (
@@ -46,7 +49,6 @@ const assertTrustedSource = (
     source.context.draftsMailboxId !== context.draftMailboxId ||
     from.length !== 1 ||
     from[0]?.email.toLowerCase() !== context.identity.email.toLowerCase() ||
-    source.record.detail.hasAttachments ||
     (input.attachments?.length ?? 0) > 0 ||
     source.record.detail.hasTruncatedContent ||
     source.record.detail.hasUncertainSubmission ||
@@ -60,6 +62,11 @@ const assertTrustedSource = (
       source.record.email,
       source.record.detail.content,
       input,
+    ) ||
+    !sameStoredJmapDraftAttachments(
+      source.context.accountId,
+      expected.email,
+      source.record.email,
     )
   ) {
     throw new DraftConflictError();
@@ -74,12 +81,13 @@ const acquireClaim = async (
   reload?: () => Promise<StalwartDraftSendSource>,
 ): Promise<ClaimedDraft | SendReceipt> => {
   let trusted = source;
+  const expected = source.record;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    assertTrustedSource(input, trusted, context);
+    assertTrustedSource(input, trusted, context, expected);
     const outcome = await claimStalwartSavedDraft(client, trusted, context);
     if (outcome.kind === "claimed") {
       try {
-        assertTrustedSource(input, outcome.value.source, context);
+        assertTrustedSource(input, outcome.value.source, context, expected);
         return outcome.value;
       } catch {
         return uncertainReceipt(trusted);
@@ -145,6 +153,7 @@ export const submitStalwartSavedDraft = async (
     if (outcome.kind === "retry") {
       if (attempt > 0) return uncertainReceipt(claimed.source);
       try {
+        const expected = claimed.source.record;
         const fresh = await loadClaimedStalwartDraft(
           client,
           context,
@@ -153,7 +162,7 @@ export const submitStalwartSavedDraft = async (
         );
         if (!fresh) return uncertainReceipt(claimed.source);
         claimed = { ...claimed, source: fresh };
-        assertTrustedSource(input, fresh, context);
+        assertTrustedSource(input, fresh, context, expected);
         await assertStalwartDraftComposeMembers(
           client,
           fresh.context,

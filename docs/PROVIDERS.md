@@ -26,7 +26,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Manual provider-backed drafts                 | Yes             | Yes, UIDPLUS required |
 | Provider-backed draft autosave                 | Yes             | Yes, UIDPLUS required |
 | Browser-local interrupted-compose recovery    | Yes             | Yes                  |
-| Provider draft attachments                    | Not implemented | Not implemented      |
+| Provider draft attachments (10 / 18 MiB total) | Yes             | Yes, UIDPLUS required |
 | Scanned attachment upload/send (18 MiB total) | Yes             | Yes                  |
 | Authenticated attachment download (50 MiB)    | Yes             | Yes                  |
 | Download all ZIP (100 files / 200 MiB)        | Yes             | Yes                  |
@@ -118,7 +118,7 @@ they do not automatically appear in Stalwart's own webmail, a desktop client,
 or another Veda Mail deployment unless the matching `/data` state is restored.
 
 Both adapters expose a runtime-gated manual draft workflow. Veda Mail can
-create, open, update, discard, and send simple provider-backed drafts in the
+create, open, update, discard, and send provider-backed drafts in the
 account's provider Drafts mailbox. For JMAP, a stable compose UUID and
 canonical-content fingerprint are stored as advisory non-system keywords,
 never as transmitted mail headers. Updating creates and verifies an immutable
@@ -148,14 +148,31 @@ silently overwrite unverified content.
 
 Provider-supplied HTML still crosses the normal presentation sanitizer before
 the composer sees it. BCC remains in the private provider draft. Drafts with
-provider attachments, local quarantine attachments, incomplete/truncated body
-values, duplicate or unsupported top-level headers, named address groups, or a
-non-canonical MIME tree are not destructively rewritten or sent; bounded
-unsupported drafts remain closeable, copyable, and explicitly discardable.
-Provider draft attachments remain roadmap work. Session-bound local
-interrupted-compose recovery and debounced provider autosave with offline pause
-work for both adapters; JMAP has conditional-state reconciliation while IMAP
-uses UIDPLUS, fingerprint verification, and serialized header reconciliation.
+incomplete/truncated body values, duplicate or unsupported top-level headers,
+named address groups, or a non-canonical MIME tree are not destructively
+rewritten or sent; bounded unsupported drafts remain closeable, copyable, and
+explicitly discardable.
+
+Provider draft attachment sets are capped at 10 files and 18 MiB decoded bytes.
+New files must first complete the ordinary encrypted quarantine and ClamAV
+inspection. A save claims the exact session/account/compose-bound upload IDs,
+persists verified bytes through the adapter, verifies the resulting provider
+draft, and consumes quarantine objects only after provider success. Failure
+releases the claim for a safe retry. Subsequent edits retain or remove only
+opaque IDs from the exact loaded draft; the browser never supplies a JMAP blob
+ID, IMAP UID, or MIME part locator. JMAP preserves verified blob references in a
+canonical mixed body and rechecks the exact inventory across replace, claim,
+reconciliation, and send. IMAP reconstructs canonical MIME, binds attachment
+IDs to account/draft/ordinal/content metadata, and verifies decoded SHA-256
+fingerprints after append and before targeted old-UID deletion. Saved-draft send
+rebuilds a fresh outgoing message from the authoritative provider copy.
+
+Session-bound interrupted-compose recovery and debounced provider autosave with
+offline pause work for both adapters; JMAP has conditional-state reconciliation
+while IMAP uses UIDPLUS, fingerprint verification, and serialized header
+reconciliation. Unsaved local attachment bytes are deliberately absent from
+IndexedDB, but a completed provider autosave restores its safe metadata after a
+reload.
 
 The Standard IMAP + SMTP adapter omits BCC from delivered MIME while retaining
 it in the SMTP envelope. If SMTP immediately rejects only some recipients, Veda

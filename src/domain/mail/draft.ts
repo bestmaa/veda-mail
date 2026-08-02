@@ -1,5 +1,10 @@
-import type { MailAddress } from "@/domain/mail/mail";
 import type {
+  Attachment,
+  MailAddress,
+  OutgoingAttachment,
+} from "@/domain/mail/mail";
+import type {
+  AttachmentId,
   DraftId,
   MessageId,
   ProviderDraftId,
@@ -22,6 +27,7 @@ export interface DraftContent {
 }
 
 export interface DraftDetail {
+  readonly attachments?: readonly Attachment[];
   readonly composeId: DraftId | null;
   readonly content: DraftContent;
   readonly hasAttachments: boolean;
@@ -34,16 +40,20 @@ export interface DraftDetail {
 
 export type DraftSaveInput =
   | {
+      readonly attachments?: readonly OutgoingAttachment[];
       readonly composeId: DraftId;
       readonly content: DraftContent;
       readonly expectedRevision?: never;
       readonly providerDraftId?: never;
+      readonly retainedAttachmentIds?: readonly [];
     }
   | {
+      readonly attachments?: readonly OutgoingAttachment[];
       readonly composeId: DraftId;
       readonly content: DraftContent;
       readonly expectedRevision: string;
       readonly providerDraftId: ProviderDraftId;
+      readonly retainedAttachmentIds?: readonly AttachmentId[];
     };
 
 export interface SavedProviderDraft {

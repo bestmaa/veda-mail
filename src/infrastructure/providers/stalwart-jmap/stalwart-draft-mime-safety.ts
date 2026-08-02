@@ -88,30 +88,70 @@ const exactPart = (
   parts[0]?.partId === expected.partId &&
   safeLeaf(parts[0]!, type);
 
+const safeMessageBody = (email: JmapDraftEmail, root: BodyPart): boolean => {
+  if (safeLeaf(root, "text/plain")) {
+    return exactPart(email.textBody, root, "text/plain") &&
+      (email.htmlBody?.length ?? 0) === 0;
+  }
+  const parts = root.subParts ?? [];
+  const plain = parts[0];
+  const html = parts[1];
+  return mediaType(root.type) === "multipart/alternative" &&
+    root.type.trim().toLowerCase() === "multipart/alternative" &&
+    parts.length === 2 && Boolean(plain && html) && hasNoLeafMetadata(root) &&
+    hasSafePartHeaders(root, "multipart/alternative") &&
+    safeLeaf(plain!, "text/plain") && safeLeaf(html!, "text/html") &&
+    exactPart(email.textBody, plain!, "text/plain") &&
+    exactPart(email.htmlBody, html!, "text/html");
+};
+
+const safeAttachmentLeaf = (part: BodyPart): boolean => {
+  const type = mediaType(part.type);
+  return Boolean(part.blobId) && Boolean(part.partId) && Boolean(part.name) &&
+    type.length > 0 && part.type.trim().toLowerCase() === type &&
+    part.disposition?.trim().toLowerCase() === "attachment" &&
+    (part.subParts?.length ?? 0) === 0 && !part.cid &&
+    !(part.language?.length ?? 0) && !part.location &&
+    Number.isSafeInteger(part.size) && (part.size ?? -1) >= 0;
+};
+
+const sameAttachmentInventory = (
+  listed: readonly BodyPart[] | undefined,
+  parts: readonly BodyPart[],
+): boolean => JSON.stringify((listed ?? []).map((part) => ({
+  blobId: part.blobId ?? null,
+  disposition: part.disposition?.toLowerCase() ?? null,
+  name: part.name ?? null,
+  partId: part.partId ?? null,
+  size: part.size ?? null,
+  type: mediaType(part.type),
+}))) === JSON.stringify(parts.map((part) => ({
+  blobId: part.blobId ?? null,
+  disposition: part.disposition?.toLowerCase() ?? null,
+  name: part.name ?? null,
+  partId: part.partId ?? null,
+  size: part.size ?? null,
+  type: mediaType(part.type),
+})));
+
 export const hasSupportedDraftBodyStructure = (
   email: JmapDraftEmail,
 ): boolean => {
   const root = email.bodyStructure;
   if (!root) return false;
-  if (safeLeaf(root, "text/plain")) {
-    return (
-      exactPart(email.textBody, root, "text/plain") &&
-      (email.htmlBody?.length ?? 0) === 0
-    );
-  }
+  if (safeMessageBody(email, root)) return (email.attachments?.length ?? 0) === 0;
   const parts = root.subParts ?? [];
-  const plain = parts[0];
-  const html = parts[1];
-  return (
-    mediaType(root.type) === "multipart/alternative" &&
-    root.type.trim().toLowerCase() === "multipart/alternative" &&
-    parts.length === 2 &&
-    Boolean(plain && html) &&
-    hasNoLeafMetadata(root) &&
-    hasSafePartHeaders(root, "multipart/alternative") &&
-    safeLeaf(plain!, "text/plain") &&
-    safeLeaf(html!, "text/html") &&
-    exactPart(email.textBody, plain!, "text/plain") &&
-    exactPart(email.htmlBody, html!, "text/html")
+  const message = parts[0];
+  const attachments = parts.slice(1);
+  const attachmentBytes = attachments.reduce(
+    (total, part) => total + (part.size ?? Number.POSITIVE_INFINITY),
+    0,
   );
+  return mediaType(root.type) === "multipart/mixed" &&
+    root.type.trim().toLowerCase() === "multipart/mixed" &&
+    parts.length >= 2 && parts.length <= 11 && Boolean(message) &&
+    hasNoLeafMetadata(root) && hasSafePartHeaders(root, "multipart/mixed") &&
+    safeMessageBody(email, message!) && attachmentBytes <= 18 * 1024 * 1024 &&
+    attachments.every(safeAttachmentLeaf) &&
+    sameAttachmentInventory(email.attachments, attachments);
 };

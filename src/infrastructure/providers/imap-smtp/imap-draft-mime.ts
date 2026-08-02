@@ -10,9 +10,18 @@ import MailComposer from "nodemailer/lib/mail-composer";
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import { hasCanonicalDraftContent } from "@/domain/mail/draft-content-round-trip";
 import { isCanonicalDraftComposeHeader } from "@/domain/mail/draft-validation";
-import type { MailAddress } from "@/domain/mail/mail";
+import type { MailAddress, OutgoingAttachment } from "@/domain/mail/mail";
 import { id, type DraftId, type ProviderDraftId } from "@/domain/shared/brand";
 import { jmapDraftContentFingerprint } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-fingerprint";
+import {
+  imapDraftAttachmentsAreCanonical,
+  parseImapDraftAttachments,
+  type ImapDraftAttachmentRecord,
+} from "@/infrastructure/providers/imap-smtp/imap-draft-attachments";
+import {
+  normalizeAttachmentFilename,
+  normalizeAttachmentMimeType,
+} from "@/infrastructure/providers/imap-smtp/mime-attachment-headers";
 
 const COMPOSE_HEADER = "x-veda-compose-id";
 const CONTENT_HEADER = "x-veda-content-sha256";
@@ -97,6 +106,7 @@ const addMimeDigest = (source: Buffer): Buffer => {
 };
 
 export interface ImapDraftMimeRecord {
+  readonly attachments: readonly ImapDraftAttachmentRecord[];
   readonly detail: DraftDetail;
   readonly source: Buffer;
 }
@@ -115,9 +125,23 @@ export const composeImapDraft = async (
   content: DraftContent,
   composeId: DraftId,
   username: string,
+  attachments: readonly OutgoingAttachment[] = [],
 ): Promise<{ readonly raw: Buffer; readonly writeId: string }> => {
   const writeId = randomUUID();
   const mail = {
+    attachments: attachments.map((attachment) => {
+      const attachmentContent = Buffer.from(attachment.content);
+      if (
+        attachmentContent.byteLength !== attachment.size ||
+        createHash("sha256").update(attachmentContent).digest("hex") !==
+          attachment.sha256
+      ) throw new Error("Draft attachment integrity check failed.");
+      return {
+        content: attachmentContent,
+        contentType: normalizeAttachmentMimeType(attachment.mimeType),
+        filename: normalizeAttachmentFilename(attachment.name),
+      };
+    }),
     bcc: content.bcc.map(address),
     cc: content.cc.map(address),
     disableFileAccess: true,
@@ -177,6 +201,11 @@ export const parseImapDraft = async (input: {
           jmapDraftContentFingerprint(candidate) === expectedFingerprint,
       ) ?? { ...baseContent, body: parsedBody };
   const from = parsedAddresses(mail.from);
+  const attachments = parseImapDraftAttachments({
+    accountScope: input.accountScope,
+    mail,
+    providerDraftId: input.providerDraftId,
+  });
   const safe =
     hasSafeHeaderInventory(mail) &&
     !hasNamedAddressGroup(mail) &&
@@ -186,15 +215,17 @@ export const parseImapDraft = async (input: {
     stringHeader(mail, MIME_HEADER) === mimeDigest(input.source) &&
     from.length === 1 &&
     from[0]?.email.toLowerCase() === input.username.toLowerCase() &&
-    mail.attachments.length === 0;
+    imapDraftAttachmentsAreCanonical(mail);
   const updated = new Date(input.internalDate ?? Date.now());
   return {
+    attachments,
     detail: {
+      attachments: attachments.map(({ detail }) => detail),
       composeId: isCanonicalDraftComposeHeader(composeHeader)
         ? id.draft(composeHeader)
         : null,
       content,
-      hasAttachments: mail.attachments.length > 0,
+      hasAttachments: attachments.length > 0,
       hasTruncatedContent: !safe,
       hasUncertainSubmission: false,
       id: input.providerDraftId,

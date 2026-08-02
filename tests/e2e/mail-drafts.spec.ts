@@ -57,9 +57,15 @@ const enableProviderDrafts = async (page: Page) => {
 
 test("manually saves, autosaves later edits, and distinctly discards", async ({ page }) => {
   let createCount = 0;
+  let createInput: Record<string, unknown> | null = null;
   let currentRevision = providerDraft.revision;
   let discardedRevision: string | null = null;
+  const updateInputs: Record<string, unknown>[] = [];
   let updateCount = 0;
+  const savedAttachment = {
+    disposition: "attachment", id: "saved-attachment-a",
+    mimeType: "text/plain", name: "local.txt", size: 16,
+  };
   await page.route("**/api/v1/mail/attachments", (route) => route.fulfill({
     json: { data: { id: "upload-a", uploadUrl: "/api/v1/mail/attachments/upload-a" } },
     status: 201,
@@ -75,8 +81,12 @@ test("manually saves, autosaves later edits, and distinctly discards", async ({ 
     if (route.request().method() !== "POST") return route.fallback();
     createCount += 1;
     const input = route.request().postDataJSON();
+    createInput = input;
     await route.fulfill({
-      json: { data: { ...providerDraft, composeId: input.composeId, content: input.content } },
+      json: { data: {
+        ...providerDraft, attachments: [savedAttachment],
+        composeId: input.composeId, content: input.content, hasAttachments: true,
+      } },
       status: 201,
     });
   });
@@ -88,13 +98,15 @@ test("manually saves, autosaves later edits, and distinctly discards", async ({ 
     if (route.request().method() === "PUT") {
       const input = route.request().postDataJSON();
       expect(input.expectedRevision).toBe(currentRevision);
+      updateInputs.push(input);
       updateCount += 1;
       currentRevision = `revision-autosave-${updateCount}`;
       return route.fulfill({
         json: { data: {
-          ...providerDraft,
+          ...providerDraft, attachments: [savedAttachment],
           composeId: input.composeId,
           content: input.content,
+          hasAttachments: true,
           revision: currentRevision,
         } },
       });
@@ -116,16 +128,19 @@ test("manually saves, autosaves later edits, and distinctly discards", async ({ 
   });
   await expect(dialog.getByText("local.txt", { exact: true })).toBeVisible();
   await save.click();
-  await expect(dialog.getByText("Remove local attachments before saving this provider draft.")).toBeVisible();
-  expect(createCount).toBe(0);
-  await dialog.getByRole("button", { name: "Remove local.txt" }).click();
-
-  await save.click();
   await expect(dialog.getByText("Saved", { exact: true }).first()).toBeVisible();
   expect(createCount).toBe(1);
+  expect(createInput).toMatchObject({
+    attachmentIds: ["upload-a"],
+  });
+  expect(createInput).not.toHaveProperty("retainedAttachmentIds");
+  await expect(dialog.getByText("local.txt", { exact: true })).toBeVisible();
   await expect(save).toBeDisabled();
   await dialog.getByRole("textbox", { exact: true, name: "Subject" }).fill("Newer edit");
   await expect.poll(() => updateCount).toBe(1);
+  expect(updateInputs[0]).toMatchObject({
+    attachmentIds: [], retainedAttachmentIds: ["saved-attachment-a"],
+  });
   await expect(dialog.getByText("Saved", { exact: true }).first()).toBeVisible();
   await dialog
     .getByRole("textbox", { exact: true, name: "Subject" })

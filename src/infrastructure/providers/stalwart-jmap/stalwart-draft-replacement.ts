@@ -5,7 +5,6 @@ import type { DraftContent } from "@/domain/mail/draft";
 import {
   DraftConflictError,
   DraftContentTruncatedError,
-  DraftHasAttachmentsError,
 } from "@/domain/mail/draft-errors";
 import type { DraftId } from "@/domain/shared/brand";
 import type { ProviderDraftId } from "@/domain/shared/brand";
@@ -17,9 +16,16 @@ import {
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-fingerprint";
 import type { JmapDraftEmail } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.schema";
 import type { StalwartDraftRecord } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-record-reader";
+import {
+  sameJmapDraftAttachments,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-attachments";
+import type { JmapComposeAttachment } from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
 
 interface ReplacementAnchor {
   readonly accountId: string;
+  readonly attachmentIntent?: string;
+  readonly attachmentCount?: number;
+  readonly attachments?: readonly JmapComposeAttachment[];
   readonly composeId: DraftId;
   readonly content: DraftContent;
   readonly existing: StalwartDraftRecord;
@@ -44,6 +50,9 @@ const keywordForMetadata = (
 ): string =>
   jmapDraftReplacementKeyword({
     accountId: anchor.accountId,
+    ...(anchor.attachmentIntent
+      ? { attachmentIntent: anchor.attachmentIntent }
+      : {}),
     composeId: anchor.composeId,
     content: anchor.content,
     metadata,
@@ -67,6 +76,17 @@ const rawMetadata = (email: JmapDraftEmail) =>
     messageId: email.messageId ?? [],
     references: email.references ?? [],
   });
+
+const rawAttachmentMetadata = (email: JmapDraftEmail) =>
+  JSON.stringify((email.attachments ?? []).map((part) => ({
+    blobId: part.blobId ?? null,
+    cid: part.cid ?? null,
+    disposition: part.disposition ?? null,
+    name: part.name ?? null,
+    partId: part.partId ?? null,
+    size: part.size ?? null,
+    type: part.type,
+  })));
 
 const mutableMetadata = (email: JmapDraftEmail) =>
   JSON.stringify({
@@ -102,6 +122,8 @@ export const assertUnchangedDraftMetadata = (
     expected.detail.id !== fresh.detail.id ||
     expected.detail.revision !== fresh.detail.revision ||
     rawMetadata(expected.email) !== rawMetadata(fresh.email) ||
+    rawAttachmentMetadata(expected.email) !==
+      rawAttachmentMetadata(fresh.email) ||
     mutableMetadata(expected.email) !== mutableMetadata(fresh.email)
   ) {
     throw new DraftConflictError();
@@ -134,6 +156,11 @@ export const assertReplacementCandidate = (
     replacementMutableMetadata(candidate.email) !==
       replacementMutableMetadata(expectedMetadata) ||
     keywordForMetadata(anchor, candidate.email) !== keyword ||
+    (anchor.attachments !== undefined && !sameJmapDraftAttachments(
+      anchor.accountId,
+      candidate.email,
+      anchor.attachments,
+    )) ||
     !matchesStoredJmapDraftContent(
       candidate.email,
       candidate.detail.content,
@@ -142,7 +169,12 @@ export const assertReplacementCandidate = (
   ) {
     throw new DraftConflictError();
   }
-  if (candidate.detail.hasAttachments) throw new DraftHasAttachmentsError();
+  if (
+    candidate.detail.hasAttachments !==
+      ((anchor.attachments?.length ?? anchor.attachmentCount ?? 0) > 0) ||
+    (candidate.detail.attachments?.length ?? 0) !==
+      (anchor.attachments?.length ?? anchor.attachmentCount ?? 0)
+  ) throw new DraftConflictError();
   if (candidate.detail.hasTruncatedContent) {
     throw new DraftContentTruncatedError();
   }
@@ -152,6 +184,8 @@ export const assertOrphanReplacementCandidate = (
   candidate: StalwartDraftRecord,
   input: {
     readonly accountId: string;
+    readonly attachmentIntent?: string;
+    readonly attachmentCount?: number;
     readonly composeId: DraftId;
     readonly content: DraftContent;
     readonly oldId: ProviderDraftId;
@@ -161,6 +195,12 @@ export const assertOrphanReplacementCandidate = (
 ): void => {
   const anchor: ReplacementAnchor = {
     accountId: input.accountId,
+    ...(input.attachmentIntent
+      ? { attachmentIntent: input.attachmentIntent }
+      : {}),
+    ...(input.attachmentCount === undefined
+      ? {}
+      : { attachmentCount: input.attachmentCount }),
     composeId: input.composeId,
     content: input.content,
     existing: {

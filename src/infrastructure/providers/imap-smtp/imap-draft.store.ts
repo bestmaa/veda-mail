@@ -2,35 +2,21 @@ import "server-only";
 
 import type { ImapFlow } from "imapflow";
 
-import type {
-  DraftCapability,
-  DraftDetail,
-  DraftSaveInput,
-  SavedProviderDraft,
-} from "@/domain/mail/draft";
-import {
-  DraftConflictError,
-  DraftContentTruncatedError,
-  DraftHasAttachmentsError,
-  DraftNotFoundError,
-  DraftUnavailableError,
-} from "@/domain/mail/draft-errors";
+import type { DraftCapability, DraftDetail, DraftSaveInput, SavedProviderDraft } from "@/domain/mail/draft";
+import { DraftConflictError, DraftContentTruncatedError, DraftNotFoundError, DraftUnavailableError } from "@/domain/mail/draft-errors";
 import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
-import {
-  assertDraftRevision,
-  canonicalDraftComposeId,
-  validateDraftSaveInput,
-} from "@/domain/mail/draft-validation";
+import { assertDraftRevision, canonicalDraftComposeId, validateDraftSaveInput } from "@/domain/mail/draft-validation";
 import type { DraftId, ProviderDraftId } from "@/domain/shared/brand";
+import type { OutgoingAttachment } from "@/domain/mail/mail";
 import {
-  decodeScopedImapMessageId,
-  imapUidValidityMatches,
-} from "@/infrastructure/providers/imap-smtp/imap-codec";
+  assertImapDraftReplaceable,
+  imapDraftAttachmentFingerprint,
+  resolveImapDraftSaveAttachments,
+  sameImapDraftAttachmentSelection,
+} from "@/infrastructure/providers/imap-smtp/imap-draft-attachments";
+import { decodeScopedImapMessageId, imapUidValidityMatches } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
-import {
-  composeImapDraft,
-  imapDraftWriteHeader,
-} from "@/infrastructure/providers/imap-smtp/imap-draft-mime";
+import { composeImapDraft, imapDraftWriteHeader } from "@/infrastructure/providers/imap-smtp/imap-draft-mime";
 import {
   type ImapDraftContext,
   openImapDraftMailbox,
@@ -88,21 +74,29 @@ export class ImapDraftStore {
             active,
             input.providerDraftId,
           );
-          this.assertReplaceable(existing.detail, existing.uid, input, matches);
-          return this.replace(client, active, existing.detail, input);
+          assertImapDraftReplaceable(existing, input, matches);
+          const attachments = resolveImapDraftSaveAttachments(existing, input);
+          return this.replace(client, active, existing.detail, input, attachments);
         }
         if (matches.length === 1) {
           const existing = await this.loadUid(client, active, matches[0]!);
           if (
             !existing.detail.hasTruncatedContent &&
-            sameDraftContent(existing.detail.content, input.content)
+            sameDraftContent(existing.detail.content, input.content) &&
+            sameImapDraftAttachmentSelection(existing, input)
           ) {
             return existing.detail;
           }
           throw new DraftConflictError();
         }
         if (matches.length > 1) throw new DraftConflictError();
-        return this.append(client, active, composeId, input.content);
+        return this.append(
+          client,
+          active,
+          composeId,
+          input.content,
+          input.attachments ?? [],
+        );
       }),
     );
   }
@@ -123,8 +117,15 @@ export class ImapDraftStore {
     });
   }
 
-  public async prepareSend(source: SavedProviderDraft): Promise<DraftDetail> {
-    const detail = await this.get(source.id);
+  public async prepareSend(source: SavedProviderDraft) {
+    const record = await withImapClient(this.config, async (client) =>
+      this.loadReference(
+        client,
+        await openImapDraftMailbox(client, true),
+        source.id,
+      ),
+    );
+    const detail = record.detail;
     const composeId = canonicalDraftComposeId(source.composeId);
     if (
       detail.composeId !== composeId ||
@@ -132,9 +133,8 @@ export class ImapDraftStore {
     ) {
       throw new DraftConflictError();
     }
-    if (detail.hasAttachments) throw new DraftHasAttachmentsError();
     if (detail.hasTruncatedContent) throw new DraftContentTruncatedError();
-    return detail;
+    return record;
   }
 
   private async append(
@@ -142,11 +142,13 @@ export class ImapDraftStore {
     active: ImapDraftContext,
     composeId: DraftId,
     content: DraftSaveInput["content"],
+    attachments: readonly OutgoingAttachment[],
   ): Promise<DraftDetail> {
     const { raw, writeId } = await composeImapDraft(
       content,
       composeId,
       this.config.username,
+      attachments,
     );
     if (raw.byteLength > MAX_IMAP_DRAFT_SOURCE_BYTES) {
       throw new DraftContentTruncatedError();
@@ -167,7 +169,12 @@ export class ImapDraftStore {
     if (
       saved.hasTruncatedContent ||
       saved.composeId !== composeId ||
-      !sameDraftContent(saved.content, content)
+      !sameDraftContent(saved.content, content) ||
+      imapDraftAttachmentFingerprint(
+        (await this.loadUid(client, active, uid)).attachments.map(
+          ({ outgoing }) => outgoing,
+        ),
+      ) !== imapDraftAttachmentFingerprint(attachments)
     ) {
       await client.messageDelete(uid, { uid: true });
       throw new DraftConflictError();
@@ -175,35 +182,19 @@ export class ImapDraftStore {
     return saved;
   }
 
-  private assertReplaceable(
-    detail: DraftDetail,
-    uid: number,
-    input: Extract<DraftSaveInput, { readonly providerDraftId: ProviderDraftId }>,
-    matches: readonly number[],
-  ): void {
-    if (
-      detail.composeId !== canonicalDraftComposeId(input.composeId) ||
-      detail.revision !== assertDraftRevision(input.expectedRevision) ||
-      matches.length !== 1 ||
-      matches[0] !== uid
-    ) {
-      throw new DraftConflictError();
-    }
-    if (detail.hasAttachments) throw new DraftHasAttachmentsError();
-    if (detail.hasTruncatedContent) throw new DraftContentTruncatedError();
-  }
-
   private async replace(
     client: ImapFlow,
     active: ImapDraftContext,
     old: DraftDetail,
     input: Extract<DraftSaveInput, { readonly providerDraftId: ProviderDraftId }>,
+    attachments: readonly OutgoingAttachment[],
   ): Promise<DraftDetail> {
     const replacement = await this.append(
       client,
       active,
       canonicalDraftComposeId(input.composeId),
       input.content,
+      attachments,
     );
     const oldReference = decodeScopedImapMessageId(this.config, old.id);
     if (await client.messageDelete(oldReference.uid, { uid: true })) {

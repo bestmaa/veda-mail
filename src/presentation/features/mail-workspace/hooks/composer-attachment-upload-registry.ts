@@ -1,4 +1,4 @@
-import type { UploadedAttachment } from "@/domain/mail/mail";
+import type { Attachment, UploadedAttachment } from "@/domain/mail/mail";
 import type {
   AttachmentId,
   AttachmentUploadId,
@@ -22,6 +22,7 @@ export interface ComposerAttachment {
   readonly key: string;
   readonly upload: UploadedAttachment | null;
   readonly name: string;
+  readonly provider?: Attachment;
   readonly size: number | null;
   readonly source?: {
     readonly attachmentId: AttachmentId;

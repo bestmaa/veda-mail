@@ -96,10 +96,6 @@ export class ComposerAutosaveCoordinator {
       this.emit("disabled");
       return;
     }
-    if (input.hasLocalAttachments) {
-      this.emit("attachments");
-      return;
-    }
     if (input.paused) {
       this.emit("paused");
       return;
@@ -157,8 +153,7 @@ export class ComposerAutosaveCoordinator {
     this.timer = this.clock.setTimeout(() => {
       this.timer = null;
       const input = this.input;
-      if (!input || !input.enabled || !this.online || input.paused ||
-        input.hasLocalAttachments) {
+      if (!input || !input.enabled || !this.online || input.paused) {
         this.schedule();
         return;
       }

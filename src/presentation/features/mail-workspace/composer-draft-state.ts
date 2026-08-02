@@ -10,10 +10,8 @@ export type ComposerDraftPhase =
 export type ComposerDraftRetryKind = "backoff" | "blocked" | "none" | "reconcile";
 export type ComposerTerminalRecoveryKind = "discard" | "send";
 
-export const LOCAL_ATTACHMENT_DRAFT_MESSAGE =
-  "Remove local attachments before saving this provider draft.";
 export const PROVIDER_ATTACHMENT_DRAFT_MESSAGE =
-  "Drafts with provider attachments cannot be edited yet. The saved draft was not changed.";
+  "This provider did not return a complete attachment inventory, so the saved draft was not changed.";
 export const TRUNCATED_PROVIDER_DRAFT_MESSAGE =
   "This provider draft contains incomplete or unsupported content and cannot be edited safely. The saved draft was not changed.";
 export const UNCERTAIN_PROVIDER_DRAFT_MESSAGE =
@@ -65,9 +63,9 @@ export const providerDraftEditBlock = (
   draft: DraftDetail | null,
 ): string | null => draft?.hasUncertainSubmission
   ? UNCERTAIN_PROVIDER_DRAFT_MESSAGE
-  : draft?.hasAttachments
+  : draft?.hasAttachments && !draft.attachments
     ? PROVIDER_ATTACHMENT_DRAFT_MESSAGE
-    : draft?.hasTruncatedContent
+  : draft?.hasTruncatedContent
       ? TRUNCATED_PROVIDER_DRAFT_MESSAGE
       : null;
 
@@ -87,7 +85,8 @@ export const composerDraftAvailability = ({
   readonly terminalRecovery: ComposerTerminalRecoveryKind | null;
 }) => {
   const canEdit = !terminalRecovery && !saved?.hasUncertainSubmission &&
-    !saved?.hasAttachments && !saved?.hasTruncatedContent &&
+    !(saved?.hasAttachments && !saved.attachments) &&
+    !saved?.hasTruncatedContent &&
     !(providerDraftRequested && !saved);
   const imported = saved?.composeId === null;
   const canSave = !requiresRecovery && canEdit &&

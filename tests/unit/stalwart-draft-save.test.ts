@@ -227,13 +227,10 @@ describe("Stalwart draft save", () => {
     ).rejects.toThrow();
     expect(request).not.toHaveBeenCalled();
   });
-  it.each([
-    ["hasAttachments", true],
-    ["hasTruncatedContent", true],
-  ] as const)("blocks replacement when %s", async (field, value) => {
+  it("blocks replacement when content is truncated", async () => {
     const { request, store } = setup();
     const old = record("old", "state-old");
-    old.detail = { ...old.detail, [field]: value };
+    old.detail = { ...old.detail, hasTruncatedContent: true };
     draftReaderMocks.load.mockResolvedValueOnce(old);
     await expect(
       store.save({

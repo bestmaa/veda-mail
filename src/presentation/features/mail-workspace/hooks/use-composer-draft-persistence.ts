@@ -19,7 +19,6 @@ import {
   draftRequestAborted,
   isDraftConflict,
   isAmbiguousDraftSaveFailure,
-  LOCAL_ATTACHMENT_DRAFT_MESSAGE,
   providerDraftEditBlock,
   type ComposerDraftPhase,
   type ComposerDraftRetryKind,
@@ -35,16 +34,20 @@ import type { MailSessionFailureHandler } from "@/presentation/features/mail-wor
 
 interface ComposerDraftPersistenceOptions {
   readonly accountKey: string;
+  readonly attachmentIds: readonly string[];
   readonly composeId: DraftId;
   readonly content: DraftContent;
   readonly contentGeneration: MutableRefObject<number>;
   readonly enabled: boolean;
   readonly handleSessionFailure: MailSessionFailureHandler;
-  readonly hasLocalAttachments: boolean;
   readonly onHydrate: (draft: DraftDetail) => void;
-  readonly onSaved: (draft: DraftDetail) => void;
+  readonly onSaved: (
+    draft: DraftDetail,
+    attempt: ComposerDraftSaveAttempt,
+  ) => void;
   readonly recovery?: ComposerRecoveryJournalPort;
   readonly recoverySnapshot?: ComposerRecoverySnapshot;
+  readonly retainedAttachmentIds: readonly string[];
   readonly requestedId: ProviderDraftId | null;
   readonly request: ReturnType<typeof useComposerDraftRequest>;
   readonly requiresRecovery: boolean;
@@ -59,9 +62,10 @@ interface ComposerDraftPersistenceOptions {
 }
 
 export const useComposerDraftPersistence = ({
-  accountKey, composeId, content, contentGeneration, enabled,
-  handleSessionFailure, hasLocalAttachments, onHydrate, onSaved, recovery,
+  accountKey, attachmentIds, composeId, content, contentGeneration, enabled,
+  handleSessionFailure, onHydrate, onSaved, recovery,
   recoverySnapshot, requestedId, request, requiresRecovery, saved, setError,
+  retainedAttachmentIds,
   setHasUserEdits, setIsDirty, setPhase, setRequiresRecovery, setRetryKind,
   setSaved,
 }: ComposerDraftPersistenceOptions) => {
@@ -113,7 +117,7 @@ export const useComposerDraftPersistence = ({
       setIsDirty(completion.isDirty);
       if (!completion.isDirty) setHasUserEdits(false);
       setPhase(completion.phase);
-      onSaved(next);
+      onSaved(next, prepared);
       return true;
     } catch (error) {
       if (draftRequestAborted(error) || !request.isCurrent(operation)) return false;
@@ -140,16 +144,18 @@ export const useComposerDraftPersistence = ({
       return Promise.resolve(false);
     }
     const editBlock = providerDraftEditBlock(saved);
-    if (editBlock || hasLocalAttachments) {
-      setError(editBlock ?? LOCAL_ATTACHMENT_DRAFT_MESSAGE);
+    if (editBlock) {
+      setError(editBlock);
       setPhase("error");
       return Promise.resolve(false);
     }
     return persist(composerDraftSaveAttempt(
       composeId, content, contentGeneration.current, saved,
+      attachmentIds, retainedAttachmentIds,
     ), false, hydrateOnSuccess);
   }, [accountKey, composeId, content, contentGeneration, enabled,
-    hasLocalAttachments, persist, requestedId, requiresRecovery, saved,
+    attachmentIds, persist, requestedId, requiresRecovery,
+    retainedAttachmentIds, saved,
     setError, setPhase]);
 
   return {

@@ -101,6 +101,7 @@ describe("provider-backed draft routes", () => {
     expect(response.status).toBe(201);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(mocks.saveDraft).toHaveBeenCalledWith({
+      attachments: [],
       composeId,
       content: { bcc: [], body: "", cc: [], subject: "", to: [] },
     });

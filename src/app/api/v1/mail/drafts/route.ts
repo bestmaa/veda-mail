@@ -5,7 +5,7 @@ import {
   asDraftApiError,
   canonicalizeDraftRequestContent,
 } from "@/server/mail/draft-http";
-import { getMailService } from "@/server/mail/mail-service";
+import { saveDraftWithAttachments } from "@/server/mail/draft-attachment-service";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -41,12 +41,15 @@ export const POST = async (request: Request) => {
     const input = createDraftSchema.parse(
       await readJsonBody(request, MAX_DRAFT_REQUEST_BYTES),
     );
-    const draft = await (
-      await getMailService(connection)
-    ).saveDraft({
-      composeId: input.composeId,
-      content: canonicalizeDraftRequestContent(input.content),
-    });
+    assertMailSessionScope(request, connection);
+    const draft = await saveDraftWithAttachments(
+      connection,
+      {
+        composeId: input.composeId,
+        content: canonicalizeDraftRequestContent(input.content),
+      },
+      input.attachmentIds,
+    );
     return apiSuccess(draft, { status: 201 });
   } catch (error) {
     return apiFailure(

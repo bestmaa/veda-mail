@@ -57,7 +57,7 @@ export const useComposerRecoveryFlow = ({
   const [dismissedRecordId, setDismissedRecordId] = useState<string | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
   const [isTerminalBusy, setIsTerminalBusy] = useState(false);
-  const hasLocalAttachments = attachments.attachments.length > 0;
+  const hasLocalAttachments = attachments.attachmentIds.length > 0;
   const hasDurableIntent = draft.hasUserEdits || hasLocalAttachments ||
     draft.requiresRecovery;
   const composerOpen = isOpen && openAccountKey === accountKey;

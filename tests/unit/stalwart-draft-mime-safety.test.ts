@@ -43,6 +43,53 @@ const parseable = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("Stalwart editable MIME safety", () => {
+  it("accepts a canonical mixed draft and exposes its opaque attachment", () => {
+    const base = parseable();
+    const message = base.bodyStructure!;
+    const attachment = {
+      blobId: "blob-attachment",
+      disposition: "attachment",
+      headers: [
+        { name: "Content-Type", value: "text/plain" },
+        { name: "Content-Disposition", value: "attachment; filename=notes.txt" },
+      ],
+      name: "notes.txt",
+      partId: "attachment-1",
+      size: 12,
+      type: "text/plain",
+    };
+    const mixed = jmapDraftEmailSchema.parse({
+      ...base,
+      attachments: [attachment],
+      bodyStructure: {
+        headers: [{ name: "Content-Type",
+          value: 'multipart/mixed; boundary="safe-mixed"' }],
+        subParts: [message, attachment],
+        type: "multipart/mixed",
+      },
+      hasAttachment: true,
+      headers: (base.headers ?? []).map((header) =>
+        header.name.toLowerCase() === "content-type"
+          ? { ...header, value: 'multipart/mixed; boundary="safe-mixed"' }
+          : header),
+    });
+
+    expect(hasSupportedDraftBodyStructure(mixed)).toBe(true);
+    expect(mapJmapDraft(mixed, "account", "drafts")).toMatchObject({
+      attachments: [expect.objectContaining({ name: "notes.txt", size: 12 })],
+      hasAttachments: true,
+      hasTruncatedContent: false,
+    });
+    expect(hasSupportedDraftBodyStructure({
+      ...mixed,
+      attachments: [{ ...attachment, size: 18 * 1024 * 1024 + 1 }],
+      bodyStructure: {
+        ...mixed.bodyStructure!,
+        subParts: [message, { ...attachment, size: 18 * 1024 * 1024 + 1 }],
+      },
+    })).toBe(false);
+  });
+
   it("accepts the canonical plain/html alternative shape", () => {
     expect(hasSupportedDraftHeaderInventory(safe())).toBe(true);
     expect(hasSupportedDraftBodyStructure(safe())).toBe(true);

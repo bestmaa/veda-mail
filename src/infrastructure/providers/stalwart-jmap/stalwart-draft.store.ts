@@ -1,44 +1,20 @@
 import "server-only";
 
-import type {
-  DraftCapability,
-  DraftDetail,
-  DraftSaveInput,
-  SavedProviderDraft,
-} from "@/domain/mail/draft";
-import {
-  DraftConflictError,
-  DraftContentTruncatedError,
-  DraftHasAttachmentsError,
-  DraftNotFoundError,
-  DraftUnavailableError,
-} from "@/domain/mail/draft-errors";
-import {
-  assertDraftRevision,
-  canonicalDraftComposeId,
-  validateDraftSaveInput,
-} from "@/domain/mail/draft-validation";
+import type { DraftCapability, DraftDetail, DraftSaveInput, SavedProviderDraft } from "@/domain/mail/draft";
+import { DraftConflictError, DraftContentTruncatedError, DraftNotFoundError, DraftUnavailableError } from "@/domain/mail/draft-errors";
+import { assertDraftRevision, canonicalDraftComposeId, validateDraftSaveInput } from "@/domain/mail/draft-validation";
 import type { ProviderDraftId } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
-import {
-  StalwartJmapHttpError,
-  StalwartJmapMethodError,
-  type StalwartJmapRequestBoundary,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
+import { StalwartJmapHttpError, StalwartJmapMethodError, type StalwartJmapRequestBoundary } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
 import { assertDraftDestroyed } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-mutation";
 import { assertStalwartDraftComposeMembers } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-compose-members";
-import {
-  StalwartDraftReader,
-  type StalwartDraftRecord,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.reader";
+import { StalwartDraftReader, type StalwartDraftRecord } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.reader";
 import { saveStalwartDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-save";
-import {
-  prepareStalwartDraftSendSource,
-  type StalwartDraftSendSource,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-send-source";
+import { prepareStalwartDraftSendSource, type StalwartDraftSendSource } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-send-source";
 import { assertOrphanReplacementCandidate } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-replacement";
 import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
+import { jmapDraftAttachmentIntent, resolveStalwartDraftAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-attachments";
 
 export type { StalwartDraftSendSource } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-send-source";
 
@@ -69,10 +45,21 @@ export class StalwartDraftStore {
   public async save(input: DraftSaveInput): Promise<DraftDetail> {
     validateDraftSaveInput(input);
     const composeId = canonicalDraftComposeId(input.composeId);
+    const attachmentIntent =
+      input.attachments !== undefined || input.retainedAttachmentIds !== undefined
+        ? jmapDraftAttachmentIntent(input)
+        : undefined;
     const context = await this.drafts.context();
     if (!input.providerDraftId) {
       const state = await this.drafts.state(context);
+      const attachments = await resolveStalwartDraftAttachments(
+        this.client,
+        context.accountId,
+        input,
+      );
       return saveStalwartDraft(this.client, this.mail, this.drafts, {
+        ...(attachmentIntent ? { attachmentIntent } : {}),
+        attachments,
         composeId,
         content: input.content,
         context,
@@ -93,6 +80,10 @@ export class StalwartDraftStore {
         recovered,
         {
           accountId: context.accountId,
+          attachmentCount:
+            (input.retainedAttachmentIds?.length ?? 0) +
+            (input.attachments?.length ?? 0),
+          ...(attachmentIntent ? { attachmentIntent } : {}),
           composeId,
           content: input.content,
           oldId: input.providerDraftId,
@@ -110,16 +101,21 @@ export class StalwartDraftStore {
     ) {
       throw new DraftConflictError();
     }
-    if (existing.detail.hasAttachments) {
-      throw new DraftHasAttachmentsError();
-    }
     if (existing.detail.hasUncertainSubmission) {
       throw new DraftConflictError();
     }
     if (existing.detail.hasTruncatedContent) {
       throw new DraftContentTruncatedError();
     }
+    const attachments = await resolveStalwartDraftAttachments(
+      this.client,
+      context.accountId,
+      input,
+      existing.email,
+    );
     return saveStalwartDraft(this.client, this.mail, this.drafts, {
+      ...(attachmentIntent ? { attachmentIntent } : {}),
+      attachments,
       composeId,
       content: input.content,
       context,

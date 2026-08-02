@@ -1,14 +1,16 @@
-import type {
-  DraftContent,
-  DraftDetail,
-  DraftSaveInput,
-} from "@/domain/mail/draft";
+import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import type { DraftId } from "@/domain/shared/brand";
 import { mailApi } from "@/transport/client/api-client";
 
-export type ComposerDraftSaveAttempt = DraftSaveInput & {
+export interface ComposerDraftSaveAttempt {
+  readonly attachmentIds?: readonly string[];
+  readonly composeId: DraftId;
+  readonly content: DraftContent;
   readonly contentGeneration: number;
-};
+  readonly expectedRevision?: string;
+  readonly providerDraftId?: DraftDetail["id"];
+  readonly retainedAttachmentIds?: readonly string[];
+}
 
 const snapshotContent = (content: DraftContent): DraftContent => ({
   bcc: content.bcc.map((address) => ({ ...address })),
@@ -25,6 +27,8 @@ export const composerDraftSaveAttempt = (
   content: DraftContent,
   contentGeneration: number,
   saved: DraftDetail | null,
+  attachmentIds: readonly string[] = [],
+  retainedAttachmentIds: readonly string[] = [],
 ): ComposerDraftSaveAttempt => {
   const snapshot = snapshotContent(content);
   return saved
@@ -32,10 +36,18 @@ export const composerDraftSaveAttempt = (
         composeId,
         content: snapshot,
         contentGeneration,
+        attachmentIds: [...attachmentIds],
         expectedRevision: saved.revision,
         providerDraftId: saved.id,
+        retainedAttachmentIds: [...retainedAttachmentIds],
       }
-    : { composeId, content: snapshot, contentGeneration };
+    : {
+        attachmentIds: [...attachmentIds],
+        composeId,
+        content: snapshot,
+        contentGeneration,
+        retainedAttachmentIds: [],
+      };
 };
 
 export const issueComposerDraftSaveAttempt = (
@@ -48,7 +60,9 @@ export const issueComposerDraftSaveAttempt = (
       {
         composeId: attempt.composeId,
         content: attempt.content,
-        expectedRevision: attempt.expectedRevision,
+        expectedRevision: attempt.expectedRevision!,
+        attachmentIds: attempt.attachmentIds ?? [],
+        retainedAttachmentIds: attempt.retainedAttachmentIds ?? [],
       },
       accountKey,
       signal,
@@ -58,4 +72,5 @@ export const issueComposerDraftSaveAttempt = (
       attempt.content,
       accountKey,
       signal,
+      { attachmentIds: attempt.attachmentIds ?? [] },
     );
