@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
-import type { DraftSaveInput } from "@/domain/mail/draft";
+import { DraftConflictError } from "@/domain/mail/draft-errors";
 import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type {
@@ -21,12 +21,15 @@ import type {
 import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
 import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
+import { ImapDraftStore } from "@/infrastructure/providers/imap-smtp/imap-draft.store";
+import { withImapDraftOperation } from "@/infrastructure/providers/imap-smtp/imap-draft-operation-lock";
 import { ImapMailboxManager } from "@/infrastructure/providers/imap-smtp/imap-mailbox.manager";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import { cleanupImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-cleanup";
 import { emptyImapMailbox } from "@/infrastructure/providers/imap-smtp/imap-mailbox-empty";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
+import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
 
 const unsupported = (feature: string): never => {
   throw new Error(`${feature} is not available through standard IMAP/SMTP.`);
@@ -34,12 +37,14 @@ const unsupported = (feature: string): never => {
 
 export class ImapSmtpMailGateway implements MailGateway {
   private readonly attachmentCapability: SmtpAttachmentCapability;
+  private readonly drafts: ImapDraftStore;
   private readonly reader: ImapMailReader;
   private readonly mailboxes: ImapMailboxManager;
   private readonly writer: ImapMailWriter;
 
   public constructor(private readonly config: ImapSmtpMemberConfig) {
     this.attachmentCapability = new SmtpAttachmentCapability(config);
+    this.drafts = new ImapDraftStore(config);
     this.reader = new ImapMailReader(config);
     this.mailboxes = new ImapMailboxManager(config);
     this.writer = new ImapMailWriter(config, this.attachmentCapability);
@@ -66,26 +71,20 @@ export class ImapSmtpMailGateway implements MailGateway {
     ));
   }
 
-  public async discardDraft(
-    _providerDraftId: ProviderDraftId,
-    _expectedRevision: string,
-  ): Promise<void> {
-    void _providerDraftId;
-    void _expectedRevision;
-    unsupported("Provider-backed drafts");
+  public discardDraft(providerDraftId: ProviderDraftId, expectedRevision: string) {
+    return this.drafts.discard(providerDraftId, expectedRevision);
   }
 
   public getAccount() {
     return this.reader.getAccount();
   }
 
-  public async getDraft(_providerDraftId: ProviderDraftId): Promise<never> {
-    void _providerDraftId;
-    return unsupported("Provider-backed drafts");
+  public getDraft(providerDraftId: ProviderDraftId) {
+    return this.drafts.get(providerDraftId);
   }
 
-  public async getDraftCapability() {
-    return { status: "unsupported" as const };
+  public getDraftCapability() {
+    return this.drafts.capability();
   }
 
   public getLabelCapability(mailboxId: Parameters<ImapMailReader["getLabelCapability"]>[0]) {
@@ -135,13 +134,29 @@ export class ImapSmtpMailGateway implements MailGateway {
     return this.mailboxes.mutate(mutation);
   }
 
-  public async saveDraft(_input: DraftSaveInput): Promise<never> {
-    void _input;
-    return unsupported("Provider-backed drafts");
+  public saveDraft(...input: Parameters<ImapDraftStore["save"]>) {
+    return this.drafts.save(...input);
   }
 
-  public sendMessage(input: SendMessageInput) {
-    return this.writer.sendMessage(input);
+  public async sendMessage(input: SendMessageInput) {
+    if (!input.providerDraft) return this.writer.sendMessage(input);
+    return withImapDraftOperation(
+      this.config,
+      input.providerDraft.composeId,
+      async () => {
+        const saved = await this.drafts.prepareSend(input.providerDraft!);
+        if (!sameDraftContent(saved.content, input)) {
+          throw new DraftConflictError();
+        }
+        const receipt = await this.writer.sendMessage(input);
+        if (receipt.deliveryStatus !== "uncertain") {
+          await this.drafts
+            .discard(saved.id, saved.revision)
+            .catch(() => console.error("[veda-mail] Accepted IMAP draft cleanup failed."));
+        }
+        return receipt;
+      },
+    );
   }
 
   public async testConnection(): Promise<void> {
