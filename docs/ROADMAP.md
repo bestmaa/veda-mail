@@ -196,12 +196,14 @@ removed by opaque ID without exposing JMAP blob IDs or IMAP MIME locators.
 The attachment slice was merged as `3f2a421` and published as multi-platform
 image digest
 `sha256:242a80237308861ba848035aa834dc21f14404044054b83ff99638cd08f9e643`.
-Its production deployment and live health/critical-flow evidence remain open:
-both the Dokploy hostname `panel.wovvtec.site` and public mail hostname
-`mail.wovvtec.site` returned authoritative DNS `NXDOMAIN` on 2026-08-02.
-Completing this milestone still requires publication and live deployment
-evidence for templates, delayed send, and the broader shortcut/accessibility
-audit listed above.
+The reusable-template slice was merged as `d0afd06` and published as the
+scanned, attested amd64/arm64 image digest
+`sha256:688e8a3b0c8f5dad2c5c4d3fd5c42fee59e702042de0d750c3cb8f6dcb465eac`.
+Production deployment and live health/critical-flow evidence remain open for
+both slices: the Dokploy hostname `panel.wovvtec.site` and public mail hostname
+`mail.wovvtec.site` still returned authoritative DNS `NXDOMAIN` on 2026-08-02.
+Completing this milestone still requires that live deployment evidence,
+delayed send, and the broader shortcut/accessibility audit listed above.
 
 ## M4 — Fast mailbox management
 
