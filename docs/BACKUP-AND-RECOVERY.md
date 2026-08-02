@@ -15,6 +15,8 @@ the supplied Compose deployment.
   `member-signatures.json`
 - Per-provider/mailbox reusable template names, canonical subject/body content,
   and revisions encrypted in `member-templates.json`
+- Per-provider/mailbox density, sort, preview, send-confirmation, and Undo Send
+  delay preferences encrypted in `message-list-preferences.json`
 - Per-provider/mailbox custom folder colors encrypted in
   `mailbox-appearance.json`
 - Per-provider/mailbox portable label names, colors, opaque IDs, resumable
@@ -32,7 +34,8 @@ the supplied Compose deployment.
 It does not contain mailbox messages. Messages remain on the configured mail
 server. Active member sessions are process-memory only and disappear on
 restart. The deliberate exception for provider credentials is an encrypted,
-bounded scheduled job; it is deleted after confirmed delivery or cancellation.
+bounded scheduled or Undo Send job; it is deleted after confirmed delivery or
+cancellation.
 
 `VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
 deployment secret manager. A `/data` backup without that exact key cannot

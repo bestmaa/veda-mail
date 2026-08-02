@@ -46,6 +46,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Provider-independent scheduled send backed by an encrypted durable queue,
   provider-saved drafts, absolute UTC times, reschedule/cancel controls,
   bounded retry/dead-letter handling, and duplicate-safe uncertain recovery
+- Account-private send confirmation and 5/10/20/30-second Undo Send. Undo
+  atomically cancels only a pending encrypted job and restores the exact saved
+  provider draft; it never claims to recall provider-accepted mail
 - Stalwart JMAP provider drafts with debounced autosave, visible recovery state,
   Drafts-list editing, exact revision conflicts, explicit discard, and
   save-first send; incomplete, attachment-bearing, or unsupported-header/MIME

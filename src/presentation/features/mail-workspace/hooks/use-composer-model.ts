@@ -6,6 +6,7 @@ import type { ComposeInput, MessageDetail, SendReceipt } from "@/domain/mail/mai
 import type { EmailSignatureBook } from "@/domain/member/email-signature";
 import { id } from "@/domain/shared/brand";
 import type { ComposerRecoveryOwner } from "@/presentation/features/mail-workspace/composer-recovery.types";
+import { DEFAULT_COMPOSER_SEND_PREFERENCES, type ComposerSendPreferences } from "@/presentation/features/mail-workspace/composer-send-preferences";
 import { useComposerAttachments } from "@/presentation/features/mail-workspace/hooks/use-composer-attachments";
 import { useComposerBody } from "@/presentation/features/mail-workspace/hooks/use-composer-body";
 import { useComposerClose } from "@/presentation/features/mail-workspace/hooks/use-composer-close";
@@ -16,9 +17,11 @@ import { useComposerRecovery } from "@/presentation/features/mail-workspace/hook
 import { useComposerRecoveryFlow } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-flow";
 import { useComposerSchedule } from "@/presentation/features/mail-workspace/hooks/use-composer-schedule";
 import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
+import { useComposerSendConfirmation } from "@/presentation/features/mail-workspace/hooks/use-composer-send-confirmation";
 import { useComposerSignatures } from "@/presentation/features/mail-workspace/hooks/use-composer-signatures";
 import { useComposerTemplates } from "@/presentation/features/mail-workspace/hooks/use-composer-templates";
 import type { EmailTemplatesModel } from "@/presentation/features/mail-workspace/hooks/use-email-templates-model";
+import { useUndoSend } from "@/presentation/features/mail-workspace/hooks/use-undo-send";
 import { ignoreMailSessionFailure, type MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 const hasDefaultSignature = (
   book: EmailSignatureBook | null,
@@ -43,6 +46,7 @@ export const useComposerModel = (
   recoveryOwner: ComposerRecoveryOwner | null = null,
   emailTemplates: EmailTemplatesModel = emptyTemplates,
   scheduledSendEnabled = true,
+  sendPreferences: ComposerSendPreferences = DEFAULT_COMPOSER_SEND_PREFERENCES,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openAccountKey, setOpenAccountKey] = useState("");
@@ -56,25 +60,18 @@ export const useComposerModel = (
   const markUnsaved = useCallback(() => markUnsavedRef.current(), []);
   const markProgrammatic = useCallback(() => markProgrammaticRef.current(), []);
   useLayoutEffect(() => { accountKeyRef.current = accountKey; }, [accountKey]);
-  const attachments = useComposerAttachments(
-    maxAttachmentBytes,
-    accountKey,
-    initialAttachmentSessionScope,
-    handleSessionFailure,
-    markUnsaved,
-  );
+  const attachments = useComposerAttachments(maxAttachmentBytes, accountKey,
+    initialAttachmentSessionScope, handleSessionFailure, markUnsaved);
   const signatures = useComposerSignatures(signatureBook);
   const fields = useComposerFields(markUnsaved);
-  const body = useComposerBody(
-    isSending, signatures.detach, markUnsaved, markProgrammatic,
-  );
+  const body = useComposerBody(isSending, signatures.detach, markUnsaved,
+    markProgrammatic);
   const templates = useComposerTemplates({
     body, disabled: isSending, fields, templates: emailTemplates,
   });
   const resetTemplates = templates.reset;
-  const recovery = useComposerRecovery(
-    recoveryOwner, fields, body, signatures, attachments,
-  );
+  const recovery = useComposerRecovery(recoveryOwner, fields, body, signatures,
+    attachments);
   const draftContent = useMemo<DraftContent>(() => ({
     ...parseRecipientInputs({ bcc: fields.bcc, cc: fields.cc, to: fields.to }),
     ...body.payload,
@@ -83,11 +80,8 @@ export const useComposerModel = (
   }), [body.payload, fields.bcc, fields.cc, fields.inReplyTo, fields.subject, fields.to]);
   const hydrateSavedDraft = useCallback((savedDraft: DraftDetail) => {
     fields.hydrate(savedDraft.content, "Edit draft");
-    body.loadSavedDraft(
-      savedDraft.content,
-      !savedDraft.hasUncertainSubmission &&
-        !savedDraft.hasTruncatedContent,
-    );
+    body.loadSavedDraft(savedDraft.content, !savedDraft.hasUncertainSubmission &&
+      !savedDraft.hasTruncatedContent);
     signatures.reset();
     resetTemplates();
     attachments.adoptProviderDraft(savedDraft);
@@ -104,11 +98,8 @@ export const useComposerModel = (
     onDiscarded: onDraftChanged,
     onHydrate: hydrateSavedDraft,
     onSaved: (savedDraft, attempt) => {
-      attachments.reconcileProviderDraft(
-        savedDraft,
-        attempt.attachmentIds ?? [],
-        attempt.retainedAttachmentIds ?? [],
-      );
+      attachments.reconcileProviderDraft(savedDraft, attempt.attachmentIds ?? [],
+        attempt.retainedAttachmentIds ?? []);
       onDraftChanged();
     },
     retainedAttachmentIds: attachments.providerAttachmentIds,
@@ -200,6 +191,8 @@ export const useComposerModel = (
     if (!beginOpen("Edit draft")) return;
     void draft.load(id.providerDraft(providerDraftId));
   }, [beginOpen, draft]);
+  const undoSend = useUndoSend({ handleSessionFailure, onChanged: onDraftChanged,
+    openSavedDraft, sessionScope: accountKey });
   const isOpenForAccount = isOpen && openAccountKey === accountKey;
   useEffect(() => {
     if (!isOpen || openAccountKey === accountKey) return;
@@ -214,7 +207,7 @@ export const useComposerModel = (
   useComposerFocusTrap(isOpenForAccount, isBusy, close.requestClose);
   const recoveryCheckpoint = { composeId: attachments.draftId,
     generation: draft.contentGeneration, snapshot: recovery.hydration.snapshot };
-  const onSubmit = useComposerSubmit({
+  const submit = useComposerSubmit({
     attachments, body, fields, handleSessionFailure,
     draftSendBlockedMessage: draft.sendBlockedMessage,
     isAccountCurrent: (key) => accountKeyRef.current === key,
@@ -225,9 +218,16 @@ export const useComposerModel = (
     onSendUncertain: draft.markSendUncertain,
     onSent, openAccountKey, providerDraft: draft.providerDraft,
     recovery: recovery.journal.port, recoveryCheckpoint,
+    saveDraft: draft.saveDetail,
     resetFields: resetEditor, restoreFocus: returnFocus.restore,
     setError, setIsOpen, setIsSending,
+    undoSendSeconds: sendPreferences.undoSendSeconds,
+    onUndoQueued: async (message, providerDraftId) => {
+      undoSend.queue(message, providerDraftId); await onScheduled();
+    },
   });
+  const sendConfirmation = useComposerSendConfirmation(
+    sendPreferences.confirmBeforeSend, submit);
   return {
     ...fields, attachmentCapabilityUnavailable: attachments.capabilityUnavailable,
     attachments: attachments.attachments, body, close: close.requestClose,
@@ -240,9 +240,9 @@ export const useComposerModel = (
     onCancelDiscard: close.cancelDiscard, onConfirmClose: close.confirmClose,
     onConfirmDiscard: close.confirmDiscard, onRequestDiscard: close.requestDiscard,
     onRetryAttachmentCapability: attachments.refreshCapability,
-    onSubmit, open, openForward, openReply, openReplyAll, openSavedDraft,
-    requiresSignOutConfirmation:
-      draft.hasUnsavedChanges || recoveryFlow.hasPersistedRecovery,
+    onSubmit: sendConfirmation.onSubmit, open, openForward, openReply, openReplyAll,
+    openSavedDraft, sendConfirmation, undoSend: undoSend.view,
+    requiresSignOutConfirmation: draft.hasUnsavedChanges || recoveryFlow.hasPersistedRecovery,
     removeAttachment: attachments.remove, retryAttachment: attachments.retry,
     schedule, signatures, templates,
   };

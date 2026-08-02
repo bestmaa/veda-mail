@@ -636,6 +636,14 @@ portable exact-once proof is impossible. The encrypted credential exception is
 limited to explicitly scheduled jobs and deleted with the job. One application
 replica remains the supported boundary.
 
+Undo Send reuses this queue with a distinct `undo` purpose and a server-bounded
+short deadline. The composer first saves the exact provider draft, receives the
+created opaque job ID, closes only after durable admission, and shows a global
+countdown. Undo performs the existing owner-scoped atomic cancellation before
+reopening that exact provider draft. Once the worker commits a `sending` lease,
+cancellation fails with a conflict and the UI truthfully reports that it is too
+late. A disabled delay preserves the existing immediate submission path.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never

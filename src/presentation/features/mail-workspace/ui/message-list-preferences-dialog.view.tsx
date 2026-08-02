@@ -1,6 +1,10 @@
 import { LoaderCircle, X } from "lucide-react";
 
-import { MESSAGE_LIST_DENSITIES } from "@/domain/mail/message-list-preferences";
+import {
+  MESSAGE_LIST_DENSITIES,
+  type UndoSendDelay,
+  UNDO_SEND_DELAYS,
+} from "@/domain/mail/message-list-preferences";
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
 
 const densityLabels = {
@@ -29,14 +33,14 @@ export const MessageListPreferencesDialogView = ({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-950" id="message-list-preferences-title">
-            Message list options
+            Mailbox preferences
           </h2>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            Choose how messages are ordered and displayed for this account.
+            Choose how messages are displayed and sent for this account.
           </p>
         </div>
         <button
-          aria-label="Close message list options"
+          aria-label="Close mailbox preferences"
           className="grid size-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
           disabled={dialog.isSaving}
           onClick={dialog.onClose}
@@ -80,6 +84,35 @@ export const MessageListPreferencesDialogView = ({
           <option value="oldest">Oldest first</option>
         </select>
       </label>
+
+      <fieldset className="mt-6 border-t border-slate-200 pt-5" disabled={dialog.isSaving}>
+        <legend className="px-1 text-sm font-semibold text-slate-700">Sending</legend>
+        <label className="mt-2 block text-sm font-semibold text-slate-700">
+          Undo send window
+          <select
+            className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            onChange={(event) => dialog.onUndoSendSecondsChange(
+              Number(event.target.value) as UndoSendDelay,
+            )}
+            value={dialog.undoSendSeconds}
+          >
+            {UNDO_SEND_DELAYS.map((seconds) => (
+              <option key={seconds} value={seconds}>
+                {seconds === 0 ? "Off — send immediately" : `${seconds} seconds`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
+          <input
+            checked={dialog.confirmBeforeSend}
+            className="size-5 accent-indigo-600"
+            onChange={(event) => dialog.onConfirmBeforeSendChange(event.target.checked)}
+            type="checkbox"
+          />
+          Ask for confirmation before sending
+        </label>
+      </fieldset>
 
       <label className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
         <input

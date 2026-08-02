@@ -6,6 +6,7 @@ import type {
   MessageListDensity,
   MessageListPreferences,
   MessageListSort,
+  UndoSendDelay,
 } from "@/domain/mail/message-list-preferences";
 import type {
   MessageListPreferencesViewModel,
@@ -16,10 +17,12 @@ const same = (
   left: MessageListPreferences,
   right: MessageListPreferences,
 ): boolean => left.density === right.density &&
-  left.showPreview === right.showPreview && left.sort === right.sort;
+  left.showPreview === right.showPreview && left.sort === right.sort &&
+  left.confirmBeforeSend === right.confirmBeforeSend &&
+  left.undoSendSeconds === right.undoSendSeconds;
 
 const savedAnnouncement = (preferences: MessageListPreferences): string =>
-  `Message list preferences saved. ${
+  `Mailbox preferences saved. ${
     preferences.sort === "newest" ? "Newest" : "Oldest"
   } messages first.`;
 
@@ -48,14 +51,19 @@ export const useMessageListPreferencesModel = (
 
   return {
     announcement,
+    confirmBeforeSend: current.confirmBeforeSend,
     density: current.density,
     dialog: {
+      confirmBeforeSend: draft.confirmBeforeSend,
       density: draft.density,
       error,
       isDirty: !same(current, draft),
       isOpen,
       isSaving,
       onClose,
+      onConfirmBeforeSendChange: useCallback((confirmBeforeSend: boolean) => {
+        setDraft((value) => ({ ...value, confirmBeforeSend }));
+      }, []),
       onDensityChange: useCallback((density: MessageListDensity) => {
         setDraft((value) => ({ ...value, density }));
       }, []),
@@ -87,8 +95,12 @@ export const useMessageListPreferencesModel = (
           if (requestId === runId.current) setIsSaving(false);
         }
       }, [current, draft, isSaving, save]),
+      onUndoSendSecondsChange: useCallback((undoSendSeconds: UndoSendDelay) => {
+        setDraft((value) => ({ ...value, undoSendSeconds }));
+      }, []),
       showPreview: draft.showPreview,
       sort: draft.sort,
+      undoSendSeconds: draft.undoSendSeconds,
     },
     onOpen: useCallback(() => {
       setDraft(current);
@@ -97,5 +109,6 @@ export const useMessageListPreferencesModel = (
     }, [current]),
     showPreview: current.showPreview,
     sort: current.sort,
+    undoSendSeconds: current.undoSendSeconds,
   };
 };

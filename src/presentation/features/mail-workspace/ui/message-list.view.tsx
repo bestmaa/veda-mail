@@ -91,11 +91,11 @@ export const MessageListView = ({
             aria-haspopup="dialog"
             className="grid size-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             onClick={preferences.onOpen}
-            title="Message list options"
+            title="Mailbox preferences"
             type="button"
           >
             <SlidersHorizontal aria-hidden size={18} />
-            <span className="sr-only">Message list options</span>
+            <span className="sr-only">Mailbox preferences</span>
           </button>
         </div>
       </div>

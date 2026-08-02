@@ -34,9 +34,11 @@ import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
 const origin = "https://mail.example.com";
 const validPreferences = {
+  confirmBeforeSend: true,
   density: "compact",
   showPreview: false,
   sort: "oldest",
+  undoSendSeconds: 10,
 } as const;
 const owner = { email: "member@example.com", providerId: "stalwart-jmap" };
 
@@ -178,6 +180,8 @@ describe("message list preferences route", () => {
     [{ density: "dense", showPreview: true, sort: "newest" }, "unknown density"],
     [{ density: "compact", showPreview: "yes", sort: "newest" }, "non-boolean preview"],
     [{ density: "compact", showPreview: true, sort: "sender" }, "unknown sort"],
+    [{ ...validPreferences, undoSendSeconds: 15 }, "unsupported undo delay"],
+    [{ ...validPreferences, confirmBeforeSend: "yes" }, "non-boolean confirmation"],
     [{ ...validPreferences, mailboxId: "inbox-secret" }, "unknown key"],
     [null, "null body"],
     [[], "array body"],

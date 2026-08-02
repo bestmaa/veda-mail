@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { SavedProviderDraft } from "@/domain/mail/draft";
@@ -13,13 +12,14 @@ import type {
   ComposerRecoveryJournalPort,
 } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-journal";
 
-const sendMessage = vi.hoisted(() => vi.fn());
+const api = vi.hoisted(() => ({ scheduleMessage: vi.fn(), sendMessage: vi.fn() }));
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useCallback: <T,>(callback: T): T => callback,
+  useRef: <T,>(current: T) => ({ current }),
 }));
 vi.mock("@/transport/client/api-client", () => ({
-  mailApi: { sendMessage },
+  mailApi: api,
 }));
 
 import { useComposerSubmit } from "@/presentation/features/mail-workspace/hooks/use-composer-submit";
@@ -77,10 +77,10 @@ describe("saved provider draft submit", () => {
       setIsSending: vi.fn(),
     });
 
-    await (submit({ preventDefault: vi.fn() } as unknown as FormEvent<HTMLFormElement>) as unknown as Promise<void>);
+    await submit();
 
     expect(setError).toHaveBeenCalledWith(SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE);
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(api.sendMessage).not.toHaveBeenCalled();
     expect(discard).not.toHaveBeenCalled();
   });
 
@@ -108,8 +108,62 @@ describe("saved provider draft submit", () => {
       setIsSending: vi.fn(),
     });
 
-    await (submit({ preventDefault: vi.fn() } as unknown as FormEvent<HTMLFormElement>) as unknown as Promise<void>);
+    await submit();
     expect(setError).toHaveBeenCalledWith(RECOVER_DRAFT_BEFORE_SEND_MESSAGE);
-    expect(sendMessage).not.toHaveBeenCalled();
+    expect(api.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("saves an exact provider draft and queues an undo job without immediate delivery", async () => {
+    const providerDraftId = id.providerDraft("provider-undo");
+    const scheduledMessage = {
+      attemptCount: 0, createdAt: new Date().toISOString(),
+      id: id.scheduledMessage("11111111-1111-4111-8111-111111111111"),
+      lastError: null, purpose: "undo" as const, recipientCount: 1,
+      scheduledAt: new Date(Date.now() + 5_000).toISOString(),
+      status: "pending" as const, subject: "Undo subject",
+      updatedAt: new Date().toISOString(),
+    };
+    api.scheduleMessage.mockResolvedValueOnce({
+      createdMessage: scheduledMessage, messages: [scheduledMessage],
+      revision: "revision", version: 1,
+    });
+    const saveDraft = vi.fn().mockResolvedValue({
+      attachments: [], composeId: id.draft("compose-undo"),
+      content: { bcc: [], body: "Body", cc: [], subject: "Undo subject", to: [] },
+      hasAttachments: false, hasTruncatedContent: false,
+      hasUncertainSubmission: false, id: providerDraftId,
+      revision: "provider-revision", updatedAt: new Date().toISOString(),
+    });
+    const onUndoQueued = vi.fn();
+    const submit = useComposerSubmit({
+      attachments: {
+        attachmentIds: [], draftId: id.draft("compose-undo"),
+        expireReady: () => false, hasError: false, isUploading: false,
+      } as unknown as ReturnType<typeof useComposerAttachments>,
+      body: { payload: { body: "Body" }, text: "Body" } as ReturnType<typeof useComposerBody>,
+      draftSendBlockedMessage: null,
+      fields: { bcc: "", cc: "", inReplyTo: undefined, subject: "Undo subject",
+        to: "recipient@example.com" } as ReturnType<typeof useComposerFields>,
+      handleSessionFailure: () => false, isAccountCurrent: () => true,
+      isDraftBusy: false, isDraftReadOnly: false, onDraftSent: vi.fn(),
+      onSendUncertain: vi.fn(), onSent: vi.fn(), onUndoQueued,
+      openAccountKey: "scope-a", providerDraft: null, recovery,
+      recoveryCheckpoint, resetFields: vi.fn(), restoreFocus: vi.fn(), saveDraft,
+      setError: vi.fn(), setIsOpen: vi.fn(), setIsSending: vi.fn(),
+      undoSendSeconds: 5,
+    });
+
+    await Promise.all([submit(), submit()]);
+
+    expect(saveDraft).toHaveBeenCalledOnce();
+    expect(api.scheduleMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachmentIds: [], expectedDraftRevision: "provider-revision",
+        providerDraftId, subject: "Undo subject",
+      }),
+      expect.any(String), "scope-a", "undo",
+    );
+    expect(api.sendMessage).not.toHaveBeenCalled();
+    expect(onUndoQueued).toHaveBeenCalledWith(scheduledMessage, providerDraftId);
   });
 });

@@ -4,13 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
 import { composerTemplateViewModel } from "../support/composer-template-view-model";
-const composer = (
-  overrides: Partial<ComposerViewModel> = {},
-): ComposerViewModel => ({
-  attachmentCapabilityUnavailable: false,
-  attachments: [],
-  attachmentInput: vi.fn(),
-  bcc: "",
+const composer = (overrides: Partial<ComposerViewModel> = {}): ComposerViewModel => ({
+  attachmentCapabilityUnavailable: false, attachments: [],
+  attachmentInput: vi.fn(), bcc: "",
   bccInput: vi.fn(),
   body: {
     cancelPlainMode: vi.fn(),
@@ -78,6 +74,7 @@ const composer = (
     onCancel: vi.fn(), onConfirm: vi.fn(), onOpen: vi.fn(),
     onTimeInput: vi.fn(), timeZone: "Asia/Calcutta",
   },
+  sendConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   showBcc: false,
   showCc: false,
   subject: "",
@@ -87,13 +84,16 @@ const composer = (
   toInput: vi.fn(),
   ...overrides,
 });
-const renderComposer = (model: ComposerViewModel): string =>
-  renderToStaticMarkup(
-    createElement(ComposerView, { composer: model, deliveryNotice: null }),
-  );
+const renderComposer = (model: ComposerViewModel): string => renderToStaticMarkup(
+  createElement(ComposerView, { composer: model, deliveryNotice: null }));
 describe("composer component", () => {
-  it("renders nothing while closed", () => {
-    expect(renderComposer(composer({ isOpen: false }))).toBe("");
+  it("renders nothing while closed", () =>
+    expect(renderComposer(composer({ isOpen: false }))).toBe(""));
+  it("renders an inert composer behind the send confirmation", () => {
+    const html = renderComposer(composer({ sendConfirmation: { isOpen: true,
+      onCancel: vi.fn(), onConfirm: vi.fn() } }));
+    expect(html).toContain('id="composer-send-confirmation"'); expect(html).toContain("Send this message?");
+    expect(html).toContain('aria-hidden="true" inert=""');
   });
   it("exposes disclosure state and keeps To optional", () => {
     const html = renderComposer(composer());

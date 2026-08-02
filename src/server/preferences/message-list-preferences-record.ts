@@ -2,11 +2,27 @@ import "server-only";
 
 import { z } from "zod";
 
+import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-preferences";
 import { messageListPreferencesSchema } from "@/transport/http/message-list-preferences.schema";
+
+const legacyMessageListPreferencesSchema = z
+  .object({
+    density: z.enum(["compact", "comfortable", "spacious"]),
+    showPreview: z.boolean(),
+    sort: z.enum(["newest", "oldest"]),
+  })
+  .strict();
+
+const storedPreferencesSchema = z
+  .union([messageListPreferencesSchema, legacyMessageListPreferencesSchema])
+  .transform((preferences) => ({
+    ...DEFAULT_MESSAGE_LIST_PREFERENCES,
+    ...preferences,
+  }));
 
 export const storedMessageListPreferencesSchema = z
   .object({
-    preferences: messageListPreferencesSchema,
+    preferences: storedPreferencesSchema,
     updatedAt: z.string().datetime(),
     version: z.literal(1),
   })

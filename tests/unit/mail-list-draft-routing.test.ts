@@ -41,7 +41,8 @@ const workspace: MailWorkspace = {
     total: 1, unread: 0,
   }],
   messageListPreferences: {
-    density: "comfortable", showPreview: true, sort: "newest",
+    confirmBeforeSend: false, density: "comfortable", showPreview: true,
+    sort: "newest", undoSendSeconds: 0,
   },
   messages: {
     items: [{

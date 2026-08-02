@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Account-private send confirmation and provider-independent Undo Send with
+  configurable 5/10/20/30-second windows. Delayed sends first persist the exact
+  provider draft and then enter the encrypted durable queue; the global
+  countdown atomically cancels a still-pending job and reopens that same draft.
+  A committed delivery lease is never recalled or automatically retried, and a
+  single-flight composer guard prevents rapid duplicate submissions
 - Provider-independent scheduled send for both JMAP and IMAP/SMTP. Scheduling
   first persists the exact provider-backed draft, then stores a bounded
   canonical job and provider connection in an AES-256-GCM envelope under a
@@ -28,9 +34,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
   IDs, and send from the authoritative saved copy. Combined selection, decoded
   bytes, MIME shape, digest, revision, lost-response, and concurrent-replacement
   checks fail closed without exposing provider blob or part identifiers
-- Account-private message-list preferences for compact, comfortable, or
-  spacious density, newest/oldest provider mailbox order, and optional bounded
-  preview snippets. Preferences are encrypted on the Veda Mail data volume;
+- Account-private mailbox preferences for compact, comfortable, or spacious
+  density, newest/oldest provider mailbox order, optional bounded preview
+  snippets, send confirmation, and Undo Send delay. Preferences are encrypted
+  on the Veda Mail data volume and legacy records migrate to safe off defaults;
   list cursors are HMAC-authenticated, expire after 30 minutes, and are bound to
   the mailbox, search, sort, preview mode, and fixed page size. Stalwart JMAP
   requests a normalized preview only when enabled; Standard IMAP deliberately

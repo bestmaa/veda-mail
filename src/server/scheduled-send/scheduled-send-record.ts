@@ -46,6 +46,7 @@ export const scheduledJobSchema = z
     lastError: z.string().max(200).nullable(),
     leaseId: z.string().min(32).max(100).nullable(),
     nextAttemptAt: z.string().datetime(),
+    purpose: z.enum(["scheduled", "undo"]).default("scheduled"),
     request: scheduledRequestSchema,
     scheduledAt: z.string().datetime(),
     state: z.enum(["failed", "pending", "retrying", "sending", "uncertain"]),

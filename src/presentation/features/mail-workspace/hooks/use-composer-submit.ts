@@ -1,19 +1,14 @@
 "use client";
 
-import {
-  useCallback,
-  type Dispatch,
-  type FormEventHandler,
-  type SetStateAction,
-} from "react";
+import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 
-import type { SavedProviderDraft } from "@/domain/mail/draft";
+import type { DraftDetail, SavedProviderDraft } from "@/domain/mail/draft";
 import type { SendReceipt } from "@/domain/mail/mail";
-import type { DraftId } from "@/domain/shared/brand";
+import type { UndoSendDelay } from "@/domain/mail/message-list-preferences";
+import type { ScheduledMessage } from "@/domain/mail/scheduled-send";
+import type { DraftId, ProviderDraftId } from "@/domain/shared/brand";
 import { parseRecipientInputs } from "@/domain/mail/compose";
-import {
-  SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE,
-} from "@/presentation/features/mail-workspace/composer-draft-state";
+import { SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE } from "@/presentation/features/mail-workspace/composer-draft-state";
 import type { ComposerRecoverySnapshot } from "@/presentation/features/mail-workspace/composer-recovery.types";
 import { EXPIRED_ATTACHMENT_MESSAGE } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
 import {
@@ -27,6 +22,7 @@ import type { useComposerFields } from "@/presentation/features/mail-workspace/h
 import { mailApi } from "@/transport/client/api-client";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import type { ComposerRecoveryJournalPort } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-journal";
+import { queueComposerUndoSend } from "@/presentation/features/mail-workspace/hooks/queue-composer-undo-send";
 
 interface ComposerSubmitOptions {
   readonly attachments: ReturnType<typeof useComposerAttachments>;
@@ -38,6 +34,8 @@ interface ComposerSubmitOptions {
   readonly isDraftBusy: boolean;
   readonly isDraftReadOnly: boolean;
   readonly onDraftSent: () => void;
+  readonly onUndoQueued?: (message: ScheduledMessage,
+    providerDraftId: ProviderDraftId) => Promise<void> | void;
   readonly onSendUncertain: () => void;
   readonly onSent: (
     receipt: SendReceipt,
@@ -56,6 +54,8 @@ interface ComposerSubmitOptions {
   readonly setError: Dispatch<SetStateAction<string | null>>;
   readonly setIsOpen: Dispatch<SetStateAction<boolean>>;
   readonly setIsSending: Dispatch<SetStateAction<boolean>>;
+  readonly saveDraft?: () => Promise<DraftDetail | null>;
+  readonly undoSendSeconds?: UndoSendDelay;
 }
 
 export const useComposerSubmit = ({
@@ -68,6 +68,7 @@ export const useComposerSubmit = ({
   isDraftBusy,
   isDraftReadOnly,
   onDraftSent,
+  onUndoQueued,
   onSendUncertain,
   onSent,
   openAccountKey,
@@ -79,10 +80,13 @@ export const useComposerSubmit = ({
   setError,
   setIsOpen,
   setIsSending,
-}: ComposerSubmitOptions): FormEventHandler<HTMLFormElement> =>
-  useCallback(
-    async (event) => {
-      event.preventDefault();
+  saveDraft,
+  undoSendSeconds = 0,
+}: ComposerSubmitOptions): (() => Promise<void>) => {
+  const submissionInFlight = useRef(false);
+  return useCallback(
+    async () => {
+      if (submissionInFlight.current) return;
       const submittedAccountKey = openAccountKey;
       if (
         !submittedAccountKey ||
@@ -122,14 +126,40 @@ export const useComposerSubmit = ({
         setError(EXPIRED_ATTACHMENT_MESSAGE);
         return;
       }
-      if (providerDraft && attachments.attachmentIds.length > 0) {
+      if (
+        undoSendSeconds === 0 && providerDraft &&
+        attachments.attachmentIds.length > 0
+      ) {
         setError(SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE);
         return;
       }
+      submissionInFlight.current = true;
       setIsSending(true);
       setError(null);
       let terminalIntentId: string | null = null;
       try {
+        if (undoSendSeconds !== 0) {
+          const queued = saveDraft ? await queueComposerUndoSend({
+            content: {
+              bcc: recipients.bcc, ...body.payload, cc: recipients.cc,
+              ...(fields.inReplyTo ? { inReplyTo: fields.inReplyTo } : {}),
+              subject: fields.subject, to: recipients.to,
+            },
+            saveDraft,
+            seconds: undoSendSeconds,
+            sessionScope: submittedAccountKey,
+          }) : null;
+          if (!queued) {
+            setError("Save the draft before starting the undo window.");
+            return;
+          }
+          if (!isAccountCurrent(submittedAccountKey)) return;
+          await onUndoQueued?.(
+            queued.result.createdMessage,
+            queued.providerDraftId,
+          );
+          return;
+        }
         const prepared = await recovery.prepareSend(
           {
             attachmentIds: attachments.attachmentIds,
@@ -189,32 +219,18 @@ export const useComposerSubmit = ({
         if (attachmentFailure) attachments.invalidateReady(attachmentFailure);
         setError(attachmentFailure ?? composerSendErrorMessage(error));
       } finally {
+        submissionInFlight.current = false;
         if (isAccountCurrent(submittedAccountKey)) {
           setIsSending(false);
         }
       }
     },
     [
-      attachments,
-      body.payload,
-      body.text,
-      draftSendBlockedMessage,
-      fields,
-      handleSessionFailure,
-      isAccountCurrent,
-      isDraftBusy,
-      isDraftReadOnly,
-      onDraftSent,
-      onSendUncertain,
-      onSent,
-      openAccountKey,
-      providerDraft,
-      recovery,
-      recoveryCheckpoint,
-      resetFields,
-      restoreFocus,
-      setError,
-      setIsOpen,
-      setIsSending,
+      attachments, body.payload, body.text, draftSendBlockedMessage, fields,
+      handleSessionFailure, isAccountCurrent, isDraftBusy, isDraftReadOnly,
+      onDraftSent, onUndoQueued, onSendUncertain, onSent, openAccountKey,
+      providerDraft, recovery, recoveryCheckpoint, resetFields, restoreFocus,
+      setError, setIsOpen, setIsSending, saveDraft, undoSendSeconds,
     ],
   );
+};

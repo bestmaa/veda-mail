@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { id } from "@/domain/shared/brand";
@@ -13,6 +12,7 @@ const sendMessage = vi.hoisted(() => vi.fn());
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useCallback: <T,>(callback: T): T => callback,
+  useRef: <T,>(current: T) => ({ current }),
 }));
 vi.mock("@/transport/client/api-client", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -71,9 +71,7 @@ const setup = () => {
   return { actions, prepareSend, recovery, submit };
 };
 
-const invoke = (submit: ReturnType<typeof useComposerSubmit>) => submit({
-  preventDefault: vi.fn(),
-} as unknown as FormEvent<HTMLFormElement>) as unknown as Promise<void>;
+const invoke = (submit: ReturnType<typeof useComposerSubmit>) => submit();
 
 beforeEach(() => sendMessage.mockReset());
 

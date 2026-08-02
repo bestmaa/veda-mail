@@ -6,8 +6,11 @@ import {
   MAX_SCHEDULED_MESSAGE_OWNERS,
   MAX_SCHEDULED_MESSAGES_PER_OWNER,
   MAX_SCHEDULE_DELAY_MS,
+  MAX_UNDO_SEND_DELAY_MS,
   MIN_SCHEDULE_DELAY_MS,
+  MIN_UNDO_SEND_DELAY_MS,
   type ScheduleMessageInput,
+  type ScheduleMessageResult,
   type ScheduledMessageBook,
   type ScheduledMessageOwner,
 } from "@/domain/mail/scheduled-send";
@@ -56,15 +59,27 @@ const safely = async <T>(task: () => Promise<T>): Promise<T> => {
   }
 };
 
-const assertScheduledAt = (scheduledAt: string, now = Date.now()): void => {
+const assertScheduledAt = (
+  scheduledAt: string,
+  purpose: ScheduleMessageInput["purpose"] = "scheduled",
+  now = Date.now(),
+): void => {
   const timestamp = Date.parse(scheduledAt);
+  const minimum = purpose === "undo"
+    ? MIN_UNDO_SEND_DELAY_MS
+    : MIN_SCHEDULE_DELAY_MS;
+  const maximum = purpose === "undo"
+    ? MAX_UNDO_SEND_DELAY_MS
+    : MAX_SCHEDULE_DELAY_MS;
   if (
     !Number.isFinite(timestamp) ||
-    timestamp < now + MIN_SCHEDULE_DELAY_MS ||
-    timestamp > now + MAX_SCHEDULE_DELAY_MS
+    timestamp < now + minimum ||
+    timestamp > now + maximum
   ) {
     throw new ApiError(
-      "Choose a send time between 5 seconds and 366 days from now.",
+      purpose === "undo"
+        ? "Choose an undo window between 1 and 30 seconds."
+        : "Choose a send time between 5 seconds and 366 days from now.",
       "INVALID_SCHEDULED_SEND_TIME",
       422,
     );
@@ -87,6 +102,7 @@ const createJob = (input: ScheduleMessageInput): ScheduledJob => {
     lastError: null,
     leaseId: null,
     nextAttemptAt: input.scheduledAt,
+    purpose: input.purpose ?? "scheduled",
     request: {
       bcc: [...input.request.bcc],
       body: input.request.body,
@@ -124,8 +140,8 @@ export const scheduledSendStore = {
       scheduledMessageBookFromJobs((await readOwnerScheduledJobs(owner)).book));
   },
 
-  schedule(input: ScheduleMessageInput): Promise<ScheduledMessageBook> {
-    assertScheduledAt(input.scheduledAt);
+  schedule(input: ScheduleMessageInput): Promise<ScheduleMessageResult> {
+    assertScheduledAt(input.scheduledAt, input.purpose);
     return safely(() => serializeScheduledJobStore(async () => {
       const current = await readOwnerScheduledJobs(input.owner);
       const book = current.book ?? emptyScheduledJobBook();
@@ -142,9 +158,14 @@ export const scheduledSendStore = {
         request.providerDraftId === input.request.providerDraftId)) {
         return scheduledMessageConflict();
       }
-      const updated = nextBook([...book.jobs, createJob(input)]);
+      const created = createJob(input);
+      const updated = nextBook([...book.jobs, created]);
       await writeOwnerScheduledJobs(current.file, current.ownerKey, updated);
-      return scheduledMessageBookFromJobs(updated);
+      const projected = scheduledMessageBookFromJobs(updated);
+      return {
+        ...projected,
+        createdMessage: projected.messages.find(({ id }) => id === created.id)!,
+      };
     }));
   },
 
@@ -154,12 +175,12 @@ export const scheduledSendStore = {
     scheduledAt: string,
     connection?: ProviderConnection,
   ): Promise<ScheduledMessageBook> {
-    assertScheduledAt(scheduledAt);
     return safely(() => serializeScheduledJobStore(async () => {
       const current = await readOwnerScheduledJobs(owner);
       const book = current.book;
       const target = book?.jobs.find(({ id }) => id === messageId);
       if (!book || !target) return scheduledMessageNotFound();
+      assertScheduledAt(scheduledAt, target.purpose);
       if (target.state === "sending" || target.state === "uncertain") {
         return scheduledMessageBusy();
       }
