@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
+import { composerTemplateViewModel } from "../support/composer-template-view-model";
 const composer = (
   overrides: Partial<ComposerViewModel> = {},
 ): ComposerViewModel => ({
@@ -30,6 +31,7 @@ const composer = (
     signatureAnnouncement: "",
     signatureDetached: false,
     text: "",
+    templates: composerTemplateViewModel(),
   },
   cc: "",
   ccInput: vi.fn(),

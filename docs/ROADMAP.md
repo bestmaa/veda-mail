@@ -165,7 +165,11 @@ mailbox evidence above plus production scanner health are recorded.
 - [x] Per-identity signatures with multiple named plain-text and
   sanitized-rich variants, explicit new/reply-forward defaults, and exact-once
   composer insertion
-- [ ] Reusable templates with explicit insert/replace behavior
+- [ ] Reusable templates with explicit insert/replace behavior. The encrypted,
+  provider-independent implementation, abuse tests, accessibility checks, and
+  full local browser suite are complete; this remains open until the immutable
+  release is published and the live production create/reload/insert/replace
+  smoke evidence is recorded
 - [ ] Send confirmation preference and an undo-send delay backed by a durable
   queue
 - [ ] Complete the keyboard-shortcut and assistive-technology audit beyond v1
@@ -195,8 +199,9 @@ image digest
 Its production deployment and live health/critical-flow evidence remain open:
 both the Dokploy hostname `panel.wovvtec.site` and public mail hostname
 `mail.wovvtec.site` returned authoritative DNS `NXDOMAIN` on 2026-08-02.
-Completing this milestone still requires templates, delayed send, and the
-broader shortcut/accessibility audit listed above.
+Completing this milestone still requires publication and live deployment
+evidence for templates, delayed send, and the broader shortcut/accessibility
+audit listed above.
 
 ## M4 — Fast mailbox management
 

@@ -584,6 +584,33 @@ Mail process may write a given signature file. Multiple replicas sharing a
 writable `/data` volume can race and are unsupported until this file store is
 replaced by a shared transactional implementation.
 
+## Reusable email template boundary
+
+Reusable templates are Veda-local per-provider/mailbox metadata, not JMAP or
+IMAP objects. `/api/v1/member/templates` derives the owner from the verified
+current gateway account after the exact browser mailbox scope check. The API
+accepts only strict create, update, or delete operations with the revision the
+browser read; ownership, recipients, attachments, reply metadata, draft IDs,
+provider identifiers, and send authority are never request fields.
+
+Each owner book lives in `/data/member-templates.json`. Its HMAC owner index and
+HKDF/AES-256-GCM encryption use template-specific versioned contexts, so neither
+keys nor ciphertext can be substituted with signature data. The outer store is
+bounded to 10,000 owner buckets and 64 MiB; each owner is limited to 50 uniquely
+named templates and 4 MiB of canonical content. Writes use the same mode-0600,
+fsync, atomic-replacement and exact-revision discipline as other encrypted
+member metadata, with a separate process-local writer queue.
+
+Rich content passes the centralized outgoing allowlist before encryption and is
+revalidated after decryption. The composer exposes two distinct use-time
+operations: Insert changes only body content at the current selection, while
+Replace changes only subject and non-signature body after confirmation when
+content exists. Both preserve recipients, CC/BCC, attachments, reply context,
+provider draft identity, and the exact managed Lexical signature slot. Template
+creation removes that managed signature from the stored rich snapshot. The
+complete result crosses the normal draft/send canonicalization boundary again;
+no Stalwart setting, provider extension, mailbox migration, or new port exists.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never
@@ -832,8 +859,8 @@ npm run check:lines
 ## Runtime model
 
 - Installation, branding, service profile, member 2FA, encrypted member
-  signatures, and the secret-free mailbox-provisioning idempotency ledger are
-  durable on `/data`.
+  signatures and reusable templates, and the secret-free mailbox-provisioning
+  idempotency ledger are durable on `/data`.
 - Pending attachment uploads are encrypted, process-local quarantine data with
   a 30-minute TTL; a one-minute background sweep expires them without another
   request, and production startup removes bounded orphan quarantine
@@ -841,8 +868,9 @@ npm run check:lines
 - Member connections and gateway credentials are memory-only for 12 hours.
 - Restarting the process intentionally signs every member out.
 - A multi-replica deployment needs a shared encrypted session repository and
-  coordinated rate limiter, plus a transactional replacement for the
-  process-serialized signature file, behind the existing server boundary.
+  coordinated rate limiter, plus transactional replacements for the
+  process-serialized signature and template files, behind the existing server
+  boundary.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

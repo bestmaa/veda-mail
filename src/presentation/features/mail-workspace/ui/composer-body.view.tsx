@@ -1,7 +1,9 @@
 import { FileText, TextCursorInput } from "lucide-react";
 
 import { ComposerRichTextEditorConnector } from "@/presentation/features/mail-workspace/connectors/composer-rich-text-editor.connector";
+import { ComposerPlainBodyConnector } from "@/presentation/features/mail-workspace/connectors/composer-plain-body.connector";
 import type { ComposerBodyViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import { ComposerTemplateControlsView } from "@/presentation/features/mail-workspace/ui/composer-template-controls.view";
 
 export const ComposerBodyView = ({
   body,
@@ -15,6 +17,10 @@ export const ComposerBodyView = ({
   readonly isSending: boolean;
 }) => (
   <div className="flex min-h-56 flex-1 flex-col">
+      <ComposerTemplateControlsView
+        disabled={isSending || isReadOnly}
+        templates={body.templates}
+      />
       <div className="flex min-h-11 items-center gap-2 border-b border-slate-100 px-3">
         {body.signatureDetached ? (
           <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-slate-500">
@@ -81,29 +87,30 @@ export const ComposerBodyView = ({
         </div>
       ) : null}
       {body.mode === "plain" ? (
-        <textarea
-          aria-label="Message body"
+        <ComposerPlainBodyConnector
+          application={body.templates.application}
           autoFocus={focusBody}
-          className="min-h-0 flex-1 resize-none px-4 py-4 text-sm leading-6 text-slate-700 outline-none placeholder:text-slate-500 focus-visible:outline-2 focus-visible:outline-indigo-600"
-          disabled={isSending}
-          id="composer-message-body"
+          disabled={isSending && !body.templates.isApplying}
+          onApplyTemplate={body.templates.applyPlainTemplate}
           onChange={body.onPlainInput}
           onDrop={body.onPlainDrop}
           onPaste={body.onPlainPaste}
+          onTemplateApplied={body.templates.onApplied}
           placeholder="Write a clear message…"
           readOnly={isReadOnly}
-          required
           value={body.text}
         />
       ) : (
         <ComposerRichTextEditorConnector
+          application={body.templates.application}
           autoFocus={focusBody}
-          disabled={isSending}
+          disabled={isSending && !body.templates.isApplying}
           initialHtml={body.html}
           readOnly={isReadOnly}
           key={body.editorVersion}
           onChange={body.onRichChange}
           onInitialize={body.onRichInitialize}
+          onTemplateApplied={body.templates.onApplied}
           {...(body.signature ? { signature: body.signature } : {})}
         />
       )}

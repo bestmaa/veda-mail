@@ -2,6 +2,7 @@ import type { ChangeEventHandler, ClipboardEventHandler, DragEventHandler, FormE
 import type { BrandingViewModel } from "@/presentation/shared/branding/branding.view-model";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { ComposerSignatureEditorConfiguration } from "@/presentation/features/mail-workspace/composer-signature-picker.view-model";
+import type { ComposerTemplateViewModel } from "@/presentation/features/mail-workspace/composer-template.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import type { ComposerDraftPhase, ComposerTerminalRecoveryKind } from "@/presentation/features/mail-workspace/composer-draft-state";
 import type { ComposerDraftStatus } from "@/presentation/features/mail-workspace/composer-draft-status";
@@ -170,6 +171,7 @@ export interface ComposerBodyViewModel {
   readonly signatureAnnouncement: string;
   readonly signatureDetached: boolean;
   readonly text: string;
+  readonly templates: ComposerTemplateViewModel;
 }
 export interface ComposerAttachmentViewModel {
   readonly error: string | null;
@@ -180,7 +182,6 @@ export interface ComposerAttachmentViewModel {
   readonly onRetry?: () => void;
   readonly state: "error" | "ready" | "uploading";
 }
-
 export interface MemberSessionViewModel {
   readonly canSignOut: boolean; readonly confirmation: ComposerConfirmationViewModel;
   readonly isSigningOut: boolean;
@@ -244,6 +245,5 @@ export interface MailWorkspaceViewProps {
   readonly searchInput: ChangeEventHandler<HTMLInputElement>;
   readonly searchValue: string;
   readonly session: MemberSessionViewModel;
-  readonly settings: AccountSettingsViewModel;
-  readonly total: number; readonly hasMoreMessages: boolean;
+  readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean;
 }

@@ -78,6 +78,7 @@ export const useComposerRecoveryFlow = ({
     generation: draft.contentGeneration,
     hasDurableIntent,
     isOpen: composerOpen,
+    paused,
     port: journal.port,
     snapshot: hydration.snapshot,
   });

@@ -6,24 +6,22 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEventHandler,
-  type ClipboardEventHandler,
-  type DragEventHandler,
   type KeyboardEventHandler,
 } from "react";
 
 import {
-  COMPOSER_FILE_TRANSFER_MESSAGE,
   composerHtmlHasFormatting,
-  composerTransferHasFiles,
   plainTextToComposerHtml,
 } from "@/presentation/features/mail-workspace/composer-body-content";
 import type { ComposerRecoveryBody } from "@/presentation/features/mail-workspace/composer-recovery.types";
+import { useComposerPlainBody } from "@/presentation/features/mail-workspace/hooks/use-composer-plain-body";
 
 export type ComposerBodyMode = "plain" | "rich";
 
 export interface RichComposerSnapshot {
   readonly html: string;
+  readonly templateHtml?: string;
+  readonly templateText?: string;
   readonly text: string;
 }
 
@@ -36,6 +34,8 @@ export const useComposerBody = (
   const [mode, setMode] = useState<ComposerBodyMode>("rich");
   const [text, setText] = useState("");
   const [html, setHtml] = useState("");
+  const [templateHtml, setTemplateHtml] = useState("");
+  const [templateText, setTemplateText] = useState("");
   const [editorVersion, setEditorVersion] = useState(0);
   const [isPlainModeWarningOpen, setIsPlainModeWarningOpen] = useState(false);
   const [plainTransferStatus, setPlainTransferStatus] = useState("");
@@ -55,6 +55,8 @@ export const useComposerBody = (
     setMode("rich");
     setText("");
     setHtml("");
+    setTemplateHtml("");
+    setTemplateText("");
     setEditorVersion((version) => version + 1);
     setIsPlainModeWarningOpen(false);
     setPlainTransferStatus("");
@@ -67,6 +69,8 @@ export const useComposerBody = (
     setMode("rich");
     setText(value);
     setHtml(plainTextToComposerHtml(value));
+    setTemplateHtml(plainTextToComposerHtml(value));
+    setTemplateText(value);
     setEditorVersion((version) => version + 1);
     setIsPlainModeWarningOpen(false);
     setPlainTransferStatus("");
@@ -84,6 +88,8 @@ export const useComposerBody = (
       setMode(nextMode);
       setText(value.body);
       setHtml(value.htmlBody ?? plainTextToComposerHtml(value.body));
+      setTemplateHtml(value.htmlBody ?? plainTextToComposerHtml(value.body));
+      setTemplateText(value.body);
       setEditorVersion((version) => version + 1);
       setIsPlainModeWarningOpen(false);
       setPlainTransferStatus("");
@@ -101,6 +107,8 @@ export const useComposerBody = (
     setMode(value.mode);
     setText(value.text);
     setHtml(value.mode === "rich" ? value.html : plainTextToComposerHtml(value.text));
+    setTemplateHtml(value.mode === "rich" ? value.html : plainTextToComposerHtml(value.text));
+    setTemplateText(value.text);
     setEditorVersion((version) => version + 1);
     setIsPlainModeWarningOpen(false);
     setPlainTransferStatus("");
@@ -111,35 +119,19 @@ export const useComposerBody = (
     loadedProviderSnapshot.current = null;
   }, []);
 
-  const onPlainInput: ChangeEventHandler<HTMLTextAreaElement> = useCallback(
-    (event) => {
-      setText(event.target.value);
-      setPlainTransferStatus("");
-      onContentChange();
-    },
-    [onContentChange],
-  );
-
-  const onPlainPaste: ClipboardEventHandler<HTMLTextAreaElement> = useCallback(
-    (event) => {
-      if (!composerTransferHasFiles(event.clipboardData)) return;
-      event.preventDefault();
-      setPlainTransferStatus(COMPOSER_FILE_TRANSFER_MESSAGE);
-    },
-    [],
-  );
-
-  const onPlainDrop: DragEventHandler<HTMLTextAreaElement> = useCallback(
-    (event) => {
-      if (!composerTransferHasFiles(event.dataTransfer)) return;
-      event.preventDefault();
-      setPlainTransferStatus(COMPOSER_FILE_TRANSFER_MESSAGE);
-    },
-    [],
-  );
+  const plain = useComposerPlainBody({
+    onContentChange,
+    setHtml,
+    setPreserveLoadedHtml,
+    setStatus: setPlainTransferStatus,
+    setText,
+    text,
+  });
 
   const onRichChange = useCallback((snapshot: RichComposerSnapshot) => {
     setHtml(snapshot.html);
+    setTemplateHtml(snapshot.templateHtml ?? snapshot.html);
+    setTemplateText(snapshot.templateText ?? snapshot.text);
     setText(snapshot.text);
     const initialized = initializedSnapshot.current;
     initializedSnapshot.current = null;
@@ -152,6 +144,8 @@ export const useComposerBody = (
   const onRichInitialize = useCallback((snapshot: RichComposerSnapshot) => {
     initializedSnapshot.current = snapshot;
     setHtml(snapshot.html);
+    setTemplateHtml(snapshot.templateHtml ?? snapshot.html);
+    setTemplateText(snapshot.templateText ?? snapshot.text);
     setText(snapshot.text);
     const loaded = loadedProviderSnapshot.current;
     loadedProviderSnapshot.current = null;
@@ -222,6 +216,7 @@ export const useComposerBody = (
   );
 
   return {
+    applyPlainTemplate: plain.applyTemplate,
     cancelPlainMode,
     confirmPlainMode,
     editorVersion,
@@ -230,9 +225,9 @@ export const useComposerBody = (
     loadPlainDraft,
     loadSavedDraft,
     mode,
-    onPlainInput,
-    onPlainDrop,
-    onPlainPaste,
+    onPlainInput: plain.onInput,
+    onPlainDrop: plain.onDrop,
+    onPlainPaste: plain.onPaste,
     onRichChange,
     onRichInitialize,
     onToggleMode,
@@ -242,6 +237,8 @@ export const useComposerBody = (
     reset,
     restoreRecovery,
     text,
+    templateHtml,
+    templateText,
     recoveryBody: mode === "plain"
       ? { mode, text }
       : { html, mode, preserveLoadedHtml, text },

@@ -192,6 +192,14 @@ versions concurrently or attach multiple replicas to the same signature file.
 An older rollback image ignores the new file, but preserve the whole matching
 volume so signatures return when the newer version is restored.
 
+Reusable templates create `/data/member-templates.json` lazily on first write.
+No environment variable, provider migration, Stalwart change, mailbox schema,
+API extension, service, or port is required. The encrypted file must remain with
+the matching `installation.json`; never mix either file across installations or
+snapshots. Its writer has the same single-replica rule. Older rollback images
+ignore the separate file without modifying it, so preserve the whole volume and
+reload older browser tabs after upgrade or rollback.
+
 Custom mailbox administration adds the authenticated
 `/api/v1/mail/mailboxes` endpoint and creates
 `/data/mailbox-appearance.json` on the first custom color change. There is no

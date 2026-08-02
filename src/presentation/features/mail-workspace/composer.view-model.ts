@@ -34,6 +34,7 @@ export const createComposerViewModel = (
     signature: composer.signatures.configuration,
     signatureAnnouncement: composer.signatures.announcement,
     signatureDetached: composer.signatures.isDetached,
+    templates: composer.templates,
     text: composer.body.text,
   },
   cc: composer.cc,

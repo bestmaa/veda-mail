@@ -124,6 +124,8 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
   ["@/server/signatures/email-signature.schema", new Set(["parseEmailSignaturePutOperation"])],
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
+  ["@/server/templates/email-template.schema", new Set(["parseEmailTemplatePutOperation"])],
+  ["@/server/templates/email-template.store", new Set(["emailTemplateStore"])],
   ["@/transport/http/request-schemas", new Set(["*"])],
   ["@/transport/http/mailbox-mutation.schema", new Set(["*"])],
   ["@/transport/http/mailbox-empty.schema", new Set(["*"])],
