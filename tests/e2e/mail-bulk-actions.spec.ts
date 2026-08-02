@@ -154,8 +154,13 @@ test("requires confirmation before permanent bulk deletion", async ({ page }) =>
   await page.getByRole("button", {
     name: "Permanently delete selected messages",
   }).click();
+  const workspaceRefresh = page.waitForResponse((response) =>
+    response.request().method() === "GET" &&
+    response.url().includes("/api/v1/mail/workspace"),
+  );
   await dialog.getByRole("button", { name: "Permanently delete" }).click();
   await expect(page.getByText("1 message updated.")).toBeAttached();
+  await workspaceRefresh;
   expect(destroyRequests).toBe(1);
   expect(destroyBody).toEqual({
     mailboxId: trashId,
