@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   expectNoSeriousAccessibilityViolations,
+  mailSessionScopeHeaders,
   useInstalledMailbox,
 } from "./support/mail-fixture";
 
@@ -13,6 +14,26 @@ const localInputValue = (hoursAhead: number): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
     `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
+
+const saveSendingPreferences = async (
+  page: Parameters<typeof mailSessionScopeHeaders>[0],
+  confirmBeforeSend: boolean,
+  undoSendSeconds: 0 | 10,
+) => {
+  const headers = await mailSessionScopeHeaders(page);
+  const response = await page.request.patch("/api/v1/mail/preferences", {
+    data: {
+      confirmBeforeSend, density: "comfortable", showPreview: true,
+      sort: "newest", undoSendSeconds,
+    },
+    headers: { ...headers, origin: "http://127.0.0.1:3101" },
+  });
+  expect(response.ok()).toBe(true);
+};
+
+test.afterEach(async ({ page }) => {
+  await saveSendingPreferences(page, false, 0);
+});
 
 test("schedules, lists, reschedules, and cancels a provider-backed draft", async ({ page }) => {
   await page.getByRole("button", { name: "New message" }).click();
@@ -33,7 +54,7 @@ test("schedules, lists, reschedules, and cancels a provider-backed draft", async
   await scheduleDialog.getByRole("button", { name: "Schedule send" }).click();
   await expect(composer).toBeHidden();
 
-  await page.getByRole("button", { name: "Scheduled", exact: true }).click();
+  await page.getByRole("button", { name: /^Scheduled/u }).click();
   const manager = page.getByRole("dialog", { name: "Scheduled messages" });
   await expect(manager.getByText("Scheduled browser proof")).toBeVisible();
   await expect(manager.getByText("Scheduled", { exact: true })).toBeVisible();
@@ -50,4 +71,36 @@ test("schedules, lists, reschedules, and cancels a provider-backed draft", async
   await expect(manager.getByText("No scheduled messages")).toBeVisible();
   await manager.getByRole("button", { name: "Close scheduled messages" }).click();
   await expect(manager).toBeHidden();
+});
+
+test("confirms, delays, atomically undoes, and restores the provider draft", async ({ page }) => {
+  await saveSendingPreferences(page, true, 10);
+  await page.reload();
+  await page.getByRole("button", { name: "New message" }).click();
+  let composer = page.getByRole("dialog", { name: "Compose message" });
+  await composer.getByRole("textbox", { exact: true, name: "To" })
+    .fill("undo-recipient@example.com");
+  await composer.getByRole("textbox", { exact: true, name: "Subject" })
+    .fill("Undo browser proof");
+  await composer.getByRole("textbox", { exact: true, name: "Message body" })
+    .fill("This exact provider draft must return after cancellation.");
+  await composer.getByRole("button", { exact: true, name: "Send" }).click();
+
+  const confirmation = page.getByRole("dialog", { name: "Send this message?" });
+  await expect(confirmation).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+  await confirmation.getByRole("button", { exact: true, name: "Send" }).click();
+  await expect(composer).toBeHidden();
+
+  const notice = page.getByText("Message queued: Undo browser proof").locator("..");
+  await expect(notice).toBeVisible();
+  await page.getByRole("button", { exact: true, name: "Undo" }).click();
+  composer = page.getByRole("dialog", { name: "Compose message" });
+  await expect(composer).toBeVisible();
+  await expect(composer.getByRole("textbox", { exact: true, name: "To" }))
+    .toHaveValue("undo-recipient@example.com");
+  await expect(composer.getByRole("textbox", { exact: true, name: "Subject" }))
+    .toHaveValue("Undo browser proof");
+  await expect(composer.getByRole("textbox", { exact: true, name: "Message body" }))
+    .toContainText("This exact provider draft must return after cancellation.");
 });

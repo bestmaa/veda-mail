@@ -883,6 +883,15 @@ operator monitoring.
 
 ### Scheduled send, snooze, and durable jobs
 
+- Undo Send is a short durable scheduling window, not a provider recall. The
+  browser may cancel only while the encrypted job remains pending; a committed
+  `sending` lease or already-removed accepted job returns an actionable
+  too-late error and never reopens a misleading editable copy as if delivery
+  had been stopped.
+- Enabling Undo Send forces an exact provider-draft save before queue admission.
+  A successful atomic cancellation reopens only that authenticated owner's
+  opaque provider draft. A single-flight composer guard prevents double-click
+  and repeated-Enter races from creating parallel jobs or submissions.
 - Scheduled send encrypts the complete canonical request and provider
   connection with AES-256-GCM. HKDF-separated owner-index, payload, and key-check
   subkeys derive from an external 32-byte `VEDA_MAIL_JOB_KEY`; the atomic
@@ -905,6 +914,10 @@ operator monitoring.
   366 days fail validation. Automated tests cover key mismatch, restart,
   duplicate draft admission, cancellation races, retry exhaustion, provider
   uncertainty, strict routes, time conversion, and accessible management UI.
+- Undo-purpose jobs accept only a 1-to-30-second server-side interval (the UI
+  exposes 5/10/20/30 seconds). A missing or wrong deployment key, failed draft
+  save, queue-capacity error, stale draft revision, or session change fails
+  closed rather than falling back to immediate delivery.
 - The current worker inherits the documented single-replica deployment boundary.
   Multi-replica scheduling remains unsupported until a shared transactional
   store and distributed lease are implemented.

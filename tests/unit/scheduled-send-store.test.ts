@@ -66,6 +66,7 @@ describe("encrypted scheduled-send store", () => {
 
     expect(book.messages).toEqual([
       expect.objectContaining({
+        purpose: "scheduled",
         recipientCount: 1,
         status: "pending",
         subject: "Private subject",
@@ -98,6 +99,20 @@ describe("encrypted scheduled-send store", () => {
     await expect(scheduledSendStore.list(owner)).resolves.toEqual({
       messages: [], revision: null, version: 1,
     });
+    await expect(claimNextScheduledJob(new Date(Date.now() + 130_000)))
+      .resolves.toBeNull();
+  });
+
+  it("creates a short undo job and returns its exact created identifier", async () => {
+    const created = await scheduledSendStore.schedule(input({
+      purpose: "undo",
+      scheduledAt: new Date(Date.now() + 5_000).toISOString(),
+    }));
+    expect(created.createdMessage).toMatchObject({
+      purpose: "undo", scheduledAt: created.messages[0]?.scheduledAt,
+      status: "pending",
+    });
+    expect(created.createdMessage.id).toBe(created.messages[0]?.id);
   });
 
   it("durably claims, retries, completes, and recovers interrupted jobs", async () => {

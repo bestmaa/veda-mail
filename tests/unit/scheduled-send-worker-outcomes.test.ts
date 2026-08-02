@@ -35,6 +35,7 @@ const claim = (attemptCount = 1): ScheduledJobClaim => ({
     id: "22222222-2222-4222-8222-222222222222",
     lastError: null, leaseId: "lease-value-that-is-long-enough-1234567890",
     nextAttemptAt: "2026-08-02T01:00:00.000Z",
+    purpose: "scheduled",
     request: {
       bcc: [], body: "Body", cc: [],
       draftId: id.draft("33333333-3333-4333-8333-333333333333"),

@@ -71,6 +71,7 @@ export const POST = async (request: Request) => {
       await scheduledSendStore.schedule({
         connection,
         owner: await scheduledMessageOwner(connection),
+        purpose: parsed.purpose,
         request: durableRequest,
         scheduledAt: parsed.scheduledAt,
       }),

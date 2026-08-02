@@ -11,6 +11,15 @@ import {
 
 beforeEach(resetMailDataModelHarness);
 
+const compact = {
+  confirmBeforeSend: false, density: "compact", showPreview: true,
+  sort: "newest", undoSendSeconds: 0,
+} as const;
+const spacious = {
+  confirmBeforeSend: true, density: "spacious", showPreview: false,
+  sort: "oldest", undoSendSeconds: 10,
+} as const;
+
 describe("mail data message-list preferences", () => {
   it("persists density locally without refetching the mailbox", async () => {
     api.getWorkspace.mockResolvedValueOnce(workspace("scope-a"));
@@ -18,16 +27,14 @@ describe("mail data message-list preferences", () => {
     await refresh(model);
     model = render();
     api.saveMessageListPreferences.mockResolvedValueOnce({
-      preferences: { density: "compact", showPreview: true, sort: "newest" },
+      preferences: compact,
     });
 
-    await model.saveListPreferences({
-      density: "compact", showPreview: true, sort: "newest",
-    });
+    await model.saveListPreferences(compact);
     model = render();
 
     expect(api.saveMessageListPreferences).toHaveBeenCalledWith(
-      { density: "compact", showPreview: true, sort: "newest" },
+      compact,
       "scope-a",
     );
     expect(api.getWorkspace).toHaveBeenCalledOnce();
@@ -40,18 +47,14 @@ describe("mail data message-list preferences", () => {
     await refresh(model);
     model = render();
     api.saveMessageListPreferences.mockResolvedValueOnce({
-      preferences: { density: "spacious", showPreview: false, sort: "oldest" },
+      preferences: spacious,
     });
     api.getWorkspace.mockResolvedValueOnce({
       ...workspace("scope-a"),
-      messageListPreferences: {
-        density: "spacious", showPreview: false, sort: "oldest",
-      },
+      messageListPreferences: spacious,
     });
 
-    await model.saveListPreferences({
-      density: "spacious", showPreview: false, sort: "oldest",
-    });
+    await model.saveListPreferences(spacious);
     model = render();
 
     expect(api.getWorkspace).toHaveBeenLastCalledWith({
@@ -59,9 +62,7 @@ describe("mail data message-list preferences", () => {
       showPreview: false,
       sort: "oldest",
     }, "scope-a");
-    expect(model.workspace?.messageListPreferences).toEqual({
-      density: "spacious", showPreview: false, sort: "oldest",
-    });
+    expect(model.workspace?.messageListPreferences).toEqual(spacious);
   });
 
   it("rejects a save that completes after the account scope changes", async () => {
@@ -69,19 +70,13 @@ describe("mail data message-list preferences", () => {
     let model = render();
     await refresh(model);
     model = render();
-    const pending = Promise.withResolvers<{
-      preferences: { density: "compact"; showPreview: true; sort: "newest" };
-    }>();
+    const pending = Promise.withResolvers<{ preferences: typeof compact }>();
     api.saveMessageListPreferences.mockReturnValueOnce(pending.promise);
-    const staleSave = model.saveListPreferences({
-      density: "compact", showPreview: true, sort: "newest",
-    });
+    const staleSave = model.saveListPreferences(compact);
 
     api.getWorkspace.mockResolvedValueOnce(workspace("scope-b"));
     await refresh(model);
-    pending.resolve({
-      preferences: { density: "compact", showPreview: true, sort: "newest" },
-    });
+    pending.resolve({ preferences: compact });
 
     await expect(staleSave).rejects.toThrow("mailbox session changed");
     expect(render().workspace?.sessionScope).toBe("scope-b");

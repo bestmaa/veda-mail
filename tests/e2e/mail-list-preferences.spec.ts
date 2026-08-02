@@ -9,9 +9,11 @@ import {
 useInstalledMailbox();
 
 const defaults = {
+  confirmBeforeSend: false,
   density: "comfortable",
   showPreview: true,
   sort: "newest",
+  undoSendSeconds: 0,
 } as const;
 
 const savePreferences = async (
@@ -36,9 +38,9 @@ test.afterEach(async ({ page }) => {
 });
 
 test("persists accessible density, sort, and preview controls", async ({ page }) => {
-  const trigger = page.getByRole("button", { name: "Message list options" });
+  const trigger = page.getByRole("button", { name: "Mailbox preferences" });
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Message list options" });
+  const dialog = page.getByRole("dialog", { name: "Mailbox preferences" });
   await expect(dialog).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 
@@ -46,6 +48,10 @@ test("persists accessible density, sort, and preview controls", async ({ page })
   await expect(dialog.getByRole("radio", { name: "Compact" })).toBeChecked();
   await dialog.getByRole("combobox", { name: "Sort order" }).selectOption("oldest");
   await dialog.getByRole("checkbox", { name: "Show message preview text" }).uncheck();
+  await dialog.getByRole("combobox", { name: "Undo send window" }).selectOption("10");
+  await dialog.getByRole("checkbox", {
+    name: "Ask for confirmation before sending",
+  }).check();
   const refresh = page.waitForRequest((request) => {
     const url = new URL(request.url());
     return url.pathname === "/api/v1/mail/workspace" &&
@@ -70,4 +76,9 @@ test("persists accessible density, sort, and preview controls", async ({ page })
   await expect(dialog.getByRole("checkbox", {
     name: "Show message preview text",
   })).not.toBeChecked();
+  await expect(dialog.getByRole("combobox", { name: "Undo send window" }))
+    .toHaveValue("10");
+  await expect(dialog.getByRole("checkbox", {
+    name: "Ask for confirmation before sending",
+  })).toBeChecked();
 });

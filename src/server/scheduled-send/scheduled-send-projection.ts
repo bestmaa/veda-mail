@@ -17,6 +17,7 @@ export const scheduledMessageFromJob = (
   createdAt: job.createdAt,
   id: id.scheduledMessage(job.id),
   lastError: job.lastError,
+  purpose: job.purpose,
   recipientCount:
     job.request.to.length + job.request.cc.length + job.request.bcc.length,
   scheduledAt: job.scheduledAt,

@@ -9,6 +9,7 @@ import { installationStore } from "@/server/installation/installation.store";
 import { hashAdminPassword } from "@/server/installation/password-hash";
 import { messageListPreferencesFilePath } from "@/server/preferences/message-list-preferences-file";
 import { messageListPreferencesStore } from "@/server/preferences/message-list-preferences.store";
+import { storedMessageListPreferencesSchema } from "@/server/preferences/message-list-preferences-record";
 
 const originalDirectory = process.env["VEDA_MAIL_DATA_DIR"];
 let directory = "";
@@ -40,22 +41,44 @@ afterEach(async () => {
 });
 
 describe("encrypted message list preferences store", () => {
+  it("migrates legacy encrypted plaintext to safe sending defaults", () => {
+    expect(storedMessageListPreferencesSchema.parse({
+      preferences: {
+        density: "spacious", showPreview: false, sort: "oldest",
+      },
+      updatedAt: "2026-08-02T00:00:00.000Z",
+      version: 1,
+    }).preferences).toEqual({
+      confirmBeforeSend: false,
+      density: "spacious",
+      showPreview: false,
+      sort: "oldest",
+      undoSendSeconds: 0,
+    });
+  });
+
   it("defaults, isolates owners, encrypts values, and persists canonical choices", async () => {
     await expect(messageListPreferencesStore.get(owner)).resolves.toEqual({
-      density: "comfortable", showPreview: true, sort: "newest",
+      confirmBeforeSend: false, density: "comfortable", showPreview: true,
+      sort: "newest", undoSendSeconds: 0,
     });
-    const saved = { density: "compact", showPreview: false, sort: "oldest" } as const;
+    const saved = {
+      confirmBeforeSend: true, density: "compact", showPreview: false,
+      sort: "oldest", undoSendSeconds: 20,
+    } as const;
     await expect(messageListPreferencesStore.set(owner, saved)).resolves.toEqual(saved);
     await expect(messageListPreferencesStore.get(owner)).resolves.toEqual(saved);
     await expect(messageListPreferencesStore.get({
       email: "other@example.com", providerId: owner.providerId,
     })).resolves.toEqual({
-      density: "comfortable", showPreview: true, sort: "newest",
+      confirmBeforeSend: false, density: "comfortable", showPreview: true,
+      sort: "newest", undoSendSeconds: 0,
     });
     await expect(messageListPreferencesStore.get({
       email: owner.email, providerId: id.provider("other-provider"),
     })).resolves.toEqual({
-      density: "comfortable", showPreview: true, sort: "newest",
+      confirmBeforeSend: false, density: "comfortable", showPreview: true,
+      sort: "newest", undoSendSeconds: 0,
     });
     await expect(messageListPreferencesStore.get({
       email: "Member@example.COM", providerId: id.provider("MOCK"),
@@ -95,10 +118,12 @@ describe("encrypted message list preferences store", () => {
       providerId: id.provider("mock"),
     };
     const first = {
-      density: "compact", showPreview: false, sort: "newest",
+      confirmBeforeSend: false, density: "compact", showPreview: false,
+      sort: "newest", undoSendSeconds: 5,
     } as const;
     const second = {
-      density: "comfortable", showPreview: true, sort: "oldest",
+      confirmBeforeSend: true, density: "comfortable", showPreview: true,
+      sort: "oldest", undoSendSeconds: 30,
     } as const;
 
     await Promise.all([
@@ -112,7 +137,8 @@ describe("encrypted message list preferences store", () => {
 
   it("fails closed with the stable unavailable contract for corrupted persistence", async () => {
     await messageListPreferencesStore.set(owner, {
-      density: "compact", showPreview: false, sort: "oldest",
+      confirmBeforeSend: false, density: "compact", showPreview: false,
+      sort: "oldest", undoSendSeconds: 0,
     });
     await writeFile(messageListPreferencesFilePath(), "{not-json", "utf8");
 
@@ -122,7 +148,8 @@ describe("encrypted message list preferences store", () => {
       status: 500,
     });
     await expect(messageListPreferencesStore.set(owner, {
-      density: "comfortable", showPreview: true, sort: "newest",
+      confirmBeforeSend: false, density: "comfortable", showPreview: true,
+      sort: "newest", undoSendSeconds: 0,
     })).rejects.toMatchObject({
       code: "MESSAGE_LIST_PREFERENCES_UNAVAILABLE",
       status: 500,

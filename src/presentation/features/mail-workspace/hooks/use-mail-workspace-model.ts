@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { createComposerViewModel } from "@/presentation/features/mail-workspace/composer.view-model";
 import { createMailListViewModel } from "@/presentation/features/mail-workspace/mail-list.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
@@ -46,8 +46,7 @@ export const useMailWorkspaceModel = ({
           sessionExpiresAt: recoveryExpiresAt, sessionScope }
       : null,
   [recoveryAccountId, recoveryExpiresAt, recoveryProviderId, sessionScope]);
-  const partialDelivery = usePartialDeliveryNotice(mail.refresh, sessionScope, mail.handleSessionFailure);
-  const navigation = useMobileNavigationModel();
+  const partialDelivery = usePartialDeliveryNotice(mail.refresh, sessionScope, mail.handleSessionFailure); const navigation = useMobileNavigationModel();
   const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure);
   const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
   const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure);
@@ -56,9 +55,10 @@ export const useMailWorkspaceModel = ({
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure);
+  const { refresh: refreshMail } = mail; const { refresh: refreshScheduled } = scheduled;
+  const onDraftChanged = useCallback(() => { refreshMail(); void refreshScheduled(); }, [refreshMail, refreshScheduled]);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
-  const isComposerReady =
-    Boolean(sessionScope) &&
+  const isComposerReady = Boolean(sessionScope) &&
     !emailSignatures.isLoading &&
     !emailSignatures.isSaving &&
     !emailSignatures.hasSessionChanged;
@@ -72,8 +72,8 @@ export const useMailWorkspaceModel = ({
     initialSessionScope,
     mail.handleSessionFailure,
     draftsEnabled,
-    mail.refresh,
-    recoveryOwner, emailTemplates, scheduled.isAvailable,
+    onDraftChanged,
+    recoveryOwner, emailTemplates, scheduled.isAvailable, messageListPreferences,
   );
   const session = useMemberSessionModel({
     canSignOut,
@@ -236,7 +236,7 @@ export const useMailWorkspaceModel = ({
     reader,
     readerDestroyConfirmation,
     searchInput: mail.onSearchInput,
-    searchValue: mail.searchValue, scheduled,
+    searchValue: mail.searchValue, scheduled, undoSend: composer.undoSend,
     session: {
       canSignOut: session.canSignOut,
       confirmation: session.confirmation,

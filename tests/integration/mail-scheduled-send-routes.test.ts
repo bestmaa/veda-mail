@@ -47,6 +47,7 @@ const detail: DraftDetail = {
 };
 const later = (seconds = 60) => new Date(Date.now() + seconds * 1_000).toISOString();
 const payload = () => ({
+  purpose: "scheduled" as const,
   request: {
     attachmentIds: [], ...content, draftId: composeId,
     expectedDraftRevision: detail.revision, providerDraftId,
@@ -98,11 +99,16 @@ describe("scheduled-send routes", () => {
     const created = await POST(request("POST", "/api/v1/mail/scheduled", payload()));
     expect(created.status).toBe(201);
     const createdBody = await created.json() as {
-      data: { messages: readonly { id: string; status: string }[] };
+      data: {
+        createdMessage: { id: string };
+        messages: readonly { id: string; purpose: string; status: string }[];
+      };
     };
     expect(createdBody.data.messages[0]?.status).toBe("pending");
+    expect(createdBody.data.messages[0]).toMatchObject({ purpose: "scheduled" });
     expect(mocks.getDraft).toHaveBeenCalledWith(providerDraftId);
     const messageId = createdBody.data.messages[0]!.id;
+    expect(createdBody.data.createdMessage.id).toBe(messageId);
 
     const listed = await GET(request("GET", "/api/v1/mail/scheduled"));
     expect((await listed.json() as typeof createdBody).data.messages).toHaveLength(1);

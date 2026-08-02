@@ -24,6 +24,7 @@ const claim = (): ScheduledJobClaim => ({
     lastError: null,
     leaseId: "x".repeat(43),
     nextAttemptAt: "2026-08-02T01:00:00.000Z",
+    purpose: "scheduled",
     request: {
       bcc: [], body: "Body", cc: [],
       draftId: id.draft("33333333-3333-4333-8333-333333333333"),

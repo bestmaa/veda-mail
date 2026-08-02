@@ -13,7 +13,8 @@ const manager = (
   messages: [{
     attemptCount: 1, createdAt: "2026-08-02T08:00:00.000Z",
     id: id.scheduledMessage("11111111-1111-4111-8111-111111111111"),
-    lastError: null, recipientCount: 2, scheduledAt: "2026-08-03T08:00:00.000Z",
+    lastError: null, purpose: "scheduled", recipientCount: 2,
+    scheduledAt: "2026-08-03T08:00:00.000Z",
     status: "retrying", subject: "Team update", updatedAt: "2026-08-02T08:05:00.000Z",
   }],
   onCancelMessage: vi.fn(), onClose: vi.fn(), onConfirmReschedule: vi.fn(),

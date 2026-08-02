@@ -179,6 +179,12 @@ Acceptance: reloading or losing the network cannot silently lose a draft, and
 the MIME message has equivalent readable HTML and plain-text parts.
 
 Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
+The send-confirmation and Undo Send implementation is locally complete:
+encrypted backward-compatible account preferences, exact provider-draft save,
+5/10/20/30-second durable queue jobs, atomic pre-lease cancellation, global
+countdown, exact draft restore, duplicate-submit locking, accessibility checks,
+and JMAP/IMAP-portable browser coverage. The checkbox remains open until its
+immutable release and live production schedule/undo evidence are recorded.
 Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
 vertical slices: create, update, Drafts-list/open, discard, save-first send,
   lost-response reconciliation, serialized autosave, visible state, durable

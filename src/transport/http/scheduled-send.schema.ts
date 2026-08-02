@@ -28,6 +28,7 @@ const durableSendRequestSchema = sendMessageSchema.superRefine(
 
 export const createScheduledSendSchema = z
   .object({
+    purpose: z.enum(["scheduled", "undo"]).default("scheduled"),
     request: durableSendRequestSchema,
     scheduledAt: scheduledAtSchema,
   })

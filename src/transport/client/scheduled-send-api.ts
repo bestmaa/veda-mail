@@ -1,4 +1,8 @@
-import type { ScheduledMessageBook } from "@/domain/mail/scheduled-send";
+import type {
+  ScheduledMessageBook,
+  ScheduledMessagePurpose,
+  ScheduleMessageResult,
+} from "@/domain/mail/scheduled-send";
 import type { ScheduledMessageId } from "@/domain/shared/brand";
 import type { MailApiSendInput } from "@/transport/client/mail-api";
 import { deleteResource, fetchData } from "@/transport/client/api-request";
@@ -43,9 +47,10 @@ export const scheduledSendApi = {
     request: MailApiSendInput,
     scheduledAt: string,
     sessionScope: string,
+    purpose: ScheduledMessagePurpose = "scheduled",
   ) {
-    return fetchData<ScheduledMessageBook>(endpoint(), {
-      body: JSON.stringify({ request, scheduledAt }),
+    return fetchData<ScheduleMessageResult>(endpoint(), {
+      body: JSON.stringify({ purpose, request, scheduledAt }),
       headers: mailSessionScopeHeaders(sessionScope),
       method: "POST",
     });

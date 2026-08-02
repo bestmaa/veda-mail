@@ -96,6 +96,7 @@ export const createComposerViewModel = (
     onTimeInput: composer.schedule.onTimeInput,
     timeZone: composer.schedule.timeZone,
   },
+  sendConfirmation: composer.sendConfirmation,
   showBcc: composer.showBcc,
   showCc: composer.showCc,
   subject: composer.subject,

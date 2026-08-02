@@ -4,28 +4,35 @@ import type {
   MessageListDensity,
   MessageListPreferences,
   MessageListSort,
+  UndoSendDelay,
 } from "@/domain/mail/message-list-preferences";
 
 export interface MessageListPreferencesViewModel {
   readonly announcement: string;
   readonly density: MessageListDensity;
   readonly dialog: {
+    readonly confirmBeforeSend: boolean;
     readonly density: MessageListDensity;
     readonly error: string | null;
     readonly isDirty: boolean;
     readonly isOpen: boolean;
     readonly isSaving: boolean;
     readonly onClose: () => void;
+    readonly onConfirmBeforeSendChange: (enabled: boolean) => void;
     readonly onDensityChange: (density: MessageListDensity) => void;
     readonly onPreviewChange: (showPreview: boolean) => void;
     readonly onSortChange: (sort: MessageListSort) => void;
     readonly onSubmit: FormEventHandler<HTMLFormElement>;
+    readonly onUndoSendSecondsChange: (seconds: UndoSendDelay) => void;
     readonly showPreview: boolean;
     readonly sort: MessageListSort;
+    readonly undoSendSeconds: UndoSendDelay;
   };
+  readonly confirmBeforeSend: boolean;
   readonly onOpen: () => void;
   readonly showPreview: boolean;
   readonly sort: MessageListSort;
+  readonly undoSendSeconds: UndoSendDelay;
 }
 
 export type SaveMessageListPreferences = (

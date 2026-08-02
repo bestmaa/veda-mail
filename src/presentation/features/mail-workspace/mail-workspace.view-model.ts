@@ -17,6 +17,7 @@ import type { MailboxLifecycleViewModel } from "@/presentation/features/mail-wor
 import type { MessageMoveViewModel } from "@/presentation/features/mail-workspace/message-move.view-model";
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
 import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@/presentation/features/mail-workspace/composer-schedule.view-model";
+import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/undo-send.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -134,6 +135,7 @@ export interface ComposerViewModel {
   readonly onToggleCc: () => void;
   readonly recoveryPrompt: ComposerRecoveryPromptViewModel;
   readonly schedule: ComposerScheduleViewModel;
+  readonly sendConfirmation: ComposerConfirmationViewModel;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
   readonly showBcc: boolean;
   readonly showCc: boolean;
@@ -144,8 +146,7 @@ export interface ComposerViewModel {
   readonly title: string;
 }
 export interface ComposerConfirmationViewModel {
-  readonly isOpen: boolean;
-  readonly onCancel: () => void;
+  readonly isOpen: boolean; readonly onCancel: () => void;
   readonly onConfirm: () => void;
 }
 export interface ComposerBodyViewModel {
@@ -176,10 +177,8 @@ export interface ComposerBodyViewModel {
   readonly templates: ComposerTemplateViewModel;
 }
 export interface ComposerAttachmentViewModel {
-  readonly error: string | null;
-  readonly id: string;
-  readonly meta: string;
-  readonly name: string;
+  readonly error: string | null; readonly id: string;
+  readonly meta: string; readonly name: string;
   readonly onRemove: () => void;
   readonly onRetry?: () => void;
   readonly state: "error" | "ready" | "uploading";
@@ -246,4 +245,5 @@ export interface MailWorkspaceViewProps {
   readonly scheduled: ScheduledSendManagerViewModel;
   readonly session: MemberSessionViewModel;
   readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean;
+  readonly undoSend: UndoSendViewModel;
 }

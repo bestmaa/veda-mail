@@ -20,6 +20,7 @@ import { MailboxManagementView } from "@/presentation/features/mail-workspace/ui
 import { LabelManagementView } from "@/presentation/features/mail-workspace/ui/label-management.view";
 import { MessageListPreferencesDialogConnector } from "@/presentation/features/mail-workspace/connectors/message-list-preferences-dialog.connector";
 import { ScheduledSendManagerConnector } from "@/presentation/features/mail-workspace/connectors/scheduled-send-manager.connector";
+import { UndoSendNoticeView } from "@/presentation/features/mail-workspace/ui/undo-send-notice.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -165,6 +166,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   <MailboxManagementView management={props.mailboxManagement} />
   <LabelManagementView management={props.labelManagement} />
   <ScheduledSendManagerConnector manager={props.scheduled} />
+  <UndoSendNoticeView undo={props.undoSend} />
   </>
   );
 };
