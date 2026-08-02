@@ -337,14 +337,23 @@ unsupported predicates are reported rather than silently ignored.
 Acceptance: restart, duplicate-delivery, daylight-saving, and provider-outage
 tests prove scheduled work is not lost or executed twice.
 
-The provider-independent scheduled-send implementation is complete locally:
+The provider-independent scheduled-send implementation is released:
 exact-revision provider drafts, encrypted credential/content envelopes under an
 external deployment key, atomic leases, six-attempt bounded backoff,
 dead-letter and review-only uncertain states, UTC/IANA-time-zone UI,
 cancel/reschedule management, restart recovery, and security/component/route
 tests cover both provider paths through their shared saved-draft send contract.
-The checkbox remains open until the immutable image is published, deployed, and
-live JMAP plus IMAP/SMTP schedule/cancel/restart evidence is recorded.
+It merged as `5b69087` and was published as scanned, attested multi-platform
+image digest
+`sha256:ab523bca5479de95e8b4123fee54fceaba825c225187693959f8ad5d9659e80b`;
+the verified amd64 and arm64 child digests are
+`sha256:219d72003e194a9f72da5fa94c818d6811ec1078a47287a528a1475880f4a554`
+and
+`sha256:96428ff91f54f8d15ee03ea62076caf4450d164b0354844a4ff802da233b0be5`.
+The checkbox remains open until production deployment and live JMAP plus
+IMAP/SMTP schedule/cancel/restart evidence are recorded. That deployment could
+not proceed on 2026-08-02 because `wovvtec.site`, `panel.wovvtec.site`, and
+`mail.wovvtec.site` all returned DNS `NXDOMAIN`.
 
 ## M7 — Notifications, offline resilience, and accessibility
 
