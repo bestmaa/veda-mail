@@ -86,6 +86,9 @@ export const createJmapDraftObject = (
     readonly includeVedaKeywords?: boolean;
   } = {},
 ): Readonly<Record<string, unknown>> => {
+  const bcc = addresses(content.bcc);
+  const cc = addresses(content.cc);
+  const to = addresses(content.to);
   const reply = existing
     ? existingReplyMetadata(existing)
     : newReplyMetadata(content, replyContext);
@@ -117,8 +120,8 @@ export const createJmapDraftObject = (
   }
   return {
     ...jmapComposeBody(content.body, content.htmlBody, options.attachments ?? []),
-    bcc: addresses(content.bcc),
-    cc: addresses(content.cc),
+    ...(bcc.length > 0 ? { bcc } : {}),
+    ...(cc.length > 0 ? { cc } : {}),
     from: [
       {
         email: account.email,
@@ -139,6 +142,6 @@ export const createJmapDraftObject = (
     receivedAt: timestamp,
     sentAt: timestamp,
     subject: content.subject,
-    to: addresses(content.to),
+    ...(to.length > 0 ? { to } : {}),
   };
 };

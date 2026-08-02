@@ -68,6 +68,37 @@ const hasSafePartHeaders = (
   );
 };
 
+const hasSafeRootHeaders = (
+  email: JmapDraftEmail,
+  part: BodyPart,
+  expectedType: string,
+): boolean => {
+  if (hasSafePartHeaders(part, expectedType)) return true;
+  if (
+    !email.headers ||
+    !part.headers ||
+    JSON.stringify(part.headers) !== JSON.stringify(email.headers)
+  ) {
+    return false;
+  }
+  const contentType = email.headers.find(
+    ({ name }) => name.toLowerCase() === "content-type",
+  );
+  const encoding = email.headers.find(
+    ({ name }) => name.toLowerCase() === "content-transfer-encoding",
+  );
+  return (
+    Boolean(contentType) &&
+    contentTypeParametersAreSafe(contentType?.value ?? "", expectedType) &&
+    (expectedType.startsWith("multipart/")
+      ? !encoding
+      : !encoding ||
+        /^(?:7bit|8bit|base64|binary|quoted-printable)$/i.test(
+          encoding.value.trim(),
+        ))
+  );
+};
+
 const safeLeaf = (
   part: BodyPart,
   expectedType: "text/html" | "text/plain",
@@ -79,6 +110,18 @@ const safeLeaf = (
   hasNoLeafMetadata(part) &&
   hasSafePartHeaders(part, expectedType);
 
+const safeRootLeaf = (
+  email: JmapDraftEmail,
+  part: BodyPart,
+  expectedType: "text/html" | "text/plain",
+): boolean =>
+  mediaType(part.type) === expectedType &&
+  part.type.trim().toLowerCase() === expectedType &&
+  Boolean(part.partId) &&
+  (part.subParts?.length ?? 0) === 0 &&
+  hasNoLeafMetadata(part) &&
+  hasSafeRootHeaders(email, part, expectedType);
+
 const exactPart = (
   parts: readonly BodyPart[] | undefined,
   expected: BodyPart,
@@ -88,9 +131,27 @@ const exactPart = (
   parts[0]?.partId === expected.partId &&
   safeLeaf(parts[0]!, type);
 
-const safeMessageBody = (email: JmapDraftEmail, root: BodyPart): boolean => {
-  if (safeLeaf(root, "text/plain")) {
-    return exactPart(email.textBody, root, "text/plain") &&
+const exactRootPart = (
+  email: JmapDraftEmail,
+  parts: readonly BodyPart[] | undefined,
+  expected: BodyPart,
+): boolean =>
+  parts?.length === 1 &&
+  JSON.stringify(parts[0]) === JSON.stringify(expected) &&
+  safeRootLeaf(email, parts[0]!, "text/plain");
+
+const safeMessageBody = (
+  email: JmapDraftEmail,
+  root: BodyPart,
+  isRoot: boolean,
+): boolean => {
+  const rootIsPlain = isRoot
+    ? safeRootLeaf(email, root, "text/plain")
+    : safeLeaf(root, "text/plain");
+  if (rootIsPlain) {
+    return (isRoot
+      ? exactRootPart(email, email.textBody, root)
+      : exactPart(email.textBody, root, "text/plain")) &&
       (email.htmlBody?.length ?? 0) === 0;
   }
   const parts = root.subParts ?? [];
@@ -99,7 +160,9 @@ const safeMessageBody = (email: JmapDraftEmail, root: BodyPart): boolean => {
   return mediaType(root.type) === "multipart/alternative" &&
     root.type.trim().toLowerCase() === "multipart/alternative" &&
     parts.length === 2 && Boolean(plain && html) && hasNoLeafMetadata(root) &&
-    hasSafePartHeaders(root, "multipart/alternative") &&
+    (isRoot
+      ? hasSafeRootHeaders(email, root, "multipart/alternative")
+      : hasSafePartHeaders(root, "multipart/alternative")) &&
     safeLeaf(plain!, "text/plain") && safeLeaf(html!, "text/html") &&
     exactPart(email.textBody, plain!, "text/plain") &&
     exactPart(email.htmlBody, html!, "text/html");
@@ -139,7 +202,9 @@ export const hasSupportedDraftBodyStructure = (
 ): boolean => {
   const root = email.bodyStructure;
   if (!root) return false;
-  if (safeMessageBody(email, root)) return (email.attachments?.length ?? 0) === 0;
+  if (safeMessageBody(email, root, true)) {
+    return (email.attachments?.length ?? 0) === 0;
+  }
   const parts = root.subParts ?? [];
   const message = parts[0];
   const attachments = parts.slice(1);
@@ -150,8 +215,10 @@ export const hasSupportedDraftBodyStructure = (
   return mediaType(root.type) === "multipart/mixed" &&
     root.type.trim().toLowerCase() === "multipart/mixed" &&
     parts.length >= 2 && parts.length <= 11 && Boolean(message) &&
-    hasNoLeafMetadata(root) && hasSafePartHeaders(root, "multipart/mixed") &&
-    safeMessageBody(email, message!) && attachmentBytes <= 18 * 1024 * 1024 &&
+    hasNoLeafMetadata(root) &&
+    hasSafeRootHeaders(email, root, "multipart/mixed") &&
+    safeMessageBody(email, message!, false) &&
+    attachmentBytes <= 18 * 1024 * 1024 &&
     attachments.every(safeAttachmentLeaf) &&
     sameAttachmentInventory(email.attachments, attachments);
 };

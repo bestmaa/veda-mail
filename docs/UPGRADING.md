@@ -68,6 +68,12 @@ runtime-enabled when the authenticated JMAP account is writable and has a
 Drafts mailbox, or when a Standard IMAP account has a writable special-use
 `\\Drafts` mailbox plus UIDPLUS. Other IMAP profiles continue to compose and
 send with browser-local recovery but report provider persistence unavailable.
+Stalwart 0.16 may return an empty address header as a null grouped-address
+instance and may expose the sole plain-text part in both `textBody` and
+`htmlBody`. Veda Mail accepts only that exact, bounded plain-text alias while
+still rejecting non-empty unparseable address headers and unsupported MIME.
+New JMAP drafts omit empty To, Cc, and Bcc properties. This compatibility fix
+requires no Stalwart configuration or mailbox migration.
 Custom clients can
 use the new same-origin `/api/v1/mail/drafts` endpoints with the returned opaque
 provider ID plus expected revision; a provider draft must be saved and current

@@ -65,16 +65,39 @@ const groupedAddressSchema = z.object({
   name: z.string().max(4_096).nullable(),
 });
 const groupedAddressHeadersSchema = z
-  .array(z.array(groupedAddressSchema).max(100))
+  .array(z.array(groupedAddressSchema).max(100).nullable())
   .max(256)
   .nullable()
   .optional();
 
+const record = (value: unknown): Record<string, unknown> | null =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const normalizePlainBodyAlias = (value: unknown): unknown => {
+  const email = record(value);
+  const structure = record(email?.["bodyStructure"]);
+  const textBody = email?.["textBody"];
+  const htmlBody = email?.["htmlBody"];
+  if (
+    typeof structure?.["type"] === "string" &&
+    structure["type"].trim().toLowerCase() === "text/plain" &&
+    Array.isArray(textBody) &&
+    Array.isArray(htmlBody) &&
+    JSON.stringify(textBody) === JSON.stringify(htmlBody)
+  ) {
+    return { ...email, htmlBody: [] };
+  }
+  return value;
+};
+
 export const jmapDraftEmailSchema = z.preprocess(
-  (value) =>
+  (value) => normalizePlainBodyAlias(
     boundStalwartDraftStructure(
       boundJmapBodyValues(value, ["textBody", "htmlBody"]),
     ),
+  ),
   z
     .object({
       attachments: z.array(bodyPartSchema).max(256).optional(),

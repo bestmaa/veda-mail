@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Stalwart 0.16 plain-text drafts now round-trip when the server returns null
+  grouped-address instances for empty Cc/Bcc headers, mirrors the sole text
+  part in `htmlBody`, and includes the full message header inventory on the
+  root MIME part. Normalization is exact and bounded, malformed non-empty
+  headers still fail closed, and newly created drafts omit empty recipient
+  properties
 - Playwright regression batches use the stable Next.js webpack development
   server after an upstream Turbopack aggregation panic terminated long CI runs
   mid-download and left later composer requests permanently unavailable. The

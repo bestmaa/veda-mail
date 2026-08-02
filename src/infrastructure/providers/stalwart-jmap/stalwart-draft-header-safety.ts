@@ -62,11 +62,20 @@ const groupedAddressesMatch = (
   if (instances === undefined || (instances?.length ?? 0) !== expectedInstances) {
     return false;
   }
-  const groups = instances?.[0] ?? [];
+  if (expectedInstances === 0) return (expected?.length ?? 0) === 0;
+  const groups = instances?.[0];
+  if (groups === null) {
+    const headerName = property.slice("header:".length).split(":", 1)[0];
+    const raw = email.headers?.find(
+      ({ name }) => name.toLowerCase() === headerName?.toLowerCase(),
+    );
+    return (expected?.length ?? 0) === 0 && raw?.value.trim() === "";
+  }
+  if (!groups) return false;
   if (groups.some(({ name }) => name !== null)) return false;
   const flattened = groups.flatMap(({ addresses }) => addresses ?? []);
   return (
-    (expectedInstances === 0 || flattened.length > 0) &&
+    flattened.length > 0 &&
     JSON.stringify(normalizedAddresses(flattened)) ===
       JSON.stringify(normalizedAddresses(expected))
   );
