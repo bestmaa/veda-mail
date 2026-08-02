@@ -18,6 +18,7 @@ import type {
 } from "@/domain/mail/label";
 import type { MailboxEmptyOperation } from "@/domain/mail/mailbox-empty";
 import type { MessageListPreferences, MessageListSort } from "@/domain/mail/message-list-preferences";
+import type { MailSearchQuery } from "@/domain/mail/mail-search";
 export type {
   Mailbox, MailboxMutation,
   MailboxMutationResult,
@@ -102,7 +103,7 @@ export interface MessageListQuery {
   readonly includePreview: boolean;
   readonly limit: number;
   readonly mailboxId: MailboxId;
-  readonly search?: string;
+  readonly search?: MailSearchQuery;
   readonly sort: MessageListSort;
 }
 
@@ -242,6 +243,7 @@ export interface MailWorkspace extends ProviderMailWorkspace {
   readonly labels: readonly MailLabel[];
   readonly mailboxEmptyOperations?: readonly MailboxEmptyOperation[];
   readonly messageListPreferences: MessageListPreferences;
+  readonly selectedMailboxId?: MailboxId;
   readonly sessionExpiresAt: string;
   readonly sessionScope: string;
 }

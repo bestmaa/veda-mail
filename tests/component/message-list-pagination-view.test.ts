@@ -126,6 +126,11 @@ const props = {
     sort: "newest" as const,
     undoSendSeconds: 0 as const,
   },
+  search: {
+    error: null,
+    filters: [],
+    suggestions: [],
+  },
   total: 2,
 } as const;
 

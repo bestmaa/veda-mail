@@ -12,7 +12,9 @@ type MailHeaderViewProps = Pick<
   | "onRefresh"
   | "onSearchClear"
   | "onSearchSubmit"
+  | "search"
   | "searchInput"
+  | "searchMaxLength"
   | "searchValue"
   | "settings"
 >;
@@ -25,7 +27,9 @@ export const MailHeaderView = ({
   onRefresh,
   onSearchClear,
   onSearchSubmit,
+  search,
   searchInput,
+  searchMaxLength,
   searchValue,
   settings,
 }: MailHeaderViewProps) => (
@@ -56,15 +60,24 @@ export const MailHeaderView = ({
     >
       <Search aria-hidden className="shrink-0 text-slate-500" size={18} />
       <input
+        aria-describedby={search.error ? "mail-search-error" : undefined}
         aria-label="Search mail"
         aria-keyshortcuts={keyboardShortcuts.enabled ? "/" : undefined}
         className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-500"
+        list="mail-search-suggestions"
+        maxLength={searchMaxLength}
         onChange={searchInput}
         placeholder="Search mail, people, or attachments"
         data-mail-search
+        role="searchbox"
         type="search"
         value={searchValue}
       />
+      <datalist id="mail-search-suggestions">
+        {search.suggestions.map((suggestion) => (
+          <option key={suggestion} value={suggestion} />
+        ))}
+      </datalist>
       {searchValue ? (
         <button
           aria-label="Clear search"

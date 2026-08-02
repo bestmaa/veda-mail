@@ -64,7 +64,9 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       onRefresh={props.onRefresh}
       onSearchClear={props.onSearchClear}
       onSearchSubmit={props.onSearchSubmit}
+      search={props.search}
       searchInput={props.searchInput}
+      searchMaxLength={props.searchMaxLength}
       searchValue={props.searchValue}
       settings={props.settings}
     />
@@ -106,6 +108,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
           loadMoreError={props.loadMoreError}
           messages={props.messages}
           preferences={props.messageListPreferences}
+          search={props.search}
           mailboxLifecycle={props.mailboxLifecycle}
           moveAnnouncement={props.messageMove.announcement}
           onLoadMore={props.onLoadMore}

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentConnection: vi.fn(),
   getAccount: vi.fn(),
   getMailService: vi.fn(),
+  listMailboxes: vi.fn(),
   getWorkspace: vi.fn(),
   cursorSecret: vi.fn(),
   decodeCursor: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock("@/server/security/rate-limit", () => ({
 }));
 
 import { GET as getWorkspace } from "@/app/api/v1/mail/workspace/route";
+import { MailSearchUnsupportedError } from "@/domain/mail/mail-search";
 import { connectionExpiresAt } from "@/server/connections/connection-lifetime";
 import { mailSessionScope } from "@/server/connections/mail-session-scope";
 
@@ -70,6 +72,7 @@ beforeEach(() => {
   mocks.getMailService.mockResolvedValue({
     getAccount: mocks.getAccount,
     getWorkspace: mocks.getWorkspace,
+    listMailboxes: mocks.listMailboxes,
   });
   mocks.getAccount.mockReset();
   mocks.getAccount.mockResolvedValue({
@@ -77,6 +80,7 @@ beforeEach(() => {
     providerId: "provider-1",
   });
   mocks.getWorkspace.mockReset();
+  mocks.listMailboxes.mockReset();
   mocks.cursorSecret.mockReset();
   mocks.cursorSecret.mockResolvedValue("cursor-secret");
   mocks.decodeCursor.mockReset();
@@ -142,7 +146,10 @@ describe("mail workspace route", () => {
       includePreview: true,
       limit: 50,
       mailboxId: "inbox-1",
-      search: "quarterly",
+      search: {
+        canonical: "quarterly",
+        criteria: [{ field: "text", type: "text", value: "quarterly" }],
+      },
       sort: "newest",
     });
     expect(mocks.decodeCursor).toHaveBeenCalledWith(
@@ -181,6 +188,24 @@ describe("mail workspace route", () => {
       expect(mocks.getWorkspace).not.toHaveBeenCalled();
     },
   );
+
+  it("reports a provider-unsupported predicate without widening the search", async () => {
+    mocks.getWorkspace.mockRejectedValueOnce(
+      new MailSearchUnsupportedError(["has:attachment"]),
+    );
+
+    const response = await getWorkspace(request(
+      "/api/v1/mail/workspace?search=has%3Aattachment",
+    ));
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "MAIL_SEARCH_UNSUPPORTED",
+        message: "This provider does not support has:attachment search.",
+      },
+    });
+  });
 
   it("does not return mailbox data after the connection expires in flight", async () => {
     mocks.getWorkspace.mockResolvedValue({

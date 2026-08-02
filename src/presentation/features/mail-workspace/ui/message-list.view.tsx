@@ -14,6 +14,8 @@ import { MailboxLifecycleBannerView } from "@/presentation/features/mail-workspa
 import { MessageListSkeletonView } from "@/presentation/features/mail-workspace/ui/message-list-skeleton.view";
 import { MessageRowView } from "@/presentation/features/mail-workspace/ui/message-row.view";
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
+import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
+import { MailSearchFiltersView } from "@/presentation/features/mail-workspace/ui/mail-search-filters.view";
 
 interface MessageListViewProps {
   readonly activeFolder: string;
@@ -29,6 +31,7 @@ interface MessageListViewProps {
   readonly moveAnnouncement: string;
   readonly onLoadMore: () => void;
   readonly preferences: MessageListPreferencesViewModel;
+  readonly search: MailSearchViewModel;
   readonly total: number;
 }
 
@@ -46,6 +49,7 @@ export const MessageListView = ({
   moveAnnouncement,
   onLoadMore,
   preferences,
+  search,
   total,
 }: MessageListViewProps) => (
   <section
@@ -110,6 +114,7 @@ export const MessageListView = ({
         <MailboxLifecycleBannerView lifecycle={mailboxLifecycle} />
       ) : null}
       <BulkActionsToolbarView bulk={bulkActions} />
+      <MailSearchFiltersView search={search} />
       {messages.some(({ canDrag }) => canDrag) ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">
           Drag a message to a mailbox, or select messages and use Move to.

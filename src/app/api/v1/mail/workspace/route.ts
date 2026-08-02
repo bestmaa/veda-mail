@@ -1,4 +1,12 @@
 import { id } from "@/domain/shared/brand";
+import {
+  MailSearchMailboxError,
+  MailSearchUnsupportedError,
+} from "@/domain/mail/mail-search";
+import {
+  hasMailboxSearch,
+  resolveMailSearchScope,
+} from "@/application/services/mail-search-scope";
 import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-preferences";
 import { connectionExpiresAt } from "@/server/connections/connection-lifetime";
 import { getCurrentConnection } from "@/server/connections/connection-session";
@@ -42,6 +50,15 @@ export const GET = async (request: Request) => {
     assertSubjectRateLimit("mail-read", connection.id, 300, 60 * 1000);
     const query = parseWorkspaceQuery(request);
     const service = await getMailService(connection);
+    const mailboxSearch = hasMailboxSearch(query.search);
+    const knownMailboxes = mailboxSearch ? await service.listMailboxes() : undefined;
+    const resolvedSearch = mailboxSearch && query.search && knownMailboxes
+      ? resolveMailSearchScope(knownMailboxes, query.search)
+      : null;
+    const effectiveMailboxId = resolvedSearch?.mailboxId ??
+      (query.mailboxId ? id.mailbox(query.mailboxId) : undefined);
+    const providerSearch = resolvedSearch?.providerSearch ??
+      (mailboxSearch ? undefined : query.search);
     const owner = await mailboxOwner(service);
     const preferences = await messageListPreferencesStore.get(owner).catch(
       () => ({ ...DEFAULT_MESSAGE_LIST_PREFERENCES }),
@@ -65,25 +82,28 @@ export const GET = async (request: Request) => {
       );
     }
     const cursorSecret = await messageListCursorSecret(connection.id);
-    const cursorContext = query.mailboxId ? {
+    const cursorContext = effectiveMailboxId ? {
       includePreview: preferences.showPreview,
-      mailboxId: id.mailbox(query.mailboxId),
-      ...(query.search ? { search: query.search } : {}),
+      mailboxId: effectiveMailboxId,
+      ...(query.search ? { search: query.search.canonical } : {}),
       sort: preferences.sort,
     } : null;
     const providerCursor = query.cursor && cursorContext
       ? decodeMessageListCursor(query.cursor, cursorContext, cursorSecret)
       : undefined;
-    const workspace = await service.getWorkspace({
+    const workspaceQuery = {
       ...(providerCursor ? { cursor: providerCursor } : {}),
       includePreview: preferences.showPreview,
       limit: 50,
-      ...(query.mailboxId ? { mailboxId: id.mailbox(query.mailboxId) } : {}),
-      ...(query.search ? { search: query.search } : {}),
+      ...(effectiveMailboxId ? { mailboxId: effectiveMailboxId } : {}),
+      ...(providerSearch ? { search: providerSearch } : {}),
       sort: preferences.sort,
-    });
-    const selectedMailbox = query.mailboxId
-      ? id.mailbox(query.mailboxId)
+    } as const;
+    const workspace = knownMailboxes
+      ? await service.getWorkspace(workspaceQuery, knownMailboxes)
+      : await service.getWorkspace(workspaceQuery);
+    const selectedMailbox = effectiveMailboxId
+      ? effectiveMailboxId
       : (workspace.mailboxes.find(({ role }) => role === "inbox") ??
         workspace.mailboxes[0])?.id;
     if (!selectedMailbox) {
@@ -93,7 +113,7 @@ export const GET = async (request: Request) => {
       ? encodeMessageListCursor(workspace.messages.nextCursor, {
           includePreview: preferences.showPreview,
           mailboxId: selectedMailbox,
-          ...(query.search ? { search: query.search } : {}),
+          ...(query.search ? { search: query.search.canonical } : {}),
           sort: preferences.sort,
         }, cursorSecret)
       : null;
@@ -121,10 +141,23 @@ export const GET = async (request: Request) => {
       mailboxes,
       messageListPreferences: preferences,
       messages: { ...workspace.messages, nextCursor },
+      ...(mailboxSearch ? { selectedMailboxId: selectedMailbox } : {}),
       sessionExpiresAt: connectionExpiresAt(connection),
       sessionScope: mailSessionScope(connection),
     });
   } catch (error) {
+    if (error instanceof MailSearchMailboxError) {
+      return apiFailure(
+        new ApiError(error.message, "INVALID_MAIL_SEARCH", 400),
+        "Unable to search this mailbox.",
+      );
+    }
+    if (error instanceof MailSearchUnsupportedError) {
+      return apiFailure(
+        new ApiError(error.message, "MAIL_SEARCH_UNSUPPORTED", 422),
+        "Unable to search this mailbox.",
+      );
+    }
     return apiFailure(error, "Unable to load this mailbox.");
   }
 };
