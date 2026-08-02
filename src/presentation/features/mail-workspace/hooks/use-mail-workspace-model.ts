@@ -234,7 +234,8 @@ export const useMailWorkspaceModel = ({
     deliveryNotice: partialDelivery.notice,
     reader,
     readerDestroyConfirmation,
-    searchInput: mail.onSearchInput,
+    search: mail.search, searchInput: mail.onSearchInput,
+    searchMaxLength: mail.searchMaxLength,
     searchValue: mail.searchValue, scheduled, undoSend: composer.undoSend,
     session: {
       canSignOut: session.canSignOut,

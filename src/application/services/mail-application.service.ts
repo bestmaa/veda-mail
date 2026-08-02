@@ -12,6 +12,7 @@ import type {
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MessageListSort } from "@/domain/mail/message-list-preferences";
+import type { MailSearchQuery } from "@/domain/mail/mail-search";
 import type {
   MailboxId,
   MessageId,
@@ -23,7 +24,7 @@ export interface WorkspaceQuery {
   readonly includePreview: boolean;
   readonly limit: number;
   readonly mailboxId?: MailboxId;
-  readonly search?: string;
+  readonly search?: MailSearchQuery;
   readonly sort: MessageListSort;
 }
 
@@ -32,8 +33,9 @@ export class MailApplicationService {
 
   public async getWorkspace(
     query: WorkspaceQuery,
+    knownMailboxes?: readonly Mailbox[],
   ): Promise<ProviderMailWorkspace> {
-    const mailboxes = await this.gateway.listMailboxes();
+    const mailboxes = knownMailboxes ?? await this.gateway.listMailboxes();
     const mailboxId = query.mailboxId ?? this.getDefaultMailbox(mailboxes).id;
     const [account, draftCapability, labelCapability, messages] = await Promise.all([
       this.gateway.getAccount(),

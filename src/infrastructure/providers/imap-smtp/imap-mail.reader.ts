@@ -10,6 +10,10 @@ import type {
   MessageListQuery,
   MessagePage,
 } from "@/domain/mail/mail";
+import {
+  imapSearchPlan,
+  intersectImapSearchResults,
+} from "@/infrastructure/providers/imap-smtp/imap-search-plan";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
 import {
@@ -78,10 +82,12 @@ export class ImapMailReader {
       const mailbox = decodeMailboxId(query.mailboxId);
       const opened = await client.mailboxOpen(mailbox, { readOnly: true });
       const offset = Number(query.cursor ?? "0");
-      const matching = query.search
-        ? await client.search({ text: query.search }, { uid: true })
-        : await client.search({ all: true }, { uid: true });
-      const uids = matching === false ? [] : matching;
+      const results = [];
+      for (const search of imapSearchPlan(query.search)) {
+        const matching = await client.search(search, { uid: true });
+        results.push(matching === false ? [] : matching);
+      }
+      const uids = intersectImapSearchResults(results);
       const pageUids = uids
         .slice()
         .sort((left, right) =>

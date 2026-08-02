@@ -15,7 +15,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Cursor-paginated message lists                | Yes             | Yes                  |
 | Newest/oldest mailbox order                    | Yes             | Yes, UID order       |
 | Optional message-list preview                  | Yes             | No body fetch        |
-| Server-side text search                       | Yes             | Yes                  |
+| Portable advanced search                     | Yes             | Yes, except attachment |
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |

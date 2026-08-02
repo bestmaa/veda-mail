@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { MESSAGE_LIST_SORTS } from "@/domain/mail/message-list-preferences";
+import { MailSearchSyntaxError } from "@/domain/mail/mail-search";
+import {
+  MAX_MAIL_SEARCH_CHARACTERS,
+  parseMailSearch,
+} from "@/domain/mail/mail-search-parser";
 import { ApiError } from "@/transport/http/api-error";
 
 const ALLOWED_PARAMETERS = new Set([
@@ -52,10 +57,17 @@ export const parseWorkspaceQuery = (request: Request) => {
     }
   }
   const rawSearch = one(params, "search");
-  if (rawSearch !== undefined && rawSearch.length > 200) {
+  if (rawSearch !== undefined && rawSearch.length > MAX_MAIL_SEARCH_CHARACTERS) {
     throw new ApiError("The mailbox search is too long.", "INVALID_MAILBOX_QUERY", 400);
   }
-  const search = rawSearch?.trim();
+  const searchInput = rawSearch?.trim();
+  let search;
+  try {
+    search = searchInput ? parseMailSearch(searchInput) : undefined;
+  } catch (error) {
+    if (!(error instanceof MailSearchSyntaxError)) throw error;
+    throw new ApiError(error.message, "INVALID_MAIL_SEARCH", 400);
+  }
   const rawPreview = one(params, "preview");
   if (rawPreview !== undefined && rawPreview !== "show" && rawPreview !== "hide") {
     throw new ApiError("The preview preference is invalid.", "INVALID_MAILBOX_QUERY", 400);

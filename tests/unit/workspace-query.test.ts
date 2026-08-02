@@ -12,7 +12,10 @@ describe("workspace query parser", () => {
     ))).toEqual({
       cursor: "opaque-cursor",
       mailboxId: "inbox-1",
-      search: "quarterly",
+      search: {
+        canonical: "quarterly",
+        criteria: [{ field: "text", type: "text", value: "quarterly" }],
+      },
       showPreview: false,
       sort: "oldest",
     });
@@ -70,10 +73,11 @@ describe("workspace query parser", () => {
     )).toThrow();
   });
 
-  it("accepts the search ceiling and rejects input beyond it", () => {
-    expect(parseWorkspaceQuery(request(`?search=${"x".repeat(200)}`)))
-      .toEqual({ search: "x".repeat(200) });
-    expect(() => parseWorkspaceQuery(request(`?search=${"x".repeat(201)}`)))
+  it("accepts bounded multi-term search and rejects an oversized request", () => {
+    const valid = Array.from({ length: 5 }, () => "x".repeat(199)).join(" ");
+    expect(parseWorkspaceQuery(request(`?search=${valid}`)).search?.canonical)
+      .toBe(valid);
+    expect(() => parseWorkspaceQuery(request(`?search=${"x".repeat(1_001)}`)))
       .toThrowError(expect.objectContaining({
         code: "INVALID_MAILBOX_QUERY",
         status: 400,

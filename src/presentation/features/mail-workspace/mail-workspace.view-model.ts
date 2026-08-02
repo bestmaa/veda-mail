@@ -19,6 +19,7 @@ import type { MessageListPreferencesViewModel } from "@/presentation/features/ma
 import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@/presentation/features/mail-workspace/composer-schedule.view-model";
 import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/undo-send.view-model";
 import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
+import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -241,9 +242,8 @@ export interface MailWorkspaceViewProps {
   readonly deliveryNotice: DeliveryNoticeViewModel | null;
   readonly reader: ReaderViewModel | null;
   readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
+  readonly search: MailSearchViewModel; readonly searchMaxLength: number;
   readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string;
-  readonly scheduled: ScheduledSendManagerViewModel;
-  readonly session: MemberSessionViewModel;
+  readonly scheduled: ScheduledSendManagerViewModel; readonly session: MemberSessionViewModel;
   readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean;
-  readonly undoSend: UndoSendViewModel;
-}
+  readonly undoSend: UndoSendViewModel; }

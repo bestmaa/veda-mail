@@ -351,6 +351,18 @@ recreation, and the public `/api/health` endpoint returned HTTP 200.
 Acceptance: thread membership and search semantics have provider contract tests;
 unsupported predicates are reported rather than silently ignored.
 
+The advanced-search slice is locally complete: the bounded AND grammar covers
+addresses, subject/body/text phrases, inclusive/exclusive protocol dates, strict
+binary sizes, attachment, read/star state, and authenticated mailbox-name/role
+resolution. JMAP receives a typed AND filter; IMAP intersects repeated-key
+SEARCH batches and reports its unsupported attachment predicate with HTTP 422.
+The accessible UI adds session-memory suggestions/history, removable active
+chips, client/server validation, and credential-free fragment URL restoration.
+Unit, route, provider-contract, component, and browser tests cover the slice;
+the two search checkboxes remain open until the immutable release is published,
+deployed, and live production search smoke evidence is recorded. See
+[Advanced mail search](./ADVANCED-SEARCH.md).
+
 ## M6 — Rules and productivity
 
 - [ ] Server-side filters/rules: match sender, recipient, subject, headers,

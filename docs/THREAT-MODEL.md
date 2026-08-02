@@ -328,6 +328,34 @@ message skipped by upstream position movement; a manual refresh restarts from
 the authoritative first page. Snapshot/query-state cursors remain future
 provider-capability work.
 
+### Advanced-search grammar and mailbox scope
+
+- Browser parsing is only feedback; the authenticated workspace route parses
+  the complete query again into a typed AST. Queries are capped at 1,000
+  characters, 20 terms, and 200 characters per value. Control characters,
+  unknown operators, malformed quotes/dates/sizes, contradictory ranges and
+  states, and repeated mailbox selectors fail before provider access.
+- Provider adapters never receive the raw grammar. JMAP receives typed filter
+  properties, while IMAP receives typed SEARCH objects. Repeated IMAP keys use
+  bounded result-set intersection. A predicate without portable support fails
+  with HTTP 422 instead of being discarded or widened.
+- `in:` resolves only against mailboxes returned for the authenticated provider
+  connection. Standard roles take precedence over colliding custom names;
+  unknown or ambiguous custom names fail closed. The selector is removed before
+  provider compilation, and the effective mailbox plus full canonical query
+  remain bound into the signed page cursor.
+- Recent searches exist only in mounted React state. Shareable restoration uses
+  a URL fragment containing canonical search text only; session scopes,
+  provider secrets, and account credentials are never written there. Account
+  invalidation clears the fragment and recent list.
+
+Residual risk: search text can itself reveal correspondents or business terms.
+The fragment is not sent as an HTTP referrer, but it is visible to local browser
+history, extensions, screenshots, and anyone receiving a copied link. The
+authenticated API request also carries the search query in its URL, so reverse
+proxy access-log retention and redaction policy should treat it as mailbox
+metadata.
+
 ### Message-list preferences and previews
 
 - Ownership is derived after authentication from the current gateway account

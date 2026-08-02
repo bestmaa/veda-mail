@@ -32,6 +32,7 @@ import {
   type StalwartMailboxSnapshot,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.reader";
 import { assertStalwartMessageListResult } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-list-result";
+import { stalwartSearchFilter } from "@/infrastructure/providers/stalwart-jmap/stalwart-search-filter";
 import { JMAP_MAIL, JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
   MAX_JMAP_BODY_VALUE_BYTES, type StalwartConfig } from
   "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
@@ -86,9 +87,7 @@ export class StalwartMailReader {
   public async listMessages(query: MessageListQuery): Promise<MessagePage> {
     const { accountId } = await this.getAccountContext();
     const position = Number(query.cursor ?? "0");
-    const filter = query.search
-      ? { inMailbox: query.mailboxId, text: query.search }
-      : { inMailbox: query.mailboxId };
+    const filter = stalwartSearchFilter(query.mailboxId, query.search);
     const response = await this.client.request(
       [
         [
