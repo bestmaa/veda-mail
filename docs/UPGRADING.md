@@ -52,17 +52,20 @@ newest-first order, and previews enabled.
 
 Manual provider-backed drafts require no new environment variable, Stalwart
 API key, mailbox migration, database/schema migration, or port. The feature is
-runtime-enabled only when the authenticated JMAP account is writable and has a
-Drafts mailbox. Standard IMAP/SMTP profiles continue to compose and send as
-before but report provider draft persistence as unsupported. Custom clients can
+runtime-enabled when the authenticated JMAP account is writable and has a
+Drafts mailbox, or when a Standard IMAP account has a writable special-use
+`\\Drafts` mailbox plus UIDPLUS. Other IMAP profiles continue to compose and
+send with browser-local recovery but report provider persistence unavailable.
+Custom clients can
 use the new same-origin `/api/v1/mail/drafts` endpoints with the returned opaque
 provider ID plus expected revision; a provider draft must be saved and current
 before its optional ID/revision pair is attached to `/api/v1/mail/send`.
 
 This release stores Veda reconciliation markers as advisory non-system JMAP
-keywords, not mail headers or `/data` records. They may be visible to another
-JMAP client; they are not transmitted in the RFC message. Older Veda Mail images
-ignore those keywords. Keep the whole provider mailbox intact during rollback:
+keywords or bounded private headers on IMAP draft MIME, not `/data` records.
+They may be visible to another mail client; saved-draft SMTP reconstructs the
+message and does not transmit the private IMAP headers. Older Veda Mail images
+ignore those markers. Keep the whole provider mailbox intact during rollback:
 the draft remains a normal `$draft` Email and can be edited by another client,
 although that client may not preserve Veda's retry markers. A draft carrying an
 uncertain-send claim remains deliberately read-only in this release until the

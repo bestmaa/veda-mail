@@ -174,14 +174,18 @@ Acceptance: reloading or losing the network cannot silently lose a draft, and
 the MIME message has equivalent readable HTML and plain-text parts.
 
 Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
-Stalwart JMAP now has a security-reviewed provider-draft vertical slice:
-create, update, Drafts-list/open, discard, save-first send, lost-response
-reconciliation, serialized autosave, visible state, and non-destructive guards
-for attachments and incomplete bodies plus unsupported imported headers/MIME.
+Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
+vertical slices: create, update, Drafts-list/open, discard, save-first send,
+lost-response reconciliation, serialized autosave, visible state, and
+non-destructive guards for attachments and incomplete bodies plus unsupported
+imported headers/MIME. IMAP additionally requires a writable special-use
+Drafts mailbox and UIDPLUS, binds opaque IDs to UIDVALIDITY, verifies every
+appended MIME replacement before deleting the old UID, and serializes Veda
+saves/sends per account and compose ID.
 All providers also receive session-bound local crash recovery and terminal
 send/discard protection; local attachment bytes deliberately remain tab-only.
-The provider-backed checkbox remains open because Standard IMAP/SMTP parity,
-draft attachments, and provider-durable attachment autosave are not complete.
+The provider-backed checkbox remains open because draft attachments and
+provider-durable attachment autosave are not complete.
 Completing this milestone still requires templates, delayed send, and the
 broader shortcut/accessibility audit listed above.
 

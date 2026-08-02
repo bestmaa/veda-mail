@@ -586,6 +586,19 @@ limiter and encrypted shared session repository.
   advisory provider-stored values rather than private JMAP data, but they are
   not written to RFC mail headers, so compose UUIDs, fingerprints, and
   provider-internal IDs are not transmitted to recipients.
+- Standard IMAP requires an explicitly writable special-use Drafts mailbox and
+  UIDPLUS. Opaque IDs bind the authenticated account scope, exact mailbox, UID,
+  and UIDVALIDITY. UIDPLUS is mandatory because plain EXPUNGE could otherwise
+  remove unrelated messages that another client had already marked Deleted.
+  Veda's bounded compose, content fingerprint, reply, and one-write recovery
+  values are private headers on the stored draft MIME. SMTP submission builds a
+  fresh message from verified canonical content, so those headers are not sent.
+- IMAP creates and updates use append, read-back, exact MIME/fingerprint
+  verification, then targeted deletion of the prior UID. An account/compose
+  in-process lock serializes Veda saves and sends on the supported single
+  replica, and a unique write header reconciles an APPEND response without a
+  UID. A provider-normalized, oversized, foreign-header, wrong-identity, or
+  ambiguous result fails closed before the old draft is removed.
 - Immutable replacements preserve non-Veda keywords and additional mailbox
   membership, rebuild from a freshness read, create and verify the replacement,
   and only then destroy the old Email in a separate conditional call. Veda does
@@ -602,7 +615,7 @@ limiter and encrypted shared session repository.
   canonical text or text/HTML MIME structure with no unsupported part metadata.
   The member may close the composer or explicitly discard the exact revision
   without losing unseen content.
-- Saved-draft send is save-first. After identity and mailbox preflights, the
+- JMAP saved-draft send is save-first. After identity and mailbox preflights, the
   server reloads the exact immutable draft, verifies identity, content,
   revision, markers, and mailbox role, then conditionally adds a unique send
   claim. Exact account-global compose membership is rechecked after claiming
@@ -614,6 +627,16 @@ limiter and encrypted shared session repository.
   claim. Any issued ambiguous, partial, contradictory, or cleanup-uncertain
   outcome keeps the old draft claimed/read-only, directs the member to check
   Sent, and cannot trigger an automatic duplicate submission.
+- IMAP saved-draft send reloads the immutable UID, revision, compose identity,
+  exact canonical content, authenticated From, and safe MIME inventory while
+  holding the same compose lock. Only a matching browser intent reaches SMTP.
+  Accepted or partial delivery triggers targeted best-effort draft cleanup;
+  uncertain delivery retains the draft and relies on the existing terminal
+  send guard. Standard IMAP has no provider-global conditional claim, so a
+  separate external client or unsupported multi-replica deployment can race
+  Veda and produce a safe conflict or duplicate provider draft. It cannot make
+  Veda silently rewrite unverified content, but administrators must retain the
+  documented single writable application replica.
 
 ### Browser compose recovery
 
