@@ -76,8 +76,8 @@ export const useComposerDraftPersistence = ({
     attempt: ComposerDraftSaveAttempt,
     isRecovery: boolean,
     hydrateOnSuccess: boolean,
-  ): Promise<boolean> => {
-    if (inFlight.current) return false;
+  ): Promise<DraftDetail | null> => {
+    if (inFlight.current) return null;
     inFlight.current = true;
     setError(null);
     setPhase("saving");
@@ -97,14 +97,14 @@ export const useComposerDraftPersistence = ({
       setError("Couldn’t keep a recovery copy, so this draft was not sent to the mailbox.");
       setRetryKind("backoff");
       setPhase("error");
-      return false;
+      return null;
     }
     const operation = request.begin();
     try {
       const next = await issueComposerDraftSaveAttempt(
         prepared, operation.accountKey, operation.controller.signal,
       );
-      if (!request.isCurrent(operation)) return false;
+      if (!request.isCurrent(operation)) return null;
       recoveryAttempt.current = null;
       void recovery?.acknowledgeSave(prepared, next);
       setSaved(next);
@@ -118,10 +118,10 @@ export const useComposerDraftPersistence = ({
       if (!completion.isDirty) setHasUserEdits(false);
       setPhase(completion.phase);
       onSaved(next, prepared);
-      return true;
+      return next;
     } catch (error) {
-      if (draftRequestAborted(error) || !request.isCurrent(operation)) return false;
-      if (handleSessionFailure(error)) return false;
+      if (draftRequestAborted(error) || !request.isCurrent(operation)) return null;
+      if (handleSessionFailure(error)) return null;
       const ambiguous = isAmbiguousDraftSaveFailure(error);
       setRetryKind(draftSaveRetryKind(error));
       recoveryAttempt.current = ambiguous ? prepared : null;
@@ -130,7 +130,7 @@ export const useComposerDraftPersistence = ({
       setError(isRecovery && isDraftConflict(error)
         ? DRAFT_RECOVERY_CONFLICT_MESSAGE : draftFailureMessage(error));
       setPhase(isDraftConflict(error) ? "conflict" : "error");
-      return false;
+      return null;
     } finally {
       inFlight.current = false;
       request.finish(operation);
@@ -141,13 +141,13 @@ export const useComposerDraftPersistence = ({
 
   const saveCurrent = useCallback((hydrateOnSuccess: boolean) => {
     if (!enabled || !accountKey || requiresRecovery || (requestedId && !saved)) {
-      return Promise.resolve(false);
+      return Promise.resolve(null);
     }
     const editBlock = providerDraftEditBlock(saved);
     if (editBlock) {
       setError(editBlock);
       setPhase("error");
-      return Promise.resolve(false);
+      return Promise.resolve(null);
     }
     return persist(composerDraftSaveAttempt(
       composeId, content, contentGeneration.current, saved,
@@ -159,18 +159,19 @@ export const useComposerDraftPersistence = ({
     setError, setPhase]);
 
   return {
-    autosave: useCallback(() => saveCurrent(false), [saveCurrent]),
+    autosave: useCallback(async () => Boolean(await saveCurrent(false)), [saveCurrent]),
     isInFlight: useCallback(() => inFlight.current, []),
     recover: useCallback(() => {
       const attempt = recoveryAttempt.current;
       return attempt
-        ? persist(attempt, true, false)
+        ? persist(attempt, true, false).then(Boolean)
         : Promise.resolve(false);
     }, [persist]),
     reset: useCallback(() => { recoveryAttempt.current = null; }, []),
     restorePending: useCallback((attempt: ComposerDraftSaveAttempt) => {
       recoveryAttempt.current = attempt;
     }, []),
-    save: useCallback(() => saveCurrent(true), [saveCurrent]),
+    save: useCallback(async () => Boolean(await saveCurrent(true)), [saveCurrent]),
+    saveDetail: useCallback(() => saveCurrent(true), [saveCurrent]),
   };
 };

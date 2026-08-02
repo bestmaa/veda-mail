@@ -19,6 +19,7 @@ import { PartialDeliveryNoticeView } from "@/presentation/features/mail-workspac
 import { MailboxManagementView } from "@/presentation/features/mail-workspace/ui/mailbox-management.view";
 import { LabelManagementView } from "@/presentation/features/mail-workspace/ui/label-management.view";
 import { MessageListPreferencesDialogConnector } from "@/presentation/features/mail-workspace/connectors/message-list-preferences-dialog.connector";
+import { ScheduledSendManagerConnector } from "@/presentation/features/mail-workspace/connectors/scheduled-send-manager.connector";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -36,6 +37,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     props.mailboxManagement.isOpen ||
     props.labelManagement.isOpen ||
     props.messageListPreferences.dialog.isOpen ||
+    props.scheduled.isOpen ||
     props.messageMove.dialog.isOpen;
   return (
   <>
@@ -75,6 +77,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
         onCloseNavigation={props.navigation.onClose}
         onCompose={props.onCompose}
         session={props.session}
+        scheduled={props.scheduled}
         settings={props.settings}
       />
       <div
@@ -161,6 +164,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   />
   <MailboxManagementView management={props.mailboxManagement} />
   <LabelManagementView management={props.labelManagement} />
+  <ScheduledSendManagerConnector manager={props.scheduled} />
   </>
   );
 };

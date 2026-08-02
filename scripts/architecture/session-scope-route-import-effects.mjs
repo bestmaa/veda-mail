@@ -126,10 +126,23 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
   ["@/server/templates/email-template.schema", new Set(["parseEmailTemplatePutOperation"])],
   ["@/server/templates/email-template.store", new Set(["emailTemplateStore"])],
+  [
+    "@/server/scheduled-send/scheduled-send-http",
+    new Set([
+      "assertSchedulableProviderDraft",
+      "canonicalScheduledRequest",
+      "scheduledMessageOwner",
+    ]),
+  ],
+  [
+    "@/server/scheduled-send/scheduled-send-store",
+    new Set(["scheduledSendStore"]),
+  ],
   ["@/transport/http/request-schemas", new Set(["*"])],
   ["@/transport/http/mailbox-mutation.schema", new Set(["*"])],
   ["@/transport/http/mailbox-empty.schema", new Set(["*"])],
   ["@/transport/http/message-list-preferences.schema", new Set(["*"])],
+  ["@/transport/http/scheduled-send.schema", new Set(["*"])],
   ["@/transport/http/label.schema", new Set(["*"])],
   [
     "@/transport/http/draft-schemas",

@@ -1,4 +1,4 @@
-import { Paperclip, RefreshCw, Save, Send, Trash2 } from "lucide-react";
+import { CalendarClock, Paperclip, RefreshCw, Save, Send, Trash2 } from "lucide-react";
 
 import type { ComposerViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 
@@ -40,6 +40,19 @@ export const ComposerFooterView = ({
         <Send aria-hidden size={16} />
         {composer.isSending ? "Sending…" : "Send"}
       </button>
+      {composer.draft.enabled && composer.schedule.isAvailable ? (
+        <button
+          aria-haspopup="dialog"
+          className="flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:text-slate-400"
+          disabled={composer.isBusy || draftMutationPending ||
+            !composer.draft.canSend || composer.isUploading ||
+            composer.attachments.some(({ state }) => state === "error")}
+          onClick={composer.schedule.onOpen}
+          type="button"
+        >
+          <CalendarClock aria-hidden size={16} /> Schedule
+        </button>
+      ) : null}
       <label
         aria-label={composer.maxAttachmentBytes > 0
           ? "Attach files"

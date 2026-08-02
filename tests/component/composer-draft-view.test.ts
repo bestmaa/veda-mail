@@ -43,6 +43,12 @@ const model = (): ComposerViewModel => ({
     onSecondary: vi.fn(), primaryLabel: "Restore draft",
     secondaryLabel: "Discard recovery copy", title: "Restore interrupted draft?",
   },
+  schedule: {
+    error: null, isAvailable: true, isOpen: false, isScheduling: false,
+    localTime: "2026-08-03T09:00", maximum: "2027-08-03T09:00",
+    minimum: "2026-08-02T09:00", onCancel: vi.fn(), onConfirm: vi.fn(),
+    onOpen: vi.fn(), onTimeInput: vi.fn(), timeZone: "Asia/Calcutta",
+  },
   subject: "", subjectInput: vi.fn(), title: "Edit draft",
   to: "recipient@example.com", toInput: vi.fn(),
 });

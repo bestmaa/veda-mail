@@ -56,8 +56,11 @@ URLs, analytics, or client-readable cookies.
   for the data volume after completion.
 - Administrator passwords use scrypt. Authenticator secrets are encrypted and
   backup codes are stored as salted digests.
-- Member provider credentials live only in server process memory. Opaque
-  HttpOnly, SameSite cookies identify sessions.
+- Member provider credentials live only in server process memory unless the
+  member explicitly schedules a provider-backed draft. That bounded job copy
+  is AES-256-GCM encrypted under the external `VEDA_MAIL_JOB_KEY`, is never
+  logged or returned to the browser, and is deleted after confirmed delivery
+  or cancellation. Opaque HttpOnly, SameSite cookies identify sessions.
 - The workspace exposes a non-authenticating hash scoped to the exact
   connection. All later account-derived mail, attachment, signature,
   profile/password/2FA, and sign-out requests require it as a server-validated
@@ -880,12 +883,31 @@ operator monitoring.
 
 ### Scheduled send, snooze, and durable jobs
 
-- Encrypt sensitive job payloads at rest and separate encryption keys from the
-  job store.
-- Use idempotency keys, leases, bounded retries, dead-letter handling, and
-  cancellation states.
-- Test restarts, duplicate delivery, clock skew, daylight-saving transitions,
-  provider outages, and partial success before production use.
+- Scheduled send encrypts the complete canonical request and provider
+  connection with AES-256-GCM. HKDF-separated owner-index, payload, and key-check
+  subkeys derive from an external 32-byte `VEDA_MAIL_JOB_KEY`; the atomic
+  mode-0600 store contains no plaintext sender, recipient, subject, body, token,
+  or password. A keyed verifier makes wrong-key restores fail closed instead of
+  silently hiding jobs.
+- Scheduling requires an exact-revision provider-backed draft, so attachment
+  bytes remain provider-durable and are not copied into the queue. Owner and
+  draft uniqueness, a 100-job owner limit, a 10,000-owner/64-MiB store ceiling,
+  strict canonical schemas, same-origin writes, mailbox-session scope, and rate
+  limits bound abuse.
+- One durable `sending` lease is committed before provider I/O. Confirmed
+  acceptance removes the job; definite failures dead-letter it; transient
+  failures receive at most six attempts with bounded backoff. An ambiguous
+  provider result or process restart during provider I/O becomes `uncertain`
+  and is never retried automatically, preventing a portable SMTP/JMAP duplicate.
+  Members must check Sent before removing that review record.
+- UTC instants back the queue while the browser explicitly displays its IANA
+  time zone. Invalid normalized wall-clock times, past times, and times beyond
+  366 days fail validation. Automated tests cover key mismatch, restart,
+  duplicate draft admission, cancellation races, retry exhaustion, provider
+  uncertainty, strict routes, time conversion, and accessible management UI.
+- The current worker inherits the documented single-replica deployment boundary.
+  Multi-replica scheduling remains unsupported until a shared transactional
+  store and distributed lease are implemented.
 - Never advertise a durable feature while work exists only in process memory.
 
 ## Logging and observability

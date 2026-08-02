@@ -72,6 +72,12 @@ const composer = (
     primaryLabel: "Restore draft", secondaryLabel: "Discard recovery copy",
     title: "Restore interrupted draft?",
   },
+  schedule: {
+    error: null, isAvailable: true, isOpen: false, isScheduling: false, localTime: "2026-08-03T09:00",
+    maximum: "2027-08-03T09:00", minimum: "2026-08-02T09:00",
+    onCancel: vi.fn(), onConfirm: vi.fn(), onOpen: vi.fn(),
+    onTimeInput: vi.fn(), timeZone: "Asia/Calcutta",
+  },
   showBcc: false,
   showCc: false,
   subject: "",
@@ -89,7 +95,6 @@ describe("composer component", () => {
   it("renders nothing while closed", () => {
     expect(renderComposer(composer({ isOpen: false }))).toBe("");
   });
-
   it("exposes disclosure state and keeps To optional", () => {
     const html = renderComposer(composer());
     expect(html).toContain('role="dialog"');
@@ -108,7 +113,6 @@ describe("composer component", () => {
     expect(html).toContain('hidden="" id="composer-bcc-row"');
     expect(html).not.toMatch(/id="composer-to"[^>]*required/);
   });
-
   it("exposes pressed state only on formatting toggles", () => {
     const html = renderComposer(composer());
     const button = (label: string) =>
@@ -120,7 +124,6 @@ describe("composer component", () => {
     expect(button("Undo")).not.toContain("aria-pressed");
     expect(button("Redo")).not.toContain("aria-pressed");
   });
-
   it("distinguishes a temporarily unverified provider limit", () => {
     const html = renderComposer(
       composer({
@@ -128,12 +131,10 @@ describe("composer component", () => {
         maxAttachmentBytes: 0,
       }),
     );
-
     expect(html).toContain("Attachment limit could not be verified");
     expect(html).toContain("Retry attachment check");
     expect(html).not.toContain("Attachments are unavailable for this provider");
   });
-
   it("shows keyboard focus on the attachment picker", () => {
     const html = renderComposer(composer());
 
@@ -142,7 +143,6 @@ describe("composer component", () => {
     expect(html).toContain("focus-within:outline-indigo-600");
     expect(html).toContain('id="composer-attachments"');
   });
-
   it("announces ready and failed attachment states", () => {
     const retry = vi.fn();
     const html = renderComposer(

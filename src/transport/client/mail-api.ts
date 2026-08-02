@@ -9,6 +9,7 @@ import { labelApi } from "@/transport/client/label-api";
 import { deleteResource, fetchData } from "@/transport/client/api-request";
 import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
 import { validateBulkMessageMutationResult } from "@/transport/client/bulk-message-mutation-result";
+import { scheduledSendApi } from "@/transport/client/scheduled-send-api";
 
 export type MailApiSendInput = Omit<ComposeInput, "draftId"> & {
   readonly draftId: DraftId;
@@ -50,6 +51,7 @@ const draftEndpoint = (draftId?: ProviderDraftId): string =>
 export const mailApi = {
   ...attachmentApi,
   ...labelApi,
+  ...scheduledSendApi,
 
   createDraft(
     composeId: DraftId,
