@@ -18,6 +18,7 @@ interface Props {
   readonly activeRole: MailboxRole | null;
   readonly canPermanentlyDelete: boolean;
   readonly isBusy: boolean;
+  readonly keyboardShortcutsEnabled?: boolean;
   readonly onArchive: () => void;
   readonly onClose: () => void;
   readonly onDelete: () => void;
@@ -33,6 +34,7 @@ export const MessageReaderToolbarView = ({
   activeRole,
   canPermanentlyDelete,
   isBusy,
+  keyboardShortcutsEnabled = false,
   onArchive,
   onClose,
   onDelete,
@@ -44,12 +46,21 @@ export const MessageReaderToolbarView = ({
   reader,
 }: Props) => (
   <div className="flex h-14 shrink-0 items-center gap-1 border-b border-slate-200 px-3 md:px-5">
-    <ReaderActionView label="Back to message list" onClick={onClose}>
+    <ReaderActionView
+      label="Back to message list"
+      onClick={onClose}
+      shortcut={keyboardShortcutsEnabled ? "Escape" : undefined}
+    >
       <X aria-hidden size={18} />
     </ReaderActionView>
     <span className="mx-1 h-5 w-px bg-slate-200" />
     {reader.canArchive ? (
-      <ReaderActionView disabled={isBusy} label="Archive" onClick={onArchive}>
+      <ReaderActionView
+        disabled={isBusy}
+        label="Archive"
+        onClick={onArchive}
+        shortcut={keyboardShortcutsEnabled ? "E" : undefined}
+      >
         <Archive aria-hidden size={18} />
       </ReaderActionView>
     ) : null}
@@ -64,6 +75,7 @@ export const MessageReaderToolbarView = ({
       label={reader.isUnread ? "Mark as read" : "Mark as unread"}
       disabled={isBusy}
       onClick={onToggleRead}
+      shortcut={keyboardShortcutsEnabled ? "U" : undefined}
     >
       {reader.isUnread
         ? <MailOpen aria-hidden size={18} />
@@ -143,6 +155,7 @@ export const MessageReaderToolbarView = ({
       label={reader.isStarred ? "Remove star" : "Add star"}
       disabled={isBusy}
       onClick={onToggleStar}
+      shortcut={keyboardShortcutsEnabled ? "S" : undefined}
     >
       <Star
         aria-hidden

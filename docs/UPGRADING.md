@@ -48,9 +48,10 @@ matching installation and do not delete a pending entry to force a retry.
 Message-list preferences add
 `/data/message-list-preferences.json` on first save. It contains encrypted,
 account-isolated density, newest/oldest order, preview, send confirmation, and
-Undo Send delay settings. Existing encrypted records migrate in memory to
-confirmation off and immediate send, then persist the new shape on the next
-save. Back it up
+Undo Send delay settings plus the mailbox-shortcut opt-in. Existing encrypted
+three-field records migrate in memory to confirmation off, immediate send, and
+shortcuts off. Records already carrying sending preferences also migrate with
+shortcuts off, then persist the new shape on the next save. Back it up
 together with `installation.json`, because its key derives from that
 installation's session secret; do not copy either file independently. The
 process-serialized writer has the same single-replica writable-volume
@@ -58,6 +59,8 @@ requirement as other Veda Mail preference stores. Older rollback images ignore
 the file. No environment variable, provider migration, Stalwart change, or new
 port is required. Existing accounts default to comfortable density,
 newest-first order, previews enabled, confirmation off, and immediate send.
+Mailbox shortcuts remain off until the member explicitly enables them; no
+provider, Stalwart, environment, port, or data-file migration is required.
 
 Manual provider-backed drafts require no new environment variable, Stalwart
 API key, mailbox migration, database/schema migration, or port. The feature is

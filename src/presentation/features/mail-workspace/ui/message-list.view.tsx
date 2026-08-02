@@ -48,7 +48,10 @@ export const MessageListView = ({
   preferences,
   total,
 }: MessageListViewProps) => (
-  <section className="flex min-h-0 flex-col border-r border-slate-200 bg-[#f8f9fc]">
+  <section
+    className="flex min-h-0 flex-col border-r border-slate-200 bg-[#f8f9fc]"
+    id="message-list-region"
+  >
     <div className="border-b border-slate-200 bg-white px-4 pb-3 pt-4">
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -78,7 +81,11 @@ export const MessageListView = ({
             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">
               Mailbox
             </p>
-            <h1 className="mt-0.5 text-2xl font-extrabold tracking-[-0.04em] text-slate-900">
+            <h1
+              className="mt-0.5 text-2xl font-extrabold tracking-[-0.04em] text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              data-message-list-heading
+              tabIndex={-1}
+            >
               {activeFolder}
             </h1>
           </div>

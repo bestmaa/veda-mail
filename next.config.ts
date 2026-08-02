@@ -31,8 +31,21 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   reactStrictMode: true,
+  serverExternalPackages: ["imapflow", "mailparser"],
   turbopack: {
     root: process.cwd(),
+  },
+  webpack(config, { nextRuntime }) {
+    if (nextRuntime === "edge") {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "./server/scheduled-send/scheduled-send-worker$": false,
+        imapflow: false,
+        mailparser: false,
+        nodemailer: false,
+      };
+    }
+    return config;
   },
   async headers() {
     return [

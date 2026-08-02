@@ -13,6 +13,7 @@ interface MessageReaderViewProps {
   readonly activeRole: MailboxRole | null;
   readonly canPermanentlyDelete: boolean;
   readonly isComposerReady: boolean;
+  readonly keyboardShortcutsEnabled?: boolean;
   readonly isMutating: boolean;
   readonly onArchive: () => void;
   readonly onClose: () => void;
@@ -32,6 +33,7 @@ export const MessageReaderView = ({
   activeRole,
   canPermanentlyDelete,
   isComposerReady,
+  keyboardShortcutsEnabled = false,
   isMutating,
   onArchive,
   onClose,
@@ -46,11 +48,12 @@ export const MessageReaderView = ({
   onToggleStar,
   reader,
 }: MessageReaderViewProps) => (
-  <section className="flex min-h-0 flex-col bg-white">
+  <section className="flex min-h-0 flex-col bg-white" id="message-reader-region">
     <MessageReaderToolbarView
       activeRole={activeRole}
       canPermanentlyDelete={canPermanentlyDelete}
       isBusy={isMutating}
+      keyboardShortcutsEnabled={keyboardShortcutsEnabled}
       onArchive={onArchive}
       onClose={onClose}
       onDelete={onDelete}
@@ -87,7 +90,11 @@ export const MessageReaderView = ({
             <ShieldCheck aria-hidden size={14} />
             Sanitized message body
           </p>
-          <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-[-0.04em] text-slate-900 md:text-[30px]">
+          <h2
+            className="mt-2 text-2xl font-extrabold leading-tight tracking-[-0.04em] text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 md:text-[30px]"
+            data-reader-heading
+            tabIndex={-1}
+          >
             {reader.subject}
           </h2>
           {reader.labels.length ? (
@@ -150,6 +157,7 @@ export const MessageReaderView = ({
           <div className="mt-8 flex flex-wrap gap-2">
             <button
               aria-busy={!isComposerReady}
+              aria-keyshortcuts={keyboardShortcutsEnabled ? "R" : undefined}
               className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-70"
               disabled={!isComposerReady}
               onClick={onReply}
@@ -161,6 +169,7 @@ export const MessageReaderView = ({
             </button>
             <button
               aria-busy={!isComposerReady}
+              aria-keyshortcuts={keyboardShortcutsEnabled ? "A" : undefined}
               className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-70"
               disabled={!isComposerReady}
               onClick={onReplyAll}
@@ -172,6 +181,7 @@ export const MessageReaderView = ({
             </button>
             <button
               aria-busy={!isComposerReady}
+              aria-keyshortcuts={keyboardShortcutsEnabled ? "F" : undefined}
               className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-70"
               disabled={!isComposerReady}
               onClick={onForward}

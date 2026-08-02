@@ -13,8 +13,24 @@ const legacyMessageListPreferencesSchema = z
   })
   .strict();
 
+const legacySendingPreferencesSchema = z
+  .object({
+    confirmBeforeSend: z.boolean(),
+    density: z.enum(["compact", "comfortable", "spacious"]),
+    showPreview: z.boolean(),
+    sort: z.enum(["newest", "oldest"]),
+    undoSendSeconds: z.union([
+      z.literal(0), z.literal(5), z.literal(10), z.literal(20), z.literal(30),
+    ]),
+  })
+  .strict();
+
 const storedPreferencesSchema = z
-  .union([messageListPreferencesSchema, legacyMessageListPreferencesSchema])
+  .union([
+    messageListPreferencesSchema,
+    legacySendingPreferencesSchema,
+    legacyMessageListPreferencesSchema,
+  ])
   .transform((preferences) => ({
     ...DEFAULT_MESSAGE_LIST_PREFERENCES,
     ...preferences,

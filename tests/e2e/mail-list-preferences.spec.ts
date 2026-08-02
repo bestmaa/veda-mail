@@ -11,6 +11,7 @@ useInstalledMailbox();
 const defaults = {
   confirmBeforeSend: false,
   density: "comfortable",
+  keyboardShortcuts: false,
   showPreview: true,
   sort: "newest",
   undoSendSeconds: 0,
@@ -52,6 +53,9 @@ test("persists accessible density, sort, and preview controls", async ({ page })
   await dialog.getByRole("checkbox", {
     name: "Ask for confirmation before sending",
   }).check();
+  await dialog.getByRole("checkbox", {
+    name: "Enable single-key mailbox shortcuts",
+  }).check();
   const refresh = page.waitForRequest((request) => {
     const url = new URL(request.url());
     return url.pathname === "/api/v1/mail/workspace" &&
@@ -80,5 +84,8 @@ test("persists accessible density, sort, and preview controls", async ({ page })
     .toHaveValue("10");
   await expect(dialog.getByRole("checkbox", {
     name: "Ask for confirmation before sending",
+  })).toBeChecked();
+  await expect(dialog.getByRole("checkbox", {
+    name: "Enable single-key mailbox shortcuts",
   })).toBeChecked();
 });

@@ -42,7 +42,7 @@ const workspace: MailWorkspace = {
   }],
   messageListPreferences: {
     confirmBeforeSend: false, density: "comfortable", showPreview: true,
-    sort: "newest", undoSendSeconds: 0,
+    keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
   },
   messages: {
     items: [{

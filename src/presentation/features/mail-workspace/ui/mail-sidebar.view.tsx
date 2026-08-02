@@ -12,6 +12,7 @@ interface MailSidebarViewProps {
   readonly branding: MailWorkspaceViewProps["branding"];
   readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean;
+  readonly keyboardShortcutsEnabled: boolean;
   readonly isMobileOpen: boolean;
   readonly mailboxManagement: MailWorkspaceViewProps["mailboxManagement"];
   readonly labelManagement: MailWorkspaceViewProps["labelManagement"];
@@ -27,6 +28,7 @@ export const MailSidebarView = ({
   branding,
   folders,
   isComposerReady,
+  keyboardShortcutsEnabled,
   isMobileOpen,
   mailboxManagement,
   labelManagement,
@@ -68,6 +70,7 @@ export const MailSidebarView = ({
 
     <button
       aria-busy={!isComposerReady}
+      aria-keyshortcuts={keyboardShortcutsEnabled ? "C" : undefined}
       className="mx-4 mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-accent)] px-4 text-sm font-bold text-[var(--brand-accent-foreground)] shadow-lg transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
       disabled={!isComposerReady}
       onClick={onCompose}

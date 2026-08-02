@@ -114,7 +114,7 @@ export const workspace = (sessionScope: string): MailWorkspace => ({
   ],
   messageListPreferences: {
     confirmBeforeSend: false, density: "comfortable", showPreview: true,
-    sort: "newest", undoSendSeconds: 0,
+    keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
   },
   messages: { items: [], nextCursor: null, total: 0 },
   sessionExpiresAt: "2026-08-01T00:00:00.000Z",

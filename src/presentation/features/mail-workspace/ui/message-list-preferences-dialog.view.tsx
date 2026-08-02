@@ -21,13 +21,13 @@ export const MessageListPreferencesDialogView = ({
   <div
     aria-labelledby="message-list-preferences-title"
     aria-modal="true"
-    className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm"
+    className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm"
     id="message-list-preferences-dialog"
     role="dialog"
     tabIndex={-1}
   >
     <form
-      className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+      className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
       onSubmit={dialog.onSubmit}
     >
       <div className="flex items-start justify-between gap-4">
@@ -112,6 +112,25 @@ export const MessageListPreferencesDialogView = ({
           />
           Ask for confirmation before sending
         </label>
+      </fieldset>
+
+      <fieldset className="mt-6 border-t border-slate-200 pt-5" disabled={dialog.isSaving}>
+        <legend className="px-1 text-sm font-semibold text-slate-700">
+          Accessibility and keyboard
+        </legend>
+        <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
+          <input
+            checked={dialog.keyboardShortcuts}
+            className="size-5 accent-indigo-600"
+            onChange={(event) => dialog.onKeyboardShortcutsChange(event.target.checked)}
+            type="checkbox"
+          />
+          Enable single-key mailbox shortcuts
+        </label>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Shortcuts never run while typing or while a dialog is open. Press ?
+          for the shortcut guide.
+        </p>
       </fieldset>
 
       <label className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">

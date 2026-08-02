@@ -51,20 +51,35 @@ describe("encrypted message list preferences store", () => {
     }).preferences).toEqual({
       confirmBeforeSend: false,
       density: "spacious",
+      keyboardShortcuts: false,
       showPreview: false,
       sort: "oldest",
       undoSendSeconds: 0,
     });
   });
 
+  it("migrates the previous sending shape to safe shortcut defaults", () => {
+    expect(storedMessageListPreferencesSchema.parse({
+      preferences: {
+        confirmBeforeSend: true, density: "compact", showPreview: true,
+        sort: "newest", undoSendSeconds: 10,
+      },
+      updatedAt: "2026-08-02T00:00:00.000Z",
+      version: 1,
+    }).preferences).toEqual({
+      confirmBeforeSend: true, density: "compact", keyboardShortcuts: false,
+      showPreview: true, sort: "newest", undoSendSeconds: 10,
+    });
+  });
+
   it("defaults, isolates owners, encrypts values, and persists canonical choices", async () => {
     await expect(messageListPreferencesStore.get(owner)).resolves.toEqual({
       confirmBeforeSend: false, density: "comfortable", showPreview: true,
-      sort: "newest", undoSendSeconds: 0,
+      keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
     });
     const saved = {
       confirmBeforeSend: true, density: "compact", showPreview: false,
-      sort: "oldest", undoSendSeconds: 20,
+      keyboardShortcuts: true, sort: "oldest", undoSendSeconds: 20,
     } as const;
     await expect(messageListPreferencesStore.set(owner, saved)).resolves.toEqual(saved);
     await expect(messageListPreferencesStore.get(owner)).resolves.toEqual(saved);
@@ -72,13 +87,13 @@ describe("encrypted message list preferences store", () => {
       email: "other@example.com", providerId: owner.providerId,
     })).resolves.toEqual({
       confirmBeforeSend: false, density: "comfortable", showPreview: true,
-      sort: "newest", undoSendSeconds: 0,
+      keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
     });
     await expect(messageListPreferencesStore.get({
       email: owner.email, providerId: id.provider("other-provider"),
     })).resolves.toEqual({
       confirmBeforeSend: false, density: "comfortable", showPreview: true,
-      sort: "newest", undoSendSeconds: 0,
+      keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
     });
     await expect(messageListPreferencesStore.get({
       email: "Member@example.COM", providerId: id.provider("MOCK"),
@@ -119,11 +134,11 @@ describe("encrypted message list preferences store", () => {
     };
     const first = {
       confirmBeforeSend: false, density: "compact", showPreview: false,
-      sort: "newest", undoSendSeconds: 5,
+      keyboardShortcuts: false, sort: "newest", undoSendSeconds: 5,
     } as const;
     const second = {
       confirmBeforeSend: true, density: "comfortable", showPreview: true,
-      sort: "oldest", undoSendSeconds: 30,
+      keyboardShortcuts: true, sort: "oldest", undoSendSeconds: 30,
     } as const;
 
     await Promise.all([
@@ -138,7 +153,7 @@ describe("encrypted message list preferences store", () => {
   it("fails closed with the stable unavailable contract for corrupted persistence", async () => {
     await messageListPreferencesStore.set(owner, {
       confirmBeforeSend: false, density: "compact", showPreview: false,
-      sort: "oldest", undoSendSeconds: 0,
+      keyboardShortcuts: false, sort: "oldest", undoSendSeconds: 0,
     });
     await writeFile(messageListPreferencesFilePath(), "{not-json", "utf8");
 
@@ -149,7 +164,7 @@ describe("encrypted message list preferences store", () => {
     });
     await expect(messageListPreferencesStore.set(owner, {
       confirmBeforeSend: false, density: "comfortable", showPreview: true,
-      sort: "newest", undoSendSeconds: 0,
+      keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
     })).rejects.toMatchObject({
       code: "MESSAGE_LIST_PREFERENCES_UNAVAILABLE",
       status: 500,

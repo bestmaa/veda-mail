@@ -21,6 +21,8 @@ import { LabelManagementView } from "@/presentation/features/mail-workspace/ui/l
 import { MessageListPreferencesDialogConnector } from "@/presentation/features/mail-workspace/connectors/message-list-preferences-dialog.connector";
 import { ScheduledSendManagerConnector } from "@/presentation/features/mail-workspace/connectors/scheduled-send-manager.connector";
 import { UndoSendNoticeView } from "@/presentation/features/mail-workspace/ui/undo-send-notice.view";
+import { KeyboardShortcutsDialogConnector } from "@/presentation/features/mail-workspace/connectors/keyboard-shortcuts-dialog.connector";
+import { ReaderFocusConnector } from "@/presentation/features/mail-workspace/connectors/reader-focus.connector";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -37,6 +39,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     props.mailboxLifecycle.confirmation.isOpen ||
     props.mailboxManagement.isOpen ||
     props.labelManagement.isOpen ||
+    props.keyboardShortcuts.dialog.isOpen ||
     props.messageListPreferences.dialog.isOpen ||
     props.scheduled.isOpen ||
     props.messageMove.dialog.isOpen;
@@ -47,9 +50,16 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     style={props.branding.brandStyle}
     {...(topLevelModalOpen ? { "aria-hidden": true, inert: true } : {})}
   >
+    <a
+      className="fixed left-4 top-2 z-[120] -translate-y-20 rounded-xl bg-white px-4 py-2 text-sm font-bold text-indigo-700 shadow-xl focus:translate-y-0"
+      href="#message-list-region"
+    >
+      Skip to message list
+    </a>
     <MailHeaderView
       account={props.account}
       branding={props.branding}
+      keyboardShortcuts={props.keyboardShortcuts}
       navigation={props.navigation}
       onRefresh={props.onRefresh}
       onSearchClear={props.onSearchClear}
@@ -72,6 +82,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
         branding={props.branding}
         folders={props.folders}
         isComposerReady={props.isComposerReady}
+        keyboardShortcutsEnabled={props.keyboardShortcuts.enabled}
         isMobileOpen={props.navigation.isOpen}
         mailboxManagement={props.mailboxManagement}
         labelManagement={props.labelManagement}
@@ -109,6 +120,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
             activeRole={props.activeRole}
             canPermanentlyDelete={props.canPermanentlyDelete}
             isComposerReady={props.isComposerReady}
+            keyboardShortcutsEnabled={props.keyboardShortcuts.enabled}
             isMutating={props.isReaderMutating}
             onArchive={props.onArchive}
             onClose={props.onCloseReader}
@@ -135,6 +147,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     <button
       aria-label="Compose a new message"
       aria-busy={!props.isComposerReady}
+      aria-keyshortcuts={props.keyboardShortcuts.enabled ? "C" : undefined}
       className="fixed bottom-5 right-5 z-30 grid size-14 place-items-center rounded-2xl bg-[var(--brand-accent)] text-[var(--brand-accent-foreground)] shadow-xl disabled:cursor-wait disabled:opacity-70 md:hidden"
       disabled={!props.isComposerReady}
       onClick={props.onCompose}
@@ -151,6 +164,10 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       deliveryNotice={props.deliveryNotice}
     />
     <AccountSettingsView settings={props.settings} />
+    <ReaderFocusConnector
+      isLoading={props.reader?.isLoading ?? false}
+      messageId={props.reader?.messageId ?? null}
+    />
   </main>
   <ComposerRecoveryPromptConnector prompt={props.composer.recoveryPrompt} />
   <BulkDestroyConfirmationConnector bulk={props.bulkActions} />
@@ -167,6 +184,10 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   <LabelManagementView management={props.labelManagement} />
   <ScheduledSendManagerConnector manager={props.scheduled} />
   <UndoSendNoticeView undo={props.undoSend} />
+  <KeyboardShortcutsDialogConnector shortcuts={props.keyboardShortcuts} />
+  <div aria-live="polite" className="sr-only">
+    {props.keyboardShortcuts.announcement}
+  </div>
   </>
   );
 };

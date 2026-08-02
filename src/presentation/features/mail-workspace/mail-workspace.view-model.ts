@@ -18,6 +18,7 @@ import type { MessageMoveViewModel } from "@/presentation/features/mail-workspac
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
 import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@/presentation/features/mail-workspace/composer-schedule.view-model";
 import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/undo-send.view-model";
+import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -215,7 +216,7 @@ export interface MailWorkspaceViewProps {
   readonly bulkActions: BulkActionsViewModel; readonly composer: ComposerViewModel;
   readonly error: string | null; readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean; readonly isReaderMutating: boolean;
-  readonly isLoading: boolean; readonly isLoadingMore: boolean;
+  readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly keyboardShortcuts: KeyboardShortcutsViewModel;
   readonly mailboxManagement: MailboxManagementViewModel; readonly labelManagement: LabelManagementViewModel;
   readonly mailboxLifecycle: MailboxLifecycleViewModel; readonly loadMoreError: string | null;
   readonly messageMove: MessageMoveViewModel; readonly messageListPreferences: MessageListPreferencesViewModel;
@@ -240,8 +241,7 @@ export interface MailWorkspaceViewProps {
   readonly deliveryNotice: DeliveryNoticeViewModel | null;
   readonly reader: ReaderViewModel | null;
   readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
-  readonly searchInput: ChangeEventHandler<HTMLInputElement>;
-  readonly searchValue: string;
+  readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string;
   readonly scheduled: ScheduledSendManagerViewModel;
   readonly session: MemberSessionViewModel;
   readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean;

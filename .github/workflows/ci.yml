@@ -31,7 +31,7 @@ jobs:
   quality:
     name: Check, build, and audit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       VEDA_MAIL_SETUP_TOKEN: ci-only-token-not-used-in-production
       VEDA_MAIL_JOB_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
