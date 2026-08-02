@@ -92,7 +92,7 @@ const snapshot = (
 });
 
 const attachments = (count: number) => ({
-  attachments: Array.from({ length: count }, () => ({})),
+  attachmentIds: Array.from({ length: count }, (_, index) => `upload-${index}`),
 }) as unknown as ReturnType<typeof useComposerAttachments>;
 
 beforeEach(() => {

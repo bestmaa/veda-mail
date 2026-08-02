@@ -6,6 +6,7 @@ import {
   canonicalizeDraftRequestContent,
 } from "@/server/mail/draft-http";
 import { getMailService } from "@/server/mail/mail-service";
+import { saveDraftWithAttachments } from "@/server/mail/draft-attachment-service";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -81,14 +82,18 @@ export const PUT = async (request: Request, context: RouteContext) => {
     const input = updateDraftSchema.parse(
       await readJsonBody(request, MAX_DRAFT_REQUEST_BYTES),
     );
-    const draft = await (
-      await getMailService(connection)
-    ).saveDraft({
-      composeId: input.composeId,
-      content: canonicalizeDraftRequestContent(input.content),
-      expectedRevision: input.expectedRevision,
-      providerDraftId,
-    });
+    assertMailSessionScope(request, connection);
+    const draft = await saveDraftWithAttachments(
+      connection,
+      {
+        composeId: input.composeId,
+        content: canonicalizeDraftRequestContent(input.content),
+        expectedRevision: input.expectedRevision,
+        providerDraftId,
+        retainedAttachmentIds: input.retainedAttachmentIds,
+      },
+      input.attachmentIds,
+    );
     return apiSuccess(draft);
   } catch (error) {
     return apiFailure(asDraftApiError(error), "Unable to update this draft.");

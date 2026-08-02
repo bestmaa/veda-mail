@@ -2,19 +2,24 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import type { DraftDetail } from "@/domain/mail/draft";
 import { id, type DraftId } from "@/domain/shared/brand";
 import {
   ComposerAttachmentUploadRegistry,
   cleanupComposerAttachmentOperations,
   expireComposerAttachments,
   invalidateReadyComposerAttachments,
-  markComposerAttachmentReady,
   type ComposerAttachment,
   type RemoveUploadedAttachment,
 } from "@/presentation/features/mail-workspace/hooks/composer-attachment-upload-registry";
+import {
+  providerComposerAttachments,
+  reconcileComposerProviderAttachments,
+} from "@/presentation/features/mail-workspace/hooks/composer-provider-attachments";
 import { useAttachmentCapability } from "@/presentation/features/mail-workspace/hooks/use-attachment-capability";
 import { MAX_COMPOSER_ATTACHMENT_BYTES } from "@/presentation/features/mail-workspace/hooks/composer-attachment-selection";
 import { useComposerAttachmentSelection } from "@/presentation/features/mail-workspace/hooks/use-composer-attachment-selection";
+import { useComposerAttachmentUpload } from "@/presentation/features/mail-workspace/hooks/use-composer-attachment-upload";
 import { useComposerOriginalAttachmentImports } from "@/presentation/features/mail-workspace/hooks/use-composer-original-attachment-imports";
 import {
   ignoreMailSessionFailure,
@@ -40,16 +45,17 @@ export const useComposerAttachments = (
   sessionScope: string,
   initialSessionScope = "",
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+  onChanged: () => void = () => undefined,
 ) => {
   const [draftId, setDraftId] = useState(freshDraftId);
   const currentDraftId = useRef(draftId);
   const [attachments, setAttachments] = useState<readonly ComposerAttachment[]>(
     [],
   );
-  const uploads = useRef(new ComposerAttachmentUploadRegistry());
+  const [uploads] = useState(() => new ComposerAttachmentUploadRegistry());
   const { importOriginalAttachments, retryOriginalAttachment } =
     useComposerOriginalAttachmentImports(
-      uploads.current,
+      uploads,
       setAttachments,
       sessionScope,
       handleSessionFailure,
@@ -67,6 +73,9 @@ export const useComposerAttachments = (
   const ready = attachments.flatMap((item) =>
     item.state === "ready" && item.upload ? [item.upload] : [],
   );
+  const providerAttachmentIds = attachments.flatMap((item) =>
+    item.state === "ready" && item.provider ? [item.provider.id] : [],
+  );
   const totalBytes = attachments.reduce((total, item) => total + (item.size ?? 0), 0);
   const maxFileBytes = Math.min(
     capability.maximum ?? 0,
@@ -77,6 +86,27 @@ export const useComposerAttachments = (
     currentDraftId.current = nextDraftId;
     setDraftId(nextDraftId);
   }, []);
+
+  const adoptProviderDraft = useCallback((draft: DraftDetail) => {
+    uploads.cancelAll().forEach(({ controller }) => controller.abort());
+    if (draft.composeId) adoptDraftId(draft.composeId);
+    setAttachments(providerComposerAttachments(draft));
+  }, [adoptDraftId, uploads]);
+
+  const reconcileProviderDraft = useCallback((
+    draft: DraftDetail,
+    submittedUploadIds: readonly string[],
+    submittedProviderIds: readonly string[],
+  ) => {
+    if (draft.composeId) adoptDraftId(draft.composeId);
+    setAttachments((current) => {
+      const result = reconcileComposerProviderAttachments(
+        current, draft, submittedUploadIds, submittedProviderIds,
+      );
+      result.replacedKeys.forEach((key) => uploads.cancel(key));
+      return result.attachments;
+    });
+  }, [adoptDraftId, uploads]);
 
   const expireReady = useCallback(() => {
     const next = expireComposerAttachments(attachments, Date.now());
@@ -94,8 +124,9 @@ export const useComposerAttachments = (
   const remove = useCallback(
     (key: string) => {
       const target = attachments.find((item) => item.key === key);
-      const operation = uploads.current.cancel(key);
+      const operation = uploads.cancel(key);
       setAttachments((current) => current.filter((item) => item.key !== key));
+      if (target?.state === "ready") onChanged();
       const upload = operation?.upload ?? target?.upload;
       if (upload) {
         void mailApi
@@ -107,12 +138,12 @@ export const useComposerAttachments = (
           .catch((error: unknown) => void handleSessionFailure(error));
       }
     },
-    [attachments, handleSessionFailure, sessionScope],
+    [attachments, handleSessionFailure, onChanged, sessionScope, uploads],
   );
 
   const discard = useCallback(
     (cleanup: boolean) => {
-      const operations = uploads.current.cancelAll();
+      const operations = uploads.cancelAll();
       if (cleanup) {
         const completedIds = cleanupComposerAttachmentOperations(
           operations,
@@ -131,7 +162,7 @@ export const useComposerAttachments = (
       setDraftId(nextDraftId);
       return nextDraftId;
     },
-    [ready, removeUpload],
+    [ready, removeUpload, uploads],
   );
 
   const retry = useCallback(
@@ -142,60 +173,10 @@ export const useComposerAttachments = (
     [attachments, retryOriginalAttachment],
   );
 
-  const uploadFile = useCallback(
-    async (file: File) => {
-      const key = crypto.randomUUID();
-      const operation = uploads.current.begin(key, currentDraftId.current);
-      setAttachments((current) => [
-        ...current,
-        {
-          error: null,
-          key,
-          name: file.name,
-          size: file.size,
-          state: "uploading",
-          upload: null,
-        },
-      ]);
-      try {
-        const upload = await mailApi.addAttachment(
-          operation.draftId,
-          file,
-          sessionScope,
-          operation.controller.signal,
-        );
-        const isActive = await uploads.current.complete(
-          key,
-          operation,
-          upload,
-          removeUpload,
-        );
-        if (!isActive) return;
-        setAttachments((current) =>
-          markComposerAttachmentReady(current, key, upload),
-        );
-      } catch (error) {
-        uploads.current.fail(key, operation);
-        if (operation.controller.signal.aborted) return;
-        if (handleSessionFailure(error)) return;
-        setAttachments((current) =>
-          current.map((item) =>
-            item.key === key
-              ? {
-                  ...item,
-                  error:
-                    error instanceof Error
-                      ? error.message
-                      : "Attachment upload failed.",
-                  state: "error",
-                }
-              : item,
-          ),
-        );
-      }
-    },
-    [handleSessionFailure, removeUpload, sessionScope],
-  );
+  const uploadFile = useComposerAttachmentUpload({
+    currentDraftId, handleSessionFailure, onChanged, registry: uploads,
+    removeUpload, sessionScope, setAttachments,
+  });
 
   const onFiles = useComposerAttachmentSelection({
     attachments,
@@ -209,8 +190,11 @@ export const useComposerAttachments = (
   return useMemo(
     () => ({
       adoptDraftId,
+      adoptProviderDraft,
       attachments,
       attachmentIds: ready.map((item) => item.id),
+      providerAttachmentIds,
+      reconcileProviderDraft,
       capabilityUnavailable: capability.unavailable,
       discard,
       draftId,
@@ -229,6 +213,7 @@ export const useComposerAttachments = (
     [
       attachments,
       adoptDraftId,
+      adoptProviderDraft,
       capability.isRefreshing,
       capability.refresh,
       capability.unavailable,
@@ -240,6 +225,8 @@ export const useComposerAttachments = (
       onFiles,
       importOriginalAttachments,
       ready,
+      providerAttachmentIds,
+      reconcileProviderDraft,
       remove,
       retry,
     ],

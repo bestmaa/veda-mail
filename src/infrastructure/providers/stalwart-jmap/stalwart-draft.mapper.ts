@@ -131,6 +131,9 @@ export const mapJmapDraft = (
     to: addresses(email.to),
   };
   return {
+    attachments: presentation.attachments.filter(
+      ({ disposition }) => disposition === "attachment",
+    ),
     composeId: composeIdFrom(email),
     content,
     hasAttachments: email.hasAttachment || presentation.attachments.length > 0,

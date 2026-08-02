@@ -49,5 +49,17 @@ export const validateDraftSaveInput = (
     throw new DraftInputError();
   }
   if (hasRevision) assertDraftRevision(input.expectedRevision);
+  const retained = input.retainedAttachmentIds ?? [];
+  const attachments = input.attachments ?? [];
+  if (
+    retained.length > 10 ||
+    new Set(retained).size !== retained.length ||
+    retained.some((value) => !isSafeDraftMetadataValue(value)) ||
+    (!hasProviderId && retained.length > 0) ||
+    attachments.length > 10 ||
+    retained.length + attachments.length > 10
+  ) {
+    throw new DraftInputError();
+  }
   return input;
 };

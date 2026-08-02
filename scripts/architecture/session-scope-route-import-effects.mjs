@@ -116,6 +116,10 @@ const REVIEWED_HELPER_EXPORTS = new Map([
       "canonicalizeDraftRequestContent",
     ]),
   ],
+  [
+    "@/server/mail/draft-attachment-service",
+    new Set(["saveDraftWithAttachments"]),
+  ],
   ["@/server/mail/gateway-cache", new Set(["resolveGateway"])],
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
   ["@/server/signatures/email-signature.schema", new Set(["parseEmailSignaturePutOperation"])],

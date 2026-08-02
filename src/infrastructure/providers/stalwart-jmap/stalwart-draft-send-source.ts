@@ -4,7 +4,6 @@ import type { SavedProviderDraft } from "@/domain/mail/draft";
 import {
   DraftConflictError,
   DraftContentTruncatedError,
-  DraftHasAttachmentsError,
 } from "@/domain/mail/draft-errors";
 import {
   assertDraftRevision,
@@ -38,7 +37,6 @@ export const prepareStalwartDraftSendSource = async (
   ) {
     throw new DraftConflictError();
   }
-  if (record.detail.hasAttachments) throw new DraftHasAttachmentsError();
   if (record.detail.hasUncertainSubmission) throw new DraftConflictError();
   if (record.detail.hasTruncatedContent) {
     throw new DraftContentTruncatedError();

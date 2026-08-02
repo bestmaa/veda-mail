@@ -14,6 +14,8 @@ import {
 import { adoptImportedStalwartDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-adopt";
 import { createJmapDraftObject } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.composer";
 import { matchesStoredJmapDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
+import { sameJmapDraftAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-attachments";
+import { jmapDraftAttachmentIntentKeyword } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-fingerprint";
 import { createdDraftId } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-mutation";
 import { findStalwartDraftByKeyword } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-record-reader";
 import {
@@ -61,7 +63,12 @@ export const saveStalwartDraft = async (
     throw new DraftConflictError();
   }
   if (
-    matchesStoredJmapDraftContent(old.email, old.detail.content, input.content)
+    matchesStoredJmapDraftContent(old.email, old.detail.content, input.content) &&
+    sameJmapDraftAttachments(
+      input.context.accountId,
+      old.email,
+      input.attachments ?? [],
+    )
   ) {
     const sole = await drafts.findByComposeId(input.context, input.composeId);
     if (sole?.detail.id !== old.detail.id) {
@@ -73,6 +80,7 @@ export const saveStalwartDraft = async (
   const anchored = {
     ...input,
     accountId: input.context.accountId,
+    attachmentCount: input.attachments?.length ?? 0,
     existing: old,
   };
   const keyword = replacementOperationKeyword(anchored, account);
@@ -111,7 +119,15 @@ export const saveStalwartDraft = async (
                   account,
                   null,
                   old.email,
-                  { additionalKeywords: { [keyword]: true } },
+                  {
+                    additionalKeywords: {
+                      ...(input.attachmentIntent
+                        ? { [jmapDraftAttachmentIntentKeyword(input.attachmentIntent)]: true }
+                        : {}),
+                      [keyword]: true,
+                    },
+                    attachments: input.attachments ?? [],
+                  },
                 ),
               },
               ifInState: old.state,

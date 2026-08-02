@@ -23,21 +23,17 @@ import {
   type DraftId,
   type ProviderDraftId,
 } from "@/domain/shared/brand";
+import type { OutgoingAttachment } from "@/domain/mail/mail";
+import {
+  bindMockDraftAttachments,
+  deleteMockDraftAttachments,
+  mockDraftAttachmentFingerprint,
+  mockDraftOutgoingAttachments,
+  resolveMockDraftAttachments,
+  sameMockDraftContent,
+  type MockDraftAttachmentMap,
+} from "@/infrastructure/providers/mock/mock-draft-attachments";
 import { mockMailboxIds } from "@/infrastructure/providers/mock/mock-seed";
-
-const comparableContent = (content: DraftContent) => ({
-  bcc: content.bcc.map(({ email, name }) => ({ email, name: name ?? null })),
-  body: content.body,
-  cc: content.cc.map(({ email, name }) => ({ email, name: name ?? null })),
-  htmlBody: content.htmlBody ?? null,
-  inReplyTo: content.inReplyTo ?? null,
-  subject: content.subject,
-  to: content.to.map(({ email, name }) => ({ email, name: name ?? null })),
-});
-
-const sameContent = (left: DraftContent, right: DraftContent): boolean =>
-  JSON.stringify(comparableContent(left)) ===
-  JSON.stringify(comparableContent(right));
 
 const cloneDraft = (draft: DraftDetail): DraftDetail =>
   structuredClone(draft);
@@ -45,12 +41,14 @@ const cloneDraft = (draft: DraftDetail): DraftDetail =>
 const MAX_REPLACEMENT_REPLAYS = 256;
 
 interface MockDraftReplacementReplay {
+  readonly attachmentFingerprint: string;
   readonly composeId: DraftId;
   readonly expectedRevision: string;
   readonly replacementId: ProviderDraftId;
 }
 
 export class MockDraftStore {
+  private readonly attachments: MockDraftAttachmentMap = new Map();
   private readonly drafts = new Map<ProviderDraftId, DraftDetail>();
   private readonly replacementReplays = new Map<
     ProviderDraftId,
@@ -71,6 +69,7 @@ export class MockDraftStore {
       throw new DraftConflictError();
     }
     this.drafts.delete(providerDraftId);
+    deleteMockDraftAttachments(this.attachments, providerDraftId);
   }
 
   public async get(providerDraftId: ProviderDraftId): Promise<DraftDetail> {
@@ -80,17 +79,21 @@ export class MockDraftStore {
   public async save(input: DraftSaveInput): Promise<DraftDetail> {
     validateDraftSaveInput(input);
     const composeId = canonicalDraftComposeId(input.composeId);
+    const attachments = resolveMockDraftAttachments(this.attachments, input);
     if (!input.providerDraftId) {
       const reconciled = [...this.drafts.values()].find(
         (draft) => draft.composeId === composeId,
       );
       if (reconciled) {
-        if (!sameContent(reconciled.content, input.content)) {
+        if (!sameMockDraftContent(reconciled.content, input.content) ||
+          mockDraftAttachmentFingerprint(
+            mockDraftOutgoingAttachments(this.attachments, reconciled),
+          ) !== mockDraftAttachmentFingerprint(attachments)) {
           throw new DraftConflictError();
         }
         return cloneDraft(reconciled);
       }
-      return this.create(composeId, input.content);
+      return this.create(composeId, input.content, attachments);
     }
     const expectedRevision = assertDraftRevision(input.expectedRevision);
     const current = this.drafts.get(input.providerDraftId);
@@ -100,6 +103,7 @@ export class MockDraftStore {
         composeId,
         expectedRevision,
         input.content,
+        attachments,
       );
     }
     if (
@@ -109,22 +113,24 @@ export class MockDraftStore {
       throw new DraftConflictError();
     }
     this.drafts.delete(current.id);
-    const replacement = this.create(composeId, input.content);
+    deleteMockDraftAttachments(this.attachments, current.id);
+    const replacement = this.create(composeId, input.content, attachments);
     this.rememberReplacementReplay(
       current.id,
       composeId,
       expectedRevision,
       replacement.id,
+      mockDraftAttachmentFingerprint(attachments),
     );
     return replacement;
   }
 
   public messages(): readonly MessageDetail[] {
     return [...this.drafts.values()].map((draft) => ({
-      attachments: [],
+      attachments: structuredClone(draft.attachments ?? []),
       cc: structuredClone(draft.content.cc),
       from: [{ email: "member@example.com", name: "Sample Member" }],
-      hasAttachment: false,
+      hasAttachment: draft.hasAttachments,
       htmlBody: draft.content.htmlBody ?? null,
       id: id.message(draft.id),
       isStarred: false,
@@ -147,8 +153,8 @@ export class MockDraftStore {
   public consumeForSend(
     providerDraft?: SavedProviderDraft,
     hasAttachments = false,
-  ): void {
-    if (!providerDraft) return;
+  ): readonly OutgoingAttachment[] {
+    if (!providerDraft) return [];
     if (hasAttachments) throw new DraftHasAttachmentsError();
     const current = this.require(providerDraft.id);
     if (
@@ -159,21 +165,27 @@ export class MockDraftStore {
     ) {
       throw new DraftConflictError();
     }
+    const attachments = mockDraftOutgoingAttachments(this.attachments, current);
     this.drafts.delete(current.id);
+    deleteMockDraftAttachments(this.attachments, current.id);
+    return attachments;
   }
 
   private create(
     composeId: DraftDetail["composeId"],
     content: DraftContent,
+    outgoing: readonly OutgoingAttachment[],
   ): DraftDetail {
     this.revision += 1;
     const providerDraftId = id.providerDraft(
       `mock-draft-${crypto.randomUUID()}`,
     );
+    const bound = bindMockDraftAttachments(providerDraftId, outgoing);
     const draft: DraftDetail = {
+      attachments: bound.map(({ detail }) => detail),
       composeId,
       content: structuredClone(content),
-      hasAttachments: false,
+      hasAttachments: bound.length > 0,
       hasTruncatedContent: false,
       hasUncertainSubmission: false,
       id: providerDraftId,
@@ -181,6 +193,7 @@ export class MockDraftStore {
       updatedAt: new Date().toISOString(),
     };
     this.drafts.set(providerDraftId, draft);
+    this.attachments.set(providerDraftId, bound);
     return cloneDraft(draft);
   }
 
@@ -189,6 +202,7 @@ export class MockDraftStore {
     composeId: DraftId,
     expectedRevision: string,
     content: DraftContent,
+    attachments: readonly OutgoingAttachment[],
   ): DraftDetail {
     const replay = this.replacementReplays.get(oldId);
     if (!replay) throw new DraftNotFoundError();
@@ -196,8 +210,9 @@ export class MockDraftStore {
     if (
       replay.composeId !== composeId ||
       replay.expectedRevision !== expectedRevision ||
+      replay.attachmentFingerprint !== mockDraftAttachmentFingerprint(attachments) ||
       replacement?.composeId !== composeId ||
-      !sameContent(replacement.content, content)
+      !sameMockDraftContent(replacement.content, content)
     ) {
       throw new DraftConflictError();
     }
@@ -209,11 +224,13 @@ export class MockDraftStore {
     composeId: DraftId,
     expectedRevision: string,
     replacementId: ProviderDraftId,
+    attachmentFingerprint: string,
   ): void {
     this.replacementReplays.set(oldId, {
       composeId,
       expectedRevision,
       replacementId,
+      attachmentFingerprint,
     });
     while (this.replacementReplays.size > MAX_REPLACEMENT_REPLAYS) {
       const oldest = this.replacementReplays.keys().next().value;

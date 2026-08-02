@@ -64,4 +64,4 @@ export const canComposerAutosaveRun = (
   isOnline: boolean,
   retryKind: ComposerDraftRetryKind,
 ): boolean => input.enabled && isOnline && !input.paused &&
-  !input.hasLocalAttachments && retryKind !== "blocked";
+  retryKind !== "blocked";

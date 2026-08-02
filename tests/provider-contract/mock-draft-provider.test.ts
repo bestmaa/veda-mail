@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DraftContent } from "@/domain/mail/draft";
+import { createHash } from "node:crypto";
 import { id } from "@/domain/shared/brand";
 import { MockMailGateway } from "@/infrastructure/providers/mock/mock-mail.gateway";
 import { mockMailboxIds } from "@/infrastructure/providers/mock/mock-seed";
@@ -17,6 +18,48 @@ const content: DraftContent = {
 };
 
 describe("mock provider draft contract", () => {
+  it("durably saves, retains, removes, and sends provider attachments", async () => {
+    const gateway = new MockMailGateway();
+    const bytes = Buffer.from("durable attachment");
+    const outgoing = {
+      content: bytes,
+      id: id.attachmentUpload("upload-durable"),
+      mimeType: "text/plain",
+      name: "durable.txt",
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      size: bytes.byteLength,
+    };
+    const created = await gateway.saveDraft({
+      attachments: [outgoing], composeId, content,
+    });
+    expect(created.attachments).toEqual([
+      expect.objectContaining({ name: "durable.txt", size: bytes.byteLength }),
+    ]);
+
+    const retained = await gateway.saveDraft({
+      composeId,
+      content: { ...content, body: "Edited with attachment" },
+      expectedRevision: created.revision,
+      providerDraftId: created.id,
+      retainedAttachmentIds: [created.attachments![0]!.id],
+    });
+    expect(retained.hasAttachments).toBe(true);
+    const receipt = await gateway.sendMessage({
+      ...retained.content,
+      providerDraft: { composeId, expectedRevision: retained.revision,
+        id: retained.id },
+    });
+    expect(receipt.deliveryStatus).toBe("accepted");
+    await expect(gateway.getDraft(retained.id)).rejects.toThrow("Draft not found");
+
+    const removable = await gateway.saveDraft({ attachments: [outgoing], composeId, content });
+    const removed = await gateway.saveDraft({
+      composeId, content, expectedRevision: removable.revision,
+      providerDraftId: removable.id, retainedAttachmentIds: [],
+    });
+    expect(removed.attachments).toEqual([]);
+  });
+
   it("creates, lists, loads, replaces, and discards a draft", async () => {
     const gateway = new MockMailGateway();
     await expect(gateway.getDraftCapability()).resolves.toEqual({

@@ -18,6 +18,7 @@ describe("draft request validation", () => {
     expect(
       createDraftSchema.parse({ composeId, content: {} }),
     ).toEqual({
+      attachmentIds: [],
       composeId,
       content: {
         bcc: [],
@@ -26,6 +27,7 @@ describe("draft request validation", () => {
         subject: "",
         to: [],
       },
+      retainedAttachmentIds: [],
     });
   });
 
@@ -70,6 +72,29 @@ describe("draft request validation", () => {
         expectedRevision: "state-1",
       }),
     ).toThrow("Unrecognized key");
+  });
+
+  it("accepts bounded unique upload and retained selections only on updates", () => {
+    expect(updateDraftSchema.parse({
+      attachmentIds: ["upload-1"], composeId, content: {},
+      expectedRevision: "revision", retainedAttachmentIds: ["provider-1"],
+    })).toMatchObject({
+      attachmentIds: ["upload-1"], retainedAttachmentIds: ["provider-1"],
+    });
+    expect(() => createDraftSchema.parse({
+      composeId, content: {}, retainedAttachmentIds: ["provider-1"],
+    })).toThrow("cannot retain");
+    expect(() => updateDraftSchema.parse({
+      attachmentIds: ["same", "same"], composeId, content: {},
+      expectedRevision: "revision",
+    })).toThrow("must be unique");
+    expect(() => updateDraftSchema.parse({
+      attachmentIds: Array.from({ length: 6 }, (_, index) => `new-${index}`),
+      composeId, content: {}, expectedRevision: "revision",
+      retainedAttachmentIds: Array.from(
+        { length: 5 }, (_, index) => `saved-${index}`,
+      ),
+    })).toThrow("at most 10");
   });
 
   it("preserves recipient, subject, reply, and content limits", () => {

@@ -10,10 +10,7 @@ import {
   outgoingContentUtf8Bytes,
 } from "@/domain/mail/outgoing-content-policy";
 import { id } from "@/domain/shared/brand";
-import type {
-  ComposerRecoveryJournal,
-  ComposerRecoverySnapshot,
-} from "@/presentation/features/mail-workspace/composer-recovery.types";
+import type { ComposerRecoveryJournal, ComposerRecoverySnapshot } from "@/presentation/features/mail-workspace/composer-recovery.types";
 import {
   composeDraftIdSchema,
   draftContentSchema,
@@ -77,9 +74,11 @@ const acknowledgementSchema = z.object({
   revision: draftRevisionSchema,
 }).strict();
 const saveAttemptBase = {
+  attachmentIds: z.array(z.string().min(1).max(2_048)).max(10).default([]),
   composeId: composeDraftIdSchema,
   content: draftContentSchema,
   contentGeneration: generationSchema,
+  retainedAttachmentIds: z.array(z.string().min(1).max(2_048)).max(10).default([]),
 } as const;
 const pendingSaveSchema = z.union([
   z.object(saveAttemptBase).strict(),

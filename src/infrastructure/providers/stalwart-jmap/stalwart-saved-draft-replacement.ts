@@ -6,16 +6,10 @@ import type { SendMessageInput } from "@/domain/mail/mail";
 import { DraftConflictError } from "@/domain/mail/draft-errors";
 import { id, type ProviderDraftId } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
-import {
-  StalwartJmapHttpError,
-  StalwartJmapMethodError,
-  type StalwartJmapRequestBoundary,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
-import type {
-  ClaimedDraft,
-  SavedDraftSubmissionContext,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-claim";
+import { StalwartJmapHttpError, StalwartJmapMethodError, type StalwartJmapRequestBoundary } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
+import type { ClaimedDraft, SavedDraftSubmissionContext } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-claim";
 import { createJmapDraftObject } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.composer";
+import { allStalwartDraftAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-attachments";
 import {
   jmapDraftComposeKeyword,
   jmapDraftContentKeyword,
@@ -138,7 +132,13 @@ export const sendClaimedStalwartDraft = async (
       },
       null,
       claimed.source.record.email,
-      { additionalKeywords: { [claimed.claimKeyword]: true } },
+      {
+        additionalKeywords: { [claimed.claimKeyword]: true },
+        attachments: allStalwartDraftAttachments(
+          claimed.source.context.accountId,
+          claimed.source.record.email,
+        ),
+      },
     );
     cleanupPatch = removalPatch(input, claimed);
   } catch (error) {

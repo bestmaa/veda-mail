@@ -154,7 +154,8 @@ mailbox evidence above plus production scanner health are recorded.
 
 ## M3 — Draft-safe, rich composing
 
-- [ ] Provider-backed create, update, list, open, and discard drafts
+- [x] Provider-backed create, update, list, open, and discard drafts, including
+  provider-durable attachment autosave and saved-draft attachment sending
 - [x] Debounced autosave with visible saving/saved/offline/error status
 - [x] Restore an interrupted compose session without duplicating a draft
 - [x] Safe rich-text editor v1: headings, emphasis, lists, isolated links,
@@ -176,16 +177,18 @@ the MIME message has equivalent readable HTML and plain-text parts.
 Rich-text v1 meets the equivalent HTML/plain provider-send requirement.
 Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
 vertical slices: create, update, Drafts-list/open, discard, save-first send,
-lost-response reconciliation, serialized autosave, visible state, and
-non-destructive guards for attachments and incomplete bodies plus unsupported
-imported headers/MIME. IMAP additionally requires a writable special-use
-Drafts mailbox and UIDPLUS, binds opaque IDs to UIDVALIDITY, verifies every
+  lost-response reconciliation, serialized autosave, visible state, durable
+  persistence for scanned uploads, and non-destructive guards for incomplete
+  bodies plus unsupported imported headers/MIME. IMAP additionally requires a
+  writable special-use Drafts mailbox and UIDPLUS, binds opaque IDs to
+  UIDVALIDITY, verifies every
 appended MIME replacement before deleting the old UID, and serializes Veda
 saves/sends per account and compose ID.
 All providers also receive session-bound local crash recovery and terminal
-send/discard protection; local attachment bytes deliberately remain tab-only.
-The provider-backed checkbox remains open because draft attachments and
-provider-durable attachment autosave are not complete.
+send/discard protection. Uploads remain encrypted, session/compose-bound
+quarantine objects until a successful provider save consumes them; the returned
+provider attachment inventory then survives reload and can be retained or
+removed by opaque ID without exposing JMAP blob IDs or IMAP MIME locators.
 Completing this milestone still requires templates, delayed send, and the
 broader shortcut/accessibility audit listed above.
 

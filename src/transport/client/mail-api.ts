@@ -1,29 +1,12 @@
-import type {
-  BulkMessageMutation,
-  BulkMessageMutationResult,
-  ComposeInput,
-  MailWorkspace,
-  Mailbox,
-  MessageDetail,
-  MessageMutation,
-  SendReceipt,
-} from "@/domain/mail/mail";
+import type { BulkMessageMutation, BulkMessageMutationResult, ComposeInput, MailWorkspace, Mailbox, MessageDetail, MessageMutation, SendReceipt } from "@/domain/mail/mail";
 import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
 import type { MailboxColor } from "@/domain/mail/mailbox";
 import type { MailboxEmptyUpdate } from "@/domain/mail/mailbox-empty";
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
-import type {
-  DraftId,
-  MailboxId,
-  MessageId,
-  ProviderDraftId,
-} from "@/domain/shared/brand";
+import type { DraftId, MailboxId, MessageId, ProviderDraftId } from "@/domain/shared/brand";
 import { attachmentApi } from "@/transport/client/attachment-api";
 import { labelApi } from "@/transport/client/label-api";
-import {
-  deleteResource,
-  fetchData,
-} from "@/transport/client/api-request";
+import { deleteResource, fetchData } from "@/transport/client/api-request";
 import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
 import { validateBulkMessageMutationResult } from "@/transport/client/bulk-message-mutation-result";
 
@@ -41,9 +24,16 @@ export type MailApiSendInput = Omit<ComposeInput, "draftId"> & {
   );
 
 interface DraftUpdateInput {
+  readonly attachmentIds?: readonly string[];
   readonly composeId: DraftId;
   readonly content: DraftContent;
   readonly expectedRevision: string;
+  readonly retainedAttachmentIds?: readonly string[];
+}
+
+interface DraftAttachmentSelection {
+  readonly attachmentIds?: readonly string[];
+  readonly retainedAttachmentIds?: readonly string[];
 }
 
 export interface MailboxApiMutationResult {
@@ -66,9 +56,10 @@ export const mailApi = {
     content: DraftContent,
     sessionScope: string,
     signal?: AbortSignal,
+    attachments: DraftAttachmentSelection = {},
   ) {
     return fetchData<DraftDetail>(draftEndpoint(), {
-      body: JSON.stringify({ composeId, content }),
+      body: JSON.stringify({ composeId, content, ...attachments }),
       headers: mailSessionScopeHeaders(sessionScope),
       method: "POST",
       ...(signal ? { signal } : {}),

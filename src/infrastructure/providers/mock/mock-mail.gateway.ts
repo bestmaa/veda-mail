@@ -168,13 +168,17 @@ export class MockMailGateway implements MailGateway {
   }
 
   public async sendMessage(input: SendMessageInput) {
-    this.drafts.consumeForSend(
+    const savedAttachments = this.drafts.consumeForSend(
       input.providerDraft,
       (input.attachments?.length ?? 0) > 0,
     );
+    const outgoingAttachments = [
+      ...savedAttachments,
+      ...(input.attachments ?? []),
+    ];
     const now = new Date().toISOString();
     const messageId = id.message(`sent-${crypto.randomUUID()}`);
-    const attachments = (input.attachments ?? []).map((attachment) => ({
+    const attachments = outgoingAttachments.map((attachment) => ({
       disposition: "attachment" as const,
       id: id.attachment(`mock-${crypto.randomUUID()}`),
       mimeType: attachment.mimeType,
@@ -186,7 +190,7 @@ export class MockMailGateway implements MailGateway {
       new Map(
         attachments.map((attachment, index) => [
           attachment.id,
-          input.attachments?.[index]?.content.slice() ?? new Uint8Array(),
+          outgoingAttachments[index]?.content.slice() ?? new Uint8Array(),
         ]),
       ),
     );

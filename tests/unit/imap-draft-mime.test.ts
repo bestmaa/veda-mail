@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import type { ParsedMail } from "mailparser";
 
 import type { DraftContent } from "@/domain/mail/draft";
 import { id } from "@/domain/shared/brand";
@@ -6,6 +8,7 @@ import {
   composeImapDraft,
   parseImapDraft,
 } from "@/infrastructure/providers/imap-smtp/imap-draft-mime";
+import { imapDraftAttachmentsAreCanonical } from "@/infrastructure/providers/imap-smtp/imap-draft-attachments";
 
 const composeId = id.draft("11111111-1111-4111-8111-111111111111");
 const providerDraftId = id.providerDraft("provider-draft");
@@ -29,6 +32,56 @@ const parse = (source: Buffer) =>
   });
 
 describe("IMAP draft MIME", () => {
+  it("round-trips canonical attachment bytes and opaque metadata", async () => {
+    const bytes = Buffer.from("trusted draft attachment");
+    const attachment = {
+      content: bytes,
+      id: id.attachmentUpload("upload-1"),
+      mimeType: "text/plain",
+      name: "notes.txt",
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      size: bytes.byteLength,
+    };
+    const { raw } = await composeImapDraft(
+      content,
+      composeId,
+      "member@example.com",
+      [attachment],
+    );
+
+    const record = await parse(raw);
+
+    expect(record.detail.hasAttachments).toBe(true);
+    expect(record.detail.hasTruncatedContent).toBe(false);
+    expect(record.detail.attachments).toEqual([
+      expect.objectContaining({ mimeType: "text/plain", name: "notes.txt",
+        size: bytes.byteLength }),
+    ]);
+    expect(record.attachments[0]?.outgoing.content).toEqual(bytes);
+    expect(record.attachments[0]?.outgoing.sha256).toBe(attachment.sha256);
+  });
+
+  it("fails closed when draft attachment bytes do not match their digest", async () => {
+    await expect(composeImapDraft(content, composeId, "member@example.com", [{
+      content: Buffer.from("tampered"),
+      id: id.attachmentUpload("upload-2"),
+      mimeType: "text/plain",
+      name: "notes.txt",
+      sha256: "0".repeat(64),
+      size: 8,
+    }])).rejects.toThrow("integrity");
+  });
+
+  it("rejects a provider draft above the aggregate attachment ceiling", () => {
+    const content = Buffer.alloc(10 * 1024 * 1024);
+    const mail = { attachments: [
+      { content, contentDisposition: "attachment" },
+      { content, contentDisposition: "attachment" },
+    ] } as unknown as ParsedMail;
+
+    expect(imapDraftAttachmentsAreCanonical(mail)).toBe(false);
+  });
+
   it("round-trips canonical rich content, BCC, and reply metadata", async () => {
     const { raw, writeId } = await composeImapDraft(
       content,

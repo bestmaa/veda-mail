@@ -145,13 +145,17 @@ export class ImapSmtpMailGateway implements MailGateway {
       input.providerDraft.composeId,
       async () => {
         const saved = await this.drafts.prepareSend(input.providerDraft!);
-        if (!sameDraftContent(saved.content, input)) {
+        if (!sameDraftContent(saved.detail.content, input) ||
+          (input.attachments?.length ?? 0) > 0) {
           throw new DraftConflictError();
         }
-        const receipt = await this.writer.sendMessage(input);
+        const savedAttachments = saved.attachments.map(({ outgoing }) => outgoing);
+        const receipt = await this.writer.sendMessage(savedAttachments.length > 0
+          ? { ...input, attachments: savedAttachments }
+          : input);
         if (receipt.deliveryStatus !== "uncertain") {
           await this.drafts
-            .discard(saved.id, saved.revision)
+            .discard(saved.detail.id, saved.detail.revision)
             .catch(() => console.error("[veda-mail] Accepted IMAP draft cleanup failed."));
         }
         return receipt;

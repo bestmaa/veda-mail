@@ -52,6 +52,7 @@ export const useComposerModel = (
     accountKey,
     initialAttachmentSessionScope,
     handleSessionFailure,
+    markUnsaved,
   );
   const signatures = useComposerSignatures(signatureBook);
   const fields = useComposerFields(markUnsaved);
@@ -72,22 +73,31 @@ export const useComposerModel = (
     body.loadSavedDraft(
       savedDraft.content,
       !savedDraft.hasUncertainSubmission &&
-        !savedDraft.hasAttachments && !savedDraft.hasTruncatedContent,
+        !savedDraft.hasTruncatedContent,
     );
     signatures.reset();
-    if (savedDraft.composeId) attachments.adoptDraftId(savedDraft.composeId);
+    attachments.adoptProviderDraft(savedDraft);
     setError(null);
   }, [attachments, body, fields, signatures]);
   const draft = useComposerDraft({
     accountKey,
+    attachmentIds: attachments.attachmentIds,
     composeId: attachments.draftId,
     content: draftContent,
     enabled: draftsEnabled,
     handleSessionFailure,
-    hasLocalAttachments: attachments.attachments.length > 0,
+    hasLocalAttachments: attachments.attachmentIds.length > 0,
     onDiscarded: onDraftChanged,
     onHydrate: hydrateSavedDraft,
-    onSaved: onDraftChanged,
+    onSaved: (savedDraft, attempt) => {
+      attachments.reconcileProviderDraft(
+        savedDraft,
+        attempt.attachmentIds ?? [],
+        attempt.retainedAttachmentIds ?? [],
+      );
+      onDraftChanged();
+    },
+    retainedAttachmentIds: attachments.providerAttachmentIds,
     recovery: recovery.journal.port,
     recoverySnapshot: recovery.hydration.snapshot,
   });

@@ -57,7 +57,7 @@ export const asDraftDomainApiError = (
   }
   if (error instanceof DraftHasAttachmentsError) {
     return new ApiError(
-      "Drafts with provider attachments cannot be changed yet.",
+      "Save local attachments into the provider draft before sending it.",
       "MAIL_DRAFT_HAS_ATTACHMENTS",
       409,
     );

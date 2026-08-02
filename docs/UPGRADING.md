@@ -74,15 +74,28 @@ never migrated into the Veda Mail application volume.
 
 Imported drafts with duplicate/custom behavior headers, named RFC address
 groups, unsupported MIME structure or parameters, incomplete body values, or
-provider attachments are intentionally read-only. Veda Mail does not silently
-normalize and overwrite metadata it cannot reproduce exactly. Local quarantine
-attachments also cannot be added to a saved provider draft in this release.
+an attachment inventory outside the canonical 10-file/18-MiB boundary are
+intentionally read-only. Veda Mail does not silently normalize and overwrite
+metadata it cannot reproduce exactly. Clean local quarantine attachments can
+now be added to new or saved provider drafts; retained files are selected only
+through opaque IDs returned for that exact draft.
+
+Provider-durable draft attachments require no new environment variable,
+Stalwart setting, port, database, or `/data` migration. JMAP uses its existing
+upload capability and Drafts mailbox. Standard IMAP still requires UIDPLUS and
+a writable special-use `\\Drafts` mailbox; its bounded draft-source read ceiling
+is now 26 MiB so an 18 MiB decoded attachment set plus MIME/base64 overhead can
+be verified. Keep the existing ClamAV sidecar available because every newly
+uploaded draft attachment fails closed before provider persistence when it
+cannot receive a clean verdict. Older browser tabs must be reloaded before
+editing a saved draft with attachments.
 
 Interrupted-compose recovery requires no environment variable, Stalwart key,
 server migration, or `/data` change. The browser upgrades its private IndexedDB
 store automatically and binds records to the current server-issued member
-session expiry. Existing Standard IMAP/SMTP accounts gain local reload and
-closed-tab recovery, but still do not gain provider-durable draft autosave.
+session expiry. Existing Standard IMAP/SMTP accounts gain local reload,
+closed-tab recovery, and provider-durable attachment autosave when their draft
+capability is available.
 Recovery content is device/browser-local, expires with the member session, and
 is not included in server volume backups. Exact-session cleanup is attempted on
 sign-out, server-issued expiry, and session invalidation; a browser cleanup

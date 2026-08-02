@@ -9,7 +9,10 @@ import {
   safeMessageId,
   safeReplyReferences,
 } from "@/infrastructure/providers/message-id";
-import { jmapComposeBody } from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
+import {
+  jmapComposeBody,
+  type JmapComposeAttachment,
+} from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
 import type { JmapDraftEmail } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.schema";
 import {
   isVedaDraftKeyword,
@@ -79,6 +82,7 @@ export const createJmapDraftObject = (
   existing?: JmapDraftEmail,
   options: {
     readonly additionalKeywords?: Readonly<Record<string, true>>;
+    readonly attachments?: readonly JmapComposeAttachment[];
     readonly includeVedaKeywords?: boolean;
   } = {},
 ): Readonly<Record<string, unknown>> => {
@@ -112,7 +116,7 @@ export const createJmapDraftObject = (
     throw new DraftConflictError();
   }
   return {
-    ...jmapComposeBody(content.body, content.htmlBody, []),
+    ...jmapComposeBody(content.body, content.htmlBody, options.attachments ?? []),
     bcc: addresses(content.bcc),
     cc: addresses(content.cc),
     from: [

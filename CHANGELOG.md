@@ -9,6 +9,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-durable draft attachments for Stalwart JMAP and Standard IMAP/SMTP.
+  Clean quarantine uploads now autosave into the provider Drafts mailbox,
+  survive reload, can be retained or removed through exact draft-scoped opaque
+  IDs, and send from the authoritative saved copy. Combined selection, decoded
+  bytes, MIME shape, digest, revision, lost-response, and concurrent-replacement
+  checks fail closed without exposing provider blob or part identifiers
 - Account-private message-list preferences for compact, comfortable, or
   spacious density, newest/oldest provider mailbox order, and optional bounded
   preview snippets. Preferences are encrypted on the Veda Mail data volume;

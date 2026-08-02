@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import type { SendMessageInput } from "@/domain/mail/mail";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 
-interface JmapComposeAttachment {
+export interface JmapComposeAttachment {
   readonly blobId: string;
   readonly name: string;
   readonly type: string;

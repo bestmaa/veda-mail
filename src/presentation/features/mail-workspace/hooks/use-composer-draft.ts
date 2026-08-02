@@ -3,13 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import type { DraftId, ProviderDraftId } from "@/domain/shared/brand";
 import type { ComposerRecoverySnapshot } from "@/presentation/features/mail-workspace/composer-recovery.types";
+import type { ComposerDraftSaveAttempt } from "@/presentation/features/mail-workspace/composer-draft-save-attempt";
 import {
   composerDraftAvailability,
   draftFailureMessage,
   draftRequestAborted,
   INTERRUPTED_SEND_RECOVERY_MESSAGE,
   isDraftConflict,
-  LOCAL_ATTACHMENT_DRAFT_MESSAGE,
   providerDraftEditBlock,
   type ComposerDraftPhase,
   type ComposerDraftRetryKind,
@@ -23,22 +23,23 @@ import { useComposerDraftRestore } from "@/presentation/features/mail-workspace/
 import { useComposerTerminalDiscardReplay } from "@/presentation/features/mail-workspace/hooks/use-composer-terminal-discard-replay";
 import type { ComposerRecoveryJournalPort } from "@/presentation/features/mail-workspace/hooks/use-composer-recovery-journal";
 import { mailApi } from "@/transport/client/api-client";
-
 interface ComposerDraftOptions {
-  readonly accountKey: string; readonly composeId: DraftId;
+  readonly accountKey: string; readonly attachmentIds?: readonly string[];
+  readonly composeId: DraftId;
   readonly content: DraftContent; readonly enabled: boolean;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly hasLocalAttachments: boolean; readonly onDiscarded: () => void;
+  readonly retainedAttachmentIds?: readonly string[];
   readonly onHydrate: (draft: DraftDetail) => void;
-  readonly onSaved: (draft: DraftDetail) => void;
+  readonly onSaved: (draft: DraftDetail, attempt: ComposerDraftSaveAttempt) => void;
   readonly recovery?: ComposerRecoveryJournalPort;
   readonly recoverySnapshot?: ComposerRecoverySnapshot;
 }
 
 export const useComposerDraft = ({
-  accountKey, composeId, content, enabled, handleSessionFailure,
+  accountKey, attachmentIds = [], composeId, content, enabled, handleSessionFailure,
   hasLocalAttachments, onDiscarded, onHydrate, onSaved, recovery,
-  recoverySnapshot,
+  recoverySnapshot, retainedAttachmentIds = [],
 }: ComposerDraftOptions) => {
   const [phase, setPhase] = useState<ComposerDraftPhase>("unsaved");
   const [error, setError] = useState<string | null>(null);
@@ -57,18 +58,18 @@ export const useComposerDraft = ({
   const request = useComposerDraftRequest(accountKey);
   const { begin, finish, invalidate, isCurrent } = request;
   const persistence = useComposerDraftPersistence({
-    accountKey, composeId, content, contentGeneration, enabled,
-    handleSessionFailure, hasLocalAttachments, onHydrate, onSaved,
+    accountKey, attachmentIds, composeId, content, contentGeneration, enabled,
+    handleSessionFailure, onHydrate, onSaved,
     ...(recovery ? { recovery } : {}),
     ...(recoverySnapshot ? { recoverySnapshot } : {}),
     requestedId, request, requiresRecovery, saved, setError,
+    retainedAttachmentIds,
     setHasUserEdits, setIsDirty, setPhase, setRequiresRecovery, setSaved,
     setRetryKind,
   });
   const resetPersistence = persistence.reset;
   const restorePending = persistence.restorePending;
   const isSaveInFlight = persistence.isInFlight;
-
   const reset = useCallback(() => {
     invalidate();
     contentGeneration.current = 0;
@@ -107,13 +108,6 @@ export const useComposerDraft = ({
     setRetryKind("none");
     if (!isSaveInFlight()) setPhase("unsaved");
   }, [isSaveInFlight, terminalRecovery]);
-
-  useEffect(() => {
-    if (hasLocalAttachments || error !== LOCAL_ATTACHMENT_DRAFT_MESSAGE) return;
-    setError(null);
-    setPhase(saved && !isDirty ? "saved" : "unsaved");
-  }, [error, hasLocalAttachments, isDirty, saved]);
-
   const load = useCallback(
     async (providerDraftId: ProviderDraftId): Promise<boolean> => {
       const operation = begin();
@@ -209,8 +203,8 @@ export const useComposerDraft = ({
   return {
     ...availability,
     autosave: persistence.autosave,
-    canAttach: !saved && requestedId === null && phase !== "saving" &&
-      !requiresRecovery,
+    canAttach: phase !== "saving" && !requiresRecovery &&
+      !(requestedId !== null && !saved),
     discard,
     enabled,
     error,

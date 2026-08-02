@@ -1,17 +1,12 @@
 import "server-only";
 
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
-import {
-  DraftConflictError,
-  DraftUnavailableError,
-} from "@/domain/mail/draft-errors";
+import { DraftConflictError, DraftUnavailableError } from "@/domain/mail/draft-errors";
 import type { MailAccount, ReplyContext } from "@/domain/mail/mail";
 import type { DraftId } from "@/domain/shared/brand";
+import type { JmapComposeAttachment } from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
 import { hasCanonicalDraftContent } from "@/domain/mail/draft-content-round-trip";
-import {
-  safeMessageId,
-  safeReplyReferences,
-} from "@/infrastructure/providers/message-id";
+import { safeMessageId, safeReplyReferences } from "@/infrastructure/providers/message-id";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import {
   StalwartJmapHttpError,
@@ -19,12 +14,10 @@ import {
   type StalwartJmapRequestBoundary,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
 import { createJmapDraftObject } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.composer";
-import {
-  hasLosslessDraftHeaders,
-  hasSupportedDraftHeaderInventory,
-} from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-header-safety";
+import { hasLosslessDraftHeaders, hasSupportedDraftHeaderInventory } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-header-safety";
 import {
   jmapDraftCreateKeyword,
+  jmapDraftAttachmentIntentKeyword,
   VEDA_CREATE_KEYWORD_PREFIX,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-fingerprint";
 import { matchesStoredJmapDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
@@ -40,6 +33,8 @@ import type { StalwartMailReader } from "@/infrastructure/providers/stalwart-jma
 import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 
 export interface StalwartDraftSaveMutation {
+  readonly attachmentIntent?: string;
+  readonly attachments?: readonly JmapComposeAttachment[];
   readonly composeId: DraftId;
   readonly content: DraftContent;
   readonly context: StalwartDraftContext;
@@ -70,7 +65,8 @@ const assertNewCandidate = (
   const from = candidate.email.from ?? [];
   if (
     candidate.detail.composeId !== input.composeId ||
-    candidate.detail.hasAttachments ||
+    candidate.detail.hasAttachments !== ((input.attachments?.length ?? 0) > 0) ||
+    (candidate.detail.attachments?.length ?? 0) !== (input.attachments?.length ?? 0) ||
     candidate.detail.hasTruncatedContent ||
     candidate.detail.hasUncertainSubmission ||
     !hasCanonicalDraftContent(candidate.detail.content) ||
@@ -122,6 +118,9 @@ export const saveNewStalwartDraft = async (
 ): Promise<DraftDetail> => {
   const keyword = jmapDraftCreateKeyword({
     accountId: input.context.accountId,
+    ...(input.attachmentIntent
+      ? { attachmentIntent: input.attachmentIntent }
+      : {}),
     composeId: input.composeId,
     content: input.content,
   });
@@ -171,7 +170,15 @@ export const saveNewStalwartDraft = async (
                   account,
                   createReply,
                   undefined,
-                  { additionalKeywords: { [keyword]: true } },
+                  {
+                    additionalKeywords: {
+                      ...(input.attachmentIntent
+                        ? { [jmapDraftAttachmentIntentKeyword(input.attachmentIntent)]: true }
+                        : {}),
+                      [keyword]: true,
+                    },
+                    attachments: input.attachments ?? [],
+                  },
                 ),
               },
               ifInState: state,

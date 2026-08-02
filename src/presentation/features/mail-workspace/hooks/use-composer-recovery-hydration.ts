@@ -18,14 +18,14 @@ export const useComposerRecoveryHydration = (
     bcc: fields.bcc,
     body: body.recoveryBody,
     cc: fields.cc,
-    hadLocalAttachments: attachments.attachments.length > 0,
+    hadLocalAttachments: attachments.attachmentIds.length > 0,
     ...(fields.inReplyTo ? { inReplyTo: fields.inReplyTo } : {}),
     signatureDisposition:
       signatures.configuration || signatures.isDetached ? "detached" : "none",
     subject: fields.subject,
     title: fields.title,
     to: fields.to,
-  }), [attachments.attachments.length, body.recoveryBody, fields.bcc, fields.cc,
+  }), [attachments.attachmentIds.length, body.recoveryBody, fields.bcc, fields.cc,
     fields.inReplyTo, fields.subject, fields.title, fields.to,
     signatures.configuration, signatures.isDetached]);
 

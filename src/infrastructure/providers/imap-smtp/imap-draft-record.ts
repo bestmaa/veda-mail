@@ -11,7 +11,7 @@ import {
 import { parseImapDraft } from "@/infrastructure/providers/imap-smtp/imap-draft-mime";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 
-export const MAX_IMAP_DRAFT_SOURCE_BYTES = 2 * 1024 * 1024;
+export const MAX_IMAP_DRAFT_SOURCE_BYTES = 26 * 1024 * 1024;
 
 export const loadImapDraftRecord = async (input: {
   readonly client: ImapFlow;
