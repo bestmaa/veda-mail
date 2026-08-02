@@ -11,7 +11,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 - Playwright regression batches use the stable Next.js webpack development
   server after an upstream Turbopack aggregation panic terminated long CI runs
-  mid-download and left later composer requests permanently unavailable
+  mid-download and left later composer requests permanently unavailable. The
+  full quality job now has a 30-minute budget after a verified run consumed
+  19m44s of its previous 20-minute limit
 
 ### Added
 
