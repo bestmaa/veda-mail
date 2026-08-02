@@ -8,6 +8,7 @@ import type {
   ComposerRecoveryJournalPort,
 } from "@/presentation/features/mail-workspace/composer-recovery-journal.port";
 import { canonicalComposerRecoveryJournal } from "@/presentation/features/mail-workspace/composer-recovery-schema";
+import { prepareComposerRecoverySave } from "@/presentation/features/mail-workspace/composer-recovery-save-transition";
 import {
   acknowledgeComposerRecovery,
   rejectComposerRecoverySave,
@@ -160,10 +161,8 @@ export const useComposerRecoveryJournal = (
     try {
       const base = nextJournal(value);
       if (!base) return null;
-      const journal = canonicalComposerRecoveryJournal({
-        ...base,
-        pendingSave: attempt,
-      });
+      const journal = prepareComposerRecoverySave(base, attempt);
+      if (!journal) return null;
       return await persist(journal) ? journal.pendingSave ?? null : null;
     } catch {
       setStorageError("Couldn’t safely prepare this draft save.");

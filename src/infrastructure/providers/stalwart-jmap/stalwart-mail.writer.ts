@@ -128,6 +128,7 @@ export class StalwartMailWriter {
       ],
       createId,
       accountId,
+      { draftMailboxId, sentMailboxId },
     );
   }
 

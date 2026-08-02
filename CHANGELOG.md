@@ -9,6 +9,17 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Stalwart sends whose primary `Email/set` and `EmailSubmission/set` results
+  are conclusive but whose implicit Draft-to-Sent update is incomplete now
+  verify the exact created message independently, repair only a confirmed Sent
+  message with a state-guarded idempotent update, and re-read provider state
+  before reporting success. Missing or ambiguous evidence remains an uncertain
+  delivery, preserving duplicate-send protection
+- The first edit of an already-loaded provider draft now seeds its exact draft
+  ID and revision into the local recovery journal before preparing the update.
+  This keeps the fail-closed recovery contract while allowing the provider save
+  request to proceed instead of incorrectly reporting that no recovery copy
+  could be kept
 - Stalwart 0.16 plain-text drafts now round-trip when the server returns null
   grouped-address instances for empty Cc/Bcc headers, mirrors the sole text
   part in `htmlBody`, and includes the full message header inventory on the

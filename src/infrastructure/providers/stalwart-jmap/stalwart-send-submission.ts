@@ -18,6 +18,7 @@ import {
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { cleanupRejectedStalwartSubmission } from "@/infrastructure/providers/stalwart-jmap/stalwart-submission-cleanup";
 import { hasAdvancedJmapSetState } from "@/infrastructure/providers/stalwart-jmap/stalwart-set-state";
+import { type StalwartSendCleanupContext, verifyAndRepairStalwartSentState } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-cleanup";
 
 const uncertainReceipt = (): SendReceipt => ({
   deliveryStatus: "uncertain",
@@ -103,13 +104,13 @@ const readSetOutcome = (
   }
 };
 
-const hasStrictSubmissionOutcome = (
+const submissionEvidence = (
   client: StalwartJmapClient,
   response: Awaited<ReturnType<StalwartJmapClient["request"]>>,
   createId: string,
   emailId: string,
   expectedAccountId: string,
-): boolean => {
+): "accepted" | "cleanup-eligible" | "uncertain" => {
   try {
     const create = client.result(
       response,
@@ -131,7 +132,7 @@ const hasStrictSubmissionOutcome = (
     const accountId = expectedAccountId;
     const sameAccount =
       create.accountId === accountId && submission.accountId === accountId;
-    return (
+    const trustedPrimary =
       sameAccount &&
       hasAdvancedJmapSetState(create) &&
       exactKeys(create.created, [createId]) &&
@@ -143,7 +144,9 @@ const hasStrictSubmissionOutcome = (
       exactKeys(submission.created, ["submit"]) &&
       hasNoSetFailures(submission) &&
       (submission.destroyed?.length ?? 0) === 0 &&
-      Object.keys(submission.updated ?? {}).length === 0 &&
+      Object.keys(submission.updated ?? {}).length === 0;
+    if (!trustedPrimary) return "uncertain";
+    const trustedImplicit =
       implicit.length === 1 &&
       update.success &&
       update.data.accountId === accountId &&
@@ -152,10 +155,10 @@ const hasStrictSubmissionOutcome = (
       hasOwn(update.data.updated ?? {}, emailId) &&
       hasNoSetFailures(update.data) &&
       Object.keys(update.data.created ?? {}).length === 0 &&
-      (update.data.destroyed?.length ?? 0) === 0
-    );
+      (update.data.destroyed?.length ?? 0) === 0;
+    return trustedImplicit ? "accepted" : "cleanup-eligible";
   } catch {
-    return false;
+    return "uncertain";
   }
 };
 
@@ -164,6 +167,7 @@ export const submitStalwartMessage = async (
   calls: readonly JmapMethodCall[],
   createId: string,
   expectedAccountId: string,
+  cleanupContext?: StalwartSendCleanupContext,
 ): Promise<SendReceipt> => {
   const boundary: StalwartJmapRequestBoundary = { issued: false };
   let response: Awaited<ReturnType<StalwartJmapClient["request"]>>;
@@ -217,16 +221,22 @@ export const submitStalwartMessage = async (
   }
   if (submission.kind === "uncertain") return uncertainReceipt();
   if (create.kind !== "created") return uncertainReceipt();
-  if (
-    !hasStrictSubmissionOutcome(
-      client,
-      response,
-      createId,
-      create.id,
-      expectedAccountId,
-    )
-  ) {
-    return uncertainReceipt();
+  const evidence = submissionEvidence(
+    client, response, createId, create.id, expectedAccountId,
+  );
+  if (evidence !== "accepted") {
+    if (
+      evidence !== "cleanup-eligible" ||
+      !cleanupContext ||
+      !(await verifyAndRepairStalwartSentState(
+        client,
+        expectedAccountId,
+        create.id,
+        cleanupContext,
+      ))
+    ) {
+      return uncertainReceipt();
+    }
   }
 
   return {
