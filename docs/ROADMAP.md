@@ -341,9 +341,9 @@ recreation, and the public `/api/health` endpoint returned HTTP 200.
 
 - [ ] Provider-backed conversation/thread view with deterministic fallback
 - [ ] Reply/forward placement, quoted-content collapsing, and per-message details
-- [ ] Search grammar for from, to, cc, subject, body, dates, size, attachment,
+- [x] Search grammar for from, to, cc, subject, body, dates, size, attachment,
   unread, starred, mailbox, and exact phrases
-- [ ] Search suggestions, recent searches, clear active-filter chips, and
+- [x] Search suggestions, recent searches, clear active-filter chips, and
   shareable URL state without leaking credentials
 - [ ] Saved searches or virtual mailboxes
 - [ ] Print-friendly message/conversation view
@@ -358,10 +358,15 @@ resolution. JMAP receives a typed AND filter; IMAP intersects repeated-key
 SEARCH batches and reports its unsupported attachment predicate with HTTP 422.
 The accessible UI adds session-memory suggestions/history, removable active
 chips, client/server validation, and credential-free fragment URL restoration.
-Unit, route, provider-contract, component, and browser tests cover the slice;
-the two search checkboxes remain open until the immutable release is published,
-deployed, and live production search smoke evidence is recorded. See
-[Advanced mail search](./ADVANCED-SEARCH.md).
+Unit, route, provider-contract, component, and browser tests cover the slice.
+PR #68 was merged as `b51084d37ee960e8deb63662c924489712217b21`; immutable
+image digest
+`sha256:2657d1e9ea53fd56a16316eac52c162f6a6a4d69e7590733b9c8fea254769bd3`
+was deployed on 2026-08-03 and the public `/api/health` endpoint returned HTTP
+200. An authenticated production query for the exact newly delivered subject
+plus `in:sent` returned one message and exposed both removable filter chips,
+closing the two search checkboxes. See [Advanced mail
+search](./ADVANCED-SEARCH.md).
 
 ## M6 — Rules and productivity
 
