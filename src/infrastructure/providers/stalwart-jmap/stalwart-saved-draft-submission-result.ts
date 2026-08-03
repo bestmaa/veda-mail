@@ -8,6 +8,7 @@ import { jmapSetResultSchema } from "@/infrastructure/providers/stalwart-jmap/st
 import { isValidSetError } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
 import {
   hasAdvancedJmapSetState,
+  hasCreatedSubmissionState,
   hasUnchangedJmapSetState,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-set-state";
 
@@ -90,7 +91,7 @@ export const savedDraftSubmissionOutcome = (
     if (retryable) return "retryable";
     const strictSubmission =
       submission.accountId === accountId &&
-      hasAdvancedJmapSetState(submission) &&
+      hasCreatedSubmissionState(submission) &&
       exactKeys(submission.created, ["submit"]) &&
       Boolean(submission.created?.["submit"]?.id) &&
       noFailures(submission) &&
