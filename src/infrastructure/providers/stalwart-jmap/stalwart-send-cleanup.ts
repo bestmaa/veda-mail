@@ -32,6 +32,11 @@ const submittedEmailResultSchema = z
   })
   .passthrough();
 
+type SubmittedEmailRead =
+  | { readonly email: z.infer<typeof submittedEmailSchema>; readonly kind: "found"; readonly state: string }
+  | { readonly kind: "invalid" }
+  | { readonly kind: "missing" };
+
 const patchSegment = (value: string): string =>
   value.replaceAll("~", "~0").replaceAll("/", "~1");
 
@@ -39,7 +44,7 @@ const loadSubmittedEmail = async (
   client: StalwartJmapClient,
   accountId: string,
   emailId: string,
-) => {
+): Promise<SubmittedEmailRead> => {
   const response = await client.request(
     [
       [
@@ -61,11 +66,15 @@ const loadSubmittedEmail = async (
     submittedEmailResultSchema,
   );
   const email = result.list[0];
-  return result.accountId === accountId &&
-    result.notFound.length === 0 &&
-    email?.id === emailId
-    ? { email, state: result.state }
-    : null;
+  if (result.accountId !== accountId) return { kind: "invalid" };
+  if (
+    result.list.length === 0 &&
+    result.notFound.length === 1 &&
+    result.notFound[0] === emailId
+  ) return { kind: "missing" };
+  return result.notFound.length === 0 && email?.id === emailId
+    ? { email, kind: "found", state: result.state }
+    : { kind: "invalid" };
 };
 
 const hasSentMembership = (
@@ -83,6 +92,14 @@ const hasCleanSentState = (
   (context.removeKeywords ?? []).every(
     (keyword) => email.keywords[keyword] !== true,
   );
+
+const sentStateDiscoveryDelaysMs = [0, 50, 100, 200, 400] as const;
+const sentStateRepairDelaysMs = [50, 100] as const;
+
+const waitForSentState = (delayMs: number): Promise<void> =>
+  delayMs === 0
+    ? Promise.resolve()
+    : new Promise((resolve) => setTimeout(resolve, delayMs));
 
 const requestCleanup = async (
   client: StalwartJmapClient,
@@ -120,34 +137,58 @@ const requestCleanup = async (
   );
 };
 
+const repairVerifiedSentState = async (
+  client: StalwartJmapClient,
+  accountId: string,
+  emailId: string,
+  context: StalwartSendCleanupContext,
+  initialState: string,
+): Promise<boolean> => {
+  let state = initialState;
+  for (const delayMs of sentStateRepairDelaysMs) {
+    try {
+      await requestCleanup(client, accountId, emailId, state, context);
+    } catch {
+      // The update may have crossed the transport boundary. Only an exact
+      // provider re-read can prove whether cleanup completed.
+    }
+    await waitForSentState(delayMs);
+    let current: SubmittedEmailRead;
+    try {
+      current = await loadSubmittedEmail(client, accountId, emailId);
+    } catch {
+      return false;
+    }
+    if (current.kind !== "found" || !hasSentMembership(current.email, context)) {
+      return false;
+    }
+    if (hasCleanSentState(current.email, context)) return true;
+    state = current.state;
+  }
+  return false;
+};
+
 export const verifyAndRepairStalwartSentState = async (
   client: StalwartJmapClient,
   accountId: string,
   emailId: string,
   context: StalwartSendCleanupContext,
 ): Promise<boolean> => {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    let current: Awaited<ReturnType<typeof loadSubmittedEmail>>;
+  for (const delayMs of sentStateDiscoveryDelaysMs) {
+    await waitForSentState(delayMs);
+    let current: SubmittedEmailRead;
     try {
       current = await loadSubmittedEmail(client, accountId, emailId);
     } catch {
       return false;
     }
-    if (!current || !hasSentMembership(current.email, context)) return false;
+    if (current.kind === "invalid") return false;
+    if (current.kind === "missing") continue;
+    if (!hasSentMembership(current.email, context)) continue;
     if (hasCleanSentState(current.email, context)) return true;
-    if (attempt === 2) return false;
-    try {
-      await requestCleanup(
-        client,
-        accountId,
-        emailId,
-        current.state,
-        context,
-      );
-    } catch {
-      // The update may have crossed the transport boundary. Re-read the
-      // provider state before deciding whether another idempotent repair is safe.
-    }
+    return repairVerifiedSentState(
+      client, accountId, emailId, context, current.state,
+    );
   }
   return false;
 };

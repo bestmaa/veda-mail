@@ -29,6 +29,20 @@ const snapshot = (
   sessionState: "session",
 });
 
+const missingSnapshot = (): JmapResponse => ({
+  methodResponses: [[
+    "Email/get",
+    {
+      accountId: "account",
+      list: [],
+      notFound: ["email"],
+      state: "state-missing",
+    },
+    "verify-submitted-email",
+  ]],
+  sessionState: "session",
+});
+
 const clientWith = (
   snapshots: readonly JmapResponse[],
   update?: (calls: readonly JmapMethodCall[]) => Promise<JmapResponse>,
@@ -104,14 +118,40 @@ describe("Stalwart sent-state repair", () => {
   });
 
   it("never mutates a message without verified Sent membership", async () => {
-    const { client, requests } = clientWith([
-      snapshot("state-1", { drafts: true }, { $draft: true }),
-    ]);
+    const draftOnly = snapshot("state-1", { drafts: true }, { $draft: true });
+    const { client, requests } = clientWith(Array(5).fill(draftOnly));
 
     await expect(
       verifyAndRepairStalwartSentState(client, "account", "email", context),
     ).resolves.toBe(false);
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(5);
+  });
+
+  it("waits for an exact temporarily missing copy before repairing Sent state", async () => {
+    const { client, requests } = clientWith([
+      missingSnapshot(),
+      snapshot("state-1", { drafts: true, sent: true }, { $draft: true }),
+      snapshot("state-2", { sent: true }, { $seen: true }),
+    ]);
+
+    await expect(
+      verifyAndRepairStalwartSentState(client, "account", "email", context),
+    ).resolves.toBe(true);
+    expect(requests).toHaveLength(4);
+  });
+
+  it("repairs when Sent membership first appears on the final discovery read", async () => {
+    const draftOnly = snapshot("state-1", { drafts: true }, { $draft: true });
+    const { client, requests } = clientWith([
+      ...Array(4).fill(draftOnly),
+      snapshot("state-2", { drafts: true, sent: true }, { $draft: true }),
+      snapshot("state-3", { sent: true }, { $seen: true }),
+    ]);
+
+    await expect(
+      verifyAndRepairStalwartSentState(client, "account", "email", context),
+    ).resolves.toBe(true);
+    expect(requests).toHaveLength(7);
   });
 
   it("re-reads after an ambiguous cleanup transport failure", async () => {
