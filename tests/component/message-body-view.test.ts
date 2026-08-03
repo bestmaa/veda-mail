@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { MessageBodyConnector } from "@/presentation/features/mail-workspace/connectors/message-body.connector";
 
-const renderBody = (body: string, htmlBody: string | null) =>
+const renderBody = (body: string | null, htmlBody: string | null) =>
   renderToStaticMarkup(createElement(MessageBodyConnector, {
     body,
     handleSessionFailure: () => false,
@@ -27,7 +27,7 @@ describe("message body quote controls", () => {
   });
 
   it("keeps sanitized HTML in its sandbox and collapses blockquotes", () => {
-    const html = renderBody("Current answer", "<p>Current answer</p><blockquote>Earlier</blockquote>");
+    const html = renderBody(null, "<p>Current answer</p><blockquote>Earlier</blockquote>");
 
     expect(html).toContain('sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts"');
     expect(html).toContain("veda-collapse-quotes");

@@ -34,4 +34,9 @@ describe("quoted message content", () => {
     expect(hasSanitizedHtmlQuote("<blockquote>Earlier</blockquote>")).toBe(true);
     expect(hasSanitizedHtmlQuote("<p>blockquote is a word</p>")).toBe(false);
   });
+
+  it("normalizes a missing plain body for HTML-only provider messages", () => {
+    expect(splitPlainMessageContent(null)).toEqual({ quoted: "", visible: "" });
+    expect(splitPlainMessageContent(undefined)).toEqual({ quoted: "", visible: "" });
+  });
 });

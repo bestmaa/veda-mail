@@ -23,11 +23,12 @@ const quoteStart = (lines: readonly string[]): number => {
 };
 
 export const splitPlainMessageContent = (
-  value: string,
+  value: string | null | undefined,
 ): PlainMessageContent => {
-  const lines = value.split(/\r?\n/u);
+  const normalized = value ?? "";
+  const lines = normalized.split(/\r?\n/u);
   const start = quoteStart(lines);
-  if (start < 0) return { quoted: "", visible: value };
+  if (start < 0) return { quoted: "", visible: normalized };
   return {
     quoted: lines.slice(start).join("\n").trim(),
     visible: lines.slice(0, start).join("\n").trimEnd(),

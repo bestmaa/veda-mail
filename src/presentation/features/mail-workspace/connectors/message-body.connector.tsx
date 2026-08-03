@@ -17,7 +17,7 @@ export const MessageBodyConnector = ({
   messageId,
   sessionScope,
 }: {
-  readonly body: string;
+  readonly body: string | null | undefined;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly htmlBody: string | null;
   readonly messageId: string;
