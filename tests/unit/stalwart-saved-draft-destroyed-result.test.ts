@@ -58,6 +58,18 @@ describe("Stalwart implicit destroyed-copy result", () => {
     expect(outcome(response())).toBe("accepted");
   });
 
+  it("keeps a strict Stalwart submission authoritative when oldState is omitted", () => {
+    expect(
+      outcome(response(submission({ oldState: undefined }), implicit())),
+    ).toBe("accepted");
+  });
+
+  it("rejects a submission result that omits newState", () => {
+    expect(
+      outcome(response(submission({ newState: undefined }), implicit())),
+    ).toBe("uncertain");
+  });
+
   it.each([
     ["wrong ID", implicit({ destroyed: ["other-copy"] })],
     ["multiple IDs", implicit({ destroyed: ["send-copy", "other-copy"] })],

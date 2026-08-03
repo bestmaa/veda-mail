@@ -17,7 +17,7 @@ import {
   type JmapMethodCall,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { cleanupRejectedStalwartSubmission } from "@/infrastructure/providers/stalwart-jmap/stalwart-submission-cleanup";
-import { hasAdvancedJmapSetState } from "@/infrastructure/providers/stalwart-jmap/stalwart-set-state";
+import { hasAdvancedJmapSetState, hasCreatedSubmissionState } from "@/infrastructure/providers/stalwart-jmap/stalwart-set-state";
 import { type StalwartSendCleanupContext, verifyAndRepairStalwartSentState } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-cleanup";
 
 const uncertainReceipt = (): SendReceipt => ({
@@ -140,7 +140,7 @@ const submissionEvidence = (
       hasNoSetFailures(create) &&
       (create.destroyed?.length ?? 0) === 0 &&
       Object.keys(create.updated ?? {}).length === 0 &&
-      hasAdvancedJmapSetState(submission) &&
+      hasCreatedSubmissionState(submission) &&
       exactKeys(submission.created, ["submit"]) &&
       hasNoSetFailures(submission) &&
       (submission.destroyed?.length ?? 0) === 0 &&

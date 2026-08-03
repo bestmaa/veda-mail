@@ -14,6 +14,12 @@ export const hasAdvancedJmapSetState = (
   (expectedOldState === undefined || result.oldState === expectedOldState) &&
   result.newState !== result.oldState;
 
+export const hasCreatedSubmissionState = (result: JmapSetState): boolean =>
+  typeof result.newState === "string" &&
+  (result.oldState === undefined ||
+    (typeof result.oldState === "string" &&
+      result.newState !== result.oldState));
+
 export const hasUnchangedJmapSetState = (
   result: JmapSetState,
   expectedState?: string,
