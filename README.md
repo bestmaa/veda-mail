@@ -28,6 +28,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Provider-backed conversation views: exact JMAP threads, native IMAP thread
   identifiers when available, and a bounded reply-header graph fallback that
   never groups unrelated mail by subject
+- Message-scoped Reply, Reply All, and Forward actions, disclosure-based safe
+  message details, and reversible quoted-history collapsing for plain text and
+  sanitized HTML
 - Accessible loaded-message multi-select with bounded bulk read/unread,
   star/unstar, archive, spam, trash, restore, permission-aware drag/drop or
   keyboard/touch move, and confirmed permanent delete across JMAP and IMAP

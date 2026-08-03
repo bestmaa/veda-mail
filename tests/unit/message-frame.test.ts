@@ -60,6 +60,23 @@ describe("sanitized message frame", () => {
     );
   });
 
+  it("collapses sanitized blockquotes only when explicitly requested", () => {
+    const collapsed = buildSanitizedMessageDocument(
+      "<p>Current</p><blockquote>Earlier</blockquote>",
+      "render-one",
+      true,
+    );
+    const expanded = buildSanitizedMessageDocument(
+      "<p>Current</p><blockquote>Earlier</blockquote>",
+      "render-one",
+      false,
+    );
+
+    expect(collapsed).toContain('body class="veda-collapse-quotes"');
+    expect(collapsed).toContain(".veda-collapse-quotes blockquote{display:none}");
+    expect(expanded).toContain("<body><p>Current</p>");
+  });
+
   it("permits only blob-backed child images without network access", () => {
     const document = buildSanitizedMessageDocument(
       '<img data-veda-inline-image="attachment-1">',

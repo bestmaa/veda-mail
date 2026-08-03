@@ -367,6 +367,17 @@ and browser regressions cover the slice. The checkbox remains open until the
 merged immutable image is deployed and live authenticated Stalwart evidence is
 recorded; live IMAP evidence remains a separate acceptance requirement.
 
+The selected-message reader follow-up is locally complete. Reply, Reply All,
+and Forward remain bound to the exact expanded message and sit in an explicitly
+labelled action group. A native disclosure exposes normalized portable message
+details, while plain reply/forward markers and sanitized HTML blockquotes are
+collapsed only in presentation and can always be restored. Raw headers,
+provider identifiers, and hidden message mutation are outside this surface.
+Unit, component, and browser coverage protects quote recognition, sandbox/CSP
+isolation, accessibility state, conversation position, and narrow-screen use.
+Its checkbox remains open until the merged immutable image is deployed and
+authenticated production evidence is recorded.
+
 The advanced-search slice is locally complete: the bounded AND grammar covers
 addresses, subject/body/text phrases, inclusive/exclusive protocol dates, strict
 binary sizes, attachment, read/star state, and authenticated mailbox-name/role

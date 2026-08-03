@@ -20,7 +20,7 @@ const CACHE_CONTROL =
 const RESIZE_HASH =
   "'sha256-5Y5olpdfb9HF2ncx6UGgnO2gTM7kh1s0vsUA1qpyKYQ='";
 const STYLE_HASH =
-  "'sha256-7gSOBhlM+GuUdVmICMTxZKqK2m/EgD0p3SqYCLlMl7Y='";
+  "'sha256-XlvOrZZXWg7NrvGw2jLpa7JEfoqVDyMDODOspEISjTI='";
 
 const reservePort = async () => {
   const server = createServer();

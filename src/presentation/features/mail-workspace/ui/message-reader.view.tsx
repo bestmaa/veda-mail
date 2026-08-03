@@ -4,11 +4,12 @@ import type {
   ReaderViewModel,
 } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import type { MailboxRole } from "@/domain/mail/mail";
-import { MessageFrameConnector } from "@/presentation/features/mail-workspace/connectors/message-frame.connector";
 import { AttachmentPreviewDialogConnector } from "@/presentation/features/mail-workspace/connectors/attachment-preview-dialog.connector";
 import { ReceivedAttachmentListConnector } from "@/presentation/features/mail-workspace/connectors/received-attachment-list.connector";
 import { MessageReaderToolbarView } from "@/presentation/features/mail-workspace/ui/message-reader-toolbar.view";
 import { MessageConversationView } from "@/presentation/features/mail-workspace/ui/message-conversation.view";
+import { MessageBodyConnector } from "@/presentation/features/mail-workspace/connectors/message-body.connector";
+import { MessageDetailsView } from "@/presentation/features/mail-workspace/ui/message-details.view";
 
 interface MessageReaderViewProps {
   readonly activeRole: MailboxRole | null;
@@ -129,26 +130,21 @@ export const MessageReaderView = ({
                   cc {reader.cc}
                 </p>
               ) : null}
+              <MessageDetailsView details={reader.details} />
             </div>
             <time className="hidden text-xs font-medium text-slate-600 sm:block">
               {reader.date}
             </time>
           </div>
 
-          <div className="mail-body py-7 text-[15px] leading-7 text-slate-700">
-            {reader.htmlBody ? (
-              <MessageFrameConnector
-                handleSessionFailure={reader.handleSessionFailure}
-                messageId={reader.messageId}
-                sanitizedHtml={reader.htmlBody}
-                sessionScope={reader.sessionScope}
-              />
-            ) : (
-              <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                {reader.body}
-              </div>
-            )}
-          </div>
+          <MessageBodyConnector
+            body={reader.body}
+            handleSessionFailure={reader.handleSessionFailure}
+            htmlBody={reader.htmlBody}
+            key={reader.messageId}
+            messageId={reader.messageId}
+            sessionScope={reader.sessionScope}
+          />
 
           <ReceivedAttachmentListConnector
             attachments={reader.attachments}
@@ -156,7 +152,11 @@ export const MessageReaderView = ({
           />
           <AttachmentPreviewDialogConnector {...reader.attachmentPreview} />
 
-          <div className="mt-8 flex flex-wrap gap-2">
+          <div
+            aria-label="Actions for this message"
+            className="mt-8 flex flex-wrap gap-2"
+            role="group"
+          >
             <button
               aria-busy={!isComposerReady}
               aria-keyshortcuts={keyboardShortcutsEnabled ? "R" : undefined}
