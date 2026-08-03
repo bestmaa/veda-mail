@@ -98,17 +98,24 @@ export const savedDraftSubmissionOutcome = (
       Object.keys(submission.updated ?? {}).length === 0;
     if (!strictSubmission) return "uncertain";
     const emailSet = jmapSetResultSchema.safeParse(implicit[0]?.[1]);
-    const accepted =
+    const implicitBase =
       implicit.length === 1 &&
       emailSet.success &&
       emailSet.data.accountId === accountId &&
       hasAdvancedJmapSetState(emailSet.data, expectedEmailState) &&
+      noFailures(emailSet.data) &&
+      Object.keys(emailSet.data.created ?? {}).length === 0;
+    const updated =
+      implicitBase &&
       exactKeys(emailSet.data.updated, [emailId]) &&
       hasOwn(emailSet.data.updated ?? {}, emailId) &&
-      noFailures(emailSet.data) &&
-      Object.keys(emailSet.data.created ?? {}).length === 0 &&
       (emailSet.data.destroyed?.length ?? 0) === 0;
-    if (accepted) return "accepted";
+    const destroyed =
+      implicitBase &&
+      Object.keys(emailSet.data.updated ?? {}).length === 0 &&
+      emailSet.data.destroyed?.length === 1 &&
+      emailSet.data.destroyed[0] === emailId;
+    if (updated || destroyed) return "accepted";
 
     // A successful EmailSubmission/set is authoritative submission evidence.
     // Some Stalwart releases omit or vary the implicit Email/set response for
