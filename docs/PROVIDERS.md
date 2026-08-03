@@ -136,10 +136,11 @@ reconciliation prevents a lost HTTP response from creating duplicate drafts
 without assuming a multi-object `/set` is atomic. Sending is deliberately
 save-first: the server reloads and verifies the exact immutable draft, claims it
 against concurrent senders, then creates a fresh copy and submits its RFC
-creation reference in one ordered batch. It accepts only an exact submission
-and implicit Drafts-to-Sent result, then cleans up the claimed old draft. An
-ambiguous issued outcome remains visibly locked, instructs the member to check
-Sent, and is never blindly retried.
+creation reference in one ordered batch. It accepts an exact submission as
+authoritative, verifies or safely repairs the implicit Drafts-to-Sent result
+when possible, then cleans up the claimed old draft. An ambiguous issued
+submission outcome remains visibly locked, instructs the member to check Sent,
+and is never blindly retried.
 
 Standard IMAP stores the same canonical content as ordinary MIME in the
 special-use `\\Drafts` mailbox. It requires UIDPLUS so an exact UID can be

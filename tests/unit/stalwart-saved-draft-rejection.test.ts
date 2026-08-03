@@ -181,10 +181,10 @@ describe("Stalwart saved draft rejection semantics", () => {
   });
 
   it.each([
-    ["copy-state", "uncertain"],
+    ["copy-state", "accepted"],
     ["sent-state", "accepted"],
   ] as const)(
-    "treats an implicit %s update as %s",
+    "preserves authoritative submission for an implicit %s update",
     async (newState, status) => {
       const { client } = clientFor((createId) => ({
         methodResponses: [

@@ -1,5 +1,4 @@
 import "server-only";
-
 import type { z } from "zod";
 
 import type { SendMessageInput } from "@/domain/mail/mail";
@@ -238,9 +237,10 @@ export const sendClaimedStalwartDraft = async (
     copy.emailId,
     copy.state,
   );
-  const accepted = submission === "accepted" ||
-    (submission === "cleanup-eligible" &&
-      await repairSavedDraftSentState(client, context, copy.emailId, cleanupPatch));
+  if (submission === "cleanup-eligible") {
+    await repairSavedDraftSentState(client, context, copy.emailId, cleanupPatch);
+  }
+  const accepted = submission === "accepted" || submission === "cleanup-eligible";
   return accepted
     ? { copy, kind: "accepted" }
     : submission === "retryable"

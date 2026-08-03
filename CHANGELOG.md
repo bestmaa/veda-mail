@@ -15,10 +15,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
   message independently, repair only a confirmed Sent message with a
   state-guarded idempotent update, remove internal draft-operation keywords,
   and use bounded delayed re-reads when Stalwart's Sent membership is not yet
-  visible. An exact implicit destruction of the exact created copy after a
-  strict successful submission is also accepted. Missing, mismatched, or
-  ambiguous evidence remains an uncertain delivery, preserving duplicate-send
-  protection
+  visible. An exact successful `EmailSubmission/set` remains authoritative
+  even when that independent Sent-state repair is inconclusive, and an exact
+  implicit destruction of the exact created copy is also accepted. Missing or
+  ambiguous submission evidence remains an uncertain delivery, preserving
+  duplicate-send protection
 - The first edit of an already-loaded provider draft now seeds its exact draft
   ID and revision into the local recovery journal before preparing the update.
   This keeps the fail-closed recovery contract while allowing the provider save
