@@ -22,6 +22,7 @@ import {
   savedDraftSubmissionOutcome,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-submission-result";
 import { isValidSetError } from "@/infrastructure/providers/stalwart-jmap/stalwart-send-submission";
+import { repairSavedDraftSentState } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-send-cleanup";
 import {
   JMAP_MAIL,
   JMAP_SUBMISSION,
@@ -237,7 +238,10 @@ export const sendClaimedStalwartDraft = async (
     copy.emailId,
     copy.state,
   );
-  return submission === "accepted"
+  const accepted = submission === "accepted" ||
+    (submission === "cleanup-eligible" &&
+      await repairSavedDraftSentState(client, context, copy.emailId, cleanupPatch));
+  return accepted
     ? { copy, kind: "accepted" }
     : submission === "retryable"
       ? { copy, kind: "rejected" }

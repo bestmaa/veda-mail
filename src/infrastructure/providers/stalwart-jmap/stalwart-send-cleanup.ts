@@ -11,6 +11,7 @@ import { JMAP_MAIL } from "@/infrastructure/providers/stalwart-jmap/stalwart-jma
 
 export interface StalwartSendCleanupContext {
   readonly draftMailboxId: string;
+  readonly removeKeywords?: readonly string[];
   readonly sentMailboxId: string;
 }
 
@@ -78,7 +79,10 @@ const hasCleanSentState = (
 ): boolean =>
   hasSentMembership(email, context) &&
   email.mailboxIds[context.draftMailboxId] !== true &&
-  email.keywords["$draft"] !== true;
+  email.keywords["$draft"] !== true &&
+  (context.removeKeywords ?? []).every(
+    (keyword) => email.keywords[keyword] !== true,
+  );
 
 const requestCleanup = async (
   client: StalwartJmapClient,
@@ -98,6 +102,12 @@ const requestCleanup = async (
             [emailId]: {
               "keywords/$draft": null,
               "keywords/$seen": true,
+              ...Object.fromEntries(
+                (context.removeKeywords ?? []).map((keyword) => [
+                  `keywords/${patchSegment(keyword)}`,
+                  null,
+                ]),
+              ),
               [`mailboxIds/${patchSegment(context.draftMailboxId)}`]: null,
               [`mailboxIds/${patchSegment(context.sentMailboxId)}`]: true,
             },
