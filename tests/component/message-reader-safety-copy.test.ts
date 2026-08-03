@@ -31,6 +31,16 @@ const reader: ReaderViewModel = {
     truncated: false,
   },
   date: "Aug 2, 2026",
+  details: {
+    attachments: "None",
+    cc: null,
+    conversationPosition: null,
+    date: "Sun, 2 August 2026 at 10:00 am",
+    from: '"Sender" <sender@example.com>',
+    messageSize: "120 B",
+    replyTo: null,
+    to: "member@example.com",
+  },
   downloadAll: null,
   error: null,
   from: "Sender",
@@ -73,5 +83,7 @@ describe("message reader safety copy", () => {
     expect(html).toContain("Sanitized message body");
     expect(html).not.toContain("Sanitized message content");
     expect(html).not.toContain('aria-live="polite"');
+    expect(html).toContain("Message details");
+    expect(html).toContain('aria-label="Actions for this message"');
   });
 });

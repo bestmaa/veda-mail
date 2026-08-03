@@ -44,6 +44,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Reader actions now stay visibly scoped to the selected conversation message;
+  a native accessible disclosure shows normalized From, To, Cc, Reply-To, date,
+  message size, attachment summary, and conversation position without exposing
+  provider IDs or raw headers. Plain-text reply/forward history and sanitized
+  HTML blockquotes start collapsed and can be restored without changing the
+  source message
 - Provider-backed conversation views with an authenticated, rate-limited,
   cursor-paginated API and accessible reader navigation. Stalwart uses exact
   `Email/get`/`Thread/get` membership; IMAP uses exact native thread IDs when

@@ -997,6 +997,20 @@ Tests cover forged/stale cursors, cross-anchor reuse, false-positive header
 searches, duplicate IDs, cycles, missing identifiers, provider mismatches, and
 the display boundary.
 
+Reader details expose only normalized address/date/size/attachment fields and
+the position inside the already authorized loaded conversation. They never
+render raw headers, protocol identifiers, provider errors, or HTML, preventing
+header-driven markup injection and internal-identifier disclosure. The native
+disclosure does not trigger another provider read.
+
+Quote collapsing never weakens the message-body trust boundary or destroys
+evidence. Plain-text marker recognition is bounded and conservative; HTML quote
+detection runs only on server-sanitized content. Both collapsed and expanded
+HTML revisions retain the same no-network CSP, sandbox, referrer policy, inline
+style prohibition, bounded authenticated inline-image bridge, and exact
+render-ID event checks. A hidden quote is a visual convenience, not a security
+filter, and can always be revealed.
+
 ## Logging and observability
 
 Logs may contain opaque request, connection, provider, and error identifiers,

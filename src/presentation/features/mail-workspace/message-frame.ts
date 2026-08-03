@@ -20,6 +20,7 @@ ul:last-child,ol:last-child{margin-bottom:0}
 ul,ol{padding-inline-start:1.6em}
 li+li{margin-top:.3em}
 blockquote{border-inline-start:3px solid #cbd5e1;color:#475569;padding-inline-start:1em}
+.veda-collapse-quotes blockquote{display:none}
 pre{font:inherit;white-space:pre-wrap}
 code,pre code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 table{border-collapse:collapse;max-width:100%}
@@ -129,7 +130,7 @@ export const MESSAGE_RESIZE_SCRIPT =
 export const MESSAGE_RESIZE_SCRIPT_HASH =
   "5Y5olpdfb9HF2ncx6UGgnO2gTM7kh1s0vsUA1qpyKYQ=";
 export const MESSAGE_FRAME_STYLE_HASH =
-  "7gSOBhlM+GuUdVmICMTxZKqK2m/EgD0p3SqYCLlMl7Y=";
+  "XlvOrZZXWg7NrvGw2jLpa7JEfoqVDyMDODOspEISjTI=";
 
 const escapeHtmlAttribute = (value: string): string =>
   value
@@ -148,6 +149,7 @@ const escapeHtmlAttribute = (value: string): string =>
 export const buildSanitizedMessageDocument = (
   sanitizedHtml: string,
   renderId = "",
+  collapseQuotes = false,
 ): string => `<!doctype html>
 <html lang="en" data-veda-render-id="${escapeHtmlAttribute(renderId)}">
 <head>
@@ -159,7 +161,7 @@ export const buildSanitizedMessageDocument = (
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${MESSAGE_FRAME_STYLES}</style>
 </head>
-<body>${sanitizedHtml}<script>${MESSAGE_RESIZE_SCRIPT}</script></body>
+<body${collapseQuotes ? ' class="veda-collapse-quotes"' : ""}>${sanitizedHtml}<script>${MESSAGE_RESIZE_SCRIPT}</script></body>
 </html>`;
 
 interface MessageFrameEventData {

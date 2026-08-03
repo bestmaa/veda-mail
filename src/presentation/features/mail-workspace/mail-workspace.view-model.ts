@@ -61,12 +61,9 @@ export interface AttachmentViewModel {
 export interface ReaderViewModel {
   readonly attachments: readonly AttachmentViewModel[];
   readonly attachmentPreview: {
-    readonly error: string | null;
-    readonly isLoading: boolean;
-    readonly isOpen: boolean;
-    readonly name: string;
-    readonly onClose: () => void;
-    readonly onRestoreFocus: () => void;
+    readonly error: string | null; readonly isLoading: boolean;
+    readonly isOpen: boolean; readonly name: string;
+    readonly onClose: () => void; readonly onRestoreFocus: () => void;
     readonly url: string | null;
   };
   readonly avatar: string;
@@ -75,6 +72,9 @@ export interface ReaderViewModel {
   readonly cc: string;
   readonly conversation: ConversationViewModel;
   readonly date: string;
+  readonly details: { readonly attachments: string; readonly cc: string | null;
+    readonly conversationPosition: string | null; readonly date: string; readonly from: string;
+    readonly messageSize: string; readonly replyTo: string | null; readonly to: string };
   readonly downloadAll: {
     readonly error: string | null; readonly isPreparing: boolean;
     readonly onClick: () => void;

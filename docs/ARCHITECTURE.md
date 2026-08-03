@@ -928,6 +928,25 @@ received time with opaque ID as the tie-break, and expose an explicit truncated
 flag at the 100-message safety boundary. Later-page cursors bind a hash of the
 exact ordered set and fail closed if provider changes would shift the offset.
 Selecting another loaded member keeps the original anchor and accumulated
+conversation page, but replaces the authoritative reader detail. Reply, Reply
+All, Forward, mailbox rights, attachment actions, details, and the visible
+action group therefore resolve from that selected detail rather than the
+conversation anchor.
+
+Per-message details are a presentation projection of normalized domain fields:
+address lists, received date, RFC message size, visible attachment count/known
+size, and loaded conversation position. Raw headers and provider message or
+thread identifiers never enter the details view. The native `details` element
+preserves keyboard and assistive-technology behavior without a second state
+store.
+
+Quoted-history collapsing is reversible and presentation-only. Plain text is
+split at bounded reply/forward markers; ambiguous `On ... wrote:` prose remains
+visible unless a quoted line follows. Sanitized HTML stays in the existing
+sandboxed, CSP-locked iframe, where a body class hides only `blockquote`
+elements. Toggling recreates the document revision so height and bounded inline
+image state cannot cross revisions; the stored/provider source is never edited.
+
 pages. Reader role, move source, and destructive permissions derive from that
 member's actual mailbox. The ordinary scoped detail route preserves existing
 mailbox and session authorization checks.

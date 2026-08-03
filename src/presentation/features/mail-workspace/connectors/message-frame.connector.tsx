@@ -17,7 +17,6 @@ import { InlineImageRetryControlView } from "@/presentation/features/mail-worksp
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { attachmentApi } from "@/transport/client/attachment-api";
 import { createInlineImageHref } from "@/transport/client/inline-image-api";
-
 const INITIAL_HEIGHT = 160;
 const MIN_HEIGHT = 48;
 const MAX_HEIGHT = 100_000;
@@ -31,8 +30,8 @@ const EMPTY_INLINE_IMAGE_FAILURES: MessageFrameInlineImageFailures =
   { attachmentIds: [], renderId: "" };
 const boundedHeight = (height: number): number =>
   Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(height)));
-
 interface MessageFrameConnectorProps {
+  readonly collapseQuotes?: boolean;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly messageId: string;
   readonly sanitizedHtml: string;
@@ -43,6 +42,7 @@ interface MessageFrameRenderProps extends MessageFrameConnectorProps {
 }
 
 const MessageFrameRender = ({
+  collapseQuotes = false,
   frameSource,
   handleSessionFailure,
   messageId,
@@ -51,8 +51,11 @@ const MessageFrameRender = ({
 }: MessageFrameRenderProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const renderId = useMemo(
-    () => createMessageFrameRenderId(messageId, sanitizedHtml),
-    [messageId, sanitizedHtml],
+    () => createMessageFrameRenderId(
+      messageId,
+      `${collapseQuotes ? "collapsed" : "expanded"}\u0000${sanitizedHtml}`,
+    ),
+    [collapseQuotes, messageId, sanitizedHtml],
   );
   const [frameSize, setFrameSize] = useState<FrameSize>({
     height: INITIAL_HEIGHT,
@@ -65,10 +68,9 @@ const MessageFrameRender = ({
   const [retryingRenderId, setRetryingRenderId] = useState("");
   const retryBatchRef = useRef<InlineImageRetryBatch | null>(null);
   const srcDoc = useMemo(
-    () => buildSanitizedMessageDocument(sanitizedHtml, renderId),
-    [renderId, sanitizedHtml],
+    () => buildSanitizedMessageDocument(sanitizedHtml, renderId, collapseQuotes),
+    [collapseQuotes, renderId, sanitizedHtml],
   );
-
   useEffect(() => {
     const receiveHeight = (event: MessageEvent<unknown>) => {
       if (
@@ -85,7 +87,6 @@ const MessageFrameRender = ({
     window.addEventListener("message", receiveHeight);
     return () => window.removeEventListener("message", receiveHeight);
   }, [frameSource, renderId]);
-
   useEffect(() => {
     if (loadedRenderId !== renderId) return;
     const targetWindow = frameRef.current?.contentWindow;
@@ -125,7 +126,6 @@ const MessageFrameRender = ({
       }
       return;
     }
-
     const controller = new AbortController();
     let cancelled = false;
     let cursor = 0;
@@ -241,8 +241,8 @@ const MessageFrameRender = ({
 };
 
 export const MessageFrameConnector = (props: MessageFrameConnectorProps) => {
-  const frameSource = `${props.messageId}\u0000${props.sanitizedHtml}`;
-  return (
-    <MessageFrameRender {...props} frameSource={frameSource} key={frameSource} />
-  );
+  const frameSource = `${props.messageId}\u0000${props.collapseQuotes ? "collapsed" : "expanded"}\u0000${props.sanitizedHtml}`;
+  return <MessageFrameRender
+    {...props} frameSource={frameSource} key={frameSource}
+  />;
 };

@@ -68,7 +68,7 @@ const installConversation = async (page: Page) => {
         cc: [],
         htmlBody: null,
         replyTo: [],
-        textBody: "The first roadmap note.",
+        textBody: "The first roadmap note.\n\nOn 21 Jul 2026, Ada wrote:\n> Earlier context.",
       } }),
       contentType: "application/json",
       status: 200,
@@ -93,6 +93,20 @@ test("opens a provider conversation and changes the expanded message from the ke
   await expect(page.getByRole("heading", { name: "Roadmap kickoff" })).toBeVisible();
   await expect(conversation.getByRole("button", { name: /Ada.*Roadmap kickoff/ }))
     .toHaveAttribute("aria-current", "true");
+  const details = page.getByText("Message details", { exact: true });
+  await expect(details).toBeVisible();
+  await details.click();
+  await expect(page.getByText("Message 1 of 2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Actions for this message" }))
+    .toBeVisible();
+  const quoteToggle = page.getByRole("button", { name: "Show quoted content" });
+  await expect(quoteToggle).toHaveAttribute("aria-expanded", "false");
+  const messageBody = page.locator(".mail-body");
+  await expect(messageBody).not.toContainText("Earlier context.");
+  await quoteToggle.click();
+  await expect(messageBody).toContainText("Earlier context.");
+  await expect(page.getByRole("button", { name: "Hide quoted content" }))
+    .toHaveAttribute("aria-expanded", "true");
   expect(conversationRequests()).toBe(1);
   await expectNoSeriousAccessibilityViolations(page);
 });
