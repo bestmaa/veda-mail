@@ -13,6 +13,7 @@ import type {
   MailboxMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
+import type { ConversationQuery } from "@/domain/mail/conversation";
 import type {
   MemberPasswordChange,
   MemberProfileUpdate,
@@ -112,6 +113,10 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public getMessage(messageId: MessageId) {
     return this.reader.getMessage(messageId);
+  }
+
+  public getConversation(query: ConversationQuery) {
+    return this.reader.getConversation(query);
   }
 
   public listMessageAttachments(input: MessageAttachmentListInput) {

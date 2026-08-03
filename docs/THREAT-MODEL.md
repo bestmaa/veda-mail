@@ -971,6 +971,32 @@ suppression, modal suppression, focus containment/return, safe unavailable
 actions, preference migration, strict writes, live announcements, and automated
 serious/critical accessibility scans.
 
+## Conversation and threading threats
+
+A browser-controlled thread ID, Message-ID, References value, mailbox, or
+numeric offset could otherwise enumerate another account's mail or amplify
+provider work. The route accepts none of those values. It resolves an
+authenticated opaque anchor, fixes its page size, and wraps the provider
+position plus ordered-membership hash in an expiring HMAC cursor bound to the
+connection and anchor. A provider change between pages fails closed instead of
+shifting an offset. Cursor payloads contain no provider thread or message-header value.
+
+JMAP response account IDs, method partitions, exact Thread membership, and
+anchor membership are validated before results are returned. On IMAP, scoped
+mailbox/UID/UIDVALIDITY identities remain authoritative. Header-search hits are
+treated as substring-prone candidates and must pass an exact bounded header
+intersection after fetch. Missing or malformed IDs do not create membership,
+and subject similarity is never evidence of a conversation.
+
+Reference cycles and attacker-authored fan-out are bounded by 32 readable
+mailboxes, 64 graph identifiers, four identifier-search batches, 100 verified
+messages, 25 returned messages per page, a 64-KiB accepted reply-header literal,
+and 30 conversation reads per account per minute. Exact provider identities are
+de-duplicated and provider errors are normalized before reaching members.
+Tests cover forged/stale cursors, cross-anchor reuse, false-positive header
+searches, duplicate IDs, cycles, missing identifiers, provider mismatches, and
+the display boundary.
+
 ## Logging and observability
 
 Logs may contain opaque request, connection, provider, and error identifiers,

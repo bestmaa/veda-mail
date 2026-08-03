@@ -20,6 +20,7 @@ import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@
 import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/undo-send.view-model";
 import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
 import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
+import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -72,6 +73,7 @@ export interface ReaderViewModel {
   readonly body: string;
   readonly canArchive: boolean;
   readonly cc: string;
+  readonly conversation: ConversationViewModel;
   readonly date: string;
   readonly downloadAll: {
     readonly error: string | null; readonly isPreparing: boolean;
@@ -240,10 +242,8 @@ export interface MailWorkspaceViewProps {
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly deliveryNotice: DeliveryNoticeViewModel | null;
-  readonly reader: ReaderViewModel | null;
+  readonly reader: ReaderViewModel | null; readonly readerRole: MailboxRole | null;
   readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
   readonly search: MailSearchViewModel; readonly searchMaxLength: number;
-  readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string;
-  readonly scheduled: ScheduledSendManagerViewModel; readonly session: MemberSessionViewModel;
-  readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean;
-  readonly undoSend: UndoSendViewModel; }
+  readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string; readonly scheduled: ScheduledSendManagerViewModel; readonly session: MemberSessionViewModel;
+  readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean; readonly undoSend: UndoSendViewModel; }

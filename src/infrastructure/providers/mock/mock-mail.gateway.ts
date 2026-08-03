@@ -11,6 +11,7 @@ import type {
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type { LabelCleanupInput } from "@/domain/mail/label";
+import type { ConversationQuery } from "@/domain/mail/conversation";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import { id, type MessageId } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
@@ -34,13 +35,13 @@ import { MockMailboxStore } from "@/infrastructure/providers/mock/mock-mailbox.s
 import { cleanupMockLabel } from "@/infrastructure/providers/mock/mock-label-cleanup";
 import { emptyMockMailbox } from "@/infrastructure/providers/mock/mock-mailbox-empty";
 import { listMockMessages } from "@/infrastructure/providers/mock/mock-message-list";
+import { readMockConversation } from "@/infrastructure/providers/mock/mock-conversation";
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
   private readonly mailboxes = new MockMailboxStore();
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
-  public readonly getDraft = this.drafts.get.bind(this.drafts);
-  public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
+  public readonly getDraft = this.drafts.get.bind(this.drafts); public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
   public async getLabelCapability() {
     return "supported" as const;
   }
@@ -69,7 +70,6 @@ export class MockMailGateway implements MailGateway {
       input,
     );
   }
-
   public async getAccount() {
     return {
       email: "member@example.com",
@@ -81,15 +81,12 @@ export class MockMailGateway implements MailGateway {
   public async getMaxAttachmentBytes() {
     return 18 * 1024 * 1024;
   }
-
   public async getMemberProfile() {
     return this.profile;
   }
-
   public async getTwoFactorEnabled() {
     return false;
   }
-
   public async getMessage(messageId: MessageId): Promise<MessageDetail> {
     const message = this.messages.find((item) => item.id === messageId);
     if (!message) {
@@ -97,7 +94,9 @@ export class MockMailGateway implements MailGateway {
     }
     return structuredClone(message);
   }
-
+  public async getConversation(query: ConversationQuery) {
+    return readMockConversation(this.messages, query);
+  }
   public async listMessageAttachments(input: MessageAttachmentListInput) {
     if (input.messageId === mockArchiveFailureMessageId) {
       this.archiveFailureLookups += 1;
@@ -110,11 +109,9 @@ export class MockMailGateway implements MailGateway {
     }
     return listMockMessageAttachments(this.messages, input);
   }
-
   public async listMailboxes(): Promise<readonly Mailbox[]> {
     return this.mailboxes.list([...this.messages, ...this.drafts.messages()]);
   }
-
   public async listMessages(query: MessageListQuery) {
     return listMockMessages(
       [...this.messages, ...this.drafts.messages()],
@@ -159,14 +156,12 @@ export class MockMailGateway implements MailGateway {
     }
     this.messages[index] = { ...current, mailboxIds: [nextMailbox] };
   }
-
   public async mutateMailbox(mutation: MailboxMutation) {
     return this.mailboxes.mutate(
       mutation,
       [...this.messages, ...this.drafts.messages()],
     );
   }
-
   public async sendMessage(input: SendMessageInput) {
     const savedAttachments = this.drafts.consumeForSend(
       input.providerDraft,
@@ -224,7 +219,6 @@ export class MockMailGateway implements MailGateway {
       submittedAt: now,
     };
   }
-
   public async testConnection(): Promise<void> {}
   public async updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void> {
     void input;

@@ -62,6 +62,14 @@ newest-first order, previews enabled, confirmation off, and immediate send.
 Mailbox shortcuts remain off until the member explicitly enables them; no
 provider, Stalwart, environment, port, or data-file migration is required.
 
+Conversation views require no environment variable, provider configuration,
+mailbox migration, database/schema change, or new port. They add bounded
+provider reads when a message is opened: 25 results per browser page and no
+more than 100 verified messages. IMAP fallback may inspect up to 32 readable
+mailboxes when no native thread identifier exists, so operators should confirm
+their provider's ordinary read/search limits in staging. Existing browser tabs
+should be reloaded after deployment so the reader can request the new API.
+
 Manual provider-backed drafts require no new environment variable, Stalwart
 API key, mailbox migration, database/schema migration, or port. The feature is
 runtime-enabled when the authenticated JMAP account is writable and has a
@@ -74,6 +82,10 @@ instance and may expose the sole plain-text part in both `textBody` and
 still rejecting non-empty unparseable address headers and unsupported MIME.
 New JMAP drafts omit empty To, Cc, and Bcc properties. This compatibility fix
 requires no Stalwart configuration or mailbox migration.
+Stalwart 0.16 may also omit `oldState` from a conclusive successful
+`EmailSubmission/set`. The upgraded application accepts that exact compatible
+shape only after validating the created submission and delivery evidence;
+ambiguous results remain uncertain and are not retried automatically.
 Custom clients can
 use the new same-origin `/api/v1/mail/drafts` endpoints with the returned opaque
 provider ID plus expected revision; a provider draft must be saved and current

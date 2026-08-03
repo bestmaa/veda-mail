@@ -120,7 +120,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       >
         {props.reader ? (
           <MessageReaderView
-            activeRole={props.activeRole}
+            activeRole={props.readerRole}
             canPermanentlyDelete={props.canPermanentlyDelete}
             isComposerReady={props.isComposerReady}
             keyboardShortcutsEnabled={props.keyboardShortcuts.enabled}

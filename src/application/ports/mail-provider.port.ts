@@ -15,6 +15,10 @@ import type {
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type {
+  ConversationPage,
+  ConversationQuery,
+} from "@/domain/mail/conversation";
+import type {
   DraftCapability,
   DraftDetail,
   DraftSaveInput,
@@ -64,6 +68,7 @@ export interface MailGateway {
   getMemberProfile(): Promise<MemberProfile>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
+  getConversation(query: ConversationQuery): Promise<ConversationPage>;
   listMessageAttachments(
     input: MessageAttachmentListInput,
   ): Promise<readonly MessageAttachmentMetadata[]>;

@@ -10,6 +10,7 @@ import type {
   MessageListQuery,
   MessagePage,
 } from "@/domain/mail/mail";
+import type { ConversationQuery } from "@/domain/mail/conversation";
 import {
   imapSearchPlan,
   intersectImapSearchResults,
@@ -36,6 +37,7 @@ import {
 } from "@/infrastructure/providers/imap-smtp/imap-received-attachment";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { imapLabelCapability } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
+import { readImapConversation } from "@/infrastructure/providers/imap-smtp/imap-conversation.reader";
 
 const summaryQuery = {
   bodyStructure: true,
@@ -57,6 +59,10 @@ export class ImapMailReader {
       name: this.config.username.split("@")[0] ?? "Mail account",
       providerId: id.provider("imap-smtp"),
     };
+  }
+
+  public getConversation(query: ConversationQuery) {
+    return readImapConversation(this.config, query);
   }
 
   public getLabelCapability(mailboxId: MailboxId) {

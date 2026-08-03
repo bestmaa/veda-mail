@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 
 import type { MessageDetail } from "@/domain/mail/mail";
-import type { MessageId } from "@/domain/shared/brand";
+import type { MailboxId, MessageId } from "@/domain/shared/brand";
 
 interface Options {
   readonly accountEmail: string;
@@ -16,7 +16,9 @@ interface Options {
     messageId: MessageId,
     label: string,
     trigger: HTMLButtonElement,
+    sourceMailboxId: MailboxId,
   ) => void;
+  readonly selectedMailboxId: MailboxId | null;
   readonly selectedMessage: MessageDetail | null;
 }
 
@@ -28,6 +30,7 @@ export const useWorkspacePrimaryActions = ({
   openReply,
   openReplyAll,
   requestReaderMove,
+  selectedMailboxId,
   selectedMessage,
 }: Options) => ({
   onCompose: useCallback(() => {
@@ -43,11 +46,12 @@ export const useWorkspacePrimaryActions = ({
     if (isComposerReady) openReplyAll(selectedMessage, accountEmail);
   }, [accountEmail, isComposerReady, openReplyAll, selectedMessage]),
   onRequestReaderMove: useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!selectedMessage) return;
+    if (!selectedMessage || !selectedMailboxId) return;
     requestReaderMove(
       selectedMessage.id,
       selectedMessage.subject.trim() || "(No subject)",
       event.currentTarget,
+      selectedMailboxId,
     );
-  }, [requestReaderMove, selectedMessage]),
+  }, [requestReaderMove, selectedMailboxId, selectedMessage]),
 });

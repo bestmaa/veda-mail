@@ -5,6 +5,7 @@ vi.mock("@/infrastructure/providers/stalwart-jmap/provider-url-policy", () => ({
 }));
 
 import { StalwartMailGateway } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.gateway";
+import { StalwartProviderModule } from "@/infrastructure/providers/stalwart-jmap/stalwart-provider.module";
 import {
   JMAP_CORE,
   JMAP_MAIL,
@@ -15,6 +16,12 @@ afterEach(() => {
 });
 
 describe("Stalwart gateway attachment capability", () => {
+  it("advertises native conversations after the gateway contract is present", () => {
+    expect(
+      new StalwartProviderModule().manifest.capabilities.supportsThreads,
+    ).toBe(true);
+  });
+
   it("shares rotated OAuth state with later gateway operations", async () => {
     const fetchMock = vi.fn(
       async (

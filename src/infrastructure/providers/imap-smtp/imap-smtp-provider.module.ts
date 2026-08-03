@@ -65,7 +65,7 @@ export class ImapSmtpProviderModule implements ProviderModule {
       supportsProfileSettings: false,
       supportsPush: false,
       supportsServerSearch: true,
-      supportsThreads: false,
+      supportsThreads: true,
       supportsTwoFactorAuthentication: false,
     },
     description:

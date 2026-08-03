@@ -68,7 +68,7 @@ export class StalwartProviderModule implements ProviderModule {
       supportsProfileSettings: true,
       supportsPush: false,
       supportsServerSearch: true,
-      supportsThreads: false,
+      supportsThreads: true,
       supportsTwoFactorAuthentication: true,
     },
     description: "Connect directly to a Stalwart JMAP mail server.",

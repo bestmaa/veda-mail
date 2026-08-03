@@ -50,6 +50,7 @@ export const useComposerOriginalAttachmentImports = (
   setAttachments: SetAttachments,
   sessionScope: string,
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+  onChanged: () => void = () => undefined,
 ) => {
   const queue = useRef<Promise<void>>(Promise.resolve());
   const removeImport = useCallback(
@@ -97,6 +98,7 @@ export const useComposerOriginalAttachmentImports = (
         setAttachments((current) =>
           markComposerAttachmentReady(current, item.key, upload),
         );
+        onChanged();
       } catch (error) {
         registry.fail(item.key, operation);
         if (operation.controller.signal.aborted) return;
@@ -114,7 +116,7 @@ export const useComposerOriginalAttachmentImports = (
         );
       }
     },
-    [handleSessionFailure, registry, removeImport, sessionScope, setAttachments],
+    [handleSessionFailure, onChanged, registry, removeImport, sessionScope, setAttachments],
   );
 
   const enqueue = useCallback(
