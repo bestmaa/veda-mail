@@ -33,7 +33,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Scanned forwarding of original attachments    | Yes             | Yes                  |
 | Scanned plain-text preview (1 MiB)            | Yes             | Yes                  |
 | Verified inline CID JPEG/PNG/WebP             | Yes             | Yes                  |
-| Conversation/thread API                       | Not implemented | Not implemented      |
+| Conversation/thread API                       | Yes, exact JMAP thread | Yes, native ID or bounded reply-header fallback |
 | Push/new-mail subscription                    | Not implemented | Not implemented      |
 
 Both adapters receive the same validated, case-insensitively deduplicated
@@ -59,6 +59,38 @@ request at a time, drops duplicate message IDs across adjacent pages, rejects
 stale page completions after mailbox/search/session/preference changes, and
 keeps an already open message selected. Refresh deliberately restarts from the
 first page so new-mail movement cannot silently rewrite an accumulated list.
+
+Conversation reads use a dedicated 30-per-account/minute limit, a separate
+fixed 25-message page size, and stop after 100 verified messages. The public
+continuation cursor is HMAC-authenticated,
+expires after 30 minutes, and is bound to the authenticated connection and
+anchor message. Later pages also carry a hash of the exact ordered membership;
+provider changes restart pagination instead of silently skipping or duplicating
+mail. Clients submit only that opaque anchor and cursor; a provider
+thread ID, Message-ID, References value, or mailbox name is never accepted as
+authorization.
+
+Stalwart resolves the scoped anchor with `Email/get`, reads its server-owned
+`threadId`, obtains exact membership with `Thread/get`, and then fetches only
+those exact Email IDs. Standard IMAP prefers an exact OBJECTID or X-GM-EXT-1
+thread identifier when the server exposes one. Otherwise it builds a bounded
+graph from RFC Message-ID, In-Reply-To, and References fields across at most 32
+readable mailboxes. Those selected headers use a 65,537-byte protocol partial;
+anything beyond the 64-KiB accepted boundary marks the result truncated. IMAP
+SEARCH results are candidates only: every result is
+fetched, its identifier intersection is verified exactly, and its scoped
+mailbox identity plus UIDVALIDITY remain authoritative. Subject text is never
+used for grouping. Both adapters de-duplicate exact provider identities and
+sort by received time with opaque message ID as a deterministic tie-break.
+Cycles, malformed identifiers, oversized graphs, disappearing messages, and
+provider result mismatches fail closed or return an explicit bounded/truncated
+result without exposing upstream error text.
+
+Stalwart 0.16 may omit `oldState` from an otherwise conclusive successful
+`EmailSubmission/set` response. Veda Mail therefore validates the exact created
+submission and accepted delivery evidence instead of treating that optional
+state echo as mandatory. Ambiguous or mismatched evidence still becomes an
+uncertain delivery and is never retried automatically.
 
 Density, order, and preview visibility are encrypted Veda Mail account
 preferences and require no provider setting. Stalwart requests JMAP `preview`

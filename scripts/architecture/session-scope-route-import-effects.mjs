@@ -27,6 +27,14 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/mail-service/mail-service-profile.store", new Set(["mailServiceProfileStore"])],
   ["@/server/mail/attachment-original-import", new Set(["importOriginalAttachment"])],
   [
+    "@/server/mail/conversation-cursor",
+    new Set([
+      "conversationCursorSecret",
+      "decodeConversationCursor",
+      "encodeConversationCursor",
+    ]),
+  ],
+  [
     "@/server/mail/received-attachment-scan-http",
     new Set(["asReceivedAttachmentScanApiError"]),
   ],
@@ -144,6 +152,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/transport/http/message-list-preferences.schema", new Set(["*"])],
   ["@/transport/http/scheduled-send.schema", new Set(["*"])],
   ["@/transport/http/label.schema", new Set(["*"])],
+  ["@/transport/http/conversation-query", new Set(["parseConversationQuery"])],
   [
     "@/transport/http/draft-schemas",
     new Set([

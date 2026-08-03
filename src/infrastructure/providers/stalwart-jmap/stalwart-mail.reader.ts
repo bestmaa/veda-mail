@@ -10,6 +10,7 @@ import type {
   MessagePage,
   ReplyContext,
 } from "@/domain/mail/mail";
+import type { ConversationQuery } from "@/domain/mail/conversation";
 import { id, type MessageId } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import {
@@ -27,6 +28,7 @@ import {
   jmapQueryResultSchema,
   jmapReplyContextSchema,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.schema";
+import { readStalwartConversation } from "@/infrastructure/providers/stalwart-jmap/stalwart-conversation.reader";
 import {
   readStalwartMailboxSnapshot,
   type StalwartMailboxSnapshot,
@@ -59,13 +61,11 @@ const detailProperties = [
   "attachments",
   "bodyValues",
 ] as const;
-
 export class StalwartMailReader {
   public constructor(
     private readonly client: StalwartJmapClient,
     private readonly config: StalwartConfig,
   ) {}
-
   public async getAccount(): Promise<MailAccount> {
     const { accountId, session } = await this.getAccountContext();
     return {
@@ -75,15 +75,12 @@ export class StalwartMailReader {
       providerId: id.provider("stalwart-jmap"),
     };
   }
-
   public async listMailboxes(): Promise<readonly Mailbox[]> {
     return (await this.getMailboxSnapshot()).mailboxes;
   }
-
   public async getMailboxSnapshot(): Promise<StalwartMailboxSnapshot> {
     return readStalwartMailboxSnapshot(this.client, await this.getAccountId());
   }
-
   public async listMessages(query: MessageListQuery): Promise<MessagePage> {
     const { accountId } = await this.getAccountContext();
     const position = Number(query.cursor ?? "0");
@@ -176,6 +173,10 @@ export class StalwartMailReader {
     if (result.accountId !== accountId || email?.id !== messageId)
       throw new Error("Message not found.");
     return mapMessageDetail(email, accountId);
+  }
+
+  public getConversation(query: ConversationQuery) {
+    return readStalwartConversation(this.client, query);
   }
 
   public async downloadAttachment(

@@ -17,7 +17,7 @@ export class MockProviderModule implements ProviderModule {
       supportsProfileSettings: true,
       supportsPush: false,
       supportsServerSearch: true,
-      supportsThreads: false,
+      supportsThreads: true,
       supportsTwoFactorAuthentication: false,
     },
     description: "Explore every workflow with safe, deterministic demo mail.",

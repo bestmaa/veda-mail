@@ -59,6 +59,7 @@ export const useComposerAttachments = (
       setAttachments,
       sessionScope,
       handleSessionFailure,
+      onChanged,
     );
   const capability = useAttachmentCapability(
     initialProviderMaxBytes,

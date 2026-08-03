@@ -123,3 +123,8 @@ export interface JmapEmail {
   readonly threadId: string;
   readonly to?: readonly JmapAddress[] | null | undefined;
 }
+
+export interface JmapThread {
+  readonly emailIds: readonly string[];
+  readonly id: string;
+}

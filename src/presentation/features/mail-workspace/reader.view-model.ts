@@ -3,6 +3,7 @@ import type { LabelCapability, MailLabel } from "@/domain/mail/label";
 import type { LabelId } from "@/domain/shared/brand";
 import type { ReaderViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model";
 import {
   createAttachmentArchiveViewModel,
   createReceivedAttachmentViewModels,
@@ -48,6 +49,7 @@ export const createReaderViewModel = (input: {
   readonly attachmentDownload: ReaderAttachmentDownloadModel;
   readonly attachmentPreview: ReaderAttachmentPreviewModel;
   readonly canArchive: boolean;
+  readonly conversation: ConversationViewModel;
   readonly deletingLabelIds: ReadonlySet<LabelId>;
   readonly isLoading: boolean;
   readonly message: MessageDetail | null;
@@ -75,6 +77,7 @@ export const createReaderViewModel = (input: {
       body: "",
       canArchive: false,
       cc: "",
+      conversation: input.conversation,
       date: "",
       downloadAll: null,
       error: input.readerError,
@@ -133,6 +136,7 @@ export const createReaderViewModel = (input: {
     body: message.textBody,
     canArchive: input.canArchive,
     cc: message.cc.map((address) => address.email).join(", "),
+    conversation: input.conversation,
     date: formatFullDate(message.receivedAt),
     downloadAll: archive.downloadAll,
     error: input.readerError,

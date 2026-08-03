@@ -231,11 +231,13 @@ image digest
 The reusable-template slice was merged as `d0afd06` and published as the
 scanned, attested amd64/arm64 image digest
 `sha256:688e8a3b0c8f5dad2c5c4d3fd5c42fee59e702042de0d750c3cb8f6dcb465eac`.
-Production deployment and live health/critical-flow evidence remain open for
-both slices: the Dokploy hostname `panel.wovvtec.site` and public mail hostname
-`mail.wovvtec.site` still returned authoritative DNS `NXDOMAIN` on 2026-08-02.
-Completing this milestone still requires that live deployment evidence,
-delayed send, and the broader shortcut/accessibility audit listed above.
+Production deployment and live critical-flow evidence remain open for both
+slices. The earlier `wovvtec.site`/`mail.wovvtec.site` NXDOMAIN entry used
+incorrect hostnames; the canonical deployment endpoints are
+`panel.wovvtech.site` and `webmail.vedaconcepts.com`, and public webmail health
+was HTTP 200 on 2026-08-03. Completing this milestone still requires feature-
+specific live evidence, delayed send, and the broader shortcut/accessibility
+audit listed above.
 
 ## M4 — Fast mailbox management
 
@@ -351,6 +353,20 @@ recreation, and the public `/api/health` endpoint returned HTTP 200.
 Acceptance: thread membership and search semantics have provider contract tests;
 unsupported predicates are reported rather than silently ignored.
 
+The conversation vertical slice is locally complete. Stalwart resolves the
+authenticated anchor before using exact `Thread/get` membership. IMAP prefers
+an exact native thread identifier and otherwise follows a bounded, cycle-safe,
+post-verified Message-ID/In-Reply-To/References graph across readable
+mailboxes; it never groups by subject. Both adapters return 25-message pages,
+cap verified membership at 100, de-duplicate provider identities, and use
+deterministic chronological ordering. Signed connection/anchor-bound and
+membership-snapshot-bound cursors, dedicated rate limits, 64-KiB reply-header
+limits, stable loaded-page navigation, selected-message mailbox rights,
+strict route validation, sanitized failures, unit/provider-contract/component,
+and browser regressions cover the slice. The checkbox remains open until the
+merged immutable image is deployed and live authenticated Stalwart evidence is
+recorded; live IMAP evidence remains a separate acceptance requirement.
+
 The advanced-search slice is locally complete: the bounded AND grammar covers
 addresses, subject/body/text phrases, inclusive/exclusive protocol dates, strict
 binary sizes, attachment, read/star state, and authenticated mailbox-name/role
@@ -400,9 +416,9 @@ the verified amd64 and arm64 child digests are
 and
 `sha256:96428ff91f54f8d15ee03ea62076caf4450d164b0354844a4ff802da233b0be5`.
 The checkbox remains open until production deployment and live JMAP plus
-IMAP/SMTP schedule/cancel/restart evidence are recorded. That deployment could
-not proceed on 2026-08-02 because `wovvtec.site`, `panel.wovvtec.site`, and
-`mail.wovvtec.site` all returned DNS `NXDOMAIN`.
+IMAP/SMTP schedule/cancel/restart evidence are recorded. The earlier NXDOMAIN
+note used incorrect `wovvtec.site` hostnames; the canonical panel is
+`panel.wovvtech.site` and public webmail is `webmail.vedaconcepts.com`.
 
 ## M7 — Notifications, offline resilience, and accessibility
 

@@ -25,6 +25,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   comfortable, or spacious density, newest/oldest order, and an optional
   bounded message-list preview; plus reader, To/CC/BCC compose, Reply, Reply
   All, and Forward flows
+- Provider-backed conversation views: exact JMAP threads, native IMAP thread
+  identifiers when available, and a bounded reply-header graph fallback that
+  never groups unrelated mail by subject
 - Accessible loaded-message multi-select with bounded bulk read/unread,
   star/unstar, archive, spam, trash, restore, permission-aware drag/drop or
   keyboard/touch move, and confirmed permanent delete across JMAP and IMAP
@@ -75,7 +78,7 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Verified JMAP and IMAP CID images are scanned, magic-checked, bounded, and
   normalized to metadata-free WebP before entering an opaque sandbox as
   `blob:` content; remote images never load
-- Member-visible provider capabilities for drafts, threads, push, search, and
+- Member-visible provider capabilities for drafts, conversations, push, search, and
   attachments; unavailable features are stated rather than guessed
 - Sanitized inbound and outbound HTML mail; scripts and remote images are
   removed

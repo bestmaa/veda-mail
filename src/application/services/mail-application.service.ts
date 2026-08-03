@@ -12,6 +12,7 @@ import type {
   SendMessageInput,
 } from "@/domain/mail/mail";
 import type { MessageListSort } from "@/domain/mail/message-list-preferences";
+import type { ConversationQuery } from "@/domain/mail/conversation";
 import type { MailSearchQuery } from "@/domain/mail/mail-search";
 import type {
   MailboxId,
@@ -49,6 +50,10 @@ export class MailApplicationService {
 
   public getMessage(messageId: MessageId) {
     return this.gateway.getMessage(messageId);
+  }
+
+  public getConversation(query: ConversationQuery) {
+    return this.gateway.getConversation(query);
   }
 
   public cleanupLabel(input: LabelCleanupInput) {

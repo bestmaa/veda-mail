@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
+import type { ConversationQuery } from "@/domain/mail/conversation";
 import type {
   AttachmentDownloadInput,
   MessageAttachmentListInput,
@@ -106,6 +107,10 @@ export class StalwartMailGateway implements MailGateway {
 
   public getMessage(messageId: MessageId) {
     return this.reader.getMessage(messageId);
+  }
+
+  public getConversation(query: ConversationQuery) {
+    return this.reader.getConversation(query);
   }
 
   public listMessageAttachments(input: MessageAttachmentListInput) {

@@ -8,6 +8,7 @@ import { MessageFrameConnector } from "@/presentation/features/mail-workspace/co
 import { AttachmentPreviewDialogConnector } from "@/presentation/features/mail-workspace/connectors/attachment-preview-dialog.connector";
 import { ReceivedAttachmentListConnector } from "@/presentation/features/mail-workspace/connectors/received-attachment-list.connector";
 import { MessageReaderToolbarView } from "@/presentation/features/mail-workspace/ui/message-reader-toolbar.view";
+import { MessageConversationView } from "@/presentation/features/mail-workspace/ui/message-conversation.view";
 
 interface MessageReaderViewProps {
   readonly activeRole: MailboxRole | null;
@@ -86,6 +87,7 @@ export const MessageReaderView = ({
               {reader.error}
             </div>
           ) : null}
+          <MessageConversationView conversation={reader.conversation} />
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
             <ShieldCheck aria-hidden size={14} />
             Sanitized message body

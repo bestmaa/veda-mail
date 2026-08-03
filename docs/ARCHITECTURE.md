@@ -897,6 +897,41 @@ polite live region, opening a message moves focus to its subject after loading,
 and closing returns focus to the exact message trigger or the mailbox heading.
 A first-focus skip link bypasses global navigation without requiring shortcuts.
 
+## Conversation boundary
+
+The provider-independent `MailGateway.getConversation` contract accepts an
+authenticated, opaque anchor message ID plus a server-owned snapshot-bound
+provider cursor. The HTTP layer fixes the page size at 25, applies a dedicated
+30-per-account/minute conversation limit,
+and replaces the provider cursor with a 30-minute HMAC cursor bound to the
+connection and anchor. No protocol thread/header identifier crosses the public
+trust boundary.
+
+The JMAP adapter first resolves the anchor using exact `Email/get`, then uses
+its provider-owned `threadId` in `Thread/get` and fetches only the returned
+exact Email IDs. It validates account IDs, response partitions, anchor
+membership, and exact result membership before mapping a message.
+
+The IMAP adapter keeps the anchor's scoped mailbox, UID, and UIDVALIDITY
+authoritative. OBJECTID/X-GM-EXT-1 supplies an exact native thread path where
+available. Otherwise a bounded graph follows RFC Message-ID, In-Reply-To, and
+References fields across at most 32 readable mailboxes. Header SEARCH results
+are untrusted candidates because servers may perform substring matching; each
+candidate is fetched and exact identifier intersection is rechecked before it
+can expand the graph. Selected reply headers use a 65,537-byte partial fetch;
+anything beyond the 64-KiB accepted boundary is discarded and marks the result
+truncated. The graph allows no more than 64 identifiers, four
+search batches, and 100 verified messages. It never uses subject equality.
+
+Both paths de-duplicate exact provider message identities, order ascending by
+received time with opaque ID as the tie-break, and expose an explicit truncated
+flag at the 100-message safety boundary. Later-page cursors bind a hash of the
+exact ordered set and fail closed if provider changes would shift the offset.
+Selecting another loaded member keeps the original anchor and accumulated
+pages. Reader role, move source, and destructive permissions derive from that
+member's actual mailbox. The ordinary scoped detail route preserves existing
+mailbox and session authorization checks.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

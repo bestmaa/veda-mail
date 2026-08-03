@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Successful Stalwart 0.16 submissions no longer show an uncertain-delivery
+  warning solely because `EmailSubmission/set` omits its `oldState` echo. The
+  exact created submission and acceptance evidence remain mandatory, while
+  missing or contradictory delivery evidence still fails closed to prevent a
+  duplicate resend
 - Stalwart fresh sends and autosaved provider-draft sends whose primary
   `Email/set` and `EmailSubmission/set` results are conclusive but whose
   implicit Draft-to-Sent update is incomplete now verify the exact created
@@ -39,6 +44,15 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-backed conversation views with an authenticated, rate-limited,
+  cursor-paginated API and accessible reader navigation. Stalwart uses exact
+  `Email/get`/`Thread/get` membership; IMAP uses exact native thread IDs when
+  available and otherwise a bounded, post-verified Message-ID/In-Reply-To/
+  References graph. Results are capped at 100 messages, page 25 at a time,
+  deterministically ordered, snapshot-bound between pages, and never grouped
+  by subject. Dedicated rate limits, partial header fetches, stable in-reader
+  navigation, and selected-message mailbox rights bound provider cost and
+  cross-folder actions
 - Opt-in, encrypted per-account mailbox shortcuts with an accessible `?` guide,
   search/compose navigation, loaded-message traversal, reader actions, and
   `aria-keyshortcuts` discovery. Single-key commands are suppressed in every

@@ -59,13 +59,23 @@ export const useMessageMoveInteractions = ({
   const [dropTargetId, setDropTargetId] = useState<MailboxId | null>(null);
   const dragRef = useRef<DragIntent | null>(null);
   const dialogTrigger = useRef<HTMLButtonElement | null>(null);
-  const targets = useMemo(
+  const activeTargets = useMemo(
     () => messageMoveTargets(mailboxes, activeMailboxId),
     [activeMailboxId, mailboxes],
   );
-  const targetById = useMemo(
-    () => new Map(targets.map((target) => [target.id, target])),
-    [targets],
+  const activeTargetById = useMemo(
+    () => new Map(activeTargets.map((target) => [target.id, target])),
+    [activeTargets],
+  );
+  const dialogTargets = useMemo(
+    () => messageMoveTargets(
+      mailboxes, dialog?.sourceMailboxId ?? activeMailboxId,
+    ),
+    [activeMailboxId, dialog?.sourceMailboxId, mailboxes],
+  );
+  const dialogTargetById = useMemo(
+    () => new Map(dialogTargets.map((target) => [target.id, target])),
+    [dialogTargets],
   );
   const loadedIds = useMemo(
     () => new Set(messages.map(({ id }) => id)),
@@ -97,12 +107,13 @@ export const useMessageMoveInteractions = ({
     label: string,
     trigger: HTMLButtonElement,
     includeSelection: boolean,
+    sourceMailboxId = activeMailboxId,
   ) => {
     if (
-      !activeMailboxId ||
+      !sourceMailboxId ||
       isBusy ||
       (includeSelection && !loadedIds.has(messageId)) ||
-      !targets.length
+      !messageMoveTargets(mailboxes, sourceMailboxId).length
     ) {
       return;
     }
@@ -110,13 +121,14 @@ export const useMessageMoveInteractions = ({
       ? resolveDraggedMessageIds(messageId, selectedIds)
       : [messageId];
     dialogTrigger.current = trigger;
-    setDialog({ ids, label, sourceMailboxId: activeMailboxId });
-  }, [activeMailboxId, isBusy, loadedIds, selectedIds, targets.length]);
+    setDialog({ ids, label, sourceMailboxId });
+  }, [activeMailboxId, isBusy, loadedIds, mailboxes, selectedIds]);
 
   const confirmMove = useCallback((destinationMailboxId: string) => {
-    const target = targetById.get(destinationMailboxId as MailboxId);
+    const target = dialogTargetById.get(destinationMailboxId as MailboxId);
     const intent = dialog;
-    if (!target || !intent || isBusy || intent.sourceMailboxId !== activeMailboxId) {
+    if (!target || !intent || isBusy ||
+        !mailboxes.some(({ id }) => id === intent.sourceMailboxId)) {
       return;
     }
     closeDialog();
@@ -125,10 +137,10 @@ export const useMessageMoveInteractions = ({
       sourceMailboxId: intent.sourceMailboxId,
       type: "move",
     }, intent.ids);
-  }, [activeMailboxId, closeDialog, dialog, isBusy, mutateIds, targetById]);
+  }, [closeDialog, dialog, dialogTargetById, isBusy, mailboxes, mutateIds]);
 
   const row = useCallback((messageId: MessageId, label: string, canMove: boolean) => ({
-    canDrag: canMove && !isBusy && targets.length > 0,
+    canDrag: canMove && !isBusy && activeTargets.length > 0,
     onDragEnd: () => {
       if (dragRef.current) clearDrag("Move canceled.");
     },
@@ -139,7 +151,7 @@ export const useMessageMoveInteractions = ({
       }
       const ids = resolveDraggedMessageIds(messageId, selectedIds)
         .filter((candidate) => loadedIds.has(candidate));
-      if (!ids.length || !targets.length) {
+      if (!ids.length || !activeTargets.length) {
         event.preventDefault();
         return;
       }
@@ -162,10 +174,10 @@ export const useMessageMoveInteractions = ({
     onRequestMove: (event: React.MouseEvent<HTMLButtonElement>) =>
       requestMove(messageId, label, event.currentTarget, true),
   }), [activeMailboxId, clearDrag, isBusy, loadedIds, requestMove,
-    selectedIds, sessionScope, targets.length, viewKey]);
+    activeTargets.length, selectedIds, sessionScope, viewKey]);
 
   const folder = useCallback((mailboxId: MailboxId) => {
-    const target = targetById.get(mailboxId);
+    const target = activeTargetById.get(mailboxId);
     const accepts = Boolean(target && dragSnapshot && !isBusy);
     const acceptsEvent = (event: React.DragEvent<HTMLElement>) =>
       accepts && hasInternalType(event);
@@ -210,7 +222,7 @@ export const useMessageMoveInteractions = ({
       },
     };
   }, [activeMailboxId, clearDrag, dragSnapshot, dropTargetId, isBusy,
-    loadedIds, mutateIds, sessionScope, targetById, viewKey]);
+    activeTargetById, loadedIds, mutateIds, sessionScope, viewKey]);
 
   return {
     announcement,
@@ -220,11 +232,15 @@ export const useMessageMoveInteractions = ({
       label: dialog?.label ?? "",
       onCancel: closeDialog,
       onMove: confirmMove,
-      targets,
+      targets: dialogTargets,
     },
     folder,
-    requestReaderMove: (messageId: MessageId, label: string, trigger: HTMLButtonElement) =>
-      requestMove(messageId, label, trigger, false),
+    requestReaderMove: (
+      messageId: MessageId,
+      label: string,
+      trigger: HTMLButtonElement,
+      sourceMailboxId: MailboxId,
+    ) => requestMove(messageId, label, trigger, false, sourceMailboxId),
     row,
   };
 };

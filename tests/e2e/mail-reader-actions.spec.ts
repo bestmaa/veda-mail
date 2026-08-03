@@ -134,6 +134,12 @@ test("submits Reply All and Forward with the correct threading payload", async (
   page,
 }) => {
   const sentPayloads: Record<string, unknown>[] = [];
+  const savedDraftPayloads: Record<string, unknown>[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "POST" && request.method() !== "PUT") return;
+    if (!/\/api\/v1\/mail\/drafts(?:\/[^/]+)?$/u.test(request.url())) return;
+    savedDraftPayloads.push(request.postDataJSON() as Record<string, unknown>);
+  });
   await page.route("**/api/v1/mail/send", async (route) => {
     sentPayloads.push(
       route.request().postDataJSON() as Record<string, unknown>,
@@ -175,8 +181,8 @@ test("submits Reply All and Forward with the correct threading payload", async (
     .fill("colleague@example.com");
   await sendComposer(page);
 
-  expect(sentPayloads[1]).toMatchObject({
-    attachmentIds: [expect.stringMatching(/^[A-Za-z0-9_-]{32}$/)],
+  const forwarded = sentPayloads[1]!;
+  expect(forwarded).toMatchObject({
     bcc: [],
     cc: [],
     draftId: expect.stringMatching(
@@ -185,6 +191,22 @@ test("submits Reply All and Forward with the correct threading payload", async (
     subject: "Fwd: Revised product roadmap · Q3",
     to: [{ email: "colleague@example.com", name: null }],
   });
+  if (forwarded["providerDraftId"]) {
+    expect(forwarded).toMatchObject({
+      attachmentIds: [],
+      expectedDraftRevision: expect.stringMatching(/^mock-revision-/u),
+      providerDraftId: expect.stringMatching(/^mock-draft-/u),
+    });
+    expect(savedDraftPayloads).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        attachmentIds: [expect.stringMatching(/^[A-Za-z0-9_-]{32}$/u)],
+      }),
+    ]));
+  } else {
+    expect(forwarded).toMatchObject({
+      attachmentIds: [expect.stringMatching(/^[A-Za-z0-9_-]{32}$/u)],
+    });
+  }
   expect(sentPayloads[1]).not.toHaveProperty("inReplyTo");
   expect(sentPayloads[1]?.["body"]).toMatch(
     /---------- Forwarded message ----------[\s\S]*I added the revised delivery milestones/,

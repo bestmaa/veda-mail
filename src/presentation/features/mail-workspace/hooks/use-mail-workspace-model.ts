@@ -29,6 +29,8 @@ import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-pre
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
+import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model";
+import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
   readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
@@ -51,8 +53,7 @@ export const useMailWorkspaceModel = ({
   const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure);
   const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
   const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure);
-  const closeAttachmentPreview = attachmentPreview.close;
-  const brandingView = createBrandingViewModel(branding);
+  const closeAttachmentPreview = attachmentPreview.close; const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure);
@@ -126,17 +127,16 @@ export const useMailWorkspaceModel = ({
     workspace: mail.workspace,
   }), [composer.openSavedDraft, draftsEnabled, mail, mailboxManagement.openEdit,
     messageMove.folder, messageMove.row, navigation]);
-  const activeMailbox = workspace?.mailboxes.find(
-    (mailbox) => mailbox.id === mail.activeMailboxId);
-  const canPermanentlyDelete = activeMailbox?.rights.mayRemoveItems === true &&
-    (activeMailbox.role === "spam" || activeMailbox.role === "trash");
-  const destroyConfirmation = useBulkDestroyConfirmation(mail.bulk.selectedIds.size > 0, () => mail.activeMailboxId && void mail.bulk.mutate({ mailboxId: mail.activeMailboxId, type: "destroy" }));
-  const readerDestroyConfirmation = useBulkDestroyConfirmation(
-    Boolean(mail.selectedMessage && canPermanentlyDelete && !mail.isReaderMutating),
-    () => {
-      if (mail.activeMailboxId) mail.destroy(mail.activeMailboxId);
-    },
+  const activeMailbox = workspace?.mailboxes.find(({ id }) => id === mail.activeMailboxId);
+  const readerMailbox = resolveReaderMailbox(
+    workspace?.mailboxes ?? [], mail.activeMailboxId, mail.selectedMessage,
   );
+  const readerRole = readerMailbox?.role ?? null; const canPermanentlyDelete = readerMailbox?.rights.mayRemoveItems === true &&
+    (readerRole === "spam" || readerRole === "trash");
+  const destroyConfirmation = useBulkDestroyConfirmation(mail.bulk.selectedIds.size > 0, () => mail.activeMailboxId && void mail.bulk.mutate({ mailboxId: mail.activeMailboxId, type: "destroy" }));
+  const readerDestroyConfirmation = useBulkDestroyConfirmation(Boolean(
+    mail.selectedMessage && canPermanentlyDelete && !mail.isReaderMutating,
+  ), () => readerMailbox && mail.destroy(readerMailbox.id));
   const bulkActions = createBulkActionsViewModel({
     activeMailboxId: mail.activeMailboxId, bulk: mail.bulk,
     destroyConfirmation, workspace,
@@ -150,17 +150,20 @@ export const useMailWorkspaceModel = ({
     sessionScope, total: workspace?.messages.total ?? 0,
   });
   useEffect(() => closeAttachmentPreview(), [closeAttachmentPreview, mail.selectedMessage?.id]);
+  const conversation = useMessageConversationViewModel({
+    anchorMessageId: mail.selectedMessage?.id ?? null, handleSessionFailure: mail.handleSessionFailure,
+    onOpen: mail.selectMessage, sessionScope,
+  });
   const reader = useMemo(
     () =>
       createReaderViewModel({
         archiveDownload,
         attachmentDownload,
         attachmentPreview,
-        canArchive: Boolean(
-          mail.workspace?.mailboxes.some(
-            (mailbox) => mailbox.role === "archive",
-          ) && mailList.activeRole !== "spam" && mailList.activeRole !== "trash",
-        ),
+        canArchive: Boolean(mail.workspace?.mailboxes.some(
+          ({ role }) => role === "archive",
+        ) && readerRole !== "spam" && readerRole !== "trash"),
+        conversation,
         deletingLabelIds: new Set((workspace?.labelDeletions ?? []).map(({ labelId }) => labelId)),
         handleSessionFailure: mail.handleSessionFailure,
         isLoading: mail.isReaderLoading,
@@ -171,8 +174,8 @@ export const useMailWorkspaceModel = ({
         readerError: mail.readerError,
         sessionScope,
       }),
-    [mail.isReaderLoading, mail.readerError, mail.selectedMessage,
-      mail.handleSessionFailure, mail.workspace?.mailboxes, mailList.activeRole, archiveDownload,
+    [mail.isReaderLoading, mail.readerError, mail.selectedMessage, conversation,
+      mail.handleSessionFailure, mail.workspace?.mailboxes, readerRole, archiveDownload,
       attachmentDownload, attachmentPreview, sessionScope,
       workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel],
   );
@@ -182,6 +185,7 @@ export const useMailWorkspaceModel = ({
     openForward: composer.openForward, openReply: composer.openReply,
     openReplyAll: composer.openReplyAll,
     requestReaderMove: messageMove.requestReaderMove,
+    selectedMailboxId: readerMailbox?.id ?? null,
     selectedMessage: mail.selectedMessage,
   });
   const keyboardShortcuts = useWorkspaceKeyboardShortcuts(
@@ -194,9 +198,7 @@ export const useMailWorkspaceModel = ({
     branding: brandingView, ...mailList, bulkActions,
     canPermanentlyDelete,
     composer: createComposerViewModel(composer),
-    error:
-      mail.error ??
-      session.error ??
+    error: mail.error ?? session.error ??
       (emailSignatures.hasSessionChanged ? emailSignatures.error : null),
     isComposerReady,
     isLoading: mail.isLoading,
@@ -211,11 +213,8 @@ export const useMailWorkspaceModel = ({
       onRequestReaderMove: primaryActions.onRequestReaderMove,
     },
     loadMoreError: mail.loadMoreError,
-    navigation: {
-      isOpen: navigation.isOpen,
-      onClose: navigation.close,
-      onOpen: navigation.open,
-    },
+    navigation: { isOpen: navigation.isOpen, onClose: navigation.close,
+      onOpen: navigation.open },
     onArchive: mail.archive,
     onCloseReader: mail.closeReader,
     onCompose: primaryActions.onCompose,
@@ -233,6 +232,7 @@ export const useMailWorkspaceModel = ({
     onToggleStar: mail.toggleStar,
     deliveryNotice: partialDelivery.notice,
     reader,
+    readerRole,
     readerDestroyConfirmation,
     search: mail.search, searchInput: mail.onSearchInput,
     searchMaxLength: mail.searchMaxLength,
