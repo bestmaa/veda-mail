@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ZodType } from "zod";
-
 import type { DraftContent, DraftDetail } from "@/domain/mail/draft";
 import { id } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
@@ -13,9 +12,7 @@ import type { ClaimedDraft } from "@/infrastructure/providers/stalwart-jmap/stal
 import { sendClaimedStalwartDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-replacement";
 import type { JmapResponse } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { safeStalwartDraftShape } from "./stalwart-draft-safe-shape";
-
-const composeId = id.draft("56d5ae86-39bb-49dd-86cc-c5464b58c1c4");
-const providerDraftId = id.providerDraft("provider-draft");
+const composeId = id.draft("56d5ae86-39bb-49dd-86cc-c5464b58c1c4"), providerDraftId = id.providerDraft("provider-draft");
 const content: DraftContent = {
   bcc: [],
   body: "Saved content",
@@ -87,8 +84,11 @@ const result = (
   if (!match) throw new Error("missing response");
   return schema.parse(match[1]);
 };
-const incompleteSubmission = (createId: string, includeImplicit = true) =>
-  response(
+const incompleteSubmission = (
+  createId: string,
+  includeImplicit = true,
+  implicitEffect: "destroyed" | "updated" = "updated",
+) => response(
     [
       "Email/set",
       {
@@ -115,8 +115,12 @@ const incompleteSubmission = (createId: string, includeImplicit = true) =>
           {
             accountId: "account",
             newState: "sent-state",
-            oldState: "unexpected-copy-state",
-            updated: { "send-copy": null },
+            oldState: implicitEffect === "destroyed"
+              ? "copy-state"
+              : "unexpected-copy-state",
+            ...(implicitEffect === "destroyed"
+              ? { destroyed: ["send-copy"] }
+              : { updated: { "send-copy": null } }),
           },
           "submit-saved-draft",
         ] as JmapResponse["methodResponses"][number]]
@@ -126,6 +130,7 @@ const clientFor = (
   sentMembership: boolean,
   options: {
     readonly includeImplicit?: boolean;
+    readonly implicitEffect?: "destroyed" | "updated";
     readonly notFound?: readonly string[] | null;
   } = {},
 ) => {
@@ -138,6 +143,7 @@ const clientFor = (
       return incompleteSubmission(
         Object.keys(create)[0]!,
         options.includeImplicit,
+        options.implicitEffect,
       );
     }
     if (callId === "cleanup-submitted-email") {
@@ -186,15 +192,19 @@ const clientFor = (
     request,
   };
 };
-
 describe("Stalwart saved-draft Sent cleanup", () => {
-  it("repairs an incomplete implicit update before accepting", async () => {
-    const { client, request } = clientFor(true, { notFound: [] });
-
+  it("accepts exact implicit destruction after a strict submission", async () => {
+    const { client, request } = clientFor(false, { implicitEffect: "destroyed" });
     await expect(
       sendClaimedStalwartDraft(client, content, claimed, context),
     ).resolves.toMatchObject({ kind: "accepted", copy: { emailId: "send-copy" } });
-
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+  it("repairs an incomplete implicit update before accepting", async () => {
+    const { client, request } = clientFor(true, { notFound: [] });
+    await expect(
+      sendClaimedStalwartDraft(client, content, claimed, context),
+    ).resolves.toMatchObject({ kind: "accepted", copy: { emailId: "send-copy" } });
     const cleanupCall = request.mock.calls.find(
       ([calls]) => calls[0]?.[2] === "cleanup-submitted-email",
     )?.[0];
@@ -211,7 +221,6 @@ describe("Stalwart saved-draft Sent cleanup", () => {
       },
     });
   });
-
   it.each([undefined, null] as const)(
     "verifies a successful submission without an implicit update when notFound is %s",
     async (notFound) => {
@@ -219,7 +228,6 @@ describe("Stalwart saved-draft Sent cleanup", () => {
         includeImplicit: false,
         ...(notFound === undefined ? {} : { notFound }),
       });
-
       await expect(
         sendClaimedStalwartDraft(client, content, claimed, context),
       ).resolves.toMatchObject({
@@ -228,13 +236,10 @@ describe("Stalwart saved-draft Sent cleanup", () => {
       });
     },
   );
-
   it("does not mutate a copy without verified Sent membership", async () => {
     const { client, request } = clientFor(false);
-
-    await expect(
-      sendClaimedStalwartDraft(client, content, claimed, context),
-    ).resolves.toMatchObject({ kind: "uncertain", copy: { emailId: "send-copy" } });
+    const outcome = await sendClaimedStalwartDraft(client, content, claimed, context);
+    expect(outcome).toMatchObject({ kind: "uncertain", copy: { emailId: "send-copy" } });
     expect(
       request.mock.calls.some(
         ([calls]) => calls[0]?.[2] === "cleanup-submitted-email",
