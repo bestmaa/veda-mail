@@ -9,12 +9,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Stalwart sends whose primary `Email/set` and `EmailSubmission/set` results
-  are conclusive but whose implicit Draft-to-Sent update is incomplete now
-  verify the exact created message independently, repair only a confirmed Sent
-  message with a state-guarded idempotent update, and re-read provider state
-  before reporting success. Missing or ambiguous evidence remains an uncertain
-  delivery, preserving duplicate-send protection
+- Stalwart fresh sends and autosaved provider-draft sends whose primary
+  `Email/set` and `EmailSubmission/set` results are conclusive but whose
+  implicit Draft-to-Sent update is incomplete now verify the exact created
+  message independently, repair only a confirmed Sent message with a
+  state-guarded idempotent update, remove internal draft-operation keywords,
+  and re-read provider state before reporting success. Missing or ambiguous
+  evidence remains an uncertain delivery, preserving duplicate-send protection
 - The first edit of an already-loaded provider draft now seeds its exact draft
   ID and revision into the local recovery journal before preparing the update.
   This keeps the fail-closed recovery contract while allowing the provider save

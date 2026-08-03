@@ -49,7 +49,7 @@ export const savedDraftSubmissionOutcome = (
   accountId: string,
   emailId: string,
   expectedEmailState: string,
-): "accepted" | "retryable" | "uncertain" => {
+): "accepted" | "cleanup-eligible" | "retryable" | "uncertain" => {
   let submission: SetResult;
   try {
     submission = client.result(
@@ -88,15 +88,17 @@ export const savedDraftSubmissionOutcome = (
       Object.keys(submission.notDestroyed ?? {}).length === 0 &&
       implicit.length === 0;
     if (retryable) return "retryable";
-    const emailSet = jmapSetResultSchema.safeParse(implicit[0]?.[1]);
-    const accepted =
+    const strictSubmission =
       submission.accountId === accountId &&
       hasAdvancedJmapSetState(submission) &&
       exactKeys(submission.created, ["submit"]) &&
       Boolean(submission.created?.["submit"]?.id) &&
       noFailures(submission) &&
       (submission.destroyed?.length ?? 0) === 0 &&
-      Object.keys(submission.updated ?? {}).length === 0 &&
+      Object.keys(submission.updated ?? {}).length === 0;
+    if (!strictSubmission) return "uncertain";
+    const emailSet = jmapSetResultSchema.safeParse(implicit[0]?.[1]);
+    const accepted =
       implicit.length === 1 &&
       emailSet.success &&
       emailSet.data.accountId === accountId &&
@@ -106,7 +108,12 @@ export const savedDraftSubmissionOutcome = (
       noFailures(emailSet.data) &&
       Object.keys(emailSet.data.created ?? {}).length === 0 &&
       (emailSet.data.destroyed?.length ?? 0) === 0;
-    return accepted ? "accepted" : "uncertain";
+    if (accepted) return "accepted";
+    return implicit.length === 1 &&
+      emailSet.success &&
+      emailSet.data.accountId === accountId
+      ? "cleanup-eligible"
+      : "uncertain";
   } catch {
     return "uncertain";
   }
