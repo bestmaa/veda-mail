@@ -27,7 +27,7 @@ const submittedEmailResultSchema = z
   .object({
     accountId: z.string().min(1),
     list: z.array(submittedEmailSchema).max(1),
-    notFound: z.array(z.string()).max(1),
+    notFound: z.array(z.string()).max(1).nullish().transform((value) => value ?? []),
     state: z.string().min(1),
   })
   .passthrough();

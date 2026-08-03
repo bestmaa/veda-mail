@@ -87,7 +87,7 @@ const result = (
   if (!match) throw new Error("missing response");
   return schema.parse(match[1]);
 };
-const incompleteSubmission = (createId: string) =>
+const incompleteSubmission = (createId: string, includeImplicit = true) =>
   response(
     [
       "Email/set",
@@ -109,25 +109,36 @@ const incompleteSubmission = (createId: string) =>
       },
       "submit-saved-draft",
     ],
-    [
-      "Email/set",
-      {
-        accountId: "account",
-        newState: "sent-state",
-        oldState: "unexpected-copy-state",
-        updated: { "send-copy": null },
-      },
-      "submit-saved-draft",
-    ],
+    ...(includeImplicit
+      ? [[
+          "Email/set",
+          {
+            accountId: "account",
+            newState: "sent-state",
+            oldState: "unexpected-copy-state",
+            updated: { "send-copy": null },
+          },
+          "submit-saved-draft",
+        ] as JmapResponse["methodResponses"][number]]
+      : []),
   );
-const clientFor = (sentMembership: boolean) => {
+const clientFor = (
+  sentMembership: boolean,
+  options: {
+    readonly includeImplicit?: boolean;
+    readonly notFound?: readonly string[] | null;
+  } = {},
+) => {
   let reads = 0;
   const request = vi.fn(async (calls: readonly unknown[][]) => {
     const callId = calls[0]?.[2];
     if (callId === "create-send-copy") {
       const create = (calls[0]?.[1] as { create: Record<string, unknown> })
         .create;
-      return incompleteSubmission(Object.keys(create)[0]!);
+      return incompleteSubmission(
+        Object.keys(create)[0]!,
+        options.includeImplicit,
+      );
     }
     if (callId === "cleanup-submitted-email") {
       return response([
@@ -162,7 +173,9 @@ const clientFor = (sentMembership: boolean) => {
             ? clean ? { sent: true } : { drafts: true, sent: true }
             : { drafts: true },
         }],
-        notFound: [],
+        ...(options.notFound === undefined
+          ? {}
+          : { notFound: options.notFound }),
         state: clean ? "clean-state" : "dirty-state",
       },
       "verify-submitted-email",
@@ -176,7 +189,7 @@ const clientFor = (sentMembership: boolean) => {
 
 describe("Stalwart saved-draft Sent cleanup", () => {
   it("repairs an incomplete implicit update before accepting", async () => {
-    const { client, request } = clientFor(true);
+    const { client, request } = clientFor(true, { notFound: [] });
 
     await expect(
       sendClaimedStalwartDraft(client, content, claimed, context),
@@ -198,6 +211,23 @@ describe("Stalwart saved-draft Sent cleanup", () => {
       },
     });
   });
+
+  it.each([undefined, null] as const)(
+    "verifies a successful submission without an implicit update when notFound is %s",
+    async (notFound) => {
+      const { client } = clientFor(true, {
+        includeImplicit: false,
+        ...(notFound === undefined ? {} : { notFound }),
+      });
+
+      await expect(
+        sendClaimedStalwartDraft(client, content, claimed, context),
+      ).resolves.toMatchObject({
+        kind: "accepted",
+        copy: { emailId: "send-copy" },
+      });
+    },
+  );
 
   it("does not mutate a copy without verified Sent membership", async () => {
     const { client, request } = clientFor(false);
