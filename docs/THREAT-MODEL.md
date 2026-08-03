@@ -698,9 +698,10 @@ limiter and encrypted shared session repository.
   claim. Exact account-global compose membership is rechecked after claiming
   and every reconciliation. A single ordered JMAP batch creates a fresh Email
   and submits only its successful RFC creation reference. Acceptance requires
-  the exact submission and implicit Drafts-to-Sent result, including a
-  continuous Email-state chain, before best-effort cleanup of the claimed old
-  draft. Definitive non-submission removes the unsent copy and releases the
+  exact authoritative submission evidence. The implicit Drafts-to-Sent result
+  is trusted only with a continuous Email-state chain; otherwise the exact
+  copy is independently verified and repaired best-effort before cleanup of
+  the claimed old draft. Definitive non-submission removes the unsent copy and releases the
   claim. Any issued ambiguous, partial, contradictory, or cleanup-uncertain
   outcome keeps the old draft claimed/read-only, directs the member to check
   Sent, and cannot trigger an automatic duplicate submission.

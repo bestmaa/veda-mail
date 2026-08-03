@@ -236,10 +236,10 @@ describe("Stalwart saved-draft Sent cleanup", () => {
       });
     },
   );
-  it("does not mutate a copy without verified Sent membership", async () => {
+  it("accepts a strict submission without mutating an unverified Sent copy", async () => {
     const { client, request } = clientFor(false);
     const outcome = await sendClaimedStalwartDraft(client, content, claimed, context);
-    expect(outcome).toMatchObject({ kind: "uncertain", copy: { emailId: "send-copy" } });
+    expect(outcome).toMatchObject({ kind: "accepted", copy: { emailId: "send-copy" } });
     expect(
       request.mock.calls.some(
         ([calls]) => calls[0]?.[2] === "cleanup-submitted-email",

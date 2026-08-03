@@ -276,9 +276,11 @@ cannot both send it. Account-global compose-marker membership is then required
 to contain exactly that claimed Email, including after every reconciliation or
 retry. One JMAP batch creates a fresh send copy and submits it through the RFC
 creation reference `#createId`; submission therefore cannot run if creation
-failed. Acceptance requires the exact submission result, its one implicit
-Drafts-to-Sent update, and a continuous Email-state chain from creation to that
-update. Only then is the claimed old draft removed best-effort. A definitive
+failed. Acceptance requires the exact submission result. Its implicit
+Drafts-to-Sent update is trusted only with a continuous Email-state chain from
+creation; otherwise the exact created copy is independently verified and
+repaired best-effort without downgrading authoritative submission evidence.
+The claimed old draft is then removed best-effort. A definitive
 rejection removes the unsent copy and releases the claim. Any issued ambiguous,
 partial, contradictory, or cleanup-uncertain result leaves the old draft
 claimed and read-only, tells the member to check Sent, and is never submitted
