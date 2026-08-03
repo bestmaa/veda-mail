@@ -109,11 +109,13 @@ export const savedDraftSubmissionOutcome = (
       Object.keys(emailSet.data.created ?? {}).length === 0 &&
       (emailSet.data.destroyed?.length ?? 0) === 0;
     if (accepted) return "accepted";
-    return implicit.length === 1 &&
-      emailSet.success &&
-      emailSet.data.accountId === accountId
-      ? "cleanup-eligible"
-      : "uncertain";
+
+    // A successful EmailSubmission/set is authoritative submission evidence.
+    // Some Stalwart releases omit or vary the implicit Email/set response for
+    // onSuccessUpdateEmail. Verify the exact copy independently instead of
+    // leaving a delivered message uncertain solely because that optional
+    // response shape differs.
+    return "cleanup-eligible";
   } catch {
     return "uncertain";
   }
