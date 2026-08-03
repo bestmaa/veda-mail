@@ -9,6 +9,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Patched transitive `brace-expansion` and `postcss` releases after newly
+  published denial-of-service and source-map path disclosure advisories, and
+  pinned the safe versions through npm overrides
 - Successful Stalwart 0.16 submissions no longer show an uncertain-delivery
   warning solely because `EmailSubmission/set` omits its `oldState` echo. The
   exact created submission and acceptance evidence remain mandatory, while
