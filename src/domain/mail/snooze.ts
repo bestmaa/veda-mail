@@ -96,3 +96,20 @@ export type SnoozeProviderPlan = {
   readonly sourceUid: number;
   readonly sourceUidValidity: string;
 };
+
+export type SnoozeProviderState = "deleted" | "snoozed" | "visible";
+export interface SnoozePreflightInput {
+  readonly messageId: MessageId;
+  readonly operationId: string;
+  readonly ownedMailbox: SnoozeOwnedMailbox;
+  readonly sourceMailboxId: MailboxId;
+}
+export interface SnoozePreflightResult {
+  readonly from: readonly string[];
+  readonly plan: SnoozeProviderPlan;
+  readonly subject: string;
+}
+export interface SnoozeProviderOperationResult {
+  readonly ownedMailbox: SnoozeOwnedMailbox;
+  readonly plan: SnoozeProviderPlan;
+}
