@@ -45,8 +45,11 @@ export const resolveImapSnoozedPath = async (
   listed?: readonly ListResponse[],
 ): Promise<string | null> => {
   const mailboxes = listed ?? await client.list();
+  if (plan.snoozedMailboxObjectId && !client.capabilities.has("OBJECTID")) {
+    throw new Error("The owned Snoozed mailbox identity cannot be verified.");
+  }
   if (mailboxes.some(({ path }) => path === plan.snoozedMailbox)) {
-    if (plan.snoozedMailboxObjectId && client.capabilities.has("OBJECTID")) {
+    if (plan.snoozedMailboxObjectId) {
       const opened = await client.mailboxOpen(plan.snoozedMailbox);
       if (opened.mailboxId !== plan.snoozedMailboxObjectId) {
         throw new Error("The owned Snoozed mailbox identity changed.");

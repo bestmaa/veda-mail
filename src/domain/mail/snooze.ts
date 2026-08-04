@@ -99,7 +99,8 @@ export type SnoozeProviderPlan = {
   readonly sourceUidValidity: string;
 };
 
-export type SnoozeProviderState = "deleted" | "snoozed" | "visible";
+export type SnoozeProviderState =
+  | "deleted" | "restored-marker" | "snoozed" | "visible";
 export interface SnoozeProviderInspection {
   readonly ownedMailbox: SnoozeOwnedMailbox;
   readonly plan: SnoozeProviderPlan;

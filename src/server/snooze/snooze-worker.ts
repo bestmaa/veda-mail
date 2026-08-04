@@ -50,7 +50,8 @@ export const runSnoozeJob = async (
         await settleSnoozeJob(claim, { kind: "snoozed",
           mailbox: result.ownedMailbox, plan: result.plan });
       }
-    } else if (inspected.state !== "snoozed") {
+    } else if (inspected.state !== "snoozed" &&
+      inspected.state !== "restored-marker") {
       await settleSnoozeJob(claim, { kind: "complete", mailbox: inspected.ownedMailbox });
     } else {
       const restored = await port.restore(connection, inspected.plan);

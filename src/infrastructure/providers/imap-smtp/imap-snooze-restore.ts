@@ -28,12 +28,11 @@ export const restoreImapSnooze = (
   plan: ImapSnoozePlan,
 ): Promise<SnoozeProviderOperationResult> => withImapClient(config, async (client) => {
   const mailboxes = await client.list();
-  const snoozedPath = await resolveImapSnoozedPath(client, plan, mailboxes);
-  if (!snoozedPath) return { ownedMailbox: imapSnoozeOwnedMailbox(plan), plan };
   const destination = await resolveImapRestoreMailbox(
     client, mailboxes, plan.destinationMailbox, plan.sourceMailboxObjectId,
   );
-  const source = await markerIn(client, snoozedPath, plan.marker);
+  const snoozedPath = await resolveImapSnoozedPath(client, plan, mailboxes);
+  const source = snoozedPath ? await markerIn(client, snoozedPath, plan.marker) : null;
   if (!source) {
     const recovered = await markerIn(client, destination.path, plan.marker);
     if (!recovered) return { ownedMailbox: imapSnoozeOwnedMailbox(plan), plan };
@@ -41,6 +40,7 @@ export const restoreImapSnooze = (
     await removeAndVerifyMarker(client, recovered.uid, plan.marker);
     return { ownedMailbox: imapSnoozeOwnedMailbox(plan), plan };
   }
+  if (!snoozedPath) throw new Error("The Snoozed mailbox identity is unavailable.");
   await client.mailboxOpen(snoozedPath);
   const moved = await client.messageMove(source.uid, destination.path, { uid: true });
   if (!moved) throw new Error("The provider did not restore the snoozed message.");

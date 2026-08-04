@@ -155,7 +155,7 @@ export class ImapSnoozeAdapter {
       return {
         ownedMailbox: imapSnoozeOwnedMailbox(plan),
         plan,
-        state: restored ? "visible" : classifyImapSnoozeState(source, false),
+        state: restored ? "restored-marker" : classifyImapSnoozeState(source, false),
       };
     });
   }
