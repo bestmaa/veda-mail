@@ -152,6 +152,18 @@ ClamAV nested/limit fixtures cover the implementation. The malware-scanner
 checkbox remains open only until the immutable release is deployed and the live
 mailbox evidence above plus production scanner health are recorded.
 
+Production scanner deployment evidence is now recorded for merge
+`e4261652eb81bf346902f41fee62fc089e6bd4c7` (PR #79). Dokploy deployed the
+repository-backed `compose.yaml` from `main` with the release image
+`ghcr.io/bestmaa/veda-mail:sha-e4261652eb81bf346902f41fee62fc089e6bd4c7`;
+the corresponding scanned and attested multi-platform release digest is
+`sha256:18b3ee45d7f5685f3bd7238c3f79cbf29ddcda4d9cecc198df7b9857ca513581`.
+Both the Veda Mail and ClamAV containers reported healthy on 2026-08-04. The
+application retained the named `veda-mail-data` volume at `/data`; ClamAV used
+the read-only Dokploy-managed `clamd.conf` bind and its named signature volume.
+The public sign-in surface loaded successfully. The checkbox remains open only
+for the dedicated live JMAP and IMAP/SMTP mailbox scan/download evidence above.
+
 ## M3 — Draft-safe, rich composing
 
 - [x] Provider-backed create, update, list, open, and discard drafts
@@ -426,10 +438,13 @@ the verified amd64 and arm64 child digests are
 `sha256:219d72003e194a9f72da5fa94c818d6811ec1078a47287a528a1475880f4a554`
 and
 `sha256:96428ff91f54f8d15ee03ea62076caf4450d164b0354844a4ff802da233b0be5`.
-The checkbox remains open until production deployment and live JMAP plus
-IMAP/SMTP schedule/cancel/restart evidence are recorded. The earlier NXDOMAIN
-note used incorrect `wovvtec.site` hostnames; the canonical panel is
-`panel.wovvtech.site` and public webmail is `webmail.vedaconcepts.com`.
+Production now has the external scheduled-job key and canonical public URL,
+and the implementation is deployed in release
+`e4261652eb81bf346902f41fee62fc089e6bd4c7`. The checkbox remains open until
+live JMAP plus IMAP/SMTP schedule/cancel/restart evidence is recorded. The
+earlier NXDOMAIN note used incorrect `wovvtec.site` hostnames; the canonical
+panel is `panel.wovvtech.site` and public webmail is
+`webmail.vedaconcepts.com`.
 
 ## M7 — Notifications, offline resilience, and accessibility
 
