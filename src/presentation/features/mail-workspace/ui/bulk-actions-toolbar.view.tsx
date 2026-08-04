@@ -1,5 +1,6 @@
 import {
   Archive,
+  Clock3,
   FolderInput,
   Tag,
   Mail,
@@ -109,6 +110,7 @@ export const BulkActionsToolbarView = ({
           <Archive aria-hidden size={18} />
         </ActionButton>
       ) : null}
+      {bulk.canSnooze && bulk.onSnooze ? <ActionButton disabled={bulk.isBusy} label="Snooze selected messages" onClick={bulk.onSnooze}><Clock3 aria-hidden size={18} /></ActionButton> : null}
       {bulk.canSpam ? (
         <ActionButton
           disabled={bulk.isBusy}

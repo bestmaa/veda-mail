@@ -2,6 +2,7 @@ import type { MailWorkspace } from "@/domain/mail/mail";
 import { id, type MailboxId } from "@/domain/shared/brand";
 import type { useMailBulkSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-bulk-selection";
 import { messageMoveTargets } from "@/presentation/features/mail-workspace/message-move-policy";
+import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
 
 export interface BulkActionsViewModel {
   readonly allLoadedSelected: boolean;
@@ -9,6 +10,7 @@ export interface BulkActionsViewModel {
   readonly canDestroy: boolean;
   readonly canRestore: boolean;
   readonly canSpam: boolean;
+  readonly canSnooze?: boolean;
   readonly canStop: boolean;
   readonly canTrash: boolean;
   readonly destroyConfirmation: {
@@ -34,6 +36,7 @@ export interface BulkActionsViewModel {
   readonly onRemoveLabel: (labelId: string) => void;
   readonly onRestore: () => void;
   readonly onSpam: () => void;
+  readonly onSnooze?: () => void;
   readonly onStar: () => void;
   readonly onStop: () => void;
   readonly onToggleAllLoaded: () => void;
@@ -55,12 +58,14 @@ interface BulkActionsOptions {
     readonly onRequest: () => void;
   };
   readonly workspace: MailWorkspace | null;
+  readonly snooze?: MailSnoozeViewModel;
 }
 
 export const createBulkActionsViewModel = ({
   activeMailboxId,
   bulk,
   destroyConfirmation,
+  snooze,
   workspace,
 }: BulkActionsOptions): BulkActionsViewModel => {
   const activeMailbox = workspace?.mailboxes.find(
@@ -90,6 +95,7 @@ export const createBulkActionsViewModel = ({
       Boolean(inboxTarget) &&
       (activeMailbox?.role === "spam" || activeMailbox?.role === "trash"),
     canSpam: !disabled && !lifecycleMailbox && Boolean(spamTarget),
+    canSnooze: snooze?.canSnoozeBulk ?? false,
     canStop: bulk.canStop,
     canTrash: !disabled && !lifecycleMailbox && Boolean(trashTarget),
     destroyConfirmation: {
@@ -138,6 +144,7 @@ export const createBulkActionsViewModel = ({
         });
       }
     },
+    onSnooze: snooze?.onOpenBulk ?? (() => undefined),
     onStar: () =>
       void bulk.mutate({ type: "set-starred", value: true }),
     onStop: bulk.stop,

@@ -1,5 +1,6 @@
 import {
   Archive,
+  Clock3,
   FolderInput,
   Mail,
   MailOpen,
@@ -13,6 +14,7 @@ import {
 import type { MailboxRole } from "@/domain/mail/mail";
 import type { ReaderViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { ReaderActionView } from "@/presentation/features/mail-workspace/ui/reader-action.view";
+import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
 
 interface Props {
   readonly activeRole: MailboxRole | null;
@@ -28,6 +30,7 @@ interface Props {
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly reader: ReaderViewModel;
+  readonly snooze?: MailSnoozeViewModel;
 }
 
 export const MessageReaderToolbarView = ({
@@ -44,8 +47,9 @@ export const MessageReaderToolbarView = ({
   onToggleRead,
   onToggleStar,
   reader,
+  snooze,
 }: Props) => (
-  <div className="flex h-14 shrink-0 items-center gap-1 border-b border-slate-200 px-3 md:px-5">
+  <div className="flex h-14 shrink-0 items-center gap-1 overflow-x-auto border-b border-slate-200 px-3 md:px-5">
     <ReaderActionView
       label="Back to message list"
       onClick={onClose}
@@ -64,6 +68,7 @@ export const MessageReaderToolbarView = ({
         <Archive aria-hidden size={18} />
       </ReaderActionView>
     ) : null}
+    {snooze?.canSnoozeReader ? <ReaderActionView disabled={isBusy || snooze.isBusy} label="Snooze message" onClick={snooze.onOpenReader}><Clock3 aria-hidden size={18} /></ReaderActionView> : null}
     <ReaderActionView
       disabled={isBusy || reader.isLoading || !reader.messageId}
       label="Move message"
