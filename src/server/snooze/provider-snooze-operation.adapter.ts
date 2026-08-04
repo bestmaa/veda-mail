@@ -5,7 +5,6 @@ import {
   StalwartJmapHttpError,
   StalwartJmapMethodError,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap-client-helpers";
-import { clearGateway } from "@/server/mail/gateway-cache";
 import { getMailService } from "@/server/mail/mail-service";
 import {
   installSnoozeOperationPort,
@@ -28,6 +27,8 @@ const withService = async <T>(
   connection: ProviderConnection,
   task: (service: Awaited<ReturnType<typeof getMailService>>) => Promise<T>,
 ): Promise<T> => {
+  // Member requests share this connection-scoped gateway with the other mail
+  // routes. The durable worker clears its gateway after the whole job instead.
   try {
     return await task(await getMailService(connection));
   } catch (error) {
@@ -39,8 +40,6 @@ const withService = async <T>(
       throw new SnoozeProviderError("terminal");
     }
     throw new SnoozeProviderError("transient");
-  } finally {
-    clearGateway(connection.id);
   }
 };
 
