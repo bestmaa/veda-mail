@@ -26,6 +26,7 @@ import { StalwartDraftStore } from "@/infrastructure/providers/stalwart-jmap/sta
 import { DraftHasAttachmentsError } from "@/domain/mail/draft-errors";
 import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
+import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { cleanupStalwartLabel } from "@/infrastructure/providers/stalwart-jmap/stalwart-label-cleanup";
 import { emptyStalwartMailbox } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox-empty";
@@ -33,6 +34,11 @@ import {
   downloadStalwartCalendarPart,
   listStalwartCalendarParts,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-calendar.reader";
+import { createOwnedSieveCompiler } from "@/infrastructure/providers/sieve/sieve-owned-compiler";
+import { sieveDeliveryMailboxNames } from "@/infrastructure/providers/sieve/sieve-mailbox-names";
+import { StalwartRuleAdapter } from "@/infrastructure/providers/stalwart-jmap/stalwart-rule-adapter";
+import { StalwartSieveTransport } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-transport";
+import { previewStalwartRules } from "@/infrastructure/providers/stalwart-jmap/stalwart-rule-preview";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
@@ -91,6 +97,10 @@ export class StalwartMailGateway implements MailGateway {
 
   public async getLabelCapability() {
     return "supported" as const;
+  }
+
+  public getRuleCapability() {
+    return this.ruleAdapter({}).getCapability();
   }
 
   public downloadAttachment(input: AttachmentDownloadInput) {
@@ -153,6 +163,15 @@ export class StalwartMailGateway implements MailGateway {
     return this.mailboxes.mutate(mutation);
   }
 
+  public async deployRules(input: RuleDeploymentInput) {
+    const mailboxes = await this.reader.listMailboxes();
+    return this.ruleAdapter(sieveDeliveryMailboxNames(mailboxes)).deploy(input);
+  }
+
+  public previewRules(input: RulePreviewInput) {
+    return previewStalwartRules(this.client, input);
+  }
+
   public saveDraft(...input: Parameters<StalwartDraftStore["save"]>) {
     return this.drafts.save(...input);
   }
@@ -177,5 +196,13 @@ export class StalwartMailGateway implements MailGateway {
 
   public updateTwoFactor(input: MemberTwoFactorUpdate) {
     return this.accountManager.updateTwoFactor(input);
+  }
+
+  private ruleAdapter(mailboxNames: Readonly<Record<string, string>>) {
+    return new StalwartRuleAdapter(
+      this.client,
+      new StalwartSieveTransport(this.client, this.config),
+      createOwnedSieveCompiler(mailboxNames),
+    );
   }
 }

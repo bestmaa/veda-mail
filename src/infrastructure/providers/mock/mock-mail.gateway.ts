@@ -14,6 +14,7 @@ import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import type { CalendarPartDownloadInput } from "@/domain/mail/calendar";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
+import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
 import { id, type MessageId } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type {
@@ -37,6 +38,11 @@ import { cleanupMockLabel } from "@/infrastructure/providers/mock/mock-label-cle
 import { emptyMockMailbox } from "@/infrastructure/providers/mock/mock-mailbox-empty";
 import { listMockMessages } from "@/infrastructure/providers/mock/mock-message-list";
 import { readMockConversation } from "@/infrastructure/providers/mock/mock-conversation";
+import {
+  deployMockRules,
+  mockRuleCapability,
+  previewMockRules,
+} from "@/infrastructure/providers/mock/mock-rule-preview";
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
@@ -45,6 +51,12 @@ export class MockMailGateway implements MailGateway {
   public readonly getDraft = this.drafts.get.bind(this.drafts); public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
   public async getLabelCapability() {
     return "supported" as const;
+  }
+  public async getRuleCapability() { return mockRuleCapability(); }
+  public deployRules(input: RuleDeploymentInput): Promise<never> {
+    return deployMockRules(input); }
+  public async previewRules(input: RulePreviewInput) {
+    return previewMockRules(this.messages, input);
   }
   public readonly saveDraft = this.drafts.save.bind(this.drafts);
   private archiveFailureLookups = 0;
@@ -150,7 +162,6 @@ export class MockMailGateway implements MailGateway {
       this.messages[index] = { ...current, labelIds: [...labels] };
       return;
     }
-
     let nextMailbox = mockMailboxIds.inbox;
     if (mutation.type === "archive") {
       nextMailbox = mockMailboxIds.archive;

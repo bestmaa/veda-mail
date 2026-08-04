@@ -187,6 +187,20 @@ equivalent MailComposer calendar event. Imported events remain in Veda Mail's
 encrypted `member-calendar-events.json`; no CalDAV, DNS, HTTP URL, proprietary
 Google calendar service, or upstream provider calendar API is contacted.
 
+Mail rules use the open Sieve language rather than an application-side polling
+worker. Stalwart accounts are discovered and updated through RFC 9661 JMAP
+Sieve. Standard IMAP accounts expose rules only when the administrator also
+configures an RFC 5804 ManageSieve host, port, and TLS/STARTTLS mode; IMAP and
+SMTP alone do not provide a standards-based rule-management protocol.
+
+Both adapters compile the same bounded ordered rule book and manage only the
+single HMAC-owned `Veda Mail Rules` script. Veda Mail does not replace or
+deactivate an unknown script, including a provider vacation script. Capability
+discovery controls attachment, envelope-recipient, file-into, and IMAP-flag
+features. Provider-native Sieve performs delivery-time actions even while Veda
+Mail is offline; Veda Mail does not retain mailbox credentials for background
+rule execution.
+
 Both adapters expose a runtime-gated manual draft workflow. Veda Mail can
 create, open, update, discard, and send provider-backed drafts in the
 account's provider Drafts mailbox. For JMAP, a stable compose UUID and

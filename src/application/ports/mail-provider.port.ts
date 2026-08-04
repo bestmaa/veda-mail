@@ -35,6 +35,13 @@ import type {
   LabelCleanupResult,
 } from "@/domain/mail/label";
 import type {
+  RuleCapability,
+  RuleDeploymentInput,
+  RuleDeploymentResult,
+  RulePreviewInput,
+  RulePreviewResult,
+} from "@/domain/mail/rule";
+import type {
   MailboxEmptyInput,
   MailboxEmptyResult,
 } from "@/domain/mail/mailbox-empty";
@@ -75,6 +82,7 @@ export interface MailGateway {
   getDraftCapability(): Promise<DraftCapability>;
   getLabelCapability(mailboxId: MailboxId): Promise<LabelCapability>;
   getMemberProfile(): Promise<MemberProfile>;
+  getRuleCapability(): Promise<RuleCapability>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
   getConversation(query: ConversationQuery): Promise<ConversationPage>;
@@ -88,6 +96,8 @@ export interface MailGateway {
   listMessages(query: MessageListQuery): Promise<MessagePage>;
   mutateMessage(mutation: MessageMutation): Promise<void>;
   mutateMailbox(mutation: MailboxMutation): Promise<MailboxMutationResult>;
+  deployRules(input: RuleDeploymentInput): Promise<RuleDeploymentResult>;
+  previewRules(input: RulePreviewInput): Promise<readonly RulePreviewResult[]>;
   saveDraft(input: DraftSaveInput): Promise<DraftDetail>;
   sendMessage(input: SendMessageInput): Promise<SendReceipt>;
   testConnection(): Promise<void>;

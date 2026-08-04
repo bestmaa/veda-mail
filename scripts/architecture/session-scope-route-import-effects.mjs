@@ -175,6 +175,15 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/templates/email-template.schema", new Set(["parseEmailTemplatePutOperation"])],
   ["@/server/templates/email-template.store", new Set(["emailTemplateStore"])],
   [
+    "@/server/rules/rule-deployment.service",
+    new Set(["mutateAndDeployRules", "readRuleWorkspace", "reconcileRules"]),
+  ],
+  ["@/server/rules/rule-preview.service", new Set(["previewMailRules"])],
+  [
+    "@/server/rules/rule-schema",
+    new Set(["parseMailRulePreviewInput", "parseMailRulePutOperation"]),
+  ],
+  [
     "@/server/scheduled-send/scheduled-send-http",
     new Set([
       "assertSchedulableProviderDraft",

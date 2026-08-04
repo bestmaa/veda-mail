@@ -5,6 +5,10 @@ import { DraftConflictError } from "@/domain/mail/draft-errors";
 import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type {
+  RuleDeploymentInput,
+  RulePreviewInput,
+} from "@/domain/mail/rule";
+import type {
   AttachmentDownload,
   AttachmentDownloadInput,
   MessageAttachmentListInput,
@@ -29,6 +33,11 @@ import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client
 import { cleanupImapLabel } from "@/infrastructure/providers/imap-smtp/imap-label-cleanup";
 import { emptyImapMailbox } from "@/infrastructure/providers/imap-smtp/imap-mailbox-empty";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { previewImapRules } from "@/infrastructure/providers/imap-smtp/imap-rule-preview";
+import {
+  deployImapRules,
+  getImapRuleCapability,
+} from "@/infrastructure/providers/imap-smtp/manage-sieve-gateway";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
 import {
@@ -94,6 +103,17 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public getLabelCapability(mailboxId: Parameters<ImapMailReader["getLabelCapability"]>[0]) {
     return this.reader.getLabelCapability(mailboxId);
+  }
+  public async getRuleCapability() {
+    return getImapRuleCapability(this.config);
+  }
+  public async deployRules(input: RuleDeploymentInput) {
+    const mailboxes = await this.reader.listMailboxes();
+    return deployImapRules(this.config, mailboxes, input);
+  }
+
+  public previewRules(input: RulePreviewInput) {
+    return previewImapRules(this.config, input);
   }
 
   public downloadAttachment(

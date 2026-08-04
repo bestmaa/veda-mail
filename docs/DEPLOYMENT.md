@@ -166,6 +166,21 @@ variable, Stalwart/IMAP setting, provider migration, CardDAV service, scheduled
 worker, or new port is required. Writes are atomic but process-serialized, so
 keep one Veda Mail writer for the mounted `/data` volume.
 
+Mail rules create `/data/member-rules.json` lazily on the first rule mutation.
+Keep that file with the matching external `VEDA_MAIL_JOB_KEY`: owner indexes,
+rule books, deployment state, redacted audit entries, and the short-lived
+deployment intent are encrypted with Rules-specific HKDF subkeys. A restored
+file with the wrong key fails closed. Keep one writer for the mounted `/data`
+volume. Successful or failed provider deployment removes the stored provider
+connection; native Sieve executes the rule without a Veda worker.
+
+Stalwart JMAP Sieve requires no additional public Veda Mail port. For a Standard
+IMAP/SMTP provider, optionally configure its ManageSieve hostname, usually port
+4190, and select TLS or STARTTLS in the admin mail-service form. Add that
+hostname to `VEDA_MAIL_ALLOWED_PROVIDER_HOSTS`. The Veda Mail container needs
+outbound access to the endpoint, but its port must not be published from the
+Veda Mail service.
+
 The default bind is `127.0.0.1:3000`. Keep it that way behind a local reverse
 proxy. To bind another host port:
 

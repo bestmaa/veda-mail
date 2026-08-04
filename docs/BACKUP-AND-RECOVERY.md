@@ -19,6 +19,8 @@ the supplied Compose deployment.
   revisions encrypted in `member-contacts.json`
 - Per-provider/mailbox imported calendar events and revisions encrypted in
   `member-calendar-events.json`
+- Per-provider/mailbox ordered mail rules, deployment state, and redacted
+  control-plane audit encrypted in `member-rules.json`
 - Per-provider/mailbox density, sort, preview, send-confirmation, and Undo Send
   delay preferences encrypted in `message-list-preferences.json`
 - Per-provider/mailbox custom folder colors encrypted in
@@ -43,8 +45,11 @@ cancellation.
 
 `VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
 deployment secret manager. A `/data` backup without that exact key cannot
-recover scheduled jobs. Never rotate it while jobs remain: empty the queue,
-stop the service, rotate the key, and then restart.
+recover scheduled jobs or mail-rule books. Never rotate it while either file
+contains state. Veda Mail does not currently provide an in-place key migration;
+simply changing the secret makes those stores fail closed. Preserve this key
+for the installation lifetime and rehearse any exceptional migration on an
+isolated restored copy first.
 
 Interrupted-compose recovery is browser-local IndexedDB state bound to one
 member session. It is not stored in `/data`, is not included in server backups,
@@ -74,7 +79,7 @@ or content, the same backup also contains
 its decryption key. Protect the archive as sensitive mailbox-adjacent data.
 
 Signature, template, contact, calendar-event, mailbox-appearance, and label-catalog write
-serialization is process-local. Keep
+serialization is process-local, as is the mail-rule store writer. Keep
 exactly one Veda Mail process writing the volume, and stop that writer or use
 an operator-verified atomic whole-volume snapshot. Never mount one writable
 `/data` directory into multiple application replicas or merge individual

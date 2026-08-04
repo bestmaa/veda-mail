@@ -82,7 +82,12 @@ describe("member authentication provider contract", () => {
       smtpSecurity: "starttls",
     });
     expect(service).not.toHaveProperty("secret");
-    expect(service).toMatchObject({ smtpMaxMessageBytes: "0" });
+    expect(service).toMatchObject({
+      manageSieveHost: "",
+      manageSievePort: "",
+      manageSieveSecurity: "",
+      smtpMaxMessageBytes: "0",
+    });
     expect(
       provider.createMemberConfig(service, {
         email: "member@example.com",
@@ -103,6 +108,32 @@ describe("member authentication provider contract", () => {
     expect(provider.manifest.capabilities.maxAttachmentBytes).toBe(
       18 * 1024 * 1024,
     );
+    expect(provider.manifest.fields.filter(({ name }) =>
+      name.startsWith("manageSieve"))).toHaveLength(3);
+  });
+
+  it("requires a complete TLS-only ManageSieve endpoint", async () => {
+    const provider = new ImapSmtpProviderModule();
+    await expect(provider.validateServiceConfig({
+      imapHost: "imap.example.com",
+      imapPort: "993",
+      imapSecurity: "tls",
+      manageSievePort: "4190",
+      smtpHost: "smtp.example.com",
+      smtpPort: "465",
+      smtpSecurity: "tls",
+    })).rejects.toThrow("Complete all ManageSieve settings");
+    expect(() => provider.parseServiceConfig({
+      imapHost: "imap.example.com",
+      imapPort: "993",
+      imapSecurity: "tls",
+      manageSieveHost: "sieve.example.com",
+      manageSievePort: "4190",
+      manageSieveSecurity: "cleartext",
+      smtpHost: "smtp.example.com",
+      smtpPort: "465",
+      smtpSecurity: "tls",
+    })).toThrow();
   });
 
   it("advertises received downloads separately from outbound attachment limits", () => {
