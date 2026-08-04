@@ -438,8 +438,8 @@ security gates. The two rules checkboxes remain open until the immutable release
 is deployed and authenticated JMAP plus generic ManageSieve evidence is
 recorded.
 
-The provider-independent Snooze slice is locally complete and awaiting release
-plus authenticated JMAP and Standard IMAP evidence. It persists a unique owned
+The provider-independent Snooze slice is released and deployed, and is awaiting
+authenticated JMAP and Standard IMAP evidence. It persists a unique owned
 mailbox intent before provider mutation, encrypts owner-scoped jobs and current
 provider credentials beneath `VEDA_MAIL_JOB_KEY`, commits durable random leases,
 and reconciles interrupted hide/wake operations without delivery-style
@@ -449,9 +449,16 @@ wildcard keywords, UIDVALIDITY, and a unique recovery marker; ambiguous source,
 target, or lost-response state fails closed. Owner keys include a stable
 provider-account scope, terminal/authentication outcomes erase credentials, and
 the accessible UI supports reader/bulk snooze, local-time presets, partial
-rollback, Restore now, Change time, and Retry. The Snooze checkbox remains open
-until a scanned immutable release is deployed and authenticated provider,
-restart, and wake evidence is recorded.
+rollback, Restore now, Change time, and Retry. PR #84 was merged as
+`b294da8d4b898ed94e1db9762b9795046da179d0`; release run `30941780940`
+published the scanned, attested amd64/arm64 image index
+`sha256:50b16d35ded7c6888228fda5d5589112a669680a6e14fbd59ed05eec445048cb`.
+Dokploy deployed that exact Git revision from `main`, then aligned
+`VEDA_MAIL_IMAGE` to the immutable SHA tag and completed a second deployment.
+Both the Veda Mail and ClamAV containers reported healthy on 2026-08-04, and
+the public `/api/health` endpoint returned HTTP 200 with `status: ok`. The
+Snooze checkbox remains open until authenticated provider, restart, and wake
+evidence is recorded.
 
 The provider-independent scheduled-send implementation is released:
 exact-revision provider drafts, encrypted credential/content envelopes under an
