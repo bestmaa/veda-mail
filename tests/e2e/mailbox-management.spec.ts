@@ -13,6 +13,15 @@ const mailboxResponse = (method: "DELETE" | "PATCH" | "POST") =>
     response.url().endsWith("/api/v1/mail/mailboxes") &&
     response.request().method() === method;
 
+const expectSuccessfulResponse = async (response: Response) => {
+  const body = await response.text();
+  expect(
+    response.ok(),
+    `Expected ${response.request().method()} ${response.url()} to succeed; ` +
+      `received ${response.status()}: ${body}`,
+  ).toBe(true);
+};
+
 test("creates, nests, recolors, renames, and safely deletes custom mailboxes", async ({
   page,
 }) => {
@@ -57,7 +66,7 @@ test("creates, nests, recolors, renames, and safely deletes custom mailboxes", a
   await dialog.getByRole("button", { name: "Delete" }).click();
   const deleteChild = page.waitForResponse(mailboxResponse("DELETE"));
   await dialog.getByRole("button", { name: "Delete mailbox" }).click();
-  expect((await deleteChild).ok()).toBe(true);
+  await expectSuccessfulResponse(await deleteChild);
   await expect(page.getByRole("button", { name: "Manage E2E Client Alpha" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Manage E2E Projects" }).click();
@@ -65,6 +74,6 @@ test("creates, nests, recolors, renames, and safely deletes custom mailboxes", a
   await dialog.getByRole("button", { name: "Delete" }).click();
   const deleteParent = page.waitForResponse(mailboxResponse("DELETE"));
   await dialog.getByRole("button", { name: "Delete mailbox" }).click();
-  expect((await deleteParent).ok()).toBe(true);
+  await expectSuccessfulResponse(await deleteParent);
   await expect(page.getByRole("button", { name: "Manage E2E Projects" })).toHaveCount(0);
 });

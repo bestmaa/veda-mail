@@ -183,6 +183,10 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     "@/server/rules/rule-schema",
     new Set(["parseMailRulePreviewInput", "parseMailRulePutOperation"]),
   ],
+  ["@/server/snooze/snooze-service", new Set(["createSnoozes", "readSnoozeWorkspace",
+    "rescheduleSnooze", "restoreSnooze", "retrySnooze", "snoozeBulkHttpStatus"])],
+  ["@/transport/http/snooze.schema", new Set(["parseSnoozeBulk", "snoozeIdSchema",
+    "snoozePatchSchema"])],
   [
     "@/server/scheduled-send/scheduled-send-http",
     new Set([

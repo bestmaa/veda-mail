@@ -1,11 +1,10 @@
 import { ContactRound, LoaderCircle, LogOut, MoreHorizontal, PenLine, Plus, Settings, X } from "lucide-react";
-
 import type {
   FolderViewModel,
   MailWorkspaceViewProps,
 } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { MailboxIconView } from "@/presentation/features/mail-workspace/ui/mailbox-icon.view";
-import { ScheduledSidebarButtonView } from "@/presentation/features/mail-workspace/ui/scheduled-sidebar-button.view";
+import { ScheduledSidebarButtonView } from "@/presentation/features/mail-workspace/ui/scheduled-sidebar-button.view"; import { SnoozedSidebarButtonView } from "@/presentation/features/mail-workspace/ui/snoozed-sidebar-button.view";
 
 interface MailSidebarViewProps {
   readonly account: MailWorkspaceViewProps["account"];
@@ -20,7 +19,7 @@ interface MailSidebarViewProps {
   readonly onCloseNavigation: () => void;
   readonly onCompose: () => void;
   readonly session: MailWorkspaceViewProps["session"];
-  readonly scheduled: MailWorkspaceViewProps["scheduled"];
+  readonly scheduled: MailWorkspaceViewProps["scheduled"]; readonly snooze: MailWorkspaceViewProps["snooze"];
   readonly settings: MailWorkspaceViewProps["settings"];
 }
 
@@ -37,7 +36,7 @@ export const MailSidebarView = ({
   onCloseNavigation,
   onCompose,
   session,
-  scheduled,
+  scheduled, snooze,
   settings,
 }: MailSidebarViewProps) => (
   <aside
@@ -100,6 +99,7 @@ export const MailSidebarView = ({
       </div>
       <div className="space-y-1">
         <ScheduledSidebarButtonView scheduled={scheduled} />
+        <SnoozedSidebarButtonView snooze={snooze} />
         {folders.map((folder) => (
           <div
             className={`group relative rounded-xl ${

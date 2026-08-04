@@ -14,8 +14,7 @@ import { useAttachmentArchiveDownload } from "@/presentation/features/mail-works
 import { useAttachmentDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-download";
 import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hooks/use-attachment-preview";
 import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model"; import { useMailRulesModel } from "@/presentation/features/mail-workspace/hooks/use-mail-rules-model";
-import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model"; import { initials } from "@/presentation/shared/formatters/mail-formatters";
-import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
+import { useWorkspaceSnooze } from "@/presentation/features/mail-workspace/hooks/use-workspace-snooze"; import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model"; import { initials } from "@/presentation/shared/formatters/mail-formatters"; import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
 import { useBulkDestroyConfirmation } from "@/presentation/features/mail-workspace/hooks/use-bulk-destroy-confirmation";
 import { useMailboxWorkspaceManagement } from "@/presentation/features/mail-workspace/hooks/use-mailbox-workspace-management";
 import { useLabelManagement } from "@/presentation/features/mail-workspace/hooks/use-label-management";
@@ -58,8 +57,9 @@ export const useMailWorkspaceModel = ({
   const { refresh: refreshMail } = mail; const { refresh: refreshScheduled } = scheduled;
   const onDraftChanged = useCallback(() => { refreshMail(); void refreshScheduled(); }, [refreshMail, refreshScheduled]);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
+  const activeMailbox = workspace?.mailboxes.find(({ id }) => id === mail.activeMailboxId) ?? null; const snooze = useWorkspaceSnooze(mail, activeMailbox);
   const rules = useMailRulesModel(sessionScope,
-    (workspace?.mailboxes ?? []).filter(({ rights, role }) => rights.mayAddItems === true && role !== "drafts" && role !== "sent").map(({ id, name }) => ({ id, label: name })),
+    (workspace?.mailboxes ?? []).filter(({ id, rights, role }) => id !== snooze.snoozedMailboxId && rights.mayAddItems === true && role !== "drafts" && role !== "sent").map(({ id, name }) => ({ id, label: name })),
     (workspace?.labels ?? []).map(({ id, name }) => ({ id, label: name })), mail.handleSessionFailure);
   const isComposerReady = Boolean(sessionScope) &&
     !emailSignatures.isLoading &&
@@ -102,7 +102,7 @@ export const useMailWorkspaceModel = ({
   const messageMove = useMessageMoveInteractions({
     activeMailboxId: mail.activeMailboxId,
     isBusy: mail.bulk.isBusy || mail.isReaderMutating,
-    mailboxes: workspace?.mailboxes ?? [],
+    mailboxes: (workspace?.mailboxes ?? []).filter(({ id }) => id !== snooze.snoozedMailboxId),
     messages: workspace?.messages.items ?? [],
     mutateIds: mail.bulk.mutateIds,
     selectedIds: mail.bulk.selectedIds,
@@ -123,13 +123,13 @@ export const useMailWorkspaceModel = ({
     onSelectMessage: mail.selectMessage,
     onToggleMessage: mail.bulk.toggle,
     pendingMessageIds: mail.pendingMessageIds,
+    snoozedMailboxId: snooze.snoozedMailboxId,
     selectedMessageIds: mail.bulk.selectedIds,
     selectionDisabled: mail.isReaderMutating || mail.bulk.isBusy,
     ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
     workspace: mail.workspace,
   }), [composer.openSavedDraft, draftsEnabled, mail, mailboxManagement.openEdit,
-    messageMove.folder, messageMove.row, navigation]);
-  const activeMailbox = workspace?.mailboxes.find(({ id }) => id === mail.activeMailboxId);
+    messageMove.folder, messageMove.row, navigation, snooze.snoozedMailboxId]);
   const readerMailbox = resolveReaderMailbox(
     workspace?.mailboxes ?? [], mail.activeMailboxId, mail.selectedMessage,
   );
@@ -141,7 +141,7 @@ export const useMailWorkspaceModel = ({
   ), () => readerMailbox && mail.destroy(readerMailbox.id));
   const bulkActions = createBulkActionsViewModel({
     activeMailboxId: mail.activeMailboxId, bulk: mail.bulk,
-    destroyConfirmation, workspace,
+    destroyConfirmation, snooze, workspace,
   });
   const mailboxLifecycle = useMailboxLifecycle({
     activeMailboxId: mail.activeMailboxId, activeRole: mailList.activeRole,
@@ -236,7 +236,7 @@ export const useMailWorkspaceModel = ({
     reader, recipientSuggestions,
     readerRole,
     readerDestroyConfirmation,
-    search: mail.search, searchInput: mail.onSearchInput,
+    search: mail.search, searchInput: mail.onSearchInput, snooze,
     searchMaxLength: mail.searchMaxLength,
     searchValue: mail.searchValue, scheduled, undoSend: composer.undoSend,
     session: {

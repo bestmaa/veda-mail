@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
       config.resolve.alias = {
         ...config.resolve.alias,
         "./server/scheduled-send/scheduled-send-worker$": false,
+        "./server/snooze/provider-snooze-operation.adapter$": false,
+        "./server/snooze/snooze-worker$": false,
         imapflow: false,
         mailparser: false,
         nodemailer: false,

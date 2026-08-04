@@ -36,6 +36,8 @@ the supplied Compose deployment.
 - Encrypted scheduled-message content, provider-draft references, retry state,
   and the minimum provider credential required by the background worker in
   `scheduled-jobs.json`
+- Encrypted snooze intents, owned-mailbox identity, recovery locators, retry
+  state, and bounded wake credentials in `snooze-jobs.json`
 
 It does not contain mailbox messages. Messages remain on the configured mail
 server. Active member sessions are process-memory only and disappear on
@@ -45,8 +47,9 @@ cancellation.
 
 `VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
 deployment secret manager. A `/data` backup without that exact key cannot
-recover scheduled jobs or mail-rule books. Never rotate it while either file
-contains state. Veda Mail does not currently provide an in-place key migration;
+recover scheduled jobs, snooze jobs, or mail-rule books. Never rotate it while
+any of those files contains state. Veda Mail does not currently provide an
+in-place key migration;
 simply changing the secret makes those stores fail closed. Preserve this key
 for the installation lifetime and rehearse any exceptional migration on an
 isolated restored copy first.

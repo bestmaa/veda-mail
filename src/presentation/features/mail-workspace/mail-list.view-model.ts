@@ -29,6 +29,7 @@ interface MailListOptions {
   readonly onToggleMessage: (id: MessageId) => void;
   readonly pendingMessageIds?: ReadonlySet<string>;
   readonly selectedMessageIds: ReadonlySet<string>;
+  readonly snoozedMailboxId?: string | null;
   readonly selectionDisabled: boolean;
   readonly selectedMessageId?: string;
   readonly workspace: MailWorkspace | null;
@@ -48,6 +49,7 @@ export const createMailListViewModel = ({
   selectedMessageIds,
   selectionDisabled,
   selectedMessageId,
+  snoozedMailboxId,
   workspace,
 }: MailListOptions): {
   readonly activeFolder: string;
@@ -65,7 +67,7 @@ export const createMailListViewModel = ({
   return {
     activeFolder: activeMailbox?.name ?? "Inbox",
     activeRole: activeMailbox?.role ?? null,
-    folders: flattenMailboxTree(workspace?.mailboxes ?? []).map(({ depth, mailbox }) => ({
+    folders: flattenMailboxTree((workspace?.mailboxes ?? []).filter(({ id }) => id !== snoozedMailboxId)).map(({ depth, mailbox }) => ({
       ...folderMoveProps(mailbox.id),
       canManage: mailbox.role === "custom" && mailbox.rights.mayRename,
       color: mailbox.color,

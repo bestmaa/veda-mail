@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import type {
@@ -27,6 +29,7 @@ import { DraftHasAttachmentsError } from "@/domain/mail/draft-errors";
 import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
+import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { cleanupStalwartLabel } from "@/infrastructure/providers/stalwart-jmap/stalwart-label-cleanup";
 import { emptyStalwartMailbox } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox-empty";
@@ -39,6 +42,7 @@ import { sieveDeliveryMailboxNames } from "@/infrastructure/providers/sieve/siev
 import { StalwartRuleAdapter } from "@/infrastructure/providers/stalwart-jmap/stalwart-rule-adapter";
 import { StalwartSieveTransport } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-transport";
 import { previewStalwartRules } from "@/infrastructure/providers/stalwart-jmap/stalwart-rule-preview";
+import { StalwartSnoozeAdapter } from "@/infrastructure/providers/stalwart-jmap/stalwart-snooze-adapter";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
@@ -47,6 +51,7 @@ export class StalwartMailGateway implements MailGateway {
   private readonly reader: StalwartMailReader;
   private readonly mailboxes: StalwartMailboxManager;
   private readonly writer: StalwartMailWriter;
+  private readonly snooze: StalwartSnoozeAdapter;
 
   public constructor(private readonly config: StalwartConfig) {
     this.client = new StalwartJmapClient(config);
@@ -55,6 +60,7 @@ export class StalwartMailGateway implements MailGateway {
     this.drafts = new StalwartDraftStore(this.client, this.reader);
     this.writer = new StalwartMailWriter(this.client, this.reader);
     this.accountManager = new StalwartAccountManager(this.client, this.reader);
+    this.snooze = new StalwartSnoozeAdapter(this.client, this.reader);
   }
 
   public discardDraft(...input: Parameters<StalwartDraftStore["discard"]>) {
@@ -101,6 +107,30 @@ export class StalwartMailGateway implements MailGateway {
 
   public getRuleCapability() {
     return this.ruleAdapter({}).getCapability();
+  }
+
+  public getSnoozeCapability() { return this.snooze.getCapability(); }
+  public async getSnoozeAccountScope() {
+    const origin = new URL(this.config.baseUrl).origin.toLowerCase();
+    const accountId = await this.reader.getAccountId();
+    return createHash("sha256").update(JSON.stringify([origin, accountId]))
+      .digest("base64url");
+  }
+  public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
+  public preflightSnooze(input: SnoozePreflightInput) {
+    return this.snooze.preflight(input);
+  }
+  public inspectSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
+    return this.snooze.inspect(plan);
+  }
+  public hideSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
+    return this.snooze.hide(plan);
+  }
+  public restoreSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
+    return this.snooze.restore(plan);
   }
 
   public downloadAttachment(input: AttachmentDownloadInput) {

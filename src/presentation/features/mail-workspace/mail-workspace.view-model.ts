@@ -20,7 +20,7 @@ import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@
 import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/undo-send.view-model";
 import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
 import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
-import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model"; import type { RecipientSuggestionsModel } from "@/presentation/features/mail-workspace/recipient-suggestions.view-model"; import type { ContactManagementViewModel } from "@/presentation/features/mail-workspace/contact-management.view-model";
+import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model"; import type { RecipientSuggestionsModel } from "@/presentation/features/mail-workspace/recipient-suggestions.view-model"; import type { ContactManagementViewModel } from "@/presentation/features/mail-workspace/contact-management.view-model"; import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -245,5 +245,5 @@ export interface MailWorkspaceViewProps {
   readonly reader: ReaderViewModel | null; readonly readerRole: MailboxRole | null; readonly recipientSuggestions: RecipientSuggestionsModel;
   readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
   readonly search: MailSearchViewModel; readonly searchMaxLength: number;
-  readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string; readonly scheduled: ScheduledSendManagerViewModel; readonly session: MemberSessionViewModel;
+  readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string; readonly scheduled: ScheduledSendManagerViewModel; readonly session: MemberSessionViewModel; readonly snooze: MailSnoozeViewModel;
   readonly settings: AccountSettingsViewModel; readonly total: number; readonly hasMoreMessages: boolean; readonly undoSend: UndoSendViewModel; }

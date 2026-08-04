@@ -24,6 +24,8 @@ import { UndoSendNoticeView } from "@/presentation/features/mail-workspace/ui/un
 import { KeyboardShortcutsDialogConnector } from "@/presentation/features/mail-workspace/connectors/keyboard-shortcuts-dialog.connector";
 import { ReaderFocusConnector } from "@/presentation/features/mail-workspace/connectors/reader-focus.connector";
 import { ContactManagementView } from "@/presentation/features/mail-workspace/ui/contact-management.view";
+import { MailSnoozeDialogView } from "@/presentation/features/mail-workspace/ui/mail-snooze-dialog.view";
+import { SnoozedManagerView } from "@/presentation/features/mail-workspace/ui/snoozed-manager.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -44,6 +46,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     props.messageListPreferences.dialog.isOpen ||
     props.scheduled.isOpen ||
     props.contactManagement.isOpen ||
+    props.snooze.manager.isOpen || props.snooze.dialog.isOpen ||
     props.messageMove.dialog.isOpen;
   return (
   <>
@@ -96,6 +99,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
         session={props.session}
         scheduled={props.scheduled}
         settings={props.settings}
+        snooze={props.snooze}
       />
       <div
         className={`min-h-0 ${props.reader ? "hidden lg:block" : "block"}`}
@@ -140,6 +144,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
             onToggleRead={props.onToggleRead}
             onToggleStar={props.onToggleStar}
             reader={props.reader}
+            snooze={props.snooze}
           />
         ) : (
           <EmptyReaderView
@@ -191,6 +196,8 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   <LabelManagementView management={props.labelManagement} />
   <ScheduledSendManagerConnector manager={props.scheduled} />
   <ContactManagementView management={props.contactManagement} />
+  <SnoozedManagerView snooze={props.snooze} />
+  <MailSnoozeDialogView snooze={props.snooze} />
   <UndoSendNoticeView undo={props.undoSend} />
   <KeyboardShortcutsDialogConnector shortcuts={props.keyboardShortcuts} />
   <div aria-live="polite" className="sr-only">

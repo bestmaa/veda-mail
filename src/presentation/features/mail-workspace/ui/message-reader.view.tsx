@@ -11,6 +11,7 @@ import { MessageConversationView } from "@/presentation/features/mail-workspace/
 import { MessageBodyConnector } from "@/presentation/features/mail-workspace/connectors/message-body.connector";
 import { MessageDetailsView } from "@/presentation/features/mail-workspace/ui/message-details.view";
 import { CalendarInvitationConnector } from "@/presentation/features/mail-workspace/connectors/calendar-invitation.connector";
+import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
 
 interface MessageReaderViewProps {
   readonly activeRole: MailboxRole | null;
@@ -30,6 +31,7 @@ interface MessageReaderViewProps {
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly reader: ReaderViewModel;
+  readonly snooze?: MailSnoozeViewModel;
 }
 
 export const MessageReaderView = ({
@@ -50,6 +52,7 @@ export const MessageReaderView = ({
   onToggleRead,
   onToggleStar,
   reader,
+  snooze,
 }: MessageReaderViewProps) => (
   <section className="flex min-h-0 flex-col bg-white" id="message-reader-region">
     <MessageReaderToolbarView
@@ -66,6 +69,7 @@ export const MessageReaderView = ({
       onToggleRead={onToggleRead}
       onToggleStar={onToggleStar}
       reader={reader}
+      {...(snooze ? { snooze } : {})}
     />
 
     <article

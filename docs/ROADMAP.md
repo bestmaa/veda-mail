@@ -425,8 +425,8 @@ search](./ADVANCED-SEARCH.md).
 Acceptance: restart, duplicate-delivery, daylight-saving, and provider-outage
 tests prove scheduled work is not lost or executed twice.
 
-Status: the filters/rules v1 implementation is locally complete and awaiting
-release plus live-provider evidence; snooze is not implemented. Rules use
+Status: the filters/rules v1 implementation is released and awaiting
+authenticated live-provider evidence. Rules use
 provider-native Sieve through JMAP or TLS-protected ManageSieve, an encrypted
 owner-isolated intent/audit store, revision conflict checks, deterministic
 owned-script signing, capability gating, and a bounded exact-semantics dry-run
@@ -437,6 +437,21 @@ covered by unit, integration, component, architecture, production-build, and
 security gates. The two rules checkboxes remain open until the immutable release
 is deployed and authenticated JMAP plus generic ManageSieve evidence is
 recorded.
+
+The provider-independent Snooze slice is locally complete and awaiting release
+plus authenticated JMAP and Standard IMAP evidence. It persists a unique owned
+mailbox intent before provider mutation, encrypts owner-scoped jobs and current
+provider credentials beneath `VEDA_MAIL_JOB_KEY`, commits durable random leases,
+and reconciles interrupted hide/wake operations without delivery-style
+`uncertain`. JMAP preserves unrelated mailbox memberships and keywords through
+state-conditioned patches. Standard IMAP requires MOVE, UIDPLUS, verified
+wildcard keywords, UIDVALIDITY, and a unique recovery marker; ambiguous source,
+target, or lost-response state fails closed. Owner keys include a stable
+provider-account scope, terminal/authentication outcomes erase credentials, and
+the accessible UI supports reader/bulk snooze, local-time presets, partial
+rollback, Restore now, Change time, and Retry. The Snooze checkbox remains open
+until a scanned immutable release is deployed and authenticated provider,
+restart, and wake evidence is recorded.
 
 The provider-independent scheduled-send implementation is released:
 exact-revision provider drafts, encrypted credential/content envelopes under an

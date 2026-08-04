@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
   AttachmentDownloadInput,
@@ -15,6 +16,7 @@ import type { ConversationQuery } from "@/domain/mail/conversation";
 import type { CalendarPartDownloadInput } from "@/domain/mail/calendar";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
+import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze"; // provider DTOs
 import { id, type MessageId } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
 import type {
@@ -43,34 +45,50 @@ import {
   mockRuleCapability,
   previewMockRules,
 } from "@/infrastructure/providers/mock/mock-rule-preview";
+import {
+  hideMockSnooze,
+  inspectMockSnooze,
+  mockSnoozeMailbox,
+  preflightMockSnooze,
+  restoreMockSnooze,
+} from "@/infrastructure/providers/mock/mock-snooze-adapter";
 export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
   private readonly mailboxes = new MockMailboxStore();
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
   public readonly getDraft = this.drafts.get.bind(this.drafts); public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
-  public async getLabelCapability() {
-    return "supported" as const;
-  }
+  public async getLabelCapability() { return "supported" as const; }
   public async getRuleCapability() { return mockRuleCapability(); }
   public deployRules(input: RuleDeploymentInput): Promise<never> {
     return deployMockRules(input); }
   public async previewRules(input: RulePreviewInput) {
     return previewMockRules(this.messages, input);
   }
+  public async getSnoozeCapability() { return {
+    maxMessages: 100, snoozedMailboxId: mockMailboxIds.snoozed,
+    supported: true } as const; }
+  public async getSnoozeAccountScope() {
+    return createHash("sha256").update("veda-mail/mock-account").digest("base64url"); }
+  public async snoozeMailboxIntent() { return mockSnoozeMailbox(); }
+  public async preflightSnooze(input: SnoozePreflightInput) {
+    return preflightMockSnooze(this.messages, input); }
+  public async inspectSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
+    return inspectMockSnooze(this.messages, plan); }
+  public async hideSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
+    return hideMockSnooze(this.messages, plan); }
+  public async restoreSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
+    return restoreMockSnooze(this.messages, plan); }
   public readonly saveDraft = this.drafts.save.bind(this.drafts);
   private archiveFailureLookups = 0;
   private messages = createMockMessages();
-  private profile = {
-    displayName: "Sample Member",
-    email: "member@example.com",
-  };
-  public async changePassword(input: MemberPasswordChange): Promise<void> {
-    void input;
-  }
+  private profile = { displayName: "Sample Member", email: "member@example.com" };
+  public async changePassword(input: MemberPasswordChange): Promise<void> { void input; }
   public async cleanupLabel(input: LabelCleanupInput) {
-    return cleanupMockLabel(this.messages, input);
-  }
+    return cleanupMockLabel(this.messages, input); }
   public async emptyMailbox(input: MailboxEmptyInput, cursorSecret: string) {
     void cursorSecret; return emptyMockMailbox(this.messages, input);
   }
@@ -95,25 +113,16 @@ export class MockMailGateway implements MailGateway {
       providerId: id.provider("mock"),
     };
   }
-  public async getMaxAttachmentBytes() {
-    return 18 * 1024 * 1024;
-  }
-  public async getMemberProfile() {
-    return this.profile;
-  }
-  public async getTwoFactorEnabled() {
-    return false;
-  }
+  public async getMaxAttachmentBytes() { return 18 * 1024 * 1024; }
+  public async getMemberProfile() { return this.profile; }
+  public async getTwoFactorEnabled() { return false; }
   public async getMessage(messageId: MessageId): Promise<MessageDetail> {
     const message = this.messages.find((item) => item.id === messageId);
-    if (!message) {
-      throw new Error("Message not found.");
-    }
+    if (!message) throw new Error("Message not found.");
     return structuredClone(message);
   }
   public async getConversation(query: ConversationQuery) {
-    return readMockConversation(this.messages, query);
-  }
+    return readMockConversation(this.messages, query); }
   public async listMessageAttachments(input: MessageAttachmentListInput) {
     if (input.messageId === mockArchiveFailureMessageId) {
       this.archiveFailureLookups += 1;
@@ -126,9 +135,7 @@ export class MockMailGateway implements MailGateway {
     }
     return listMockMessageAttachments(this.messages, input);
   }
-  public async listCalendarParts() {
-    return [];
-  }
+  public async listCalendarParts() { return []; }
   public async listMailboxes(): Promise<readonly Mailbox[]> {
     return this.mailboxes.list([...this.messages, ...this.drafts.messages()]);
   }
@@ -143,9 +150,7 @@ export class MockMailGateway implements MailGateway {
       (message) => message.id === mutation.messageId,
     );
     const current = this.messages[index];
-    if (!current) {
-      throw new Error("Message not found.");
-    }
+    if (!current) throw new Error("Message not found.");
     if (mutation.type === "destroy") { this.messages.splice(index, 1); return; }
     if (mutation.type === "set-read") {
       this.messages[index] = { ...current, isUnread: !mutation.value };
@@ -163,11 +168,9 @@ export class MockMailGateway implements MailGateway {
       return;
     }
     let nextMailbox = mockMailboxIds.inbox;
-    if (mutation.type === "archive") {
-      nextMailbox = mockMailboxIds.archive;
-    } else if (mutation.type === "delete") {
-      nextMailbox = mockMailboxIds.trash;
-    } else if (mutation.type === "move") {
+    if (mutation.type === "archive") nextMailbox = mockMailboxIds.archive;
+    else if (mutation.type === "delete") nextMailbox = mockMailboxIds.trash;
+    else if (mutation.type === "move") {
       if (!current.mailboxIds.includes(mutation.sourceMailboxId)) {
         throw new Error("The message is outside the selected source mailbox.");
       }
@@ -239,11 +242,8 @@ export class MockMailGateway implements MailGateway {
     };
   }
   public async testConnection(): Promise<void> {}
-  public async updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void> {
-    void input;
-  }
+  public async updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void> { void input; }
   public async updateMemberProfile(input: MemberProfileUpdate) {
     this.profile = { ...this.profile, displayName: input.displayName };
-    return this.profile;
-  }
+    return this.profile; }
 }

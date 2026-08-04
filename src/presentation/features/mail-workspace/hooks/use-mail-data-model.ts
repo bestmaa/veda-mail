@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type MouseEventHandler } from "react";
-import { id, type MailboxId } from "@/domain/shared/brand";
+import { id, type MailboxId, type MessageId } from "@/domain/shared/brand";
 import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
 import { isMailSessionFailure } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useMailMessageMutations } from "@/presentation/features/mail-workspace/hooks/use-mail-message-mutations";
@@ -228,6 +228,11 @@ export const useMailDataModel = () => {
     saveListPreferences,
     setLabel: mutations.setLabel,
     sessionScope,
+    snoozeOptimistic: {
+      begin: (messageIds: readonly MessageId[], destinationMailboxId: MailboxId) => activeMailboxId ? beginMessageMutation({ activeMailboxId, mutation: { destinationMailboxId, messageIds, sourceMailboxId: activeMailboxId, type: "move" }, sessionScope, viewKey }) : null,
+      markUnconfirmed: markOptimisticMutationUnconfirmed,
+      settle: settleOptimisticMutation,
+    },
     pendingMessageIds,
     selectMailbox,
     selectMessage,
