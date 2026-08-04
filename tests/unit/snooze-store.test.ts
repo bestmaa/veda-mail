@@ -18,7 +18,8 @@ import {
 const originalDirectory = process.env["VEDA_MAIL_DATA_DIR"];
 const originalKey = process.env["VEDA_MAIL_JOB_KEY"];
 let directory = "";
-const owner = { email: "Member@Example.com", providerId: id.provider("mock") };
+const owner = { accountScope: "a".repeat(43), email: "Member@Example.com",
+  providerId: id.provider("mock") };
 const connection = {
   config: { secret: "provider-password", username: "Member@Example.com" },
   createdAt: "2026-08-04T00:00:00.000Z", displayName: "Mail",
@@ -75,7 +76,17 @@ describe("encrypted snooze store", () => {
       snoozedMailboxId: "snoozed-mailbox",
     });
     await expect(snoozeStore.list({ email: "other@example.com",
+      accountScope: owner.accountScope,
       providerId: owner.providerId })).resolves.toMatchObject({ messages: [] });
+  });
+
+  it("isolates identical provider usernames on different account scopes", async () => {
+    await admit();
+    const other = { ...owner, accountScope: "b".repeat(43) };
+    expect(snoozeOwnerKey(other)).not.toBe(snoozeOwnerKey(owner));
+    await expect(snoozeStore.list(other)).resolves.toMatchObject({
+      messages: [], snoozedMailboxId: null,
+    });
   });
 
   it("reconciles interrupted leases without an uncertain state", async () => {

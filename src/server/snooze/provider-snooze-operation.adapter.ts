@@ -45,6 +45,9 @@ const withService = async <T>(
 };
 
 export const providerSnoozeOperationAdapter: SnoozeOperationPort = {
+  getAccountScope: (connection) => withService(
+    connection, (service) => service.getSnoozeAccountScope(),
+  ),
   getCapability: (connection) => withService(
     connection, (service) => service.getSnoozeCapability(),
   ),

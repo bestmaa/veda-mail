@@ -16,10 +16,15 @@ const normalizedEmail = (email: string): string => {
   return separator < 1 ? value
     : `${value.slice(0, separator)}@${value.slice(separator + 1).toLowerCase()}`;
 };
-export const snoozeOwnerKey = (owner: SnoozeOwner): string =>
-  createHmac("sha256", snoozeSubkey("owner-index"))
+export const snoozeOwnerKey = (owner: SnoozeOwner): string => {
+  if (!/^[A-Za-z0-9_-]{43}$/u.test(owner.accountScope)) {
+    throw new Error("Snooze account scope is invalid.");
+  }
+  return createHmac("sha256", snoozeSubkey("owner-index"))
     .update(owner.providerId.trim().toLowerCase()).update("\0")
-    .update(normalizedEmail(owner.email)).digest("base64url");
+    .update(normalizedEmail(owner.email)).update("\0")
+    .update(owner.accountScope).digest("base64url");
+};
 const aad = (ownerKey: string) =>
   Buffer.from(`veda-mail/snooze/payload/v1\0${ownerKey}`, "utf8");
 

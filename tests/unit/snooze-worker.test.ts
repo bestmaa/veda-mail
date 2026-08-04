@@ -31,7 +31,8 @@ const claim = (): SnoozeClaim => ({
   mailbox, ownerKey: "owner", phase: "hide",
 });
 const port = (overrides: Partial<SnoozeOperationPort> = {}): SnoozeOperationPort => ({
-  getCapability: vi.fn(), hide: vi.fn().mockResolvedValue({ ownedMailbox: mailbox, plan }),
+  getAccountScope: vi.fn(), getCapability: vi.fn(),
+  hide: vi.fn().mockResolvedValue({ ownedMailbox: mailbox, plan }),
   inspect: vi.fn().mockResolvedValue({ ownedMailbox: mailbox, plan, state: "visible" }),
   mailboxIntent: vi.fn(), preflight: vi.fn(), restore: vi.fn(), ...overrides,
 });

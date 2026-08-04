@@ -19,9 +19,16 @@ import { ApiError } from "@/transport/http/api-error";
 
 export const snoozeOwner = async (
   connection: ProviderConnection,
+  port: SnoozeOperationPort = getSnoozeOperationPort(),
 ): Promise<SnoozeOwner> => {
-  const account = await (await getMailService(connection)).getAccount();
-  return { email: account.email, providerId: account.providerId };
+  const [account, accountScope] = await Promise.all([
+    (await getMailService(connection)).getAccount(),
+    port.getAccountScope(connection),
+  ]);
+  if (!/^[A-Za-z0-9_-]{43}$/u.test(accountScope)) {
+    throw new ApiError("Snooze account scope is invalid.", "SNOOZE_PROVIDER_FAILED", 502);
+  }
+  return { accountScope, email: account.email, providerId: account.providerId };
 };
 export const readSnoozeWorkspace = async (
   connection: ProviderConnection,
@@ -33,7 +40,7 @@ export const readSnoozeWorkspace = async (
       reason: "Durable snooze storage is not configured.",
       snoozedMailboxId: null, supported: false as const },
   };
-  const owner = await snoozeOwner(connection);
+  const owner = await snoozeOwner(connection, port);
   const [book, capability] = await Promise.all([
     snoozeStore.list(owner), port.getCapability(connection),
   ]);
@@ -58,7 +65,7 @@ export const createSnoozes = async (
   port: SnoozeOperationPort = getSnoozeOperationPort(),
 ) => {
   assertConfigured();
-  const owner = await snoozeOwner(connection);
+  const owner = await snoozeOwner(connection, port);
   const capability = await port.getCapability(connection);
   if (!capability.supported) {
     throw new ApiError(capability.reason, "SNOOZE_PROVIDER_UNSUPPORTED", 422);
@@ -85,21 +92,24 @@ export const createSnoozes = async (
 
 export const rescheduleSnooze = async (
   connection: ProviderConnection, jobId: string, wakeAt: string,
+  port: SnoozeOperationPort = getSnoozeOperationPort(),
 ) => {
   assertConfigured();
-  return snoozeStore.reschedule(await snoozeOwner(connection), jobId, wakeAt, connection);
+  return snoozeStore.reschedule(await snoozeOwner(connection, port), jobId, wakeAt, connection);
 };
 export const restoreSnooze = async (
   connection: ProviderConnection, jobId: string,
+  port: SnoozeOperationPort = getSnoozeOperationPort(),
 ) => {
   assertConfigured();
-  return snoozeStore.requestRestore(await snoozeOwner(connection), jobId, connection);
+  return snoozeStore.requestRestore(await snoozeOwner(connection, port), jobId, connection);
 };
 export const retrySnooze = async (
   connection: ProviderConnection, jobId: string,
+  port: SnoozeOperationPort = getSnoozeOperationPort(),
 ) => {
   assertConfigured();
-  return snoozeStore.retry(await snoozeOwner(connection), jobId, connection);
+  return snoozeStore.retry(await snoozeOwner(connection, port), jobId, connection);
 };
 
 export const snoozeBulkHttpStatus = (

@@ -14,6 +14,7 @@ export { SnoozeProviderError };
 import type { ProviderConnection } from "@/domain/provider/provider";
 
 export interface SnoozeOperationPort {
+  getAccountScope(connection: ProviderConnection): Promise<string>;
   mailboxIntent(connection: ProviderConnection): Promise<SnoozeOwnedMailbox>;
   getCapability(connection: ProviderConnection): Promise<SnoozeCapability>;
   hide(

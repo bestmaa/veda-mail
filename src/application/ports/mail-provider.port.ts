@@ -92,6 +92,7 @@ export interface MailGateway {
   getLabelCapability(mailboxId: MailboxId): Promise<LabelCapability>;
   getMemberProfile(): Promise<MemberProfile>;
   getRuleCapability(): Promise<RuleCapability>;
+  getSnoozeAccountScope(): Promise<string>;
   getSnoozeCapability(): Promise<SnoozeCapability>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
