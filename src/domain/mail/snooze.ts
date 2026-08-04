@@ -36,7 +36,7 @@ export interface SnoozedMessageBook {
 }
 export type SnoozeCapability = {
   readonly maxMessages: 100;
-  readonly snoozedMailboxId: MailboxId;
+  readonly snoozedMailboxId: MailboxId | null;
   readonly supported: true;
 } | {
   readonly maxMessages: 0;
