@@ -62,6 +62,9 @@ export const snoozeStore = {
     return serializeSnoozeStore(async () => {
       const current = await readOwnerSnoozes(owner);
       const book = current.book ?? emptySnoozeBook();
+      if (!current.book && Object.keys(current.file.owners).length >= MAX_SNOOZE_OWNERS) {
+        throw new ApiError("Snooze capacity has been reached.", "SNOOZE_CAPACITY", 409);
+      }
       if (book.mailbox && JSON.stringify(book.mailbox) !== JSON.stringify(mailbox)) {
         return book.mailbox;
       }
