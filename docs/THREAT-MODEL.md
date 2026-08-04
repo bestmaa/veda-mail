@@ -977,11 +977,42 @@ operator monitoring.
 
 ### Rules and forwarding
 
-- Rule conditions and actions require bounded schemas and authorization.
-- Prevent automatic-forward loops, external-recipient data exfiltration, and
-  header injection.
-- Provide dry-run output, deterministic ordering, an audit record, and a kill
-  switch. Never execute arbitrary user code.
+- Mail rules are compiled to provider-native Sieve; Veda Mail never polls an
+  inbox or executes arbitrary user code. Stalwart uses RFC 9661 JMAP Sieve and
+  Standard IMAP uses RFC 5804 ManageSieve only when a TLS or STARTTLS endpoint
+  is explicitly configured. There is no cleartext ManageSieve fallback.
+- The route accepts at most 50 ordered rules, ten conditions per rule, and
+  eight actions per rule. Strict schemas normalize NFKC, reject control and
+  bidi characters, enforce header-token syntax and byte limits, and reject
+  duplicate conditions/actions, multiple terminal actions, or a terminal
+  action that would allow later rules to continue.
+- One deterministic `Veda Mail Rules` script is protected by an
+  installation-key HMAC over its exact canonical body. Veda Mail downloads and
+  verifies that marker before updating. A foreign script with the same name,
+  any foreign active/vacation script, ambiguous script state, unsupported
+  extension, or provider-state mismatch fails closed without deactivation or
+  overwrite.
+- Stalwart deployment uploads a bounded script, validates it, uses provider
+  state compare-and-swap for create/update plus activation, and post-verifies
+  the exact blob and active script. A retry after a lost activation response is
+  accepted only when the exact HMAC-owned desired script is already active.
+- Desired rules, deployment status, and a redacted 500-entry control-plane
+  audit are owner-isolated in `/data/member-rules.json`. The file uses
+  AES-256-GCM and an HMAC owner index under a Rules-specific HKDF namespace of
+  `VEDA_MAIL_JOB_KEY`, mode-0600 atomic replacement, a 64-MiB ceiling, and a
+  10,000-owner ceiling. Provider credentials exist in that ciphertext only
+  during a committed deployment intent and are erased on every final outcome;
+  there is no background credential-bearing retry worker.
+- Dry-run is read-only, capped at 100 messages, returns only bounded message
+  facts and planned actions, and rejects a condition when the provider cannot
+  expose the exact fact. In particular, an SMTP envelope-recipient condition
+  is never approximated from visible To/Cc/Bcc headers.
+- Rule routes require the authenticated mailbox session scope; writes require
+  same origin, optimistic revision, subject/request rate limits, and bounded
+  JSON. Browser capability filtering is usability only; the compiler and
+  provider adapter enforce capabilities again.
+- External redirect/forward and body/regex rules are deliberately absent from
+  v1, preventing automatic-forward loops and a new data-exfiltration surface.
 
 ### Imports and exports
 

@@ -1,5 +1,4 @@
 "use client";
-
 import {
   type FormEvent,
   useCallback,
@@ -7,11 +6,11 @@ import {
   useRef,
   useState,
 } from "react";
-
 import { DEFAULT_MEMBER_CAPABILITIES } from "@/presentation/features/mail-workspace/account-settings-default-capabilities";
 import { createProviderFeatures } from "@/presentation/features/mail-workspace/account-settings-provider-features";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { EmailSignatureSettingsViewModel } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
+import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
 import {
   ignoreMailSessionFailure,
@@ -28,6 +27,7 @@ export const useAccountSettingsModel = (
   fallbackName: string,
   signatures: EmailSignatureSettingsViewModel,
   sessionScope: string,
+  rules: MailRulesViewModel,
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ): AccountSettingsViewModel => {
   const [isOpen, setIsOpen] = useState(false);
@@ -239,6 +239,7 @@ export const useAccountSettingsModel = (
       capabilities,
       snapshot?.attachmentCapability.status,
     ),
+    rules,
     signatures,
     twoFactor: {
       ...twoFactorView,

@@ -118,6 +118,7 @@ export class StalwartJmapClient {
     }
     return parsed.data;
   }
+  public authorizationForProviderTransport() { return this.authorizationHeader(); }
 
   public async uploadAttachment(
     accountId: string,

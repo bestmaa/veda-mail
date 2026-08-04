@@ -11,6 +11,7 @@ import type { AccountSettingsViewModel } from "@/presentation/features/mail-work
 import { EmailSignatureConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/email-signature-confirmation.connector";
 import { EmailSignatureSettingsView } from "@/presentation/features/mail-workspace/ui/email-signature-settings.view";
 import { TwoFactorSettingsView } from "@/presentation/features/mail-workspace/ui/two-factor-settings.view";
+import { MailRulesView } from "@/presentation/features/mail-workspace/ui/mail-rules.view";
 
 const status = (error: string | null, success: string | null) =>
   error ? (
@@ -145,6 +146,8 @@ export const AccountSettingsView = ({
               </form>
 
               <EmailSignatureSettingsView settings={settings.signatures} />
+
+              <MailRulesView rules={settings.rules} />
 
               <TwoFactorSettingsView settings={settings.twoFactor} />
 

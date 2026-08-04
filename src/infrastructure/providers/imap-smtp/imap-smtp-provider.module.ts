@@ -3,13 +3,12 @@ import "server-only";
 import { z } from "zod";
 
 import type { ProviderModule } from "@/application/ports/mail-provider.port";
-import { MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES } from "@/domain/mail/received-attachment";
 import type {
   MemberCredentials,
   ProviderConnection,
 } from "@/domain/provider/provider";
-import { id } from "@/domain/shared/brand";
 import { ImapSmtpMailGateway } from "@/infrastructure/providers/imap-smtp/imap-mail.gateway";
+import { imapSmtpManifest } from "@/infrastructure/providers/imap-smtp/imap-smtp-provider-fields";
 import { verifyImapCredentials } from "@/infrastructure/providers/imap-smtp/imap-client";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { assertSafeProviderHost } from "@/infrastructure/providers/stalwart-jmap/provider-url-policy";
@@ -23,6 +22,18 @@ const hostname = z
   .regex(/^[a-z0-9.-]+$/i, "Enter a valid mail-server hostname.")
   .transform((value) => value.toLowerCase());
 const security = z.enum(["tls", "starttls"]);
+const optionalHostname = z.preprocess(
+  (value) => value ?? "",
+  z.union([hostname, z.literal("")]),
+);
+const optionalPort = z.preprocess(
+  (value) => value ?? "",
+  z.union([port, z.literal("")]),
+);
+const optionalSecurity = z.preprocess(
+  (value) => value ?? "",
+  z.union([security, z.literal("")]),
+);
 const smtpMaxMessageBytes = z
   .preprocess(
     (value) => (value === "" ? undefined : value),
@@ -35,6 +46,9 @@ const serviceSchema = z
     imapHost: hostname,
     imapPort: port,
     imapSecurity: security,
+    manageSieveHost: optionalHostname,
+    manageSievePort: optionalPort,
+    manageSieveSecurity: optionalSecurity,
     smtpHost: hostname,
     smtpMaxMessageBytes,
     smtpPort: port,
@@ -49,125 +63,8 @@ const memberSchema = serviceSchema
   })
   .strict();
 
-const securityOptions = [
-  { label: "TLS (recommended)", value: "tls" },
-  { label: "STARTTLS", value: "starttls" },
-] as const;
-
 export class ImapSmtpProviderModule implements ProviderModule {
-  public readonly manifest = {
-    capabilities: {
-      maxAttachmentBytes: 18 * 1024 * 1024,
-      maxAttachmentDownloadBytes: MAX_RECEIVED_ATTACHMENT_DOWNLOAD_BYTES,
-      supportsAttachmentDownload: true,
-      supportsDrafts: false,
-      supportsPasswordChange: false,
-      supportsProfileSettings: false,
-      supportsPush: false,
-      supportsServerSearch: true,
-      supportsThreads: true,
-      supportsTwoFactorAuthentication: false,
-    },
-    description:
-      "Connect Hostinger, cPanel, Zoho and other standard IMAP/SMTP services.",
-    fields: [
-      {
-        defaultValue: "imap.example.com",
-        help: "Public hostname from your provider's incoming-mail settings.",
-        kind: "text",
-        label: "IMAP host",
-        name: "imapHost",
-        placeholder: "imap.example.com",
-        required: true,
-        scope: "service",
-        secret: false,
-      },
-      {
-        defaultValue: "993",
-        kind: "text",
-        label: "IMAP port",
-        name: "imapPort",
-        required: true,
-        scope: "service",
-        secret: false,
-      },
-      {
-        defaultValue: "tls",
-        kind: "select",
-        label: "IMAP security",
-        name: "imapSecurity",
-        options: securityOptions,
-        required: true,
-        scope: "service",
-        secret: false,
-      },
-      {
-        defaultValue: "smtp.example.com",
-        help: "Public hostname from your provider's outgoing-mail settings.",
-        kind: "text",
-        label: "SMTP host",
-        name: "smtpHost",
-        placeholder: "smtp.example.com",
-        required: true,
-        scope: "service",
-        secret: false,
-      },
-      {
-        defaultValue: "465",
-        kind: "text",
-        label: "SMTP port",
-        name: "smtpPort",
-        required: true,
-        scope: "service",
-        secret: false,
-      },
-      {
-        defaultValue: "0",
-        help:
-          "Optional message-size ceiling in bytes. Use 0 to require the " +
-          "server's SMTP SIZE limit; attachments stay disabled if neither " +
-          "source supplies a verifiable limit.",
-        kind: "text",
-        label: "SMTP maximum message bytes",
-        name: "smtpMaxMessageBytes",
-        placeholder: "0",
-        required: false,
-        scope: "service",
-        secret: false,
-      },
-      {
-        defaultValue: "tls",
-        kind: "select",
-        label: "SMTP security",
-        name: "smtpSecurity",
-        options: securityOptions,
-        required: true,
-        scope: "service",
-        secret: false,
-      },
-      {
-        autocomplete: "username",
-        kind: "email",
-        label: "Email address",
-        name: "email",
-        placeholder: "you@example.com",
-        required: true,
-        scope: "member",
-        secret: false,
-      },
-      {
-        autocomplete: "current-password",
-        kind: "password",
-        label: "Password or app password",
-        name: "password",
-        required: true,
-        scope: "member",
-        secret: true,
-      },
-    ],
-    id: id.provider("imap-smtp"),
-    name: "Standard IMAP + SMTP",
-  } as const;
+  public readonly manifest = imapSmtpManifest;
 
   public parseServiceConfig(input: Readonly<Record<string, string>>) {
     return serviceSchema.parse(input);
@@ -175,9 +72,20 @@ export class ImapSmtpProviderModule implements ProviderModule {
 
   public async validateServiceConfig(input: Readonly<Record<string, string>>) {
     const parsed = serviceSchema.parse(input);
+    const sieveValues = [
+      parsed.manageSieveHost,
+      parsed.manageSievePort,
+      parsed.manageSieveSecurity,
+    ];
+    if (sieveValues.some(Boolean) && !sieveValues.every(Boolean)) {
+      throw new Error("Complete all ManageSieve settings or leave all three blank.");
+    }
     await Promise.all([
       assertSafeProviderHost(parsed.imapHost),
       assertSafeProviderHost(parsed.smtpHost),
+      ...(parsed.manageSieveHost
+        ? [assertSafeProviderHost(parsed.manageSieveHost)]
+        : []),
     ]);
     return parsed;
   }

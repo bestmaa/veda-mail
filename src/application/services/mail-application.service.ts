@@ -18,6 +18,7 @@ import type {
   CalendarPartListInput,
 } from "@/domain/mail/calendar";
 import type { MailSearchQuery } from "@/domain/mail/mail-search";
+import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
 import type {
   MailboxId,
   MessageId,
@@ -113,6 +114,18 @@ export class MailApplicationService {
 
   public getMaxAttachmentBytes() {
     return this.gateway.getMaxAttachmentBytes();
+  }
+
+  public getRuleCapability() {
+    return this.gateway.getRuleCapability();
+  }
+
+  public deployRules(input: RuleDeploymentInput) {
+    return this.gateway.deployRules(input);
+  }
+
+  public previewRules(input: RulePreviewInput) {
+    return this.gateway.previewRules(input);
   }
 
   public mutateMessage(mutation: MessageMutation) {

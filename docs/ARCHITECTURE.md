@@ -731,6 +731,37 @@ reopening that exact provider draft. Once the worker commits a `sending` lease,
 cancellation fails with a conflict and the UI truthfully reports that it is too
 late. A disabled delay preserves the existing immediate submission path.
 
+## Provider-native mail-rules boundary
+
+`MailGateway.getRuleCapability`, `deployRules`, and `previewRules` form the
+provider-independent Rules contract. The domain owns the canonical ordered rule
+book, strict condition/action types, evaluator, and provider DTOs. Infrastructure
+adapters own capability discovery, message-fact projection, Sieve transport,
+and provider concurrency semantics. Presentation code never supplies a script,
+credential, provider state, owner, or raw provider identifier.
+
+The shared compiler emits deterministic CRLF Sieve with injection-safe quoted
+strings and only the required advertised extensions. Stalwart maps deployment
+to RFC 9661 `SieveScript/get`, blob upload, `SieveScript/validate`, and a state-
+conditional `SieveScript/set` activation. Standard IMAP maps the same contract
+to a separately configured TLS-protected RFC 5804 ManageSieve session. Provider
+capability discovery is authoritative; missing ManageSieve leaves Rules visibly
+unsupported rather than falling back to browser or server polling.
+
+`/data/member-rules.json` stores the desired rule book, deployment revision,
+provider state/hash/script ID, and bounded audit under an owner-isolated
+AES-256-GCM envelope. A deployment first commits an encrypted intent containing
+the current provider connection, performs provider I/O, then CAS-finalizes and
+erases the connection for every result. This is not a durable worker queue. A
+subsequent retry requires a current authenticated mailbox session and reconciles
+an exact already-active owned script before issuing another mutation.
+
+Script ownership is separate from script naming. The compiler prepends an
+installation-key HMAC bound to the exact generated body; the adapter must
+download and verify it before update. A same-name foreign script or any foreign
+active script is a visible conflict and remains unchanged. This protects
+vacation and scripts installed by another client or Veda Mail installation.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never

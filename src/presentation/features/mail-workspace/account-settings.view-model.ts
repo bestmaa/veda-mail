@@ -4,6 +4,7 @@ import type {
   EmailSignatureConfirmationViewModel,
   EmailSignatureSettingsViewModel,
 } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
+import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
@@ -15,6 +16,7 @@ export interface AccountSettingsViewModel {
   readonly isLoading: boolean;
   readonly isOpen: boolean;
   readonly open: () => void;
+  readonly rules: MailRulesViewModel;
   readonly password: {
     readonly confirm: string;
     readonly confirmInput: ChangeEventHandler<HTMLInputElement>;

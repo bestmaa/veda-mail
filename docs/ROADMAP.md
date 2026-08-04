@@ -425,6 +425,19 @@ search](./ADVANCED-SEARCH.md).
 Acceptance: restart, duplicate-delivery, daylight-saving, and provider-outage
 tests prove scheduled work is not lost or executed twice.
 
+Status: the filters/rules v1 implementation is locally complete and awaiting
+release plus live-provider evidence; snooze is not implemented. Rules use
+provider-native Sieve through JMAP or TLS-protected ManageSieve, an encrypted
+owner-isolated intent/audit store, revision conflict checks, deterministic
+owned-script signing, capability gating, and a bounded exact-semantics dry-run
+preview. JMAP and IMAP preview paths, rule ordering, enable/disable, all listed
+conditions/actions, conflict handling, lost-response recovery, foreign-script
+protection, credential erasure, UI flows, routes, and provider adapters are
+covered by unit, integration, component, architecture, production-build, and
+security gates. The two rules checkboxes remain open until the immutable release
+is deployed and authenticated JMAP plus generic ManageSieve evidence is
+recorded.
+
 The provider-independent scheduled-send implementation is released:
 exact-revision provider drafts, encrypted credential/content envelopes under an
 external deployment key, atomic leases, six-attempt bounded backoff,
@@ -446,7 +459,7 @@ earlier NXDOMAIN note used incorrect `wovvtec.site` hostnames; the canonical
 panel is `panel.wovvtech.site` and public webmail is
 `webmail.vedaconcepts.com`.
 
-The provider-independent Contacts slice is locally complete. Each authenticated
+The provider-independent Contacts slice is released and deployed. Each authenticated
 JMAP or IMAP/SMTP identity receives an encrypted, owner-isolated address book
 with bounded contacts and groups, optimistic revisions, delivery-confirmed
 recent-recipient ranking, accessible To/CC/BCC autocomplete, and vCard 3.0/4.0
@@ -454,12 +467,13 @@ import/export. Accepted delivery records all unique recipients, partial delivery
 excludes provider-rejected recipients, and uncertain delivery records nothing;
 address-book persistence failure never changes a provider-confirmed send into a
 retry. Strict route, store-tamper, mutation, ranking, component, session-scope,
-and hostile-vCard tests cover the implementation. Its checkbox remains open
-until the immutable release is published and live create/reload/autocomplete,
-confirmed-send ranking, group, import, and export evidence is recorded through
-dedicated JMAP and IMAP/SMTP mailboxes.
+and hostile-vCard tests cover the implementation. It merged in PR #81 and is
+deployed in production commit `12d748a2e9e4f6efdcb051fd84238a2be701b3bf`.
+Its checkbox remains open until live create/reload/autocomplete, confirmed-send
+ranking, group, import, and export evidence is recorded through dedicated JMAP
+and IMAP/SMTP mailboxes.
 
-The provider-independent RFC 5545 calendar slice is locally complete. JMAP and
+The provider-independent RFC 5545 calendar slice is released and deployed. JMAP and
 IMAP discover bounded `text/calendar` body parts without exposing provider blob,
 section, or UIDVALIDITY identifiers; exact parts are re-fetched, malware-scanned,
 and parsed as hostile input. The reader displays REQUEST, CANCEL, REPLY, and
@@ -470,7 +484,8 @@ idempotency. A Veda-local, owner-isolated encrypted event book supports strict
 single-event import and deterministic whole-book `.ics` export. Parser,
 serializer, store-tamper, route, provider, MIME, and accessible component tests
 cover the slice. CalDAV remains capability-gated and no remote calendar URI is
-fetched. The checkbox remains open until an immutable release is published and
+fetched. It merged in PR #82 and is deployed in production commit
+`6a1bfd9c8247514e1ab4057375e6340fe647e499`. The checkbox remains open until
 live REQUEST/display/response/import/export evidence is recorded through both a
 JMAP and an IMAP/SMTP test mailbox.
 

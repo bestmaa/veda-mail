@@ -1,5 +1,4 @@
-"use client";
-import { useCallback, useEffect, useMemo } from "react";
+"use client"; import { useCallback, useEffect, useMemo } from "react";
 import { createComposerViewModel } from "@/presentation/features/mail-workspace/composer.view-model";
 import { createMailListViewModel } from "@/presentation/features/mail-workspace/mail-list.view-model";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
@@ -14,9 +13,8 @@ import { usePartialDeliveryNotice } from "@/presentation/features/mail-workspace
 import { useAttachmentArchiveDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-archive-download";
 import { useAttachmentDownload } from "@/presentation/features/mail-workspace/hooks/use-attachment-download";
 import { useAttachmentPreview } from "@/presentation/features/mail-workspace/hooks/use-attachment-preview";
-import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model";
-import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model";
-import { initials } from "@/presentation/shared/formatters/mail-formatters";
+import { useAccountSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-account-settings-model"; import { useMailRulesModel } from "@/presentation/features/mail-workspace/hooks/use-mail-rules-model";
+import { createReaderViewModel } from "@/presentation/features/mail-workspace/reader.view-model"; import { initials } from "@/presentation/shared/formatters/mail-formatters";
 import { createBulkActionsViewModel } from "@/presentation/features/mail-workspace/bulk-actions.view-model";
 import { useBulkDestroyConfirmation } from "@/presentation/features/mail-workspace/hooks/use-bulk-destroy-confirmation";
 import { useMailboxWorkspaceManagement } from "@/presentation/features/mail-workspace/hooks/use-mailbox-workspace-management";
@@ -32,8 +30,7 @@ import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-work
 import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
 import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management";
-interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
-  readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
+interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
   branding, canSignOut, initialSessionScope, maxAttachmentBytes, providerLabel, signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
@@ -61,6 +58,9 @@ export const useMailWorkspaceModel = ({
   const { refresh: refreshMail } = mail; const { refresh: refreshScheduled } = scheduled;
   const onDraftChanged = useCallback(() => { refreshMail(); void refreshScheduled(); }, [refreshMail, refreshScheduled]);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
+  const rules = useMailRulesModel(sessionScope,
+    (workspace?.mailboxes ?? []).filter(({ rights, role }) => rights.mayAddItems === true && role !== "drafts" && role !== "sent").map(({ id, name }) => ({ id, label: name })),
+    (workspace?.labels ?? []).map(({ id, name }) => ({ id, label: name })), mail.handleSessionFailure);
   const isComposerReady = Boolean(sessionScope) &&
     !emailSignatures.isLoading &&
     !emailSignatures.isSaving &&
@@ -88,7 +88,7 @@ export const useMailWorkspaceModel = ({
     signOutPath,
   });
   const settings = useAccountSettingsModel(
-    accountEmail, workspaceAccountName, signatureSettings, sessionScope, mail.handleSessionFailure,
+    accountEmail, workspaceAccountName, signatureSettings, sessionScope, rules, mail.handleSessionFailure,
   );
   const mailboxManagement = useMailboxWorkspaceManagement(mail);
   const labelManagement = useLabelManagement({
