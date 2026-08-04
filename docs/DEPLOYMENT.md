@@ -174,6 +174,16 @@ file with the wrong key fails closed. Keep one writer for the mounted `/data`
 volume. Successful or failed provider deployment removes the stored provider
 connection; native Sieve executes the rule without a Veda worker.
 
+Snooze creates `/data/snooze-jobs.json` lazily on first use. Keep it with the
+same `VEDA_MAIL_JOB_KEY`: owner indexes include a stable provider-account scope,
+and owned-mailbox intent, provider recovery locators, wake time, bounded retry
+state, and the minimum current connection needed by the worker are encrypted
+with Snooze-specific HKDF subkeys. A wrong restore key fails closed. The worker
+uses process-local serialization and durable leases, so run exactly one Veda
+Mail application replica against a `/data` volume; rolling overlap and multiple
+writers are unsupported until a shared transactional store and distributed
+lease are implemented. No additional inbound port is required.
+
 Stalwart JMAP Sieve requires no additional public Veda Mail port. For a Standard
 IMAP/SMTP provider, optionally configure its ManageSieve hostname, usually port
 4190, and select TLS or STARTTLS in the admin mail-service form. Add that
