@@ -55,22 +55,25 @@ export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewMo
   const [isBusy, setIsBusy] = useState(false);
   const scopeRef = useRef(sessionScope);
   const operationId = useRef(0);
+  const readId = useRef(0);
+  const inFlight = useRef(false);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     if (!sessionScope) return;
+    const requestId = ++readId.current;
     setIsLoading(true);
     try {
       const next = await snoozeApi.get(sessionScope, signal);
-      if (scopeRef.current === sessionScope) setSnapshot(next);
+      if (scopeRef.current === sessionScope && requestId === readId.current) setSnapshot(next);
     } catch (caught) {
-      if (!signal?.aborted && scopeRef.current === sessionScope && !handleSessionFailure(caught)) {
+      if (!signal?.aborted && scopeRef.current === sessionScope && requestId === readId.current && !handleSessionFailure(caught)) {
         setError(message(caught, "Unable to load snoozed messages."));
       }
-    } finally { if (scopeRef.current === sessionScope) setIsLoading(false); }
+    } finally { if (scopeRef.current === sessionScope && requestId === readId.current) setIsLoading(false); }
   }, [handleSessionFailure, sessionScope]);
 
   useEffect(() => {
-    scopeRef.current = sessionScope; operationId.current += 1;
+    scopeRef.current = sessionScope; operationId.current += 1; readId.current += 1; inFlight.current = false;
     setSnapshot(null); setManagerOpen(false); setDialogOpen(false); setTargets([]);
     setEditingId(null); setError(null); setDialogError(null); setIsBusy(false);
     const controller = new AbortController(); void load(controller.signal);
@@ -92,62 +95,65 @@ export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewMo
   const runJobAction = useCallback(async (
     action: "restore" | "retry", snoozeId: string,
   ) => {
-    if (!sessionScope || isBusy) return;
+    if (!sessionScope || isBusy || inFlight.current) return;
     const requestScope = sessionScope; const requestId = ++operationId.current;
-    setIsBusy(true); setError(null);
+    inFlight.current = true; setIsBusy(true); setError(null);
     try {
       const book = await snoozeApi[action](snoozeId, requestScope);
       if (scopeRef.current === requestScope && requestId === operationId.current) {
-        setSnapshot((current) => current ? { ...current, book } : current); refresh();
+        readId.current += 1; setSnapshot((current) => current ? { ...current, book } : current); refresh();
       }
     } catch (caught) {
       if (scopeRef.current === requestScope && requestId === operationId.current && !handleSessionFailure(caught)) {
         setError(message(caught, `Unable to ${action} this message.`));
       }
     } finally {
-      if (scopeRef.current === requestScope && requestId === operationId.current) setIsBusy(false);
+      if (scopeRef.current === requestScope && requestId === operationId.current) { inFlight.current = false; setIsBusy(false); }
     }
   }, [handleSessionFailure, isBusy, refresh, sessionScope]);
 
   const confirm = useCallback(async () => {
     const wakeAt = snoozeLocalTimeToIso(localTime);
     if (!wakeAt) { setDialogError("Choose a valid future time within the next 366 days."); return; }
-    if (!sessionScope || isBusy) return;
+    if (!sessionScope || isBusy || inFlight.current) return;
     const requestScope = sessionScope; const requestId = ++operationId.current;
-    setIsBusy(true); setDialogError(null);
+    inFlight.current = true; setIsBusy(true); setDialogError(null);
     if (editingId) {
       try {
         const book = await snoozeApi.reschedule(editingId, wakeAt, requestScope);
         if (scopeRef.current === requestScope && requestId === operationId.current) {
-          setSnapshot((current) => current ? { ...current, book } : current); setDialogOpen(false);
+          readId.current += 1; setSnapshot((current) => current ? { ...current, book } : current); setDialogOpen(false);
         }
       } catch (caught) {
         if (scopeRef.current === requestScope && requestId === operationId.current && !handleSessionFailure(caught)) setDialogError(message(caught, "Unable to change snooze time."));
-      } finally { if (scopeRef.current === requestScope && requestId === operationId.current) setIsBusy(false); }
+      } finally { if (scopeRef.current === requestScope && requestId === operationId.current) { inFlight.current = false; setIsBusy(false); } }
       return;
     }
     const capability = snapshot?.capability;
-    if (!capability?.supported) { setIsBusy(false); setDialogError(capability?.reason ?? "Snooze is unavailable."); return; }
+    if (!capability?.supported) { inFlight.current = false; setIsBusy(false); setDialogError(capability?.reason ?? "Snooze is unavailable."); return; }
     const destinationMailboxId = capability.snoozedMailboxId ?? snapshot?.book.snoozedMailboxId;
     const token = destinationMailboxId
       ? beginOptimistic(targets.map(({ messageId }) => messageId), destinationMailboxId)
       : null;
-    if (destinationMailboxId && !token) { setIsBusy(false); setDialogError("Another message update is still running."); return; }
+    if (destinationMailboxId && !token) { inFlight.current = false; setIsBusy(false); setDialogError("Another message update is still running."); return; }
     try {
       const result = await snoozeApi.create(targets.map(({ messageId, sourceMailboxId }) => ({ messageId, sourceMailboxId, wakeAt })), requestScope);
       if (scopeRef.current !== requestScope || requestId !== operationId.current) return;
       const { accepted, rejected } = snoozeOutcome(result.outcomes);
       if (token) settleOptimistic(token, accepted);
-      setSnapshot((current) => current ? { ...current, book: result.book } : current);
+      readId.current += 1; setSnapshot((current) => current ? { ...current, book: result.book } : current);
       if (rejected.length) setError(`${accepted.length} snoozed; ${rejected.length} rejected and restored.`);
       setDialogOpen(false); refresh();
     } catch (caught) {
       if (scopeRef.current !== requestScope || requestId !== operationId.current) return;
       if (handleSessionFailure(caught)) return;
-      if (token && caught instanceof ApiClientError && caught.status >= 400 && caught.status < 500) settleOptimistic(token, []);
-      else if (token) { markUnconfirmed(token); refresh(); }
-      setDialogError(message(caught, "Snooze could not be confirmed. Mail is being refreshed."));
-    } finally { if (scopeRef.current === requestScope && requestId === operationId.current) setIsBusy(false); }
+      if (token && caught instanceof ApiClientError && caught.status >= 400 && caught.status < 500) {
+        settleOptimistic(token, []); setDialogError(message(caught, "Unable to snooze these messages."));
+      } else {
+        if (token) markUnconfirmed(token);
+        setDialogOpen(false); setError("Snooze could not be confirmed. Mail is being refreshed before you retry."); refresh();
+      }
+    } finally { if (scopeRef.current === requestScope && requestId === operationId.current) { inFlight.current = false; setIsBusy(false); } }
   }, [beginOptimistic, editingId, handleSessionFailure, isBusy, localTime, markUnconfirmed, refresh, sessionScope, settleOptimistic, snapshot?.book.snoozedMailboxId, snapshot?.capability, targets]);
 
   const ownedMailboxId = snapshot?.capability.snoozedMailboxId ?? snapshot?.book.snoozedMailboxId ?? null;

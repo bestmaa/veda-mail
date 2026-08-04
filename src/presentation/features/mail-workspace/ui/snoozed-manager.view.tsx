@@ -3,7 +3,7 @@ import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace
 
 export const SnoozedManagerView = ({ snooze }: { readonly snooze: MailSnoozeViewModel }) =>
   snooze.manager.isOpen ? <div aria-labelledby="snoozed-manager-title" aria-modal="true" className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" id="snoozed-manager-dialog" role="dialog" tabIndex={-1}>
-    <button aria-label="Close Snoozed" className="absolute inset-0 cursor-default" disabled={snooze.isBusy} onClick={snooze.manager.close} type="button" />
+    <button aria-label="Close Snoozed" className="absolute inset-0 cursor-default" disabled={snooze.isBusy} onClick={snooze.manager.close} tabIndex={-1} type="button" />
     <section className="relative flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
       <header className="flex items-center gap-3 border-b border-slate-200 p-5"><span className="grid size-10 place-items-center rounded-xl bg-indigo-100 text-indigo-700"><Clock3 aria-hidden size={20} /></span><div className="min-w-0 flex-1"><h2 className="font-extrabold text-slate-900" id="snoozed-manager-title">Snoozed</h2><p className="text-xs text-slate-500">Messages scheduled to return</p></div><button aria-label="Close Snoozed" className="grid size-10 place-items-center rounded-xl hover:bg-slate-100 disabled:opacity-50" data-snoozed-manager-initial-focus disabled={snooze.isBusy} onClick={snooze.manager.close} type="button"><X aria-hidden size={18} /></button></header>
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
