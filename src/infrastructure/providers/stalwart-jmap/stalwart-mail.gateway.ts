@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import type {
@@ -108,6 +110,12 @@ export class StalwartMailGateway implements MailGateway {
   }
 
   public getSnoozeCapability() { return this.snooze.getCapability(); }
+  public async getSnoozeAccountScope() {
+    const origin = new URL(this.config.baseUrl).origin.toLowerCase();
+    const accountId = await this.reader.getAccountId();
+    return createHash("sha256").update(JSON.stringify([origin, accountId]))
+      .digest("base64url");
+  }
   public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
   public preflightSnooze(input: SnoozePreflightInput) {
     return this.snooze.preflight(input);

@@ -120,6 +120,7 @@ export class ImapSmtpMailGateway implements MailGateway {
     return previewImapRules(this.config, input);
   }
   public getSnoozeCapability() { return this.snooze.getCapability(); }
+  public getSnoozeAccountScope() { return this.snooze.getAccountScope(); }
   public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
   public preflightSnooze(input: SnoozePreflightInput) {
     return this.snooze.preflight(input);

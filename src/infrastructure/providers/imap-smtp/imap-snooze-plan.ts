@@ -46,6 +46,12 @@ export const resolveImapSnoozedPath = async (
 ): Promise<string | null> => {
   const mailboxes = listed ?? await client.list();
   if (mailboxes.some(({ path }) => path === plan.snoozedMailbox)) {
+    if (plan.snoozedMailboxObjectId && client.capabilities.has("OBJECTID")) {
+      const opened = await client.mailboxOpen(plan.snoozedMailbox);
+      if (opened.mailboxId !== plan.snoozedMailboxObjectId) {
+        throw new Error("The owned Snoozed mailbox identity changed.");
+      }
+    }
     return plan.snoozedMailbox;
   }
   return findImapMailboxByObjectId(
@@ -62,5 +68,11 @@ export const imapSnoozeSourceExists = async (
     if (opened.uidValidity.toString() !== plan.sourceUidValidity) return false;
     const message = await client.fetchOne(plan.sourceUid, { uid: true }, { uid: true });
     return Boolean(message && message.uid === plan.sourceUid);
-  } catch { return false; }
+  } catch (error) {
+    if (typeof error === "object" && error !== null &&
+      "serverResponseCode" in error && error.serverResponseCode === "NONEXISTENT") {
+      return false;
+    }
+    throw error;
+  }
 };

@@ -131,7 +131,6 @@ export class MailApplicationService {
 
   public getSnoozeAccountScope() { return this.gateway.getSnoozeAccountScope(); }
   public getSnoozeCapability() { return this.gateway.getSnoozeCapability(); }
-  public getSnoozeAccountScope() { return this.gateway.getSnoozeAccountScope(); }
   public snoozeMailboxIntent() { return this.gateway.snoozeMailboxIntent(); }
   public preflightSnooze(input: SnoozePreflightInput) {
     return this.gateway.preflightSnooze(input);

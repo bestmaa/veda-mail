@@ -27,7 +27,6 @@ import {
   hasMarker,
   imapSnoozeMarker,
   markerUids,
-  removeAndVerifyMarker,
 } from "@/infrastructure/providers/imap-smtp/imap-snooze-marker";
 import {
   assertImapSnoozeScope,
@@ -38,6 +37,7 @@ import {
   resolveImapSnoozedPath,
 } from "@/infrastructure/providers/imap-smtp/imap-snooze-plan";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
+import { restoreImapSnooze } from "@/infrastructure/providers/imap-smtp/imap-snooze-restore";
 
 const MAX_MESSAGES = 100 as const;
 const identityQuery = {
@@ -62,6 +62,7 @@ export class ImapSnoozeAdapter {
       objectId: null,
     });
   }
+  public getAccountScope(): Promise<string> { return Promise.resolve(this.accountScope); }
 
   public async getCapability(): Promise<SnoozeCapability> {
     try {
@@ -125,7 +126,8 @@ export class ImapSnoozeAdapter {
   public inspect(plan: ImapPlan): Promise<SnoozeProviderInspection> {
     assertImapSnoozeScope(plan, this.accountScope);
     return withImapClient(this.config, async (client) => {
-      const snoozedPath = await resolveImapSnoozedPath(client, plan);
+      const mailboxes = await client.list();
+      const snoozedPath = await resolveImapSnoozedPath(client, plan, mailboxes);
       if (snoozedPath) {
         const opened = await client.mailboxOpen(snoozedPath);
         const located = await markerUids(client, plan.marker);
@@ -146,10 +148,14 @@ export class ImapSnoozeAdapter {
         };
       }
       const source = await imapSnoozeSourceExists(client, plan);
+      const destination = await resolveImapRestoreMailbox(
+        client, mailboxes, plan.destinationMailbox, plan.sourceMailboxObjectId,
+      );
+      const restored = await this.markerIn(client, destination.path, plan.marker);
       return {
         ownedMailbox: imapSnoozeOwnedMailbox(plan),
         plan,
-        state: classifyImapSnoozeState(source, false),
+        state: restored ? "visible" : classifyImapSnoozeState(source, false),
       };
     });
   }
@@ -159,6 +165,10 @@ export class ImapSnoozeAdapter {
     return withImapClient(this.config, async (client) => {
       const snoozedPath = await ensureImapSnoozedMailbox(client, plan.snoozedMailbox);
       const target = await client.mailboxOpen(snoozedPath);
+      if (plan.snoozedMailboxObjectId && client.capabilities.has("OBJECTID") &&
+        target.mailboxId !== plan.snoozedMailboxObjectId) {
+        throw new Error("The owned Snoozed mailbox identity changed.");
+      }
       assertImapSnoozeSupport(client, target);
       const recovered = await this.markerIn(client, snoozedPath, plan.marker);
       if (recovered && await imapSnoozeSourceExists(client, plan)) {
@@ -178,28 +188,7 @@ export class ImapSnoozeAdapter {
 
   public restore(plan: ImapPlan): Promise<SnoozeProviderOperationResult> {
     assertImapSnoozeScope(plan, this.accountScope);
-    return withImapClient(this.config, async (client) => {
-      const mailboxes = await client.list();
-      const snoozedPath = await resolveImapSnoozedPath(client, plan, mailboxes);
-      if (!snoozedPath) return { ownedMailbox: imapSnoozeOwnedMailbox(plan), plan };
-      const source = await this.markerIn(client, snoozedPath, plan.marker);
-      if (!source) return { ownedMailbox: imapSnoozeOwnedMailbox(plan), plan };
-      const destination = await resolveImapRestoreMailbox(
-        client, mailboxes, plan.destinationMailbox, plan.sourceMailboxObjectId,
-      );
-      await client.mailboxOpen(snoozedPath);
-      const moved = await client.messageMove(source.uid, destination.path, { uid: true });
-      if (!moved) throw new Error("The provider did not restore the snoozed message.");
-      const restored = await this.markerIn(client, destination.path, plan.marker);
-      if (!restored) throw new Error("The restored message identity is ambiguous.");
-      const mappedUid = moved.uidMap?.get(source.uid);
-      if (mappedUid !== undefined && mappedUid !== restored.uid) {
-        throw new Error("The restore COPYUID does not match the recovery marker.");
-      }
-      await client.mailboxOpen(destination.path);
-      await removeAndVerifyMarker(client, restored.uid, plan.marker);
-      return { ownedMailbox: imapSnoozeOwnedMailbox(plan), plan };
-    });
+    return restoreImapSnooze(this.config, plan);
   }
 
   private async moveToSnoozed(

@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type {
   AttachmentDownloadInput,
@@ -64,10 +65,11 @@ export class MockMailGateway implements MailGateway {
   public async previewRules(input: RulePreviewInput) {
     return previewMockRules(this.messages, input);
   }
-  public async getSnoozeCapability() {
-    return { maxMessages: 100, snoozedMailboxId: mockMailboxIds.snoozed,
-      supported: true } as const;
-  }
+  public async getSnoozeCapability() { return {
+    maxMessages: 100, snoozedMailboxId: mockMailboxIds.snoozed,
+    supported: true } as const; }
+  public async getSnoozeAccountScope() {
+    return createHash("sha256").update("veda-mail/mock-account").digest("base64url"); }
   public async snoozeMailboxIntent() { return mockSnoozeMailbox(); }
   public async preflightSnooze(input: SnoozePreflightInput) {
     return preflightMockSnooze(this.messages, input); }
