@@ -461,6 +461,45 @@ supported deployment has one writable Veda Mail replica. Ciphertext lengths and
 access timing reveal bounded metadata. Backups must keep `installation.json`
 and `member-templates.json` in the same whole-volume snapshot.
 
+### Stored contacts and vCard exchange
+
+- Contact ownership is derived from the verified provider ID and gateway-owned
+  mailbox address after exact session-scope validation. Same-origin checks,
+  bounded body reads, per-request limits, and per-connection limits precede
+  every mutation or vCard import; browser-supplied owner fields are rejected.
+- `/data/member-contacts.json` hides owner identities behind HMAC-SHA-256 and
+  encrypts each canonical book with contact-specific HKDF-SHA-256/AES-256-GCM.
+  The versioned owner key is authenticated as AAD. A wrong installation,
+  swapped owner bucket, modified tag, malformed record, or noncanonical
+  plaintext fails closed as an unavailable contact store.
+- Exact revisions prevent stale-tab overwrite. Strict limits cover the 128 KiB
+  mutation request, 64 MiB outer file, 10,000 owners, 8 MiB owner book, 2,000
+  contacts, 200 groups, five emails per contact, 500 contacts per group, 500
+  recent recipients, and a 100-recipient history batch. Names, labels, addresses,
+  references, duplicates, and mass-assigned fields are validated before write.
+- vCard input is hostile. Import caps decoded text at 1 MiB, 1,000 cards, 256
+  properties per card, 8,192-byte unfolded lines, 2,048-byte values, 64
+  categories, and 32 parser-level emails before the domain enforces five emails
+  and performs one atomic book mutation. It rejects malformed Unicode,
+  controls, newline injection, invalid escapes, encoded or URI email values,
+  duplicate singleton fields, and malformed card boundaries. `PHOTO`, `LOGO`,
+  `KEY`, `AGENT`, and
+  `URL` are ignored without base64 decoding, URI dereference, or network access.
+  Export escapes delimiters, folds UTF-8 without splitting a scalar, and returns
+  a private, no-store, `nosniff` attachment.
+- Recent-recipient capture runs only after conclusive provider delivery.
+  Rejected addresses are excluded from a partial receipt and uncertain delivery
+  records nothing. To/CC/BCC source buckets are not persisted. Storage failure
+  is non-fatal after delivery, preventing contact metadata from causing a
+  duplicate send; it can only reduce future autocomplete history.
+
+Residual risk: contact names, group membership, recipient history, and vCard
+content are sensitive mailbox-adjacent metadata even when encrypted. Ciphertext
+length and access timing remain observable. The whole-file writer queue is
+process-local, so one writable Veda Mail replica is supported. Back up
+`installation.json` and `member-contacts.json` only as one protected volume
+snapshot.
+
 ### Custom mailbox administration
 
 - The mutation route accepts no owner identity. It derives the current account

@@ -18,7 +18,7 @@ test("traps focus and safely locks an ambiguous provider send", async ({
   const composeTrigger = page.getByRole("button", { name: "New message" });
   await composeTrigger.click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
-  const toInput = dialog.getByRole("textbox", { exact: true, name: "To" });
+  const toInput = dialog.getByRole("combobox", { exact: true, name: "To" });
   const bodyInput = dialog.getByRole("textbox", {
     exact: true,
     name: "Message body",

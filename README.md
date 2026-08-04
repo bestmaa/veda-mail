@@ -49,6 +49,9 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
   identity, with explicit caret-aware Insert and confirmed subject/body Replace;
   recipients, attachments, reply context, draft identity, and managed signatures
   are never stored in a template
+- Encrypted per-identity contacts and groups with keyboard-accessible To/CC/BCC
+  autocomplete, delivery-confirmed recent-recipient ranking, and bounded vCard
+  3.0/4.0 import plus deterministic vCard 4.0 export
 - Provider-independent scheduled send backed by an encrypted durable queue,
   provider-saved drafts, absolute UTC times, reschedule/cancel controls,
   bounded retry/dead-letter handling, and duplicate-safe uncertain recovery
@@ -257,8 +260,8 @@ it is never accepted by a public HTTP endpoint.
 The `/data` volume contains installation state, the scrypt administrator
 password hash, a random session-signing secret, organization branding, and
 provider configuration. It also contains encrypted per-identity signature
-books and defaults, encrypted per-identity reusable-template books, plus a
-bounded mailbox-provisioning idempotency ledger.
+books and defaults, encrypted per-identity reusable-template and contact books,
+plus a bounded mailbox-provisioning idempotency ledger.
 Enabled administrator and member authenticator secrets are encrypted and
 backup codes are stored only as salted digests. The ledger contains safe
 results and keyed fingerprints, never initial mailbox passwords or the

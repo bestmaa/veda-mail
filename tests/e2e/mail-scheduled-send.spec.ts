@@ -38,7 +38,7 @@ test.afterEach(async ({ page }) => {
 test("schedules, lists, reschedules, and cancels a provider-backed draft", async ({ page }) => {
   await page.getByRole("button", { name: "New message" }).click();
   const composer = page.getByRole("dialog", { name: "Compose message" });
-  await composer.getByRole("textbox", { exact: true, name: "To" })
+  await composer.getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await composer.getByRole("textbox", { exact: true, name: "Subject" })
     .fill("Scheduled browser proof");
@@ -78,7 +78,7 @@ test("confirms, delays, atomically undoes, and restores the provider draft", asy
   await page.reload();
   await page.getByRole("button", { name: "New message" }).click();
   let composer = page.getByRole("dialog", { name: "Compose message" });
-  await composer.getByRole("textbox", { exact: true, name: "To" })
+  await composer.getByRole("combobox", { exact: true, name: "To" })
     .fill("undo-recipient@example.com");
   await composer.getByRole("textbox", { exact: true, name: "Subject" })
     .fill("Undo browser proof");
@@ -97,7 +97,7 @@ test("confirms, delays, atomically undoes, and restores the provider draft", asy
   await page.getByRole("button", { exact: true, name: "Undo" }).click();
   composer = page.getByRole("dialog", { name: "Compose message" });
   await expect(composer).toBeVisible();
-  await expect(composer.getByRole("textbox", { exact: true, name: "To" }))
+  await expect(composer.getByRole("combobox", { exact: true, name: "To" }))
     .toHaveValue("undo-recipient@example.com");
   await expect(composer.getByRole("textbox", { exact: true, name: "Subject" }))
     .toHaveValue("Undo browser proof");

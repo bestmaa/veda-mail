@@ -18,6 +18,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Portable advanced search                     | Yes             | Yes, except attachment |
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
+| Local contacts, groups, autocomplete, vCard   | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Bounded bulk actions and permanent delete    | Yes             | Yes                  |
 | Resumable Empty Spam/Trash snapshot           | Yes             | Yes, UIDPLUS required |
@@ -157,6 +158,22 @@ signatures are never template fields. JMAP and IMAP/SMTP receive only the normal
 sanitized draft or outgoing message after a template has been applied, so no
 provider capability, Stalwart API, mailbox migration, or transport extension is
 needed.
+
+Contacts use the same provider-independent application boundary. Contacts,
+groups, recent-recipient ranking, and revisions live only in the encrypted
+`/data/member-contacts.json` store. The owner is the verified provider ID plus
+gateway account, so the same textual address on different adapters remains
+isolated. To/CC/BCC autocomplete expands local contacts and groups without
+calling a provider address-book service. Only the ordinary validated recipients
+are passed to JMAP or SMTP.
+
+Recent recipients are recorded from conclusive send receipts rather than UI
+intent: accepted recipients are stored once, provider-rejected partial
+recipients are omitted, and an uncertain delivery stores nothing. vCard 3.0/4.0
+import and vCard 4.0 export are local transformations; no provider, DNS, HTTP,
+CardDAV, or proprietary contacts service is contacted. These contacts do not
+automatically appear in another mail client unless the member exports them or
+the matching Veda Mail `/data` state is restored.
 
 Both adapters expose a runtime-gated manual draft workflow. Veda Mail can
 create, open, update, discard, and send provider-backed drafts in the
@@ -493,8 +510,8 @@ adapter is therefore required for a dependable Microsoft 365 integration.
 ## What “provider-independent” means
 
 Veda Mail is not dependent on Stalwart in its domain, UI, sessions, member 2FA,
-or local email signatures. Any new adapter can implement the stable
-`ProviderModule` and `MailGateway` contracts.
+local email signatures, templates, or contacts. Any new adapter can implement
+the stable `ProviderModule` and `MailGateway` contracts.
 
 It does not mean every vendor is automatically compatible. A service must
 offer either:

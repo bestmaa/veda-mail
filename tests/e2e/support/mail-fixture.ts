@@ -60,7 +60,7 @@ export const signIn = async (page: Page) => {
   await page.getByLabel("Email address").fill("member@example.com");
   await page.getByLabel("Password").fill("local-test-password");
   await page.getByRole("button", { name: "Open mailbox" }).click();
-  await expect(page.getByRole("button", { name: "New message" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New message" })).toBeEnabled();
 };
 
 export const mailSessionScopeHeaders = async (
@@ -96,7 +96,7 @@ export const useInstalledMailbox = () => {
     await page.goto("/");
     await expect(
       page.getByRole("button", { name: "New message" }),
-    ).toBeVisible();
+    ).toBeEnabled();
   });
 };
 

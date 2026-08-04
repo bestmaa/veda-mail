@@ -26,12 +26,13 @@ test("preserves multiline plain paste in a formatted rich send", async ({
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   const body = dialog.getByRole("textbox", {
     exact: true,
     name: "Message body",
   });
+  await body.focus();
   await body.evaluate((element) => {
     const transfer = new DataTransfer();
     transfer.setData("text/plain", "Line one\r\nLine two");

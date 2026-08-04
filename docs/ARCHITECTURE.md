@@ -613,6 +613,55 @@ creation removes that managed signature from the stored rich snapshot. The
 complete result crosses the normal draft/send canonicalization boundary again;
 no Stalwart setting, provider extension, mailbox migration, or new port exists.
 
+## Contacts and recipient-history boundary
+
+Contacts are Veda-local metadata, not provider address-book objects.
+`GET`/`PUT /api/v1/member/contacts` and
+`GET`/`POST /api/v1/member/contacts/vcard` require the current HttpOnly member
+session and its exact browser mailbox scope; writes additionally require the
+same origin. The server resolves the authenticated gateway account and combines
+its canonical email with the provider ID. Neither API accepts an owner identity,
+provider credential, or mailbox locator from the browser.
+
+`/data/member-contacts.json` contains an HMAC-SHA-256 owner index and one
+independently encrypted owner book per identity. The encryption key is derived
+from the installation session secret with a contact-specific HKDF-SHA-256
+context. AES-256-GCM authenticates both ciphertext and versioned owner-key AAD,
+so a bucket cannot be substituted between providers, identities, installations,
+or another metadata format. The outer file is capped at 64 MiB and 10,000
+owners; a decrypted book is capped at 8 MiB, 2,000 contacts, 200 groups, 500
+recent recipients, five emails per contact, and 500 members per group. Strict
+schema validation follows authenticated decryption. Writes require the exact
+revision read by the client and use a process-serialized mode-0600 temporary
+file, fsync, and atomic rename.
+
+Contact and group create/update/delete operations are preflighted as one book
+revision. Email addresses are unique across contacts, group names and members
+are unique, groups reference only existing contacts, and deleting a contact
+removes its memberships and any resulting empty group. The composer derives at
+most eight suggestions from contacts, first-address group expansion, and
+non-duplicate recent recipients, matches only the active To/CC/BCC token, and
+preserves earlier recipient tokens. Prefix matches precede substring matches;
+the bounded history itself retains newest use, frequency, and canonical-address
+ordering. No provider-specific address-book API enters this path.
+
+Recent history is appended only after provider delivery evidence. Accepted
+delivery records each unique To/CC/BCC address; partial delivery omits every
+canonically rejected address; an uncertain outcome records nothing. Scheduled
+delivery follows the same rule. Contact-store failure is logged and cannot turn
+provider-confirmed delivery into a retry or duplicate send. Stored history has
+only address, optional display name, last-used time, and use count; it does not
+retain whether an address came from To, CC, or BCC.
+
+vCard import accepts bounded UTF-8 vCard 3.0 or 4.0 text, unfolds CRLF/LF lines,
+and maps `FN`, `N`, `EMAIL`, `ORG`, `CATEGORIES`, and `UID`; categories become
+groups in the same optimistic import revision. It rejects invalid controls,
+escapes, encoded/URI email values, over-limit cards/properties/lines/values, and
+cards with more than the domain's five-email limit. `PHOTO`, `LOGO`, `KEY`,
+`AGENT`, and `URL` are inert and ignored without decoding or network access.
+Export emits deterministic vCard 4.0 with escaped values and UTF-8-safe 75-octet
+CRLF folding through a private, no-store, `nosniff` attachment response.
+
 ## Durable scheduled-send boundary
 
 `POST /api/v1/mail/scheduled` accepts only an exact-revision provider-backed

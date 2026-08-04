@@ -25,6 +25,7 @@ export const useComposerFields = (onChange: () => void) => {
   const [subject, setSubject] = useState("");
   const [inReplyTo, setInReplyTo] = useState<ComposeInput["inReplyTo"]>();
   const [title, setTitle] = useState<ComposerTitle>("New message");
+  const [focusBody, setFocusBody] = useState(false);
 
   const reset = useCallback(() => {
     setTo("");
@@ -35,11 +36,13 @@ export const useComposerFields = (onChange: () => void) => {
     setSubject("");
     setInReplyTo(undefined);
     setTitle("New message");
+    setFocusBody(false);
   }, []);
 
   const hydrate = useCallback(
     (draft: DraftContent | ComposeInput, nextTitle: ComposerTitle) => {
-      setTo(formatAddressInput(draft.to));
+      const nextTo = formatAddressInput(draft.to);
+      setTo(nextTo);
       setCc(formatAddressInput(draft.cc));
       setBcc(formatAddressInput(draft.bcc));
       setShowCc(draft.cc.length > 0);
@@ -47,6 +50,7 @@ export const useComposerFields = (onChange: () => void) => {
       setSubject(draft.subject);
       setInReplyTo(draft.inReplyTo);
       setTitle(nextTitle);
+      setFocusBody(Boolean(nextTo));
     },
     [],
   );
@@ -60,6 +64,7 @@ export const useComposerFields = (onChange: () => void) => {
     setSubject(snapshot.subject);
     setInReplyTo(snapshot.inReplyTo);
     setTitle(snapshot.title);
+    setFocusBody(Boolean(snapshot.to.trim()));
   }, []);
 
   const input = useCallback(
@@ -71,12 +76,21 @@ export const useComposerFields = (onChange: () => void) => {
     [onChange],
   );
 
+  const setRecipientField = useCallback((
+    field: "bcc" | "cc" | "to",
+    value: string,
+  ) => {
+    ({ bcc: setBcc, cc: setCc, to: setTo })[field](value);
+    onChange();
+  }, [onChange]);
+
   return {
     applyTemplateSubject: useCallback((value: string) => {
       setSubject(value);
     }, []),
     bcc,
     cc,
+    focusBody,
     hydrate,
     inReplyTo,
     onBccInput: input(setBcc),
@@ -91,6 +105,7 @@ export const useComposerFields = (onChange: () => void) => {
     }, [cc]),
     reset,
     restoreRecovery,
+    setRecipientField,
     setTitle,
     showBcc,
     showCc,

@@ -15,6 +15,8 @@ the supplied Compose deployment.
   `member-signatures.json`
 - Per-provider/mailbox reusable template names, canonical subject/body content,
   and revisions encrypted in `member-templates.json`
+- Per-provider/mailbox contacts, groups, recent-recipient ranking metadata, and
+  revisions encrypted in `member-contacts.json`
 - Per-provider/mailbox density, sort, preview, send-confirmation, and Undo Send
   delay preferences encrypted in `message-list-preferences.json`
 - Per-provider/mailbox custom folder colors encrypted in
@@ -60,15 +62,16 @@ service does not blindly repeat a recent provisioning intent.
 
 Always back up the entire volume as one unit. `installation.json` contains the
 session secret required to decrypt `member-security.json`,
-`member-signatures.json`, `member-templates.json`, `mailbox-appearance.json`, and
-`mail-label-catalog.json`; mismatched copies can make member TOTP, signature,
-template, mailbox-color, and label records unrecoverable. Although
+`member-signatures.json`, `member-templates.json`, `member-contacts.json`,
+`mailbox-appearance.json`, and `mail-label-catalog.json`; mismatched copies can
+make member TOTP, signature, template, contact, mailbox-color, and label records
+unrecoverable. Although
 the metadata files contain encrypted owner buckets rather than raw addresses
 or content, the same backup also contains
 its decryption key. Protect the archive as sensitive mailbox-adjacent data.
 
-Signature, template, mailbox-appearance, and label-catalog write serialization is
-process-local. Keep
+Signature, template, contact, mailbox-appearance, and label-catalog write
+serialization is process-local. Keep
 exactly one Veda Mail process writing the volume, and stop that writer or use
 an operator-verified atomic whole-volume snapshot. Never mount one writable
 `/data` directory into multiple application replicas or merge individual
@@ -148,13 +151,13 @@ verified restored project, and preserve the old volume until validation is
 complete.
 
 Restoring an older backup also restores its administrator credentials,
-branding, provider profile, setup lock, signature books/defaults, and reusable
-templates as of
-that snapshot. Existing member sessions are not restored. Do not restore
-`member-signatures.json` or `member-templates.json` without the matching
-`installation.json`; an authentication or decryption failure is intentionally
-reported as an unavailable store rather than falling back to untrusted
-plaintext.
+branding, provider profile, setup lock, signature books/defaults, reusable
+templates, contacts, groups, and recent-recipient history as of that snapshot.
+Existing member sessions are not restored. Do not restore
+`member-signatures.json`, `member-templates.json`, or `member-contacts.json`
+without the matching `installation.json`; an authentication or decryption
+failure is intentionally reported as an unavailable store rather than falling
+back to untrusted plaintext.
 
 ## Administrator recovery
 
@@ -195,9 +198,13 @@ At least quarterly:
 3. Confirm administrator login.
 4. Confirm branding and provider configuration.
 5. Test a dedicated non-production mailbox.
-6. Confirm that mailbox's saved signatures/defaults and templates were restored.
+6. Confirm that mailbox's saved signatures/defaults, templates, contacts,
+   groups, and recent-recipient history were restored.
 7. Insert one template and one signature into a test compose without sending to
-   a real recipient.
-8. Delete the isolated environment after recording the result.
+   a real recipient, then select one restored contact and group from recipient
+   autocomplete.
+8. Export the restored contacts as vCard and import them into a clean dedicated
+   test identity; verify names, addresses, and category-derived groups.
+9. Delete the isolated environment after recording the result.
 
 Never test a restore by overwriting the only production volume.

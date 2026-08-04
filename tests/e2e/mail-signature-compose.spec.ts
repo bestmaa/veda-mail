@@ -145,7 +145,7 @@ test("keeps one new-message signature through picker changes and plain conversio
   expect(occurrences(await plainBody.inputValue(), alphaText)).toBe(1);
 
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await dialog
     .getByRole("textbox", { exact: true, name: "Subject" })

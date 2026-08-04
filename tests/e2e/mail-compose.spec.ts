@@ -14,7 +14,7 @@ test("sends CC-only and BCC-only mail with accessible disclosures", async ({
   await expectNoSeriousAccessibilityViolations(page);
   await composeTrigger.click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
-  const toInput = dialog.getByRole("textbox", { exact: true, name: "To" });
+  const toInput = dialog.getByRole("combobox", { exact: true, name: "To" });
   const ccToggle = dialog.getByRole("button", { exact: true, name: "Cc" });
   const bccToggle = dialog.getByRole("button", { exact: true, name: "Bcc" });
 
@@ -34,12 +34,12 @@ test("sends CC-only and BCC-only mail with accessible disclosures", async ({
   await expect(bccToggle).toBeFocused();
   await expectNoSeriousAccessibilityViolations(page);
   await dialog
-    .getByRole("textbox", { exact: true, name: "Bcc" })
+    .getByRole("combobox", { exact: true, name: "Bcc" })
     .fill("hidden@example.com");
   await bccToggle.click();
   await expect(bccToggle).toHaveAttribute("aria-expanded", "true");
   await expect(
-    dialog.getByRole("textbox", { exact: true, name: "Bcc" }),
+    dialog.getByRole("combobox", { exact: true, name: "Bcc" }),
   ).toHaveValue("hidden@example.com");
   await dialog
     .getByRole("textbox", { exact: true, name: "Subject" })
@@ -64,7 +64,7 @@ test("sends CC-only and BCC-only mail with accessible disclosures", async ({
   await composeTrigger.click();
   await dialog.getByRole("button", { exact: true, name: "Cc" }).click();
   await dialog
-    .getByRole("textbox", { exact: true, name: "Cc" })
+    .getByRole("combobox", { exact: true, name: "Cc" })
     .fill("copy@example.com");
   await dialog
     .getByRole("textbox", { exact: true, name: "Subject" })
@@ -164,7 +164,7 @@ test("uploads, removes, scans, and sends an attachment", async ({ page }) => {
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await dialog
     .getByRole("textbox", { exact: true, name: "Subject" })

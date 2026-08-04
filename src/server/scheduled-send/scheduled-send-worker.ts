@@ -1,9 +1,13 @@
 import "server-only";
 
+import { contactOwnerForConnection } from "@/server/contacts/contact-owner";
+import { recordConfirmedRecentRecipients } from "@/server/contacts/contact-recipient-history";
 import {
   deliverScheduledJob,
   isTerminalScheduledSendError,
   scheduledSendErrorMessage,
+  scheduledJobConnection,
+  scheduledJobSendInput,
   type ScheduledDeliveryPort,
 } from "@/server/scheduled-send/scheduled-send-delivery";
 import { scheduledSendConfigured } from "@/server/scheduled-send/scheduled-send-key";
@@ -38,6 +42,15 @@ export const runScheduledJob = async (
         kind: "uncertain",
       });
       return;
+    }
+    try {
+      await recordConfirmedRecentRecipients(
+        await contactOwnerForConnection(scheduledJobConnection(claim.job)),
+        scheduledJobSendInput(claim.job),
+        receipt,
+      );
+    } catch {
+      console.error("[veda-mail] Scheduled recent-recipient persistence failed.");
     }
     await settleScheduledJob(claim, { kind: "complete" });
   } catch (error) {

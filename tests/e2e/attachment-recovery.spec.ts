@@ -45,7 +45,7 @@ test("marks a server-invalidated attachment as needing reattachment", async ({
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await dialog
     .getByRole("textbox", { exact: true, name: "Message body" })

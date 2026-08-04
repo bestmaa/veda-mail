@@ -69,7 +69,7 @@ export const createComposerViewModel = (
     terminalRecovery: composer.draft.terminalRecovery,
   },
   error: composer.error,
-  focusBody: Boolean(composer.to),
+  focusBody: composer.focusBody,
   isAttachmentCapabilityRefreshing: composer.isAttachmentCapabilityRefreshing,
   isBusy: composer.isBusy,
   isOpen: composer.isOpen,

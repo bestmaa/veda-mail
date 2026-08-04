@@ -5,7 +5,8 @@ import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 
 const mocks = vi.hoisted(() => ({
-  getCurrentConnection: vi.fn(),
+  contactOwnerForConnection: vi.fn(), getCurrentConnection: vi.fn(),
+  recordConfirmedRecentRecipients: vi.fn(),
   sendMessage: vi.fn(),
 }));
 
@@ -16,6 +17,10 @@ vi.mock("@/server/connections/connection-session", () => ({
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: vi.fn(async () => ({ sendMessage: mocks.sendMessage })),
 }));
+vi.mock("@/server/contacts/contact-owner", () =>
+  ({ contactOwnerForConnection: mocks.contactOwnerForConnection }));
+vi.mock("@/server/contacts/contact-recipient-history", () =>
+  ({ recordConfirmedRecentRecipients: mocks.recordConfirmedRecentRecipients }));
 
 import { POST } from "@/app/api/v1/mail/send/route";
 import { connectionStore } from "@/server/connections/connection-store";
@@ -48,8 +53,10 @@ beforeEach(() => {
     },
     "delivery-route-revision",
   );
-  mocks.getCurrentConnection.mockReset();
-  mocks.getCurrentConnection.mockResolvedValue(activeConnection);
+  mocks.getCurrentConnection.mockReset(); mocks.getCurrentConnection.mockResolvedValue(activeConnection);
+  mocks.contactOwnerForConnection.mockReset(); mocks.recordConfirmedRecentRecipients.mockReset();
+  mocks.contactOwnerForConnection.mockResolvedValue({ email: "member@example.com", providerId: "mock" });
+  mocks.recordConfirmedRecentRecipients.mockResolvedValue(undefined);
   mocks.sendMessage.mockReset();
 });
 
@@ -118,6 +125,15 @@ describe("mail send delivery receipt boundary", () => {
         submittedAt: "2026-07-30T11:59:00.000Z",
       },
     ]);
+    expect(mocks.recordConfirmedRecentRecipients).toHaveBeenCalledWith(
+      { email: "member@example.com", providerId: "mock" },
+      expect.objectContaining({
+        bcc: [{ email: "Hidden@Example.com", name: null }],
+        cc: [{ email: "Copy@Example.com", name: null }],
+        to: [{ email: "Primary@Example.com", name: null }],
+      }),
+      expect.objectContaining({ deliveryStatus: "partial" }),
+    );
   });
 
   it("returns terminal uncertain success without leaking malformed values", async () => {

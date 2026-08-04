@@ -209,7 +209,7 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
     });
   });
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await dialog.getByRole("button", { name: /^Send$/ }).click();
   await expect(dialog.getByRole("alert")).toContainText(

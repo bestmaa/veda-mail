@@ -181,7 +181,7 @@ test("retry cleans the previous upload even when its queued copy is removed", as
   await expect(dialog.getByText("application/pdf")).toBeVisible();
   await expect(dialog.getByText("text/plain")).toBeVisible();
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await dialog.getByRole("button", { name: /^Send$/ }).click();
   await expect(

@@ -51,13 +51,13 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
     dialog.getByRole("textbox", { exact: true, name: "Message body" }),
   ).toBeFocused();
   await expect(
-    dialog.getByRole("textbox", { exact: true, name: "To" }),
+    dialog.getByRole("combobox", { exact: true, name: "To" }),
   ).toHaveValue('"Priya Menon" <priya@northstar.design>');
   await expect(
-    dialog.getByRole("textbox", { exact: true, name: "Cc" }),
+    dialog.getByRole("combobox", { exact: true, name: "Cc" }),
   ).toHaveValue('"Owner" <owner@example.com>');
   await expect(
-    dialog.getByRole("textbox", { exact: true, name: "To" }),
+    dialog.getByRole("combobox", { exact: true, name: "To" }),
   ).not.toHaveValue(/member@example.com/);
   await closeUnsavedComposer(page, dialog);
   await expect(replyAll).toBeFocused();
@@ -65,7 +65,7 @@ test("shows message metadata and derives Reply All and Forward drafts", async ({
   const forward = page.getByRole("button", { name: "Forward" });
   await forward.click();
   await expect(
-    dialog.getByRole("textbox", { exact: true, name: "To" }),
+    dialog.getByRole("combobox", { exact: true, name: "To" }),
   ).toHaveValue("");
   await expect(
     dialog.getByRole("textbox", { exact: true, name: "Subject" }),
@@ -177,7 +177,7 @@ test("submits Reply All and Forward with the correct threading payload", async (
 
   await page.getByRole("button", { name: "Forward" }).click();
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("colleague@example.com");
   await sendComposer(page);
 

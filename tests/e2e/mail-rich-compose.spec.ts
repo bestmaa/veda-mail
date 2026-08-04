@@ -11,7 +11,7 @@ const openComposer = async (page: Page) => {
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   return {
     body: dialog.getByRole("textbox", {
@@ -118,6 +118,7 @@ test("pastes only text, rejects active links, and safely switches to plain", asy
     });
   });
   const { body, dialog } = await openComposer(page);
+  await body.focus();
   await body.evaluate((element) => {
     const data = new DataTransfer();
     data.setData(
