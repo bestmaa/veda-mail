@@ -78,7 +78,7 @@ export type SnoozeProviderPlan = {
   readonly expectedState: string | null;
   readonly inboxMailboxId: string;
   readonly kind: "jmap";
-  readonly originalMailboxIds: readonly string[];
+  readonly originalMailboxIds: string[];
   readonly snoozedMailboxId: string | null;
   readonly snoozedMailboxName: string;
   readonly sourceMailboxId: string;
@@ -89,6 +89,7 @@ export type SnoozeProviderPlan = {
   readonly kind: "imap";
   readonly marker: string;
   readonly snoozedMailbox: string;
+  readonly snoozedMailboxObjectId: string | null;
   readonly snoozedUid: number | null;
   readonly snoozedUidValidity: string | null;
   readonly sourceMailbox: string;
@@ -98,6 +99,11 @@ export type SnoozeProviderPlan = {
 };
 
 export type SnoozeProviderState = "deleted" | "snoozed" | "visible";
+export interface SnoozeProviderInspection {
+  readonly ownedMailbox: SnoozeOwnedMailbox;
+  readonly plan: SnoozeProviderPlan;
+  readonly state: SnoozeProviderState;
+}
 export interface SnoozePreflightInput {
   readonly messageId: MessageId;
   readonly operationId: string;
