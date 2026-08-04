@@ -1062,6 +1062,12 @@ operator monitoring.
 - The current worker inherits the documented single-replica deployment boundary.
   Multi-replica scheduling remains unsupported until a shared transactional
   store and distributed lease are implemented.
+- Snooze uses a separate encrypted store and HKDF namespace. Its mailbox intent
+  and recovery marker are durable before mutation. Since moves are inspectable,
+  interrupted hide/wake leases retry and never inherit delivery `uncertain`.
+- Snooze erases its provider connection after completion, manual move, deletion,
+  authentication failure, or terminal failure. Retrying a terminal record needs
+  a current authenticated mailbox session.
 - Never advertise a durable feature while work exists only in process memory.
 
 ## Keyboard shortcut and focus threats

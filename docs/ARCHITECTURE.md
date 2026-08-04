@@ -731,6 +731,22 @@ reopening that exact provider draft. Once the worker commits a `sending` lease,
 cancellation fails with a conflict and the UI truthfully reports that it is too
 late. A disabled delay preserves the existing immediate submission path.
 
+## Durable snooze boundary
+
+Snooze persists a provider-specific, read-only-preflight plan before it creates
+the owned Snoozed mailbox or moves a message. `/data/snooze-jobs.json` uses
+Snooze-specific HMAC/HKDF contexts beneath `VEDA_MAIL_JOB_KEY`, owner-bound
+AES-256-GCM, strict 100-job/10,000-owner/64-MiB limits, mode-0600 fsynced atomic
+writes, and a keyed restore check. Credentials and provider locators never
+appear in the authenticated projection.
+
+The worker commits a random lease before provider I/O. Every hide and wake first
+inspects the stable JMAP identity or IMAP UIDPLUS/OBJECTID/unique-keyword plan.
+Interrupted work becomes `retry-hide` or `retry-wake`, never delivery-style
+`uncertain`. Manual restoration and deletion complete safely; authentication or
+terminal failure clears the connection, while authenticated retry supplies the
+current connection. Owned-mailbox metadata remains after the last job.
+
 ## Provider-native mail-rules boundary
 
 `MailGateway.getRuleCapability`, `deployRules`, and `previewRules` form the
