@@ -481,6 +481,19 @@ to COPY plus EXPUNGE, even on servers where that means move is unavailable,
 because plain EXPUNGE can remove unrelated messages. No Stalwart configuration
 change is required beyond ordinary JMAP mailbox rights.
 
+Snooze is provider-side and fail-closed. Veda Mail first persists a bounded,
+random, account-owned mailbox name such as `Snoozed · Veda Mail <token>`; it
+never adopts or mutates a user's mailbox merely because it is named
+`Snoozed`. JMAP requires writable source, owned Snoozed, and Inbox mailboxes,
+uses stable Email IDs and conditional state updates, and patches only the exact
+source/owned memberships while preserving keywords and concurrent memberships.
+Standard IMAP requires MOVE, UIDPLUS, writable wildcard keywords, and stable
+UIDVALIDITY. It marks the exact message before MOVE, verifies marker/COPYUID
+recovery, and refuses ambiguous duplicates. Restore removes only the private
+marker and falls back to a currently writable Inbox if the original mailbox no
+longer exists. No browser-supplied move plan or retained mailbox password is
+trusted by the background worker.
+
 ## Common provider examples
 
 Always prefer the values shown in the account's current provider control

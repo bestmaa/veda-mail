@@ -19,6 +19,7 @@ import type {
 } from "@/domain/mail/calendar";
 import type { MailSearchQuery } from "@/domain/mail/mail-search";
 import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
+import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze";
 import type {
   MailboxId,
   MessageId,
@@ -126,6 +127,21 @@ export class MailApplicationService {
 
   public previewRules(input: RulePreviewInput) {
     return this.gateway.previewRules(input);
+  }
+
+  public getSnoozeCapability() { return this.gateway.getSnoozeCapability(); }
+  public snoozeMailboxIntent() { return this.gateway.snoozeMailboxIntent(); }
+  public preflightSnooze(input: SnoozePreflightInput) {
+    return this.gateway.preflightSnooze(input);
+  }
+  public inspectSnooze(plan: SnoozeProviderPlan) {
+    return this.gateway.inspectSnooze(plan);
+  }
+  public hideSnooze(plan: SnoozeProviderPlan) {
+    return this.gateway.hideSnooze(plan);
+  }
+  public restoreSnooze(plan: SnoozeProviderPlan) {
+    return this.gateway.restoreSnooze(plan);
   }
 
   public mutateMessage(mutation: MessageMutation) {

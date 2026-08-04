@@ -71,6 +71,7 @@ export const mockMailboxIds = {
   drafts,
   inbox,
   sent,
+  snoozed: id.mailbox("mock-snoozed"),
   spam: id.mailbox("mock-spam"),
   trash: id.mailbox("mock-trash"),
 };

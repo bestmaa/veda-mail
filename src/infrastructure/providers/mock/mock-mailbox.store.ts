@@ -29,6 +29,8 @@ const initialDefinitions = (): Definition[] => [
     role: "drafts", rights: rights(), sortOrder: 30 },
   { color: "#10b981", id: mockMailboxIds.archive, name: "Archive", parentId: null,
     role: "archive", rights: rights(), sortOrder: 40 },
+  { color: "#64748b", id: mockMailboxIds.snoozed, name: "Snoozed", parentId: null,
+    role: "custom", rights: rights(), sortOrder: 45 },
   { color: "#f97316", id: mockMailboxIds.spam, name: "Spam", parentId: null,
     role: "spam", rights: rights(), sortOrder: 50 },
   { color: "#ef4444", id: mockMailboxIds.trash, name: "Trash", parentId: null,

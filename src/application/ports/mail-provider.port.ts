@@ -42,6 +42,15 @@ import type {
   RulePreviewResult,
 } from "@/domain/mail/rule";
 import type {
+  SnoozeCapability,
+  SnoozeOwnedMailbox,
+  SnoozePreflightInput,
+  SnoozePreflightResult,
+  SnoozeProviderInspection,
+  SnoozeProviderOperationResult,
+  SnoozeProviderPlan,
+} from "@/domain/mail/snooze";
+import type {
   MailboxEmptyInput,
   MailboxEmptyResult,
 } from "@/domain/mail/mailbox-empty";
@@ -83,6 +92,7 @@ export interface MailGateway {
   getLabelCapability(mailboxId: MailboxId): Promise<LabelCapability>;
   getMemberProfile(): Promise<MemberProfile>;
   getRuleCapability(): Promise<RuleCapability>;
+  getSnoozeCapability(): Promise<SnoozeCapability>;
   getTwoFactorEnabled(): Promise<boolean>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
   getConversation(query: ConversationQuery): Promise<ConversationPage>;
@@ -98,6 +108,11 @@ export interface MailGateway {
   mutateMailbox(mutation: MailboxMutation): Promise<MailboxMutationResult>;
   deployRules(input: RuleDeploymentInput): Promise<RuleDeploymentResult>;
   previewRules(input: RulePreviewInput): Promise<readonly RulePreviewResult[]>;
+  snoozeMailboxIntent(): Promise<SnoozeOwnedMailbox>;
+  preflightSnooze(input: SnoozePreflightInput): Promise<SnoozePreflightResult>;
+  inspectSnooze(plan: SnoozeProviderPlan): Promise<SnoozeProviderInspection>;
+  hideSnooze(plan: SnoozeProviderPlan): Promise<SnoozeProviderOperationResult>;
+  restoreSnooze(plan: SnoozeProviderPlan): Promise<SnoozeProviderOperationResult>;
   saveDraft(input: DraftSaveInput): Promise<DraftDetail>;
   sendMessage(input: SendMessageInput): Promise<SendReceipt>;
   testConnection(): Promise<void>;

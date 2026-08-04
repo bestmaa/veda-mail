@@ -8,6 +8,7 @@ import type {
   RuleDeploymentInput,
   RulePreviewInput,
 } from "@/domain/mail/rule";
+import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -39,6 +40,7 @@ import {
   getImapRuleCapability,
 } from "@/infrastructure/providers/imap-smtp/manage-sieve-gateway";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
+import { ImapSnoozeAdapter } from "@/infrastructure/providers/imap-smtp/imap-snooze-adapter";
 import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
 import {
   downloadImapCalendarPart,
@@ -55,6 +57,7 @@ export class ImapSmtpMailGateway implements MailGateway {
   private readonly reader: ImapMailReader;
   private readonly mailboxes: ImapMailboxManager;
   private readonly writer: ImapMailWriter;
+  private readonly snooze: ImapSnoozeAdapter;
 
   public constructor(private readonly config: ImapSmtpMemberConfig) {
     this.attachmentCapability = new SmtpAttachmentCapability(config);
@@ -62,6 +65,7 @@ export class ImapSmtpMailGateway implements MailGateway {
     this.reader = new ImapMailReader(config);
     this.mailboxes = new ImapMailboxManager(config);
     this.writer = new ImapMailWriter(config, this.attachmentCapability);
+    this.snooze = new ImapSnoozeAdapter(config);
   }
 
   public async changePassword(_input: MemberPasswordChange): Promise<void> {
@@ -114,6 +118,23 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public previewRules(input: RulePreviewInput) {
     return previewImapRules(this.config, input);
+  }
+  public getSnoozeCapability() { return this.snooze.getCapability(); }
+  public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
+  public preflightSnooze(input: SnoozePreflightInput) {
+    return this.snooze.preflight(input);
+  }
+  public inspectSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "imap") throw new Error("Snooze provider mismatch.");
+    return this.snooze.inspect(plan);
+  }
+  public hideSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "imap") throw new Error("Snooze provider mismatch.");
+    return this.snooze.hide(plan);
+  }
+  public restoreSnooze(plan: SnoozeProviderPlan) {
+    if (plan.kind !== "imap") throw new Error("Snooze provider mismatch.");
+    return this.snooze.restore(plan);
   }
 
   public downloadAttachment(
