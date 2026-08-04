@@ -79,8 +79,14 @@ describe("Stalwart OAuth client", () => {
       clientId: "registered-client-id",
       codeChallengeMethod: "S256",
       mfaToken: "123456",
+      scope: "openid offline_access urn:ietf:params:oauth:scope:mail",
       type: "authCode",
     });
+    const registrationRequest = JSON.parse(
+      String(fetchMock.mock.calls[0]?.[1]?.body),
+    ) as { scope?: string };
+    expect(registrationRequest.scope).not.toContain("scope:contacts");
+    expect(registrationRequest.scope).not.toContain("scope:calendars");
     expect(String(fetchMock.mock.calls[2]?.[1]?.body)).toContain(
       "grant_type=authorization_code",
     );

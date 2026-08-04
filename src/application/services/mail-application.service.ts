@@ -13,6 +13,10 @@ import type {
 } from "@/domain/mail/mail";
 import type { MessageListSort } from "@/domain/mail/message-list-preferences";
 import type { ConversationQuery } from "@/domain/mail/conversation";
+import type {
+  CalendarPartDownloadInput,
+  CalendarPartListInput,
+} from "@/domain/mail/calendar";
 import type { MailSearchQuery } from "@/domain/mail/mail-search";
 import type {
   MailboxId,
@@ -82,6 +86,14 @@ export class MailApplicationService {
 
   public downloadAttachment(input: AttachmentDownloadInput) {
     return this.gateway.downloadAttachment(input);
+  }
+
+  public listCalendarParts(input: CalendarPartListInput) {
+    return this.gateway.listCalendarParts(input);
+  }
+
+  public downloadCalendarPart(input: CalendarPartDownloadInput) {
+    return this.gateway.downloadCalendarPart(input);
   }
 
   public discardDraft(

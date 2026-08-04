@@ -10,6 +10,7 @@ import { MessageReaderToolbarView } from "@/presentation/features/mail-workspace
 import { MessageConversationView } from "@/presentation/features/mail-workspace/ui/message-conversation.view";
 import { MessageBodyConnector } from "@/presentation/features/mail-workspace/connectors/message-body.connector";
 import { MessageDetailsView } from "@/presentation/features/mail-workspace/ui/message-details.view";
+import { CalendarInvitationConnector } from "@/presentation/features/mail-workspace/connectors/calendar-invitation.connector";
 
 interface MessageReaderViewProps {
   readonly activeRole: MailboxRole | null;
@@ -141,6 +142,13 @@ export const MessageReaderView = ({
             body={reader.body}
             handleSessionFailure={reader.handleSessionFailure}
             htmlBody={reader.htmlBody}
+            key={`${reader.messageId}:${reader.sessionScope}`}
+            messageId={reader.messageId}
+            sessionScope={reader.sessionScope}
+          />
+
+          <CalendarInvitationConnector
+            handleSessionFailure={reader.handleSessionFailure}
             key={reader.messageId}
             messageId={reader.messageId}
             sessionScope={reader.sessionScope}

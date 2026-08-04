@@ -12,6 +12,7 @@ import type {
 } from "@/domain/mail/mail";
 import type { LabelCleanupInput } from "@/domain/mail/label";
 import type { ConversationQuery } from "@/domain/mail/conversation";
+import type { CalendarPartDownloadInput } from "@/domain/mail/calendar";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import { id, type MessageId } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
@@ -70,6 +71,10 @@ export class MockMailGateway implements MailGateway {
       input,
     );
   }
+  public async downloadCalendarPart(input: CalendarPartDownloadInput): Promise<never> {
+    void input;
+    throw new AttachmentDownloadError("not_found", "Calendar invitation not found.");
+  }
   public async getAccount() {
     return {
       email: "member@example.com",
@@ -108,6 +113,9 @@ export class MockMailGateway implements MailGateway {
       }
     }
     return listMockMessageAttachments(this.messages, input);
+  }
+  public async listCalendarParts() {
+    return [];
   }
   public async listMailboxes(): Promise<readonly Mailbox[]> {
     return this.mailboxes.list([...this.messages, ...this.drafts.messages()]);

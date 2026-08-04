@@ -12,7 +12,7 @@ import { assertSafeProviderOrigin } from "@/infrastructure/providers/stalwart-jm
 const REQUEST_TIMEOUT_MS = 20_000;
 const REDIRECT_URI = "com.vedaconcepts.vedamail:/oauth/callback";
 const OAUTH_SCOPE =
-  "openid offline_access urn:ietf:params:oauth:scope:mail urn:ietf:params:oauth:scope:contacts urn:ietf:params:oauth:scope:calendars";
+  "openid offline_access urn:ietf:params:oauth:scope:mail";
 
 const loginResponseSchema = z.discriminatedUnion("type", [
   z.object({

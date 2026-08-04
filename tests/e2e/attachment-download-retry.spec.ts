@@ -199,7 +199,9 @@ test("announces scanning and recovers from scanner unavailability on mobile", as
   await page.keyboard.press("Enter");
 
   await expect(downloadButton).toHaveAttribute("aria-busy", "true");
-  await expect(reader.getByRole("status")).toHaveText(
+  const feedbackId = await downloadButton.getAttribute("aria-describedby");
+  expect(feedbackId).toBe("attachment-attachment-roadmap-download-feedback");
+  await expect(reader.locator(`#${feedbackId}`)).toHaveText(
     `Scanning ${longName} before download…`,
   );
   expect(await page.evaluate(() =>

@@ -52,7 +52,8 @@ const outgoingAttachments = (
   readonly contentType: string;
   readonly filename: string;
 }[] =>
-  (input.attachments ?? []).map((attachment) => {
+  (input.attachments ?? []).filter(({ calendarMethod }) => !calendarMethod)
+    .map((attachment) => {
     const content = Buffer.from(attachment.content);
     const digest = createHash("sha256").update(content).digest("hex");
     if (
@@ -67,6 +68,34 @@ const outgoingAttachments = (
       filename: normalizeAttachmentFilename(attachment.name),
     };
   });
+
+const outgoingCalendarEvent = (
+  input: SendMessageInput,
+): { readonly content: Buffer; readonly filename: string; readonly method: "REPLY" } | undefined => {
+  const calendar = (input.attachments ?? []).filter(
+    ({ calendarMethod }) => calendarMethod === "REPLY",
+  );
+  if (calendar.length > 1) {
+    throw new Error("Only one outgoing calendar reply is allowed.");
+  }
+  const attachment = calendar[0];
+  if (!attachment) return undefined;
+  if (normalizeAttachmentMimeType(attachment.mimeType) !== "text/calendar") {
+    throw new Error("Outgoing calendar reply media type is invalid.");
+  }
+  const content = Buffer.from(attachment.content);
+  if (
+    content.byteLength !== attachment.size ||
+    createHash("sha256").update(content).digest("hex") !== attachment.sha256
+  ) {
+    throw new Error("Outgoing calendar reply integrity check failed.");
+  }
+  return {
+    content,
+    filename: normalizeAttachmentFilename(attachment.name),
+    method: "REPLY",
+  };
+};
 
 const rolePath = (
   mailboxes: readonly ListResponse[],
@@ -120,6 +149,7 @@ export class ImapMailWriter {
       bcc: input.bcc.map(address),
       cc: input.cc.map(address),
       from: address({ email: this.config.username, name: null }),
+      icalEvent: outgoingCalendarEvent(input),
       ...(replyMessageId
         ? { inReplyTo: replyMessageId, references: [...references] }
         : {}),

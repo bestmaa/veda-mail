@@ -17,6 +17,8 @@ the supplied Compose deployment.
   and revisions encrypted in `member-templates.json`
 - Per-provider/mailbox contacts, groups, recent-recipient ranking metadata, and
   revisions encrypted in `member-contacts.json`
+- Per-provider/mailbox imported calendar events and revisions encrypted in
+  `member-calendar-events.json`
 - Per-provider/mailbox density, sort, preview, send-confirmation, and Undo Send
   delay preferences encrypted in `message-list-preferences.json`
 - Per-provider/mailbox custom folder colors encrypted in
@@ -63,14 +65,15 @@ service does not blindly repeat a recent provisioning intent.
 Always back up the entire volume as one unit. `installation.json` contains the
 session secret required to decrypt `member-security.json`,
 `member-signatures.json`, `member-templates.json`, `member-contacts.json`,
-`mailbox-appearance.json`, and `mail-label-catalog.json`; mismatched copies can
+`member-calendar-events.json`, `mailbox-appearance.json`, and
+`mail-label-catalog.json`; mismatched copies can
 make member TOTP, signature, template, contact, mailbox-color, and label records
 unrecoverable. Although
 the metadata files contain encrypted owner buckets rather than raw addresses
 or content, the same backup also contains
 its decryption key. Protect the archive as sensitive mailbox-adjacent data.
 
-Signature, template, contact, mailbox-appearance, and label-catalog write
+Signature, template, contact, calendar-event, mailbox-appearance, and label-catalog write
 serialization is process-local. Keep
 exactly one Veda Mail process writing the volume, and stop that writer or use
 an operator-verified atomic whole-volume snapshot. Never mount one writable
