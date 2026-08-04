@@ -35,13 +35,16 @@ export interface SnoozeOperationPort {
   ): Promise<SnoozeProviderOperationResult>;
 }
 
-let installed: SnoozeOperationPort | null = null;
+const snoozePortGlobal = globalThis as typeof globalThis & {
+  __vedaMailSnoozeOperationPort?: SnoozeOperationPort;
+};
 
 export const installSnoozeOperationPort = (port: SnoozeOperationPort): void => {
-  installed = port;
+  snoozePortGlobal.__vedaMailSnoozeOperationPort = port;
 };
 
 export const getSnoozeOperationPort = (): SnoozeOperationPort => {
+  const installed = snoozePortGlobal.__vedaMailSnoozeOperationPort;
   if (!installed) throw new SnoozeProviderError("terminal", "Snooze is unavailable.");
   return installed;
 };
