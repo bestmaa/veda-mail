@@ -31,6 +31,10 @@ import { emptyImapMailbox } from "@/infrastructure/providers/imap-smtp/imap-mail
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
+import {
+  downloadImapCalendarPart,
+  listImapCalendarParts,
+} from "@/infrastructure/providers/imap-smtp/imap-calendar.reader";
 
 const unsupported = (feature: string): never => {
   throw new Error(`${feature} is not available through standard IMAP/SMTP.`);
@@ -98,6 +102,12 @@ export class ImapSmtpMailGateway implements MailGateway {
     return this.reader.downloadAttachment(input);
   }
 
+  public downloadCalendarPart(
+    input: Parameters<typeof downloadImapCalendarPart>[1],
+  ) {
+    return downloadImapCalendarPart(this.config, input);
+  }
+
   public getMaxAttachmentBytes() {
     return this.attachmentCapability.getMaxAttachmentBytes();
   }
@@ -121,6 +131,12 @@ export class ImapSmtpMailGateway implements MailGateway {
 
   public listMessageAttachments(input: MessageAttachmentListInput) {
     return this.reader.listMessageAttachments(input);
+  }
+
+  public listCalendarParts(
+    input: Parameters<typeof listImapCalendarParts>[1],
+  ) {
+    return listImapCalendarParts(this.config, input);
   }
 
   public listMailboxes() {

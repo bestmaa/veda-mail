@@ -7,6 +7,7 @@ import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jma
 
 export interface JmapComposeAttachment {
   readonly blobId: string;
+  readonly calendarMethod?: "REPLY";
   readonly name: string;
   readonly type: string;
 }
@@ -18,6 +19,12 @@ export const uploadVerifiedJmapAttachments = async (
 ): Promise<readonly JmapComposeAttachment[]> => {
   const uploaded: JmapComposeAttachment[] = [];
   for (const attachment of input.attachments ?? []) {
+    if (
+      attachment.calendarMethod &&
+      attachment.mimeType.trim().toLowerCase() !== "text/calendar"
+    ) {
+      throw new Error("Outgoing calendar reply media type is invalid.");
+    }
     const content = Buffer.from(attachment.content);
     const digest = createHash("sha256").update(content).digest("hex");
     if (
@@ -29,6 +36,9 @@ export const uploadVerifiedJmapAttachments = async (
     const provider = await client.uploadAttachment(accountId, attachment);
     uploaded.push({
       blobId: provider.blobId,
+      ...(attachment.calendarMethod
+        ? { calendarMethod: attachment.calendarMethod }
+        : {}),
       name: attachment.name,
       type: provider.type,
     });
@@ -66,7 +76,13 @@ export const jmapComposeBody = (
               messageBody,
               ...attachments.map((attachment) => ({
                 blobId: attachment.blobId,
-                disposition: "attachment",
+                disposition: attachment.calendarMethod ? "inline" : "attachment",
+                ...(attachment.calendarMethod
+                  ? {
+                      "header:Content-Type":
+                        "text/calendar; method=REPLY; charset=utf-8",
+                    }
+                  : {}),
                 name: attachment.name,
                 type: attachment.type,
               })),

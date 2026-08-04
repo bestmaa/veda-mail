@@ -19,6 +19,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Local contacts, groups, autocomplete, vCard   | Yes             | Yes                  |
+| RFC 5545 invite display/RSVP/local ICS         | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Bounded bulk actions and permanent delete    | Yes             | Yes                  |
 | Resumable Empty Spam/Trash snapshot           | Yes             | Yes, UIDPLUS required |
@@ -174,6 +175,17 @@ import and vCard 4.0 export are local transformations; no provider, DNS, HTTP,
 CardDAV, or proprietary contacts service is contacted. These contacts do not
 automatically appear in another mail client unless the member exports them or
 the matching Veda Mail `/data` state is restored.
+
+Calendar invitations also share one application contract while retaining exact
+provider identity. JMAP discovers bounded dispositionless, inline, or attached
+`text/calendar` body parts and downloads the revalidated same-origin blob. IMAP
+discovers the corresponding BODYSTRUCTURE leaf and revalidates mailbox,
+UIDVALIDITY, UID, and section before bounded decoded download. Both paths use
+the same ClamAV scan and strict RFC 5545 parser. Replies are canonical iMIP:
+JMAP uploads an explicit `text/calendar; method=REPLY` part and SMTP uses the
+equivalent MailComposer calendar event. Imported events remain in Veda Mail's
+encrypted `member-calendar-events.json`; no CalDAV, DNS, HTTP URL, proprietary
+Google calendar service, or upstream provider calendar API is contacted.
 
 Both adapters expose a runtime-gated manual draft workflow. Veda Mail can
 create, open, update, discard, and send provider-backed drafts in the

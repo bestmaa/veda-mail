@@ -137,4 +137,34 @@ describe("IMAP/SMTP rich writer", () => {
       /multipart\/alternative/iu,
     );
   });
+
+  it("emits an RFC 5545 METHOD=REPLY calendar part", async () => {
+    const content = Buffer.from(
+      "BEGIN:VCALENDAR\r\nMETHOD:REPLY\r\nEND:VCALENDAR\r\n",
+      "utf8",
+    );
+    await writer().sendMessage({
+      ...baseInput,
+      attachments: [{
+        calendarMethod: "REPLY",
+        content,
+        id: id.attachmentUpload("calendar-reply"),
+        mimeType: "text/calendar",
+        name: "reply.ics",
+        sha256: createHash("sha256").update(content).digest("hex"),
+        size: content.byteLength,
+      }],
+    });
+    const submitted = mocks.sendMail.mock.calls[0]?.[0] as
+      | { readonly raw: Buffer }
+      | undefined;
+    if (!submitted) throw new Error("No calendar reply was submitted.");
+    const raw = submitted.raw.toString("utf8");
+
+    expect(raw).toMatch(/Content-Type: text\/calendar;[\s\S]*method=REPLY/iu);
+    expect(raw).toMatch(/filename=reply\.ics/iu);
+    expect(mocks.assertMessageBytes).toHaveBeenCalledWith(
+      submitted.raw.byteLength,
+    );
+  });
 });

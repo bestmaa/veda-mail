@@ -500,6 +500,48 @@ process-local, so one writable Veda Mail replica is supported. Back up
 `installation.json` and `member-contacts.json` only as one protected volume
 snapshot.
 
+### Calendar invitations and local event exchange
+
+- Calendar MIME metadata is provider-controlled and untrusted. JMAP and IMAP
+  traverse at most 512 body nodes to depth 32, accept only `text/calendar`, and
+  bind opaque part IDs to the authenticated account, message, and exact native
+  blob or UIDVALIDITY/section identity. A response re-lists and revalidates that
+  identity; the browser cannot submit native provider locators.
+- Every selected part is capped at 1 MiB, streamed through the configured
+  ClamAV spool, served once from the clean spool, and then parsed. The parser
+  caps components, depth, properties, attendees, text, recurrence, and unfolded
+  lines; requires UTF-8 iCalendar 2.0 with exactly one primary VEVENT; rejects
+  controls, bidi controls, malformed escaping, binary/encoded values, duplicate
+  critical fields, unsafe mailto/TZID/time/duration/RRULE data, and multiple
+  events. `ATTACH`, `URL`, `TZURL`, `GEO`, and alarm content never cause DNS,
+  HTTP, filesystem, or other remote access.
+- Organizer identity is never described as verified. The reader compares the
+  message sender and organizer address and visibly warns on mismatch. RSVP is
+  available only for METHOD:REQUEST with one organizer and exactly one attendee
+  matching the gateway-owned account address. METHOD:CANCEL, REPLY, and PUBLISH
+  are display/import only.
+- The server re-fetches and re-parses before response, constructs the recipient
+  solely from ORGANIZER, and serializes a canonical one-attendee METHOD:REPLY.
+  SMTP uses an iCalendar MIME alternative; JMAP uploads a bounded
+  `text/calendar; method=REPLY` part. A client UUID plus the exact response
+  intent enters the scoped send-idempotency ledger. An uncertain receipt is
+  replayed without automatic resend when the same action is retried.
+- `/data/member-calendar-events.json` uses an HMAC-SHA-256 owner index and
+  calendar-specific HKDF-SHA-256/AES-256-GCM owner envelopes authenticated with
+  versioned AAD. Strict schemas, a 64 MiB outer-file limit, 1,000 events per
+  owner, optimistic revisions, sequence non-downgrade, mode-0600 temporary
+  files, fsync, and atomic rename protect local import/remove/export. Import is
+  one canonical event per atomic mutation; export is deterministic CRLF/folded
+  iCalendar and never contacts CalDAV.
+
+Residual risk: iMIP does not cryptographically prove organizer identity; users
+must evaluate the mismatch warning and message-authentication context. Floating
+times and incomplete third-party timezone definitions can still be ambiguous.
+Response idempotency is scoped to the active in-memory mail connection, and the
+whole-file event writer is process-local, so one writable application replica
+is supported. Back up `installation.json` and `member-calendar-events.json` in
+the same protected volume snapshot.
+
 ### Custom mailbox administration
 
 - The mutation route accepts no owner identity. It derives the current account

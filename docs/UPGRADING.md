@@ -273,6 +273,17 @@ mailbox credential change invalidates the authenticated cleanup cursor; the
 next attempt automatically restarts the bounded idempotent sweep from its safe
 beginning while retaining the accumulated progress counters.
 
+RFC 5545 calendar support creates `/data/member-calendar-events.json` lazily on
+the first local event import. No provider migration, port, environment variable,
+CalDAV credential, or proprietary calendar service is required. The file uses
+the existing installation session secret through calendar-specific HMAC/HKDF
+contexts and must be backed up atomically with `installation.json`; an older
+image ignores it. Keep one writable Veda Mail replica because event-book writes
+are process-serialized. After upgrade, sign in to a dedicated JMAP and
+IMAP/SMTP mailbox, open a scanned REQUEST, verify the sender/organizer warning,
+exercise Accept/Maybe/Decline with a stable retry key, import one event, and
+download the deterministic `.ics` export before enabling broad use.
+
 Then verify:
 
 ```bash

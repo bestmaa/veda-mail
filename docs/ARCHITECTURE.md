@@ -662,6 +662,42 @@ cards with more than the domain's five-email limit. `PHOTO`, `LOGO`, `KEY`,
 Export emits deterministic vCard 4.0 with escaped values and UTF-8-safe 75-octet
 CRLF folding through a private, no-store, `nosniff` attachment response.
 
+## Calendar invitation and local event boundary
+
+`MailGateway.listCalendarParts` and `downloadCalendarPart` are the only provider
+calendar primitives. JMAP walks bounded `Email.bodyStructure` and binds an
+opaque ID to account, message, ordinal, part, blob, name, and size before using
+the hardened same-origin blob transport. IMAP walks bounded BODYSTRUCTURE and
+binds account, message, UIDVALIDITY, exact section, transfer encoding, and name;
+download reopens read-only, rechecks UIDVALIDITY, and streams only that decoded
+section. Neither adapter treats a remote URL as content.
+
+`GET /api/v1/mail/messages/:messageId/calendar` resolves the active connection,
+loads account/message/part metadata, caps the part count at eight, re-fetches
+each part at 1 MiB, and passes it through the existing ClamAV clean spool before
+the strict RFC 5545 parser. The response contains only bounded canonical event
+data, an inert canonical `.ics` representation, whether RSVP is allowed, and a
+sender/organizer comparison. Malformed calendar parts are counted rather than
+rendered; scanner/provider failures fail the request.
+
+`POST .../calendar/respond` additionally requires same origin, an exact browser
+mail-session scope, a strict 8 KiB JSON body, request/connection rate limits,
+and a UUID idempotency key. It authoritatively re-fetches, scans, and parses the
+part; obtains the attendee email from `MailGateway.getAccount`; and serializes a
+one-attendee `METHOD:REPLY` addressed only to ORGANIZER. The internal outgoing
+attachment marker is not part of the generic compose schema. SMTP maps it to
+MailComposer's iCalendar event and JMAP maps it to an inline uploaded calendar
+part with an explicit method parameter. Normal attachments cannot acquire that
+marker through browser input.
+
+Local import/export is deliberately not CalDAV. `GET`/`PUT
+/api/v1/member/calendar` and `GET /api/v1/member/calendar/ics` derive ownership
+from provider ID plus gateway-owned account address. The encrypted
+`/data/member-calendar-events.json` store uses distinct HMAC/HKDF contexts,
+AES-256-GCM owner AAD, strict canonical records, optimistic revisions, sequence
+non-downgrade, a 1,000-event cap, mode-0600 atomic writes, and deterministic
+whole-book RFC 5545 export. One import request mutates exactly one parsed event.
+
 ## Durable scheduled-send boundary
 
 `POST /api/v1/mail/scheduled` accepts only an exact-revision provider-backed

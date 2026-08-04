@@ -19,6 +19,12 @@ import type {
   ConversationQuery,
 } from "@/domain/mail/conversation";
 import type {
+  CalendarPart,
+  CalendarPartDownload,
+  CalendarPartDownloadInput,
+  CalendarPartListInput,
+} from "@/domain/mail/calendar";
+import type {
   DraftCapability,
   DraftDetail,
   DraftSaveInput,
@@ -60,6 +66,9 @@ export interface MailGateway {
   downloadAttachment(
     input: AttachmentDownloadInput,
   ): Promise<AttachmentDownload>;
+  downloadCalendarPart(
+    input: CalendarPartDownloadInput,
+  ): Promise<CalendarPartDownload>;
   getMaxAttachmentBytes(): Promise<number>;
   getAccount(): Promise<MailAccount>;
   getDraft(providerDraftId: ProviderDraftId): Promise<DraftDetail>;
@@ -72,6 +81,9 @@ export interface MailGateway {
   listMessageAttachments(
     input: MessageAttachmentListInput,
   ): Promise<readonly MessageAttachmentMetadata[]>;
+  listCalendarParts(
+    input: CalendarPartListInput,
+  ): Promise<readonly CalendarPart[]>;
   listMailboxes(): Promise<readonly Mailbox[]>;
   listMessages(query: MessageListQuery): Promise<MessagePage>;
   mutateMessage(mutation: MessageMutation): Promise<void>;

@@ -180,8 +180,8 @@ export interface ComposeInput {
   readonly subject: string;
   readonly to: readonly MailAddress[];
 }
-
 export interface OutgoingAttachment {
+  readonly calendarMethod?: "REPLY";
   readonly content: Uint8Array;
   readonly id: AttachmentUploadId;
   readonly mimeType: string;

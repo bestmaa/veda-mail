@@ -459,6 +459,21 @@ until the immutable release is published and live create/reload/autocomplete,
 confirmed-send ranking, group, import, and export evidence is recorded through
 dedicated JMAP and IMAP/SMTP mailboxes.
 
+The provider-independent RFC 5545 calendar slice is locally complete. JMAP and
+IMAP discover bounded `text/calendar` body parts without exposing provider blob,
+section, or UIDVALIDITY identifiers; exact parts are re-fetched, malware-scanned,
+and parsed as hostile input. The reader displays REQUEST, CANCEL, REPLY, and
+PUBLISH metadata, explicitly warns when sender and organizer differ, and offers
+Accept/Maybe/Decline only when the authenticated account is the unique invited
+attendee. SMTP and JMAP emit canonical `METHOD:REPLY` iMIP parts with scoped send
+idempotency. A Veda-local, owner-isolated encrypted event book supports strict
+single-event import and deterministic whole-book `.ics` export. Parser,
+serializer, store-tamper, route, provider, MIME, and accessible component tests
+cover the slice. CalDAV remains capability-gated and no remote calendar URI is
+fetched. The checkbox remains open until an immutable release is published and
+live REQUEST/display/response/import/export evidence is recorded through both a
+JMAP and an IMAP/SMTP test mailbox.
+
 ## M7 — Notifications, offline resilience, and accessibility
 
 - [ ] New-mail refresh using JMAP events/push where available and bounded polling

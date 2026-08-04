@@ -92,9 +92,11 @@ test("routes enabled shortcuts and suspends them in editors and dialogs", async 
   const initiallyUnstarred = await addStar.count() > 0;
   await page.keyboard.press("s");
   await expect(page.getByText("Message star changed.")).toBeVisible();
-  await expect(page.getByRole("button", {
+  const toggledStar = page.getByRole("button", {
     name: initiallyUnstarred ? "Remove star" : "Add star",
-  })).toBeVisible();
+  });
+  await expect(toggledStar).toBeVisible();
+  await expect(toggledStar).toBeEnabled();
 
   const markRead = page.getByRole("button", { name: "Mark as read" });
   const initiallyUnread = await markRead.count() > 0;

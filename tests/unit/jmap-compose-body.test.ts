@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { describe, expect, it, vi } from "vitest";
 
-import { jmapComposeBody } from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
+import { id } from "@/domain/shared/brand";
+import {
+  jmapComposeBody,
+  uploadVerifiedJmapAttachments,
+} from "@/infrastructure/providers/stalwart-jmap/jmap-compose-attachments";
+import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 
 describe("JMAP compose body", () => {
   it("preserves the legacy textBody representation for plain messages", () => {
@@ -69,5 +75,52 @@ describe("JMAP compose body", () => {
     expect(result).not.toHaveProperty("textBody");
     expect(result).not.toHaveProperty("htmlBody");
     expect(result).not.toHaveProperty("attachments");
+  });
+
+  it("marks canonical calendar replies as inline METHOD=REPLY parts", () => {
+    const result = jmapComposeBody("Accepted.", undefined, [{
+      blobId: "calendar-blob",
+      calendarMethod: "REPLY",
+      name: "reply.ics",
+      type: "text/calendar",
+    }]);
+
+    expect(result).toMatchObject({
+      bodyStructure: {
+        subParts: [
+          { partId: "body", type: "text/plain" },
+          {
+            blobId: "calendar-blob",
+            disposition: "inline",
+            "header:Content-Type":
+              "text/calendar; method=REPLY; charset=utf-8",
+            name: "reply.ics",
+            type: "text/calendar",
+          },
+        ],
+        type: "multipart/mixed",
+      },
+    });
+  });
+
+  it("rejects a calendar marker on non-calendar bytes before upload", async () => {
+    const content = Buffer.from("not a calendar", "utf8");
+    const client = {
+      uploadAttachment: vi.fn(),
+    } as unknown as StalwartJmapClient;
+
+    await expect(uploadVerifiedJmapAttachments(client, "account", {
+      attachments: [{
+        calendarMethod: "REPLY",
+        content,
+        id: id.attachmentUpload("bad-calendar"),
+        mimeType: "application/octet-stream",
+        name: "reply.ics",
+        sha256: createHash("sha256").update(content).digest("hex"),
+        size: content.byteLength,
+      }],
+      bcc: [], body: "Reply", cc: [], subject: "Reply", to: [],
+    })).rejects.toThrow("calendar reply media type");
+    expect(client.uploadAttachment).not.toHaveBeenCalled();
   });
 });

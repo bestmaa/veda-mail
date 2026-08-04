@@ -29,6 +29,10 @@ import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type { StalwartConfig } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.types";
 import { cleanupStalwartLabel } from "@/infrastructure/providers/stalwart-jmap/stalwart-label-cleanup";
 import { emptyStalwartMailbox } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox-empty";
+import {
+  downloadStalwartCalendarPart,
+  listStalwartCalendarParts,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-calendar.reader";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
@@ -93,6 +97,14 @@ export class StalwartMailGateway implements MailGateway {
     return this.reader.downloadAttachment(input);
   }
 
+  public async downloadCalendarPart(
+    input: Parameters<typeof downloadStalwartCalendarPart>[2],
+  ) {
+    return downloadStalwartCalendarPart(
+      this.client, await this.reader.getAccountId(), input,
+    );
+  }
+
   public async getMaxAttachmentBytes() {
     return maximumJmapUploadBytes(await this.client.getSession());
   }
@@ -115,6 +127,14 @@ export class StalwartMailGateway implements MailGateway {
 
   public listMessageAttachments(input: MessageAttachmentListInput) {
     return this.reader.listMessageAttachments(input);
+  }
+
+  public async listCalendarParts(
+    input: Parameters<typeof listStalwartCalendarParts>[2],
+  ) {
+    return listStalwartCalendarParts(
+      this.client, await this.reader.getAccountId(), input,
+    );
   }
 
   public listMailboxes() {
