@@ -65,7 +65,7 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777
     volumes:
-      - ./config/clamd.conf:/etc/clamav/clamd.conf:ro
+      - ${VEDA_MAIL_CLAMD_CONFIG_PATH:-./config/clamd.conf}:/etc/clamav/clamd.conf:ro
       - clamav-signatures:/var/lib/clamav
 
 volumes:

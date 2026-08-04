@@ -168,6 +168,13 @@ also blocked. Preserve the default ClamAV CPU, 3 GiB memory, 128 PID and 256 MiB
 no-exec temporary-filesystem limits unless a reviewed deployment profile
 documents stricter or larger bounds.
 
+Dokploy installations must deploy the repository-backed multi-service
+`compose.yaml`, preserve the Compose project name and both named volumes, and
+set `VEDA_MAIL_CLAMD_CONFIG_PATH=../files/clamd.conf` after creating the pinned
+policy as an Advanced file mount. Preview the converted Compose and refuse the
+rollout unless both `veda-mail` and `clamav` are present. Do not migrate `/data`
+to a bind mount as part of the scanner upgrade.
+
 The approved ClamAV digest is currently `linux/amd64`-only. Although the Veda
 Mail application image also supports `linux/arm64`, secure-attachment
 deployments must use an `amd64` Docker server until an official arm64 ClamAV

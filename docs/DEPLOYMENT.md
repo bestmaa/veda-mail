@@ -65,6 +65,7 @@ VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 VEDA_MAIL_CLAMAV_HOST=clamav
 VEDA_MAIL_CLAMAV_PORT=3310
+VEDA_MAIL_CLAMD_CONFIG_PATH=./config/clamd.conf
 ```
 
 The provider allowlist contains hostnames only. The public URL is the Veda Mail
@@ -86,6 +87,31 @@ HIGH or CRITICAL vulnerability or detected secret. ClamAV is reachable only
 on the private Compose network; its signature database is kept in the
 `clamav-signatures` volume. To build the checked-out Veda Mail source instead,
 use `docker compose up --build -d`.
+
+### Dokploy Compose deployment
+
+Use a repository-backed **Git** or **GitHub** Compose provider for production,
+not an independently maintained single-service Raw definition. Configure the
+public repository URL, protected `main` branch, and `./compose.yaml` path, then
+pin `VEDA_MAIL_IMAGE` to the verified immutable release digest. Preview the
+converted Compose before deploying and require both `veda-mail` and `clamav`
+services to be present.
+
+Dokploy clears checked-out source directories during redeployment, so create an
+Advanced -> Volumes -> File Mount named `clamd.conf` whose content matches
+`config/clamd.conf`, and set:
+
+```dotenv
+VEDA_MAIL_CLAMD_CONFIG_PATH=../files/clamd.conf
+```
+
+Keep `veda-mail-data` and `clamav-signatures` as Compose named volumes. A stable
+Dokploy Compose project name reattaches the existing volumes on every rollout
+and keeps them eligible for Volume Backups. Do not replace `/data` with a new
+bind mount during an upgrade unless a verified byte-for-byte migration and
+rollback have been completed. The scanner address must remain the private
+Compose service name `clamav`; never publish port 3310 or point it at an
+untrusted host.
 
 Compose mounts the repository-pinned `config/clamd.conf` read-only and caps the
 sidecar at two CPUs, 3 GiB memory, 128 PIDs, and a 256 MiB no-exec temporary
