@@ -119,3 +119,12 @@ export interface SnoozeProviderOperationResult {
   readonly ownedMailbox: SnoozeOwnedMailbox;
   readonly plan: SnoozeProviderPlan;
 }
+export class SnoozeProviderError extends Error {
+  public constructor(
+    public readonly kind: "authentication" | "terminal" | "transient",
+    message = "Snooze provider operation failed.",
+  ) {
+    super(message);
+    this.name = "SnoozeProviderError";
+  }
+}
