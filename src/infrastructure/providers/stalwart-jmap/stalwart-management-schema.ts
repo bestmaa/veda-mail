@@ -11,15 +11,40 @@ const boundedText = (maximum: number) =>
     z.string(),
   );
 const safeInteger = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+const capabilityRecordSchema = z
+  .record(z.string().max(512), z.unknown())
+  .refine((value) => Object.keys(value).length <= 256, "Too many capabilities.");
+const accountCapabilitySchema = z
+  .object({ accountCapabilities: capabilityRecordSchema })
+  .passthrough();
 
 export const stalwartManagementSessionSchema = z
   .object({
+    accounts: z
+      .record(z.string().max(512), accountCapabilitySchema)
+      .refine((value) => Object.keys(value).length <= 256, "Too many accounts.")
+      .optional(),
     apiUrl: z.string().min(1).max(2_048),
-    capabilities: z.record(z.string(), z.unknown()),
+    capabilities: capabilityRecordSchema,
+    primaryAccounts: z
+      .record(z.string().max(512), idSchema)
+      .refine(
+        (value) => Object.keys(value).length <= 256,
+        "Too many primary accounts.",
+      )
+      .optional(),
   })
   .passthrough()
   .refine(
-    ({ capabilities }) => STALWART_JMAP in capabilities,
+    ({ accounts, capabilities, primaryAccounts }) => {
+      if (STALWART_JMAP in capabilities) return true;
+      const accountId = primaryAccounts?.[STALWART_JMAP];
+      return Boolean(
+        accountId &&
+          accounts?.[accountId] &&
+          STALWART_JMAP in accounts[accountId].accountCapabilities,
+      );
+    },
     "The Stalwart management capability is unavailable.",
   );
 

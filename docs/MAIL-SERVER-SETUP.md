@@ -33,6 +33,7 @@ capability. Create a dedicated API key in Stalwart, select **Replace**
 permission mode, and grant only:
 
 ```text
+authenticate
 sysAuthenticationGet
 sysDomainQuery
 sysDomainGet
@@ -56,7 +57,8 @@ Mail refuses to attach the key when the active provider points at a different
 origin, preventing an old key from leaking during a provider migration.
 
 Veda discovers `/.well-known/jmap`, validates the advertised same-origin JMAP
-URL and `urn:stalwart:jmap` capability, then uses typed Domain, Account,
+URL and the `urn:stalwart:jmap` capability (advertised either globally or on
+the primary management account), then uses typed Domain, Account,
 Authentication, and Action methods. No new public port or Stalwart source-code
 change is required.
 
