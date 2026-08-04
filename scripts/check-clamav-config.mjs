@@ -58,7 +58,7 @@ for (const [name, expected] of Object.entries(required)) {
 }
 
 const composeRequirements = [
-  "./config/clamd.conf:/etc/clamav/clamd.conf:ro",
+  "${VEDA_MAIL_CLAMD_CONFIG_PATH:-./config/clamd.conf}:/etc/clamav/clamd.conf:ro",
   "cpus: ${VEDA_MAIL_CLAMAV_CPU_LIMIT:-2.0}",
   "mem_limit: ${VEDA_MAIL_CLAMAV_MEMORY_LIMIT:-3072m}",
   "pids_limit: ${VEDA_MAIL_CLAMAV_PIDS_LIMIT:-128}",
