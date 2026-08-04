@@ -12,6 +12,7 @@ export const MIN_SNOOZE_DELAY_MS = 5_000;
 export const MAX_SNOOZE_REQUEST_BYTES = 128 * 1_024;
 
 export interface SnoozeOwner {
+  readonly accountScope: string;
   readonly email: string;
   readonly providerId: ProviderId;
 }
