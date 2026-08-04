@@ -207,7 +207,6 @@ test("places the reply-forward default once before quoted content", async ({
   await page
     .getByRole("button", { name: "Open Revised product roadmap · Q3" })
     .click();
-
   await page.getByRole("button", { name: "Reply all" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   let body = dialog.getByRole("textbox", {
