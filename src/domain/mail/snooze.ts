@@ -32,6 +32,7 @@ export interface SnoozedMessage {
 export interface SnoozedMessageBook {
   readonly messages: readonly SnoozedMessage[];
   readonly revision: string | null;
+  readonly snoozedMailboxId: MailboxId | null;
   readonly version: 1;
 }
 export type SnoozeCapability = {
@@ -59,3 +60,39 @@ export interface SnoozeBulkResult {
   readonly book: SnoozedMessageBook;
   readonly outcomes: readonly SnoozeBulkOutcome[];
 }
+
+export type SnoozeOwnedMailbox = {
+  readonly id: string | null;
+  readonly kind: "jmap";
+  readonly name: string;
+} | {
+  readonly accountScope: string;
+  readonly id: string | null;
+  readonly kind: "imap";
+  readonly name: string;
+  readonly objectId: string | null;
+};
+
+export type SnoozeProviderPlan = {
+  readonly emailId: string;
+  readonly expectedState: string | null;
+  readonly inboxMailboxId: string;
+  readonly kind: "jmap";
+  readonly originalMailboxIds: readonly string[];
+  readonly snoozedMailboxId: string | null;
+  readonly snoozedMailboxName: string;
+  readonly sourceMailboxId: string;
+} | {
+  readonly accountScope: string;
+  readonly destinationMailbox: string;
+  readonly emailObjectId: string | null;
+  readonly kind: "imap";
+  readonly marker: string;
+  readonly snoozedMailbox: string;
+  readonly snoozedUid: number | null;
+  readonly snoozedUidValidity: string | null;
+  readonly sourceMailbox: string;
+  readonly sourceMailboxObjectId: string | null;
+  readonly sourceUid: number;
+  readonly sourceUidValidity: string;
+};
