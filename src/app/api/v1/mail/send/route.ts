@@ -12,6 +12,8 @@ import { id } from "@/domain/shared/brand";
 import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
 import { connectionStore } from "@/server/connections/connection-store";
+import { contactOwnerForConnection } from "@/server/contacts/contact-owner";
+import { recordConfirmedRecentRecipients } from "@/server/contacts/contact-recipient-history";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
   asAttachmentApiError,
@@ -194,6 +196,15 @@ export const POST = async (request: Request) => {
           });
         }
         throw error;
+      }
+      try {
+        await recordConfirmedRecentRecipients(
+          await contactOwnerForConnection(connection),
+          input,
+          receipt,
+        );
+      } catch {
+        console.error("[veda-mail] Recent-recipient persistence failed.");
       }
       try {
         if (receipt.deliveryStatus !== "accepted") {

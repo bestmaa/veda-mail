@@ -88,7 +88,7 @@ test("restoring recovery hands focus into the replacement composer", async ({
 
   const restored = page.getByRole("dialog", { name: "Compose message" });
   await expect(restored).toBeVisible();
-  await expect(restored.getByRole("textbox", { exact: true, name: "To" }))
+  await expect(restored.getByRole("combobox", { exact: true, name: "To" }))
     .toBeFocused();
 });
 
@@ -126,7 +126,7 @@ test("interrupted discard initially focuses the safe Not now action", async ({
 
   await page.getByRole("button", { name: "New message" }).click();
   const composer = page.getByRole("dialog", { name: "Compose message" });
-  await composer.getByRole("textbox", { exact: true, name: "To" })
+  await composer.getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
   await composer.getByRole("textbox", { exact: true, name: "Message body" })
     .fill("Interrupted discard body");

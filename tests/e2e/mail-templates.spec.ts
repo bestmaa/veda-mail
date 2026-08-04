@@ -13,7 +13,7 @@ test("creates, persists, inserts, replaces, updates, and deletes a template", as
   const templateName = `${testTemplatePrefix} - interview`;
   await page.getByRole("button", { name: "New message" }).click();
   const composer = page.getByRole("dialog", { name: "Compose message" });
-  const to = composer.getByRole("textbox", { exact: true, name: "To" });
+  const to = composer.getByRole("combobox", { exact: true, name: "To" });
   const subject = composer.getByRole("textbox", { exact: true, name: "Subject" });
   const body = composer.getByRole("textbox", { exact: true, name: "Message body" });
   await to.fill("recipient@example.com");

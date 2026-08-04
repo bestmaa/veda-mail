@@ -237,6 +237,17 @@ snapshots. Its writer has the same single-replica rule. Older rollback images
 ignore the separate file without modifying it, so preserve the whole volume and
 reload older browser tabs after upgrade or rollback.
 
+Contacts create `/data/member-contacts.json` lazily on the first contact,
+group, or confirmed recent-recipient write. No environment variable, provider
+profile, Stalwart/IMAP schema, CardDAV service, or new port is required. Keep the
+encrypted file with the matching `installation.json`; an older rollback image
+ignores it without modifying it. Preserve the whole volume across rollback and
+reload older browser tabs. The contact writer is process-serialized and has the
+same one-writable-replica requirement as signatures and templates. After
+upgrade, verify create/update/delete, group expansion, accepted/partial/
+uncertain recent-recipient behavior, and a bounded vCard export/import with a
+dedicated mailbox before production use.
+
 Custom mailbox administration adds the authenticated
 `/api/v1/mail/mailboxes` endpoint and creates
 `/data/mailbox-appearance.json` on the first custom color change. There is no

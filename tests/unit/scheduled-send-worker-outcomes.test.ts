@@ -3,7 +3,9 @@ import type * as ScheduledDeliveryModule from "@/server/scheduled-send/scheduled
 
 const mocks = vi.hoisted(() => ({
   claimNextScheduledJob: vi.fn(),
+  contactOwnerForConnection: vi.fn(),
   deliverScheduledJob: vi.fn(),
+  recordConfirmedRecentRecipients: vi.fn(),
   recoverInterruptedScheduledJobs: vi.fn(),
   settleScheduledJob: vi.fn(),
 }));
@@ -16,6 +18,12 @@ vi.mock("@/server/scheduled-send/scheduled-send-worker-store", () => ({
   claimNextScheduledJob: mocks.claimNextScheduledJob,
   recoverInterruptedScheduledJobs: mocks.recoverInterruptedScheduledJobs,
   settleScheduledJob: mocks.settleScheduledJob,
+}));
+vi.mock("@/server/contacts/contact-owner", () => ({
+  contactOwnerForConnection: mocks.contactOwnerForConnection,
+}));
+vi.mock("@/server/contacts/contact-recipient-history", () => ({
+  recordConfirmedRecentRecipients: mocks.recordConfirmedRecentRecipients,
 }));
 
 import { DraftConflictError } from "@/domain/mail/draft-errors";
@@ -52,6 +60,10 @@ const now = new Date("2026-08-02T02:00:00.000Z");
 
 beforeEach(() => {
   Object.values(mocks).forEach((mock) => mock.mockReset());
+  mocks.contactOwnerForConnection.mockResolvedValue({
+    email: "member@example.com", providerId: "mock",
+  });
+  mocks.recordConfirmedRecentRecipients.mockResolvedValue(undefined);
   mocks.settleScheduledJob.mockResolvedValue(true);
 });
 
@@ -66,6 +78,13 @@ describe("scheduled-send worker outcomes", () => {
     expect(mocks.settleScheduledJob).toHaveBeenCalledWith(current, {
       kind: "complete",
     });
+    expect(mocks.recordConfirmedRecentRecipients).toHaveBeenCalledWith(
+      { email: "member@example.com", providerId: "mock" },
+      expect.objectContaining({
+        to: [{ email: "to@example.com", name: null }],
+      }),
+      expect.objectContaining({ deliveryStatus: "accepted" }),
+    );
   });
 
   it("never retries an ambiguous provider outcome", async () => {
@@ -79,6 +98,25 @@ describe("scheduled-send worker outcomes", () => {
       error: "The provider could not confirm whether delivery completed.",
       kind: "uncertain",
     });
+    expect(mocks.recordConfirmedRecentRecipients).not.toHaveBeenCalled();
+  });
+
+  it("does not retry delivered mail when recent-recipient storage fails", async () => {
+    mocks.deliverScheduledJob.mockResolvedValue({
+      deliveryStatus: "accepted", id: "sent", rejectedRecipients: [],
+      submittedAt: now.toISOString(),
+    });
+    mocks.recordConfirmedRecentRecipients.mockRejectedValue(new Error("storage"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const current = claim();
+    await runScheduledJob(current, undefined, now);
+    expect(mocks.settleScheduledJob).toHaveBeenCalledWith(current, {
+      kind: "complete",
+    });
+    expect(log).toHaveBeenCalledWith(
+      "[veda-mail] Scheduled recent-recipient persistence failed.",
+    );
+    log.mockRestore();
   });
 
   it("retries temporary failures with bounded backoff", async () => {

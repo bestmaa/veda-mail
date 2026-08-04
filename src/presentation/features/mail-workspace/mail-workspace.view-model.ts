@@ -20,7 +20,7 @@ import type { ComposerScheduleViewModel, ScheduledSendManagerViewModel } from "@
 import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/undo-send.view-model";
 import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
 import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
-import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model";
+import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model"; import type { RecipientSuggestionsModel } from "@/presentation/features/mail-workspace/recipient-suggestions.view-model"; import type { ContactManagementViewModel } from "@/presentation/features/mail-workspace/contact-management.view-model";
 export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
@@ -216,7 +216,7 @@ export interface MailWorkspaceViewProps {
     readonly name: string; readonly provider: string };
   readonly branding: BrandingViewModel; readonly canPermanentlyDelete: boolean;
   readonly activeFolder: string; readonly activeRole: MailboxRole | null;
-  readonly bulkActions: BulkActionsViewModel; readonly composer: ComposerViewModel;
+  readonly bulkActions: BulkActionsViewModel; readonly composer: ComposerViewModel; readonly contactManagement: ContactManagementViewModel;
   readonly error: string | null; readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean; readonly isReaderMutating: boolean;
   readonly isLoading: boolean; readonly isLoadingMore: boolean; readonly keyboardShortcuts: KeyboardShortcutsViewModel;
@@ -242,7 +242,7 @@ export interface MailWorkspaceViewProps {
   readonly onToggleRead: () => void;
   readonly onToggleStar: () => void;
   readonly deliveryNotice: DeliveryNoticeViewModel | null;
-  readonly reader: ReaderViewModel | null; readonly readerRole: MailboxRole | null;
+  readonly reader: ReaderViewModel | null; readonly readerRole: MailboxRole | null; readonly recipientSuggestions: RecipientSuggestionsModel;
   readonly readerDestroyConfirmation: ComposerConfirmationViewModel;
   readonly search: MailSearchViewModel; readonly searchMaxLength: number;
   readonly searchInput: ChangeEventHandler<HTMLInputElement>; readonly searchValue: string; readonly scheduled: ScheduledSendManagerViewModel; readonly session: MemberSessionViewModel;

@@ -34,7 +34,7 @@ export const verifyPartialDeliveryNotice = async ({
   await composeTrigger.click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
-    .getByRole("textbox", { exact: true, name: "To" })
+    .getByRole("combobox", { exact: true, name: "To" })
     .fill(["accepted@example.com", ...rejectedRecipients].join(", "));
   await dialog
     .getByRole("textbox", { exact: true, name: "Subject" })
@@ -87,7 +87,7 @@ export const verifyPartialDeliveryNotice = async ({
     page.locator('aside[aria-label="Partial delivery warning"]'),
   ).toHaveCount(1);
   for (const control of [
-    dialog.getByRole("textbox", { exact: true, name: "To" }),
+    dialog.getByRole("combobox", { exact: true, name: "To" }),
     dialog.getByRole("textbox", { exact: true, name: "Message body" }),
     dialog.getByRole("button", { name: /^Send$/ }),
     dialog.getByRole("button", { name: "Discard draft" }),
@@ -140,7 +140,7 @@ export const verifyAllRejectedDraft = async ({
   );
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
-  const to = dialog.getByRole("textbox", { exact: true, name: "To" });
+  const to = dialog.getByRole("combobox", { exact: true, name: "To" });
   const body = dialog.getByRole("textbox", {
     exact: true,
     name: "Message body",

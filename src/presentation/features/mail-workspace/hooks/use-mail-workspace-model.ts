@@ -31,6 +31,7 @@ import { useScheduledSendManager } from "@/presentation/features/mail-workspace/
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
 import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
+import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string;
   readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
@@ -56,7 +57,7 @@ export const useMailWorkspaceModel = ({
   const closeAttachmentPreview = attachmentPreview.close; const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
-  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure);
+  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure); const contacts = useContactsModel(sessionScope, mail.handleSessionFailure);
   const { refresh: refreshMail } = mail; const { refresh: refreshScheduled } = scheduled;
   const onDraftChanged = useCallback(() => { refreshMail(); void refreshScheduled(); }, [refreshMail, refreshScheduled]);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
@@ -66,7 +67,7 @@ export const useMailWorkspaceModel = ({
     !emailSignatures.hasSessionChanged;
   const draftsEnabled = mail.workspace?.draftCapability.status === "supported";
   const composer = useComposerModel(
-    partialDelivery.onSent,
+    (receipt, submittedEmails) => { partialDelivery.onSent(receipt, submittedEmails); contacts.retry(); },
     maxAttachmentBytes,
     emailSignatures.book,
     sessionScope,
@@ -77,6 +78,7 @@ export const useMailWorkspaceModel = ({
     onDraftChanged,
     recoveryOwner, emailTemplates, scheduled.isAvailable, messageListPreferences,
   );
+  const recipientSuggestions = useRecipientSuggestionsModel(contacts.book, composer); const contactManagement = useContactManagement(contacts, sessionScope, mail.handleSessionFailure);
   const session = useMemberSessionModel({
     canSignOut,
     handleSessionFailure: mail.handleSessionFailure,
@@ -195,7 +197,7 @@ export const useMailWorkspaceModel = ({
   return {
     account: { avatar: initials(accountName), email: accountEmail,
       name: accountName, provider: providerLabel },
-    branding: brandingView, ...mailList, bulkActions,
+    branding: brandingView, ...mailList, bulkActions, contactManagement,
     canPermanentlyDelete,
     composer: createComposerViewModel(composer),
     error: mail.error ?? session.error ??
@@ -231,7 +233,7 @@ export const useMailWorkspaceModel = ({
     onToggleRead: mail.toggleRead,
     onToggleStar: mail.toggleStar,
     deliveryNotice: partialDelivery.notice,
-    reader,
+    reader, recipientSuggestions,
     readerRole,
     readerDestroyConfirmation,
     search: mail.search, searchInput: mail.onSearchInput,
@@ -243,7 +245,5 @@ export const useMailWorkspaceModel = ({
       isSigningOut: session.isSigningOut,
       onSignOut: session.onSignOut,
       privacyCurtain: session.privacyCurtain,
-    }, settings,
-    total: mail.workspace?.messages.total ?? 0, hasMoreMessages: Boolean(mail.workspace?.messages.nextCursor),
-  };
+    }, settings, total: mail.workspace?.messages.total ?? 0, hasMoreMessages: Boolean(mail.workspace?.messages.nextCursor), };
 };

@@ -19,6 +19,10 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/bootstrap/provider-registry", new Set(["getProviderRegistry"])],
   ["@/domain/mail/send-receipt", new Set(["canonicalizeSendReceipt"])],
   ["@/domain/mail/mailbox-policy", new Set(["assertMailboxMutation"])],
+  [
+    "@/domain/member/contact",
+    new Set(["contactNameKey", "MAX_CONTACT_EMAILS"]),
+  ],
   ["@/domain/shared/brand", new Set(["id"])],
   ["@/server/connections/connection-store", new Set(["connectionStore"])],
   ["@/server/auth/member-two-factor", new Set(["memberTwoFactorSecurity"])],
@@ -130,6 +134,22 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ],
   ["@/server/mail/gateway-cache", new Set(["resolveGateway"])],
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
+  ["@/server/contacts/contact-schema", new Set(["parseContactPutOperation"])],
+  ["@/server/contacts/contact-store", new Set(["contactStore"])],
+  ["@/server/contacts/contact-owner", new Set(["contactOwnerForConnection"])],
+  [
+    "@/server/contacts/contact-vcard",
+    new Set(["exportVCards", "importVCards", "VCARD_LIMITS"]),
+  ],
+  ["@/server/contacts/contact-vcard-http", new Set(["asVCardApiError"])],
+  [
+    "@/server/contacts/contact-vcard-import",
+    new Set(["importContactVCards", "MAX_VCARD_IMPORT_REQUEST_BYTES"]),
+  ],
+  [
+    "@/server/contacts/contact-recipient-history",
+    new Set(["recordConfirmedRecentRecipients"]),
+  ],
   ["@/server/signatures/email-signature.schema", new Set(["parseEmailSignaturePutOperation"])],
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
   ["@/server/templates/email-template.schema", new Set(["parseEmailTemplatePutOperation"])],

@@ -158,6 +158,14 @@ writer uses atomic replacement but is process-serialized; keep one Veda Mail
 writer per mounted `/data` volume. No Stalwart setting, provider-profile
 migration, database/schema migration, or additional network port is required.
 
+Contacts create `/data/member-contacts.json` lazily on the first contact,
+group, or confirmed recent-recipient write. The file contains only HMAC-indexed,
+AES-256-GCM-encrypted owner books and must stay with the matching
+`installation.json`, whose session secret derives its key. No environment
+variable, Stalwart/IMAP setting, provider migration, CardDAV service, scheduled
+worker, or new port is required. Writes are atomic but process-serialized, so
+keep one Veda Mail writer for the mounted `/data` volume.
+
 The default bind is `127.0.0.1:3000`. Keep it that way behind a local reverse
 proxy. To bind another host port:
 
@@ -315,7 +323,8 @@ claims do not apply to that sidecar.
 
 Keep one replica. Member sessions, rate limits, delivery notices, and the send
 idempotency ledger are process-local. The encrypted
-`/data/member-signatures.json`, `/data/member-templates.json`, `/data/mailbox-appearance.json`, and
+`/data/member-signatures.json`, `/data/member-templates.json`,
+`/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
 lose updates. Scaling requires a shared encrypted session repository,
@@ -352,6 +361,13 @@ Verify:
   changes only subject/body and preserves recipients, attachments, reply/draft
   identity, and one managed signature. Verify one resulting JMAP and one IMAP/
   SMTP draft/send through the ordinary provider path.
+- A member can create and reload a multiple-address contact, create a group,
+  select contact and group suggestions from To/CC/BCC by keyboard, and see only
+  conclusively accepted recipients enter recent suggestions. Verify that a
+  provider-rejected partial recipient and an uncertain send do not enter
+  history. Export the address book, import it into a clean dedicated identity,
+  and verify names, addresses, and category-derived groups through one JMAP and
+  one IMAP/SMTP session.
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
 - The received attachment downloads byte-identically, is not cached by the
   proxy, and is served with attachment disposition and `nosniff`.

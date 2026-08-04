@@ -118,7 +118,7 @@ test("manually saves, autosaves later edits, and distinctly discards", async ({ 
   const composeTrigger = page.getByRole("button", { name: "New message" });
   await composeTrigger.click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
-  await dialog.getByRole("textbox", { exact: true, name: "To" }).fill("recipient@example.com");
+  await dialog.getByRole("combobox", { exact: true, name: "To" }).fill("recipient@example.com");
   await dialog.getByRole("textbox", { exact: true, name: "Message body" }).fill("Manual draft body");
   const save = dialog.getByRole("button", { name: "Save draft" });
   await expect(save).toBeEnabled();
@@ -175,9 +175,9 @@ test("opens a Drafts row through GET and requires Save after rich normalization"
 
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await expect(dialog.getByText("Edit draft", { exact: true })).toBeVisible();
-  await expect(dialog.getByRole("textbox", { exact: true, name: "To" })).toHaveValue('"Recipient" <recipient@example.com>');
-  await expect(dialog.getByRole("textbox", { exact: true, name: "Cc" })).toHaveValue('"Copy" <copy@example.com>');
-  await expect(dialog.getByRole("textbox", { exact: true, name: "Bcc" })).toHaveValue("hidden@example.com");
+  await expect(dialog.getByRole("combobox", { exact: true, name: "To" })).toHaveValue('"Recipient" <recipient@example.com>');
+  await expect(dialog.getByRole("combobox", { exact: true, name: "Cc" })).toHaveValue('"Copy" <copy@example.com>');
+  await expect(dialog.getByRole("combobox", { exact: true, name: "Bcc" })).toHaveValue("hidden@example.com");
   await expect(dialog.getByRole("textbox", { exact: true, name: "Message body" })).toContainText("Saved rich body");
   await expect(dialog.getByText("Unsaved", { exact: true })).toBeVisible();
   await expect(dialog.getByText(
@@ -212,7 +212,7 @@ test("locks an uncertain send for review but permits exact discard", async ({ pa
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await expect(dialog.getByText(/uncertain send outcome/)).toBeVisible();
   await expect(dialog.getByText(/Check Sent before continuing/)).toBeVisible();
-  await expect(dialog.getByRole("textbox", { exact: true, name: "To" }))
+  await expect(dialog.getByRole("combobox", { exact: true, name: "To" }))
     .toHaveAttribute("readonly", "");
   const body = dialog.getByRole("textbox", { exact: true, name: "Message body" });
   await expect(body).toHaveAttribute("aria-readonly", "true");

@@ -23,6 +23,7 @@ import { ScheduledSendManagerConnector } from "@/presentation/features/mail-work
 import { UndoSendNoticeView } from "@/presentation/features/mail-workspace/ui/undo-send-notice.view";
 import { KeyboardShortcutsDialogConnector } from "@/presentation/features/mail-workspace/connectors/keyboard-shortcuts-dialog.connector";
 import { ReaderFocusConnector } from "@/presentation/features/mail-workspace/connectors/reader-focus.connector";
+import { ContactManagementView } from "@/presentation/features/mail-workspace/ui/contact-management.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -42,6 +43,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     props.keyboardShortcuts.dialog.isOpen ||
     props.messageListPreferences.dialog.isOpen ||
     props.scheduled.isOpen ||
+    props.contactManagement.isOpen ||
     props.messageMove.dialog.isOpen;
   return (
   <>
@@ -82,6 +84,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       <MailSidebarView
         account={props.account}
         branding={props.branding}
+        contactManagement={props.contactManagement}
         folders={props.folders}
         isComposerReady={props.isComposerReady}
         keyboardShortcutsEnabled={props.keyboardShortcuts.enabled}
@@ -165,6 +168,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     <ComposerView
       composer={props.composer}
       deliveryNotice={props.deliveryNotice}
+      recipients={props.recipientSuggestions}
     />
     <AccountSettingsView settings={props.settings} />
     <ReaderFocusConnector
@@ -186,6 +190,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   <MailboxManagementView management={props.mailboxManagement} />
   <LabelManagementView management={props.labelManagement} />
   <ScheduledSendManagerConnector manager={props.scheduled} />
+  <ContactManagementView management={props.contactManagement} />
   <UndoSendNoticeView undo={props.undoSend} />
   <KeyboardShortcutsDialogConnector shortcuts={props.keyboardShortcuts} />
   <div aria-live="polite" className="sr-only">

@@ -1,4 +1,4 @@
-import { LoaderCircle, LogOut, MoreHorizontal, PenLine, Plus, Settings, X } from "lucide-react";
+import { ContactRound, LoaderCircle, LogOut, MoreHorizontal, PenLine, Plus, Settings, X } from "lucide-react";
 
 import type {
   FolderViewModel,
@@ -10,6 +10,7 @@ import { ScheduledSidebarButtonView } from "@/presentation/features/mail-workspa
 interface MailSidebarViewProps {
   readonly account: MailWorkspaceViewProps["account"];
   readonly branding: MailWorkspaceViewProps["branding"];
+  readonly contactManagement: MailWorkspaceViewProps["contactManagement"];
   readonly folders: readonly FolderViewModel[];
   readonly isComposerReady: boolean;
   readonly keyboardShortcutsEnabled: boolean;
@@ -26,6 +27,7 @@ interface MailSidebarViewProps {
 export const MailSidebarView = ({
   account,
   branding,
+  contactManagement,
   folders,
   isComposerReady,
   keyboardShortcutsEnabled,
@@ -209,6 +211,14 @@ export const MailSidebarView = ({
     </nav>
 
     <div className="m-4">
+      <button
+        className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/90 transition hover:bg-white/7 hover:text-white"
+        onClick={contactManagement.open}
+        type="button"
+      >
+        <ContactRound aria-hidden size={18} />
+        Contacts
+      </button>
       <button
         className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-indigo-100/90 transition hover:bg-white/7 hover:text-white"
         onClick={settings.open}

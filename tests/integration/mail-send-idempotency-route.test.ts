@@ -5,7 +5,9 @@ import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 
 const mocks = vi.hoisted(() => ({
+  contactOwnerForConnection: vi.fn(),
   getCurrentConnection: vi.fn(),
+  recordConfirmedRecentRecipients: vi.fn(),
   sendMessage: vi.fn(),
 }));
 
@@ -15,6 +17,12 @@ vi.mock("@/server/connections/connection-session", () => ({
 
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: vi.fn(async () => ({ sendMessage: mocks.sendMessage })),
+}));
+vi.mock("@/server/contacts/contact-owner", () => ({
+  contactOwnerForConnection: mocks.contactOwnerForConnection,
+}));
+vi.mock("@/server/contacts/contact-recipient-history", () => ({
+  recordConfirmedRecentRecipients: mocks.recordConfirmedRecentRecipients,
 }));
 
 import { POST } from "@/app/api/v1/mail/send/route";
@@ -66,6 +74,12 @@ beforeEach(() => {
   );
   mocks.getCurrentConnection.mockReset();
   mocks.getCurrentConnection.mockResolvedValue(activeConnection);
+  mocks.contactOwnerForConnection.mockReset();
+  mocks.recordConfirmedRecentRecipients.mockReset();
+  mocks.contactOwnerForConnection.mockResolvedValue({
+    email: "member@example.com", providerId: "mock",
+  });
+  mocks.recordConfirmedRecentRecipients.mockResolvedValue(undefined);
   mocks.sendMessage.mockReset();
   mocks.sendMessage.mockResolvedValue(accepted);
 });
@@ -81,6 +95,7 @@ describe("mail send idempotency route", () => {
     expect(replay.status).toBe(201);
     expect(await replay.json()).toEqual(await first.json());
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(mocks.recordConfirmedRecentRecipients).toHaveBeenCalledOnce();
   });
 
   it("fingerprints canonical provider content instead of hostile raw HTML", async () => {
@@ -131,6 +146,18 @@ describe("mail send idempotency route", () => {
     expect(secondResponse.status).toBe(201);
     expect(await secondResponse.json()).toEqual(await firstResponse.json());
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
+  });
+
+  it("does not make a delivered message retryable when contact history fails", async () => {
+    mocks.recordConfirmedRecentRecipients.mockRejectedValue(new Error("storage"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await POST(request(payload(crypto.randomUUID())));
+    expect(response.status).toBe(201);
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(log).toHaveBeenCalledWith(
+      "[veda-mail] Recent-recipient persistence failed.",
+    );
+    log.mockRestore();
   });
 
   it("conflicts on a changed completed intent without leaking content", async () => {

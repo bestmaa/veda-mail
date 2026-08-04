@@ -47,6 +47,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-independent contacts for JMAP and IMAP/SMTP identities, including
+  encrypted owner-isolated contacts, groups, delivery-confirmed recent-recipient
+  history, keyboard-accessible To/CC/BCC autocomplete, optimistic revisions,
+  and accessible management controls. Bounded vCard 3.0/4.0 import maps
+  categories to groups; deterministic vCard 4.0 export uses safe CRLF folding,
+  no-store download headers, and no URI or binary payload fetching
 - Reader actions now stay visibly scoped to the selected conversation message;
   a native accessible disclosure shows normalized From, To, Cc, Reply-To, date,
   message size, attachment summary, and conversation position without exposing

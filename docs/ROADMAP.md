@@ -446,6 +446,19 @@ earlier NXDOMAIN note used incorrect `wovvtec.site` hostnames; the canonical
 panel is `panel.wovvtech.site` and public webmail is
 `webmail.vedaconcepts.com`.
 
+The provider-independent Contacts slice is locally complete. Each authenticated
+JMAP or IMAP/SMTP identity receives an encrypted, owner-isolated address book
+with bounded contacts and groups, optimistic revisions, delivery-confirmed
+recent-recipient ranking, accessible To/CC/BCC autocomplete, and vCard 3.0/4.0
+import/export. Accepted delivery records all unique recipients, partial delivery
+excludes provider-rejected recipients, and uncertain delivery records nothing;
+address-book persistence failure never changes a provider-confirmed send into a
+retry. Strict route, store-tamper, mutation, ranking, component, session-scope,
+and hostile-vCard tests cover the implementation. Its checkbox remains open
+until the immutable release is published and live create/reload/autocomplete,
+confirmed-send ranking, group, import, and export evidence is recorded through
+dedicated JMAP and IMAP/SMTP mailboxes.
+
 ## M7 — Notifications, offline resilience, and accessibility
 
 - [ ] New-mail refresh using JMAP events/push where available and bounded polling
