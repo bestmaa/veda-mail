@@ -53,13 +53,13 @@ import {
   restoreMockSnooze,
 } from "@/infrastructure/providers/mock/mock-snooze-adapter";
 export class MockMailGateway implements MailGateway {
+  public async getMailUpdateMode() { return "poll" as const; } public async waitForMailUpdate() { return { mode: "poll" as const, retryAfterMs: 60_000, shouldRefresh: true }; }
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
   private readonly mailboxes = new MockMailboxStore();
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
   public readonly getDraft = this.drafts.get.bind(this.drafts); public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
-  public async getLabelCapability() { return "supported" as const; }
-  public async getRuleCapability() { return mockRuleCapability(); }
+  public async getLabelCapability() { return "supported" as const; } public async getRuleCapability() { return mockRuleCapability(); }
   public deployRules(input: RuleDeploymentInput): Promise<never> {
     return deployMockRules(input); }
   public async previewRules(input: RulePreviewInput) {

@@ -66,7 +66,7 @@ export class StalwartProviderModule implements ProviderModule {
       supportsDrafts: true,
       supportsPasswordChange: true,
       supportsProfileSettings: true,
-      supportsPush: false,
+      supportsPush: true,
       supportsServerSearch: true,
       supportsThreads: true,
       supportsTwoFactorAuthentication: true,

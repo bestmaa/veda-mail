@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  getMailUpdateMode: vi.fn<() => Promise<"poll" | "push">>(async () => "poll"),
   getMaxAttachmentBytes: vi.fn(async () => 1_024),
 }));
 
@@ -17,6 +18,7 @@ vi.mock("@/server/mail/gateway-cache", () => ({
   resolveGateway: async () => ({
     getAccount: async () => ({ email: "member@example.com", name: "Member" }),
     getMaxAttachmentBytes: mocks.getMaxAttachmentBytes,
+    getMailUpdateMode: mocks.getMailUpdateMode,
     getMemberProfile: async () => ({
       displayName: "Member",
       email: "member@example.com",
@@ -63,6 +65,7 @@ import { mailSessionScope } from "@/server/connections/mail-session-scope";
 beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockReset();
   mocks.getMaxAttachmentBytes.mockResolvedValue(1_024);
+  mocks.getMailUpdateMode.mockReset().mockResolvedValue("poll");
 });
 
 const settings = async () => {
@@ -84,6 +87,7 @@ const settings = async () => {
           maxAttachmentBytes: number;
           maxAttachmentDownloadBytes: number;
           supportsAttachmentDownload: boolean;
+          supportsPush: boolean;
         };
       };
     };
@@ -91,6 +95,13 @@ const settings = async () => {
 };
 
 describe("member settings attachment capability", () => {
+  it("reports the live update mode instead of only the manifest default", async () => {
+    mocks.getMailUpdateMode.mockResolvedValueOnce("push");
+
+    await expect(settings()).resolves.toMatchObject({
+      data: { capabilities: { mail: { supportsPush: true } } },
+    });
+  });
   it("reports the live lower provider limit instead of the manifest default", async () => {
     await expect(settings()).resolves.toMatchObject({
       data: {

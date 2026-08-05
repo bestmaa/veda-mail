@@ -97,6 +97,11 @@ export class ImapSmtpMailGateway implements MailGateway {
     return this.reader.getAccount();
   }
 
+  public async getMailUpdateMode() { return "poll" as const; }
+
+  public async waitForMailUpdate() { return { mode: "poll" as const,
+    retryAfterMs: 60_000, shouldRefresh: true }; }
+
   public getDraft(providerDraftId: ProviderDraftId) {
     return this.drafts.get(providerDraftId);
   }
