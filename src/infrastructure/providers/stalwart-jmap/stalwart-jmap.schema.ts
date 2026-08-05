@@ -154,6 +154,7 @@ export const jmapSessionSchema = z
     apiUrl: z.string().min(1),
     capabilities: jmapCapabilitiesSchema,
     downloadUrl: z.string().min(1),
+    eventSourceUrl: z.string().min(1).optional(),
     primaryAccounts: stringRecord,
     uploadUrl: z.string().min(1),
     username: z.string(),

@@ -57,7 +57,10 @@ export const GET = async (request: Request) => {
       60 * 1000,
     );
     const { capabilities, gateway } = await context(connection);
-    const attachmentCapability = await loadAttachmentCapability(connection);
+    const [attachmentCapability, mailUpdateMode] = await Promise.all([
+      loadAttachmentCapability(connection),
+      gateway.getMailUpdateMode(),
+    ]);
     return apiSuccess({
       attachmentCapability: {
         status: attachmentCapability.status,
@@ -67,6 +70,7 @@ export const GET = async (request: Request) => {
         mail: {
           ...capabilities.mail,
           maxAttachmentBytes: attachmentCapability.maxAttachmentBytes ?? 0,
+          supportsPush: mailUpdateMode === "push",
         },
       },
       profile: await gateway.getMemberProfile(),

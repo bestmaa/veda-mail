@@ -425,8 +425,7 @@ search](./ADVANCED-SEARCH.md).
 Acceptance: restart, duplicate-delivery, daylight-saving, and provider-outage
 tests prove scheduled work is not lost or executed twice.
 
-Status: the filters/rules v1 implementation is released and awaiting
-authenticated live-provider evidence. Rules use
+Status: the filters/rules v1 implementation is released. Rules use
 provider-native Sieve through JMAP or TLS-protected ManageSieve, an encrypted
 owner-isolated intent/audit store, revision conflict checks, deterministic
 owned-script signing, capability gating, and a bounded exact-semantics dry-run
@@ -434,12 +433,16 @@ preview. JMAP and IMAP preview paths, rule ordering, enable/disable, all listed
 conditions/actions, conflict handling, lost-response recovery, foreign-script
 protection, credential erasure, UI flows, routes, and provider adapters are
 covered by unit, integration, component, architecture, production-build, and
-security gates. The two rules checkboxes remain open until the immutable release
-is deployed and authenticated JMAP plus generic ManageSieve evidence is
-recorded.
+security gates. PR #86 fixed Stalwart's canonical post-activation Sieve blob
+confirmation and was squash-merged as
+`0c22a7f75baef98296c1c69b42d6b6bb72a4fb77`. Production deployed that revision;
+authenticated JMAP evidence confirmed reconcile, deployment, a server-side
+mark-as-read delivery, and safe removal of the test rule on 2026-08-05. The two
+rules checkboxes remain open only until generic ManageSieve evidence is recorded.
 
-The provider-independent Snooze slice is released and deployed, and is awaiting
-authenticated JMAP and Standard IMAP evidence. It persists a unique owned
+The provider-independent Snooze slice is released and deployed. Authenticated
+JMAP evidence is recorded; Standard IMAP plus restart/wake evidence remains. It
+persists a unique owned
 mailbox intent before provider mutation, encrypts owner-scoped jobs and current
 provider credentials beneath `VEDA_MAIL_JOB_KEY`, commits durable random leases,
 and reconciles interrupted hide/wake operations without delivery-style
@@ -457,8 +460,8 @@ Dokploy deployed that exact Git revision from `main`, then aligned
 `VEDA_MAIL_IMAGE` to the immutable SHA tag and completed a second deployment.
 Both the Veda Mail and ClamAV containers reported healthy on 2026-08-04, and
 the public `/api/health` endpoint returned HTTP 200 with `status: ok`. The
-Snooze checkbox remains open until authenticated provider, restart, and wake
-evidence is recorded.
+Snooze checkbox remains open until Standard IMAP, restart, and wake evidence is
+recorded.
 
 The provider-independent scheduled-send implementation is released:
 exact-revision provider drafts, encrypted credential/content envelopes under an

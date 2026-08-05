@@ -43,6 +43,10 @@ import { StalwartRuleAdapter } from "@/infrastructure/providers/stalwart-jmap/st
 import { StalwartSieveTransport } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-transport";
 import { previewStalwartRules } from "@/infrastructure/providers/stalwart-jmap/stalwart-rule-preview";
 import { StalwartSnoozeAdapter } from "@/infrastructure/providers/stalwart-jmap/stalwart-snooze-adapter";
+import {
+  getStalwartMailUpdateMode,
+  waitForStalwartMailUpdate,
+} from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-update";
 
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
@@ -153,6 +157,9 @@ export class StalwartMailGateway implements MailGateway {
     return this.accountManager.getProfile();
   }
 
+  public getMailUpdateMode() { return getStalwartMailUpdateMode(
+    this.client, this.config.baseUrl); }
+
   public getTwoFactorEnabled() {
     return this.accountManager.getTwoFactorEnabled();
   }
@@ -168,6 +175,9 @@ export class StalwartMailGateway implements MailGateway {
   public listMessageAttachments(input: MessageAttachmentListInput) {
     return this.reader.listMessageAttachments(input);
   }
+
+  public waitForMailUpdate() { return waitForStalwartMailUpdate(
+    this.client, this.config.baseUrl); }
 
   public async listCalendarParts(
     input: Parameters<typeof listStalwartCalendarParts>[2],

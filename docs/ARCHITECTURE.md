@@ -1087,6 +1087,23 @@ pages. Reader role, move source, and destructive permissions derive from that
 member's actual mailbox. The ordinary scoped detail route preserves existing
 mailbox and session authorization checks.
 
+## Mail update boundary
+
+Automatic mailbox refresh remains provider-independent and keeps provider
+credentials server-side. A scoped `GET /api/v1/mail/updates` request enters one
+connection-keyed single-flight wait. Stalwart validates the discovered JMAP
+`eventSourceUrl` against the configured HTTPS origin, expands only Email and
+Mailbox state events, closes after one state change, and accepts at most a
+64 KiB schema-validated event. Standard IMAP/SMTP advertises a 60-second polling
+fallback instead of holding an IDLE connection in an HTTP request.
+
+The client runs only one update loop for the active session scope. It pauses
+while the tab is hidden or the browser is offline, delays IMAP refresh until the
+bounded poll interval, and uses capped exponential backoff after transient
+transport failures. Session-scope failures stop the loop and enter the existing
+account invalidation path. Provider URLs, account state tokens, and credentials
+never enter a browser URL or response.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

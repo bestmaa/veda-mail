@@ -35,6 +35,7 @@ export interface JmapSession {
   readonly apiUrl: string;
   readonly capabilities: Readonly<Record<string, unknown>>;
   readonly downloadUrl: string;
+  readonly eventSourceUrl?: string | undefined;
   readonly primaryAccounts: Readonly<Record<string, string>>;
   readonly uploadUrl: string;
   readonly username: string;

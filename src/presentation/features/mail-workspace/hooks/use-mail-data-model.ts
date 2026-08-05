@@ -10,6 +10,7 @@ import { useMailSessionScopeState } from "@/presentation/features/mail-workspace
 import { useMailMessageSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-message-selection";
 import { useMessageListPreferencesSave } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-save";
 import { useMailSearchModel } from "@/presentation/features/mail-workspace/hooks/use-mail-search-model";
+import { useMailUpdates } from "@/presentation/features/mail-workspace/hooks/use-mail-updates";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : "Something went wrong.";
@@ -137,6 +138,7 @@ export const useMailDataModel = () => {
     mailboxId: activeMailboxIdRef.current,
     search: appliedSearchRef.current,
   }), [loadWorkspace]);
+  useMailUpdates(refreshCurrentView, sessionScope, handleSessionFailure);
   const beginMessageMutation = useCallback((
     input: Parameters<typeof beginOptimisticMutation>[0],
   ) => {

@@ -50,6 +50,8 @@ import type {
   SnoozeProviderOperationResult,
   SnoozeProviderPlan,
 } from "@/domain/mail/snooze";
+import type { MailUpdateWaitResult } from "@/domain/mail/mail-update";
+import type { MailUpdateMode } from "@/domain/mail/mail-update";
 import type {
   MailboxEmptyInput,
   MailboxEmptyResult,
@@ -91,6 +93,7 @@ export interface MailGateway {
   getDraftCapability(): Promise<DraftCapability>;
   getLabelCapability(mailboxId: MailboxId): Promise<LabelCapability>;
   getMemberProfile(): Promise<MemberProfile>;
+  getMailUpdateMode(): Promise<MailUpdateMode>;
   getRuleCapability(): Promise<RuleCapability>;
   getSnoozeAccountScope(): Promise<string>;
   getSnoozeCapability(): Promise<SnoozeCapability>;
@@ -105,6 +108,7 @@ export interface MailGateway {
   ): Promise<readonly CalendarPart[]>;
   listMailboxes(): Promise<readonly Mailbox[]>;
   listMessages(query: MessageListQuery): Promise<MessagePage>;
+  waitForMailUpdate(signal?: AbortSignal): Promise<MailUpdateWaitResult>;
   mutateMessage(mutation: MessageMutation): Promise<void>;
   mutateMailbox(mutation: MailboxMutation): Promise<MailboxMutationResult>;
   deployRules(input: RuleDeploymentInput): Promise<RuleDeploymentResult>;
