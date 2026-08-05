@@ -88,7 +88,8 @@ export const useMailWorkspaceModel = ({
     signOutPath,
   });
   const settings = useAccountSettingsModel(
-    accountEmail, workspaceAccountName, signatureSettings, sessionScope, rules, mail.handleSessionFailure,
+    accountEmail, workspaceAccountName, signatureSettings, sessionScope, rules,
+    mail.notifications, mail.handleSessionFailure,
   );
   const mailboxManagement = useMailboxWorkspaceManagement(mail);
   const labelManagement = useLabelManagement({
@@ -214,8 +215,7 @@ export const useMailWorkspaceModel = ({
       dialog: messageMove.dialog,
       onRequestReaderMove: primaryActions.onRequestReaderMove,
     },
-    loadMoreError: mail.loadMoreError,
-    navigation: { isOpen: navigation.isOpen, onClose: navigation.close,
+    notifications: mail.notifications, loadMoreError: mail.loadMoreError, navigation: { isOpen: navigation.isOpen, onClose: navigation.close,
       onOpen: navigation.open },
     onArchive: mail.archive,
     onCloseReader: mail.closeReader,

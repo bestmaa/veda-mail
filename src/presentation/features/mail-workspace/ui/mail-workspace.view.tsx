@@ -26,6 +26,7 @@ import { ReaderFocusConnector } from "@/presentation/features/mail-workspace/con
 import { ContactManagementView } from "@/presentation/features/mail-workspace/ui/contact-management.view";
 import { MailSnoozeDialogView } from "@/presentation/features/mail-workspace/ui/mail-snooze-dialog.view";
 import { SnoozedManagerView } from "@/presentation/features/mail-workspace/ui/snoozed-manager.view";
+import { NewMailNotificationNoticeView } from "@/presentation/features/mail-workspace/ui/new-mail-notification-notice.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -170,6 +171,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
     {props.deliveryNotice && !props.composer.isOpen ? (
       <PartialDeliveryNoticeView notice={props.deliveryNotice} />
     ) : null}
+    <NewMailNotificationNoticeView notifications={props.notifications} />
     <ComposerView
       composer={props.composer}
       deliveryNotice={props.deliveryNotice}

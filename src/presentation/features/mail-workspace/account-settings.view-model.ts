@@ -5,6 +5,7 @@ import type {
   EmailSignatureSettingsViewModel,
 } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model";
+import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
@@ -15,6 +16,7 @@ export interface AccountSettingsViewModel {
   readonly email: string;
   readonly isLoading: boolean;
   readonly isOpen: boolean;
+  readonly notifications: NewMailNotificationViewModel;
   readonly open: () => void;
   readonly rules: MailRulesViewModel;
   readonly password: {

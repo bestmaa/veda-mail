@@ -10,7 +10,7 @@ import { useMailSessionScopeState } from "@/presentation/features/mail-workspace
 import { useMailMessageSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-message-selection";
 import { useMessageListPreferencesSave } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-save";
 import { useMailSearchModel } from "@/presentation/features/mail-workspace/hooks/use-mail-search-model";
-import { useMailUpdates } from "@/presentation/features/mail-workspace/hooks/use-mail-updates";
+import { useMailUpdates } from "@/presentation/features/mail-workspace/hooks/use-mail-updates"; import { useNewMailNotifications } from "@/presentation/features/mail-workspace/hooks/use-new-mail-notifications"; import { detectNewMail } from "@/domain/mail/new-mail-notification"; import type { MailWorkspace } from "@/domain/mail/mail";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : "Something went wrong.";
@@ -20,12 +20,14 @@ export const useMailDataModel = () => {
     currentMessageId, currentScope, isCurrentScope, isMessageMutationBusy,
     markOptimisticMutationUnconfirmed, pendingMessageIds, selectedMessage,
     sessionScope, settleOptimisticMutation, workspace } = useMailSessionScopeState();
+  const { listenWhileHidden, notify, view: notificationView } =
+    useNewMailNotifications(workspace?.account ?? null);
   const [activeMailboxId, setActiveMailboxId] = useState<MailboxId | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReaderLoading, setIsReaderLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [readerError, setReaderError] = useState<string | null>(null);
-  const workspaceRequestId = useRef(0);
+  const workspaceRequestId = useRef(0), acceptedWorkspaceRef = useRef<MailWorkspace | null>(workspace);
   const messageRequestId = useRef(0);
   const sessionInvalidated = useRef(false);
   const activeMailboxIdRef = useRef(activeMailboxId), appliedSearchRef = useRef("");
@@ -104,6 +106,7 @@ export const useMailDataModel = () => {
         const nextViewKey = `${resolvedMailboxId ?? ""}\n${search}\n${
           override?.preferences?.sort ?? next.messageListPreferences.sort
         }`;
+        acceptedWorkspaceRef.current = next;
         const scopeChanged = acceptWorkspace(next, nextViewKey);
         if (scopeChanged) {
           purgeInvalidatedSessionRecovery(requestScope, setError);
@@ -138,7 +141,16 @@ export const useMailDataModel = () => {
     mailboxId: activeMailboxIdRef.current,
     search: appliedSearchRef.current,
   }), [loadWorkspace]);
-  useMailUpdates(refreshCurrentView, sessionScope, handleSessionFailure);
+  const refreshForUpdates = useCallback(async () => {
+    const previous = acceptedWorkspaceRef.current;
+    const refreshed = await refreshCurrentView();
+    const next = acceptedWorkspaceRef.current;
+    const event = refreshed && previous && next ? detectNewMail(previous, next) : null;
+    if (event) notify(event);
+    return refreshed;
+  }, [notify, refreshCurrentView]);
+  useMailUpdates(refreshForUpdates, sessionScope, handleSessionFailure,
+    listenWhileHidden);
   const beginMessageMutation = useCallback((
     input: Parameters<typeof beginOptimisticMutation>[0],
   ) => {
@@ -214,34 +226,24 @@ export const useMailDataModel = () => {
     handleSessionFailure,
     isLoading, isLoadingMore: pagination.isLoadingMore,
     isReaderLoading, isReaderMutating: mutations.isBusy || isMessageMutationBusy,
-    onRefresh,
-    onLoadMore: pagination.onLoadMore,
-    onSearchClear: search.clear,
-    onSearchInput: search.onInput,
+    onRefresh, onLoadMore: pagination.onLoadMore,
+    onSearchClear: search.clear, onSearchInput: search.onInput,
     onSearchSubmit: search.onSubmit,
     readerError, loadMoreError: pagination.loadMoreError,
     refresh,
-    remove: mutations.remove,
-    destroy: mutations.destroy,
-    restore: mutations.restore,
-    search: search.viewModel,
-    searchMaxLength: search.maxLength,
-    searchValue: search.inputValue,
-    saveListPreferences,
-    setLabel: mutations.setLabel,
+    remove: mutations.remove, destroy: mutations.destroy,
+    restore: mutations.restore, search: search.viewModel,
+    searchMaxLength: search.maxLength, searchValue: search.inputValue,
+    saveListPreferences, setLabel: mutations.setLabel,
     sessionScope,
     snoozeOptimistic: {
       begin: (messageIds: readonly MessageId[], destinationMailboxId: MailboxId) => activeMailboxId ? beginMessageMutation({ activeMailboxId, mutation: { destinationMailboxId, messageIds, sourceMailboxId: activeMailboxId, type: "move" }, sessionScope, viewKey }) : null,
       markUnconfirmed: markOptimisticMutationUnconfirmed,
       settle: settleOptimisticMutation,
     },
-    pendingMessageIds,
-    selectMailbox,
-    selectMessage,
-    selectedMessage,
-    toggleRead: mutations.toggleRead,
-    toggleStar: mutations.toggleStar,
-    viewKey,
-    workspace,
+    pendingMessageIds, notifications: notificationView,
+    selectMailbox, selectMessage, selectedMessage,
+    toggleRead: mutations.toggleRead, toggleStar: mutations.toggleStar,
+    viewKey, workspace,
   };
 };

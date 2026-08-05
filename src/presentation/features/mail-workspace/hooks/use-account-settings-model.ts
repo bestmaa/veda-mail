@@ -10,7 +10,7 @@ import { DEFAULT_MEMBER_CAPABILITIES } from "@/presentation/features/mail-worksp
 import { createProviderFeatures } from "@/presentation/features/mail-workspace/account-settings-provider-features";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { EmailSignatureSettingsViewModel } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
-import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model";
+import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model"; import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
 import {
   ignoreMailSessionFailure,
@@ -28,6 +28,7 @@ export const useAccountSettingsModel = (
   signatures: EmailSignatureSettingsViewModel,
   sessionScope: string,
   rules: MailRulesViewModel,
+  notifications: NewMailNotificationViewModel,
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ): AccountSettingsViewModel => {
   const [isOpen, setIsOpen] = useState(false);
@@ -47,10 +48,8 @@ export const useAccountSettingsModel = (
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
   const scopeRef = useRef(sessionScope);
-  const {
-    reset: resetTwoFactor,
-    view: twoFactorView,
-  } = useTwoFactorSettingsModel(sessionScope, handleSessionFailure);
+  const { reset: resetTwoFactor, view: twoFactorView } =
+    useTwoFactorSettingsModel(sessionScope, handleSessionFailure);
   useLayoutEffect(() => {
     scopeRef.current = sessionScope;
     setIsOpen(false);
@@ -212,6 +211,7 @@ export const useAccountSettingsModel = (
     email: snapshot?.profile.email ?? fallbackEmail,
     isLoading,
     isOpen,
+    notifications,
     open,
     password: {
       confirm: confirmPassword,

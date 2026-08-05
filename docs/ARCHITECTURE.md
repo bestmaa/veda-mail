@@ -1100,11 +1100,31 @@ races. Standard IMAP/SMTP advertises a 60-second polling fallback instead of
 holding an IDLE connection in an HTTP request.
 
 The client runs only one update loop for the active session scope. It pauses
-while the tab is hidden or the browser is offline, delays IMAP refresh until the
-bounded poll interval, and uses capped exponential backoff after transient
-transport failures. Session-scope failures stop the loop and enter the existing
-account invalidation path. Provider URLs, account state tokens, and credentials
-never enter a browser URL or response.
+while the browser is offline and, by default, while the tab is hidden. An
+explicit browser-notification opt-in keeps that same loop active while the tab
+is hidden; no second provider subscription is created. IMAP refresh remains
+delayed until the bounded poll interval, and transient transport failures use
+capped exponential backoff. Session-scope failures stop the loop and enter the
+existing account invalidation path. Provider URLs, account state tokens, and
+credentials never enter a browser URL or response.
+
+## New-mail notification boundary
+
+An authoritative workspace refresh compares provider-independent Inbox totals
+and, when Inbox is the active view, normalized message IDs. Initial loads,
+account changes, and read-state-only changes cannot create a notification. The
+visible application receives an accessible dismissible in-app notice. A hidden
+tab can create a Web Notification only after a direct Enable action obtains the
+browser's `granted` permission; rendering, opening settings, and ordinary mail
+traffic never request permission.
+
+Notification preferences are browser-local, schema-bounded, and isolated by a
+length-delimited provider/account owner. The default is disabled with generic
+count-only text. Sender and subject require a separate explicit choice. Message
+preview/body content, provider credentials, and notification history are never
+written to browser storage. This phase deliberately has no service worker or
+Web Push subscription, so browser alerts require an open Veda Mail tab; closed-
+browser delivery belongs to the separately capability-gated PWA milestone.
 
 ## Enforced invariants
 

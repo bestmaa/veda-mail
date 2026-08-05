@@ -142,6 +142,28 @@ sanitization. A future external script, image, connection, worker, or frame
 source requires a threat-model update and an explicit narrowly scoped policy
 change. Reverse proxies must preserve exactly one CSP and HSTS value.
 
+### New-mail notifications
+
+- The application never requests notification permission during page load,
+  settings display, or mail refresh. Only a direct member Enable action calls
+  the browser permission API, and denied/unsupported states remain usable.
+- Browser notifications are disabled by default and use generic count-only
+  text by default. Sender and subject require a separate explicit privacy
+  choice; message previews, bodies, and attachments are never notification
+  content.
+- Local storage contains only a strict, size-bounded enable/content preference
+  scoped to the normalized provider/account identity. It is treated as
+  untrusted, rejects unknown/cross-account fields, and contains no credentials,
+  messages, notification history, or permission grant.
+- A granted opt-in reuses the one authenticated update loop while the tab is
+  hidden. Constructor/storage failures are contained and cannot stop mailbox
+  refresh or invalidate the member session.
+
+Residual risk: operating systems and browsers may retain notification text
+outside Veda Mail after display. Detailed mode therefore warns about shared or
+locked screens. This release has no service worker or push subscription;
+notifications require an open tab and provide no closed-browser guarantee.
+
 ### Provider SSRF and credentials
 
 - Production provider hosts require an explicit hostname allowlist.

@@ -21,7 +21,7 @@ import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/u
 import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
 import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
 import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model"; import type { RecipientSuggestionsModel } from "@/presentation/features/mail-workspace/recipient-suggestions.view-model"; import type { ContactManagementViewModel } from "@/presentation/features/mail-workspace/contact-management.view-model"; import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
-export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
+import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model"; export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
   readonly canDrag: boolean;
@@ -226,7 +226,7 @@ export interface MailWorkspaceViewProps {
   readonly messages: readonly MessageItemViewModel[];
   readonly navigation: { readonly isOpen: boolean; readonly onClose: () => void;
     readonly onOpen: () => void };
-  readonly onArchive: () => void;
+  readonly notifications: NewMailNotificationViewModel; readonly onArchive: () => void;
   readonly onCloseReader: () => void;
   readonly onCompose: () => void;
   readonly onDelete: () => void;
