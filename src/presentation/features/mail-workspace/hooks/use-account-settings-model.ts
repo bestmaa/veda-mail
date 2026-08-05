@@ -8,6 +8,7 @@ import {
 } from "react";
 import { DEFAULT_MEMBER_CAPABILITIES } from "@/presentation/features/mail-workspace/account-settings-default-capabilities";
 import { createProviderFeatures } from "@/presentation/features/mail-workspace/account-settings-provider-features";
+import { createAccountSettingsPolicy } from "@/presentation/features/mail-workspace/account-settings-policy";
 import type { AccountSettingsViewModel } from "@/presentation/features/mail-workspace/account-settings.view-model";
 import type { EmailSignatureSettingsViewModel } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model"; import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
@@ -21,7 +22,6 @@ import {
   memberSettingsApi,
   type MemberSettingsSnapshot,
 } from "@/transport/client/api-client";
-
 export const useAccountSettingsModel = (
   fallbackEmail: string,
   fallbackName: string,
@@ -82,7 +82,6 @@ export const useAccountSettingsModel = (
     close,
     "[data-settings-initial-focus]",
   );
-
   const open = useCallback(() => {
     setIsCloseConfirmationOpen(false);
     setIsOpen(true);
@@ -115,7 +114,6 @@ export const useAccountSettingsModel = (
         if (scopeRef.current === requestScope) setIsLoading(false);
       });
   }, [fallbackName, handleSessionFailure, resetTwoFactor, sessionScope]);
-
   const onProfileSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -147,7 +145,6 @@ export const useAccountSettingsModel = (
     },
     [displayName, handleSessionFailure, sessionScope],
   );
-
   const onPasswordSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -188,9 +185,9 @@ export const useAccountSettingsModel = (
     },
     [confirmPassword, currentPassword, handleSessionFailure, newPassword, otpCode, sessionScope],
   );
-
   const capabilities =
     snapshot?.capabilities ?? DEFAULT_MEMBER_CAPABILITIES;
+  const policyView = createAccountSettingsPolicy(snapshot);
   return {
     canChangePassword: capabilities.passwordChange,
     canEditProfile: capabilities.profileSettings,
@@ -227,6 +224,7 @@ export const useAccountSettingsModel = (
       otpCodeInput: (event) => setOtpCode(event.target.value),
       success: passwordSuccess,
     },
+    passwordPolicyRestricted: policyView.passwordRestricted,
     profile: {
       displayNameInput: (event) => setDisplayName(event.target.value),
       error: profileError,
@@ -234,6 +232,7 @@ export const useAccountSettingsModel = (
       onSubmit: onProfileSubmit,
       success: profileSuccess,
     },
+    profilePolicyRestricted: policyView.profileRestricted,
     profileName: snapshot?.profile.displayName ?? null,
     providerFeatures: createProviderFeatures(
       capabilities,
@@ -244,6 +243,7 @@ export const useAccountSettingsModel = (
     twoFactor: {
       ...twoFactorView,
       canManage: capabilities.twoFactorAuthentication,
+      disabledReason: policyView.twoFactorDisabledReason,
     },
   };
 };

@@ -13,6 +13,15 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+The capability-policy release adds `/data/organization-policy.json` only after
+an administrator saves policy. No environment variable, provider migration,
+Stalwart change, port, or mailbox migration is required. Until that first save,
+all controls retain their prior enabled behavior without creating a file. Back
+up the strict versioned mode-0600 record with `/data`. Older images ignore this
+separate file, so rollback remains parse-compatible; restore the matching file
+when returning to a newer image. Its writer supports one writable application
+replica, matching the current deployment boundary.
+
 Scheduled send adds the required external `VEDA_MAIL_JOB_KEY` deployment secret
 and `/data/scheduled-jobs.json`. Generate the key with `openssl rand -base64 32`
 before starting the new Compose definition, store it outside `/data`, and back

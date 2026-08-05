@@ -24,7 +24,7 @@ export const AdminDashboardView = ({
           <p className="text-[17px] font-extrabold tracking-[-0.03em]">
             {model.branding.productName}
           </p>
-          <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+          <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-600">
             <ShieldCheck aria-hidden size={11} /> administration
           </p>
         </div>
@@ -57,7 +57,7 @@ export const AdminDashboardView = ({
         </span>
         <div>
           <h1 className="text-2xl font-extrabold tracking-[-0.04em]">Administration</h1>
-          <p className="text-xs text-slate-500">{model.branding.organizationName}</p>
+          <p className="text-xs text-slate-600">{model.branding.organizationName}</p>
         </div>
       </div>
       <nav aria-label="Administration sections" className="mb-7 flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">

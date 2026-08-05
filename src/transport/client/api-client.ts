@@ -2,6 +2,7 @@ import type {
   ProviderCapabilities,
   ProviderManifest,
 } from "@/domain/provider/provider";
+import type { OrganizationFeaturePolicy } from "@/domain/installation/organization-policy";
 import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
 import {
@@ -29,6 +30,7 @@ export interface MemberSettingsSnapshot {
     readonly profileSettings: boolean;
     readonly twoFactorAuthentication: boolean;
   };
+  readonly organizationPolicy: OrganizationFeaturePolicy;
   readonly profile: MemberProfile;
   readonly security: {
     readonly twoFactorEnabled: boolean;
@@ -58,6 +60,22 @@ export interface AdminMailServiceConfiguration {
 export interface AdminMailServiceSnapshot {
   readonly configuration: AdminMailServiceConfiguration | null;
   readonly providers: readonly ProviderManifest[];
+}
+
+export interface AdminCapabilitySnapshot {
+  readonly capabilities: readonly {
+    readonly effective: boolean;
+    readonly id: string;
+    readonly label: string;
+    readonly organizationControl: keyof OrganizationFeaturePolicy | null;
+    readonly organizationEnabled: boolean | null;
+    readonly providerSupported: boolean;
+  }[];
+  readonly policy: OrganizationFeaturePolicy;
+  readonly provider: {
+    readonly id: string;
+    readonly name: string;
+  };
 }
 
 export const memberSessionApi = {
@@ -150,6 +168,19 @@ export const adminMailServiceApi = {
   save(input: AdminMailServiceConfiguration) {
     return fetchData<AdminMailServiceSnapshot>("/api/v1/admin/mail-service", {
       body: JSON.stringify(input),
+      method: "PUT",
+    });
+  },
+};
+
+export const adminCapabilitiesApi = {
+  get() {
+    return fetchData<AdminCapabilitySnapshot>("/api/v1/admin/capabilities");
+  },
+
+  save(policy: OrganizationFeaturePolicy) {
+    return fetchData<AdminCapabilitySnapshot>("/api/v1/admin/capabilities", {
+      body: JSON.stringify(policy),
       method: "PUT",
     });
   },

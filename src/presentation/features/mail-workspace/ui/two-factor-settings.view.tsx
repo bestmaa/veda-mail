@@ -200,7 +200,8 @@ export const TwoFactorSettingsView = ({
     </div>
     {!settings.canManage ? (
       <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-        This mail service does not support authenticator verification.
+        {settings.disabledReason ??
+          "This mail service does not support authenticator verification."}
       </p>
     ) : settings.enrollment ? (
       <EnrollmentView settings={settings} />

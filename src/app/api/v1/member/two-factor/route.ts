@@ -9,6 +9,7 @@ import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import { assertSubjectRateLimit } from "@/server/security/rate-limit";
+import { assertOrganizationFeatureEnabled } from "@/server/organization/organization-policy.service";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -72,6 +73,7 @@ export const POST = async (request: Request) => {
       3,
       60 * 60 * 1_000,
     );
+    await assertOrganizationFeatureEnabled("memberTwoFactorEnrollment");
     const current = await context(connection);
     if (await memberTwoFactorSecurity.isEnabled(current.account.email)) {
       throw new ApiError(
@@ -102,6 +104,7 @@ export const PUT = async (request: Request) => {
       5,
       15 * 60 * 1_000,
     );
+    await assertOrganizationFeatureEnabled("memberTwoFactorEnrollment");
     const input = memberTwoFactorConfirmSchema.parse(
       await readJsonBody(request, MAX_TWO_FACTOR_BODY_BYTES),
     );

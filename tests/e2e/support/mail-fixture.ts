@@ -87,6 +87,19 @@ export const mailSessionScopeHeaders = async (
   return { "x-veda-mail-session-scope": payload.data.sessionScope };
 };
 
+export const disableProviderDrafts = async (page: Page) => {
+  await page.route("**/api/v1/mail/workspace*", async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as {
+      data: { draftCapability: { status: string } };
+    };
+    payload.data.draftCapability = { status: "unsupported" };
+    await route.fulfill({ json: payload, response });
+  });
+  await page.reload();
+  await expect(page.getByRole("button", { name: "New message" })).toBeEnabled();
+};
+
 export const useInstalledMailbox = () => {
   let authentication: Awaited<ReturnType<BrowserContext["storageState"]>>;
 

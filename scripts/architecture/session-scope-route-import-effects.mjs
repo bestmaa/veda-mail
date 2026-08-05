@@ -27,6 +27,9 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/connections/connection-store", new Set(["connectionStore"])],
   ["@/server/auth/member-two-factor", new Set(["memberTwoFactorSecurity"])],
   ["@/server/auth/two-factor-enrollment", new Set(["twoFactorEnrollmentStore"])],
+  ["@/server/organization/organization-policy.service", new Set([
+    "assertOrganizationFeatureEnabled", "getOrganizationPolicy",
+  ])],
   ["@/server/attachments", new Set(["parseAttachmentContentLength"])],
   ["@/server/mail-service/mail-service-profile.store", new Set(["mailServiceProfileStore"])],
   ["@/server/mail/attachment-original-import", new Set(["importOriginalAttachment"])],

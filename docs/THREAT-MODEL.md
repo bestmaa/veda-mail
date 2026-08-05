@@ -1212,6 +1212,37 @@ message bodies, attachment bytes, or complete recipient lists. Provider errors
 must be normalized before reaching members. Security events need bounded,
 tamper-evident retention before an audit log is advertised.
 
+## Administrative capability-policy threats
+
+A forged browser request could otherwise disable account recovery controls, a
+modified client could ignore a disabled switch, or a capability table could
+claim that an unsupported provider operation is available. Capability-policy
+writes therefore require the HttpOnly administrator session, exact same-origin
+mutation validation, strict bounded JSON, and both request- and
+administrator-subject rate limits. Unknown keys and non-boolean values fail
+before persistence. The server builds the matrix from the registered provider
+manifest; organization policy is intersected with provider support and can
+never expand it.
+
+Member UI state is advisory. Exact mailbox-session scope is established before
+policy evaluation, and the profile, password, and both 2FA-enrollment mutation
+routes enforce policy again before request-body parsing or provider work. The
+2FA disable route deliberately remains available when new enrollment is
+disabled, preventing an organization policy change from trapping a member in
+an authenticator configuration. Existing enabled 2FA remains visible for that
+purpose.
+
+Concurrent writes, truncated files, or rollback could otherwise create an
+ambiguous policy. The separate record is strict and versioned, written mode
+0600 through a process-serialized temporary file and atomic rename. Missing
+state uses explicit enabled compatibility defaults; malformed state fails
+closed as an application error rather than being silently repaired. Keeping
+policy outside strict `installation.json` lets older releases ignore it during
+rollback. The existing one-writable-replica boundary still applies. A host
+administrator with `/data` write access remains trusted and can change policy;
+these controls do not restrict direct IMAP, SMTP, provider webmail, or provider
+administration outside Veda Mail.
+
 ## Supply-chain and release controls
 
 - Lock npm dependencies, the base-image digest, and GitHub Actions; run the

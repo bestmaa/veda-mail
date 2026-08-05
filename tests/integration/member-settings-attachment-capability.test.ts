@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  getOrganizationPolicy: vi.fn(),
   getMailUpdateMode: vi.fn<() => Promise<"poll" | "push">>(async () => "poll"),
   getMaxAttachmentBytes: vi.fn(async () => 1_024),
+  twoFactorIsEnabled: vi.fn(),
 }));
 
 vi.mock("@/server/connections/connection-session", () => ({
@@ -34,8 +36,8 @@ vi.mock("@/bootstrap/provider-registry", () => ({
           maxAttachmentDownloadBytes: 50 * 1024 * 1024,
           supportsAttachmentDownload: true,
           supportsDrafts: false,
-          supportsPasswordChange: false,
-          supportsProfileSettings: false,
+          supportsPasswordChange: true,
+          supportsProfileSettings: true,
           supportsPush: false,
           supportsServerSearch: true,
           supportsThreads: false,
@@ -56,7 +58,11 @@ vi.mock("@/server/mail-service/mail-service-profile.store", () => ({
   },
 }));
 vi.mock("@/server/auth/member-two-factor", () => ({
-  memberTwoFactorSecurity: { isEnabled: async () => false },
+  memberTwoFactorSecurity: { isEnabled: mocks.twoFactorIsEnabled },
+}));
+vi.mock("@/server/organization/organization-policy.service", () => ({
+  assertOrganizationFeatureEnabled: async () => undefined,
+  getOrganizationPolicy: mocks.getOrganizationPolicy,
 }));
 
 import { GET } from "@/app/api/v1/member/settings/route";
@@ -66,6 +72,12 @@ beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockReset();
   mocks.getMaxAttachmentBytes.mockResolvedValue(1_024);
   mocks.getMailUpdateMode.mockReset().mockResolvedValue("poll");
+  mocks.getOrganizationPolicy.mockReset().mockResolvedValue({
+    memberPasswordChange: true,
+    memberProfileEditing: true,
+    memberTwoFactorEnrollment: true,
+  });
+  mocks.twoFactorIsEnabled.mockReset().mockResolvedValue(false);
 });
 
 const settings = async () => {
@@ -133,6 +145,45 @@ describe("member settings attachment capability", () => {
       data: {
         attachmentCapability: { status: "unavailable" },
         capabilities: { mail: { maxAttachmentBytes: 0 } },
+      },
+    });
+  });
+
+  it("returns effective self-service capabilities and the governing policy", async () => {
+    mocks.getOrganizationPolicy.mockResolvedValueOnce({
+      memberPasswordChange: false,
+      memberProfileEditing: false,
+      memberTwoFactorEnrollment: false,
+    });
+
+    await expect(settings()).resolves.toMatchObject({
+      data: {
+        capabilities: {
+          passwordChange: false,
+          profileSettings: false,
+          twoFactorAuthentication: false,
+        },
+        organizationPolicy: {
+          memberPasswordChange: false,
+          memberProfileEditing: false,
+          memberTwoFactorEnrollment: false,
+        },
+      },
+    });
+  });
+
+  it("keeps existing 2FA manageable after new enrollment is disabled", async () => {
+    mocks.getOrganizationPolicy.mockResolvedValueOnce({
+      memberPasswordChange: true,
+      memberProfileEditing: true,
+      memberTwoFactorEnrollment: false,
+    });
+    mocks.twoFactorIsEnabled.mockResolvedValueOnce(true);
+
+    await expect(settings()).resolves.toMatchObject({
+      data: {
+        capabilities: { twoFactorAuthentication: true },
+        security: { twoFactorEnabled: true },
       },
     });
   });

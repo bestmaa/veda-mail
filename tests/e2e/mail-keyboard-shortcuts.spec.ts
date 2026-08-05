@@ -101,9 +101,13 @@ test("routes enabled shortcuts and suspends them in editors and dialogs", async 
   const markRead = page.getByRole("button", { name: "Mark as read" });
   const initiallyUnread = await markRead.count() > 0;
   await page.keyboard.press("u");
-  await expect(page.getByRole("button", {
+  const readToggle = page.getByRole("button", {
     name: initiallyUnread ? "Mark as unread" : "Mark as read",
-  })).toBeVisible();
+  });
+  await expect(readToggle).toBeVisible();
+  await expect(readToggle).toBeEnabled();
+  await heading.focus();
+  await expect(heading).toBeFocused();
 
   await page.keyboard.press("r");
   const reply = page.getByRole("dialog", { name: "Compose message" });
