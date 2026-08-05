@@ -628,7 +628,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 
 ## M8 — Administration, operations, and trust
 
-- [ ] Admin feature/capability matrix and per-organization policy controls
+- [x] Admin feature/capability matrix and per-organization policy controls
 - [ ] Configurable message/attachment limits and allowed/blocked file policy
 - [ ] Optional open-source malware scanner integration with quarantine states
 - [ ] Structured redacted logs, request correlation, metrics, health/readiness,
@@ -644,6 +644,21 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 
 Acceptance: a clean installation, upgrade, rollback, backup restore, replica
 restart, and provider outage are exercised from documented runbooks.
+
+The administration capability matrix and organization policy controls shipped
+through PR #100 in production commit
+`6d5b089cfa136f3b10e630818836983c757489cf`. Provider support is intersected
+with organization policy for member profile edits, mailbox password changes,
+and new Veda TOTP enrollment, and every restricted member route enforces the
+effective policy server-side. The strict versioned policy record is stored in a
+separate mode-0600 file with serialized atomic replacement so rollback to the
+previous strict installation parser remains safe. Protected-main run
+`31037503445` passed quality, coverage, all 103 browser regressions, production
+build/header checks, dependency audit, CodeQL, live ClamAV, and multi-platform
+source/container publishing. Dokploy deployed that exact merge successfully in
+1m 10s; the public health endpoint returned HTTP 200 `ok` with private no-store,
+HSTS, and nosniff headers, while the live administration route retained its
+encrypted HttpOnly administrator-session gate.
 
 ## Delivery order
 
