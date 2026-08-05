@@ -1149,6 +1149,29 @@ account identity, message metadata, provider state, or executable script and
 states that no messages or account details are stored offline. Reconnection
 and stale-mailbox state remain a separate roadmap slice.
 
+## Connectivity recovery boundary
+
+Browser connectivity is treated as a presentation hint, never as proof that a
+provider is reachable. An `offline` event immediately labels the already
+authorized mailbox snapshot as potentially stale. An `online` event starts one
+single-flight authoritative workspace refresh; repeated online events, refresh
+clicks, and Retry actions join that same read instead of creating a request
+storm. A successful read briefly announces restoration, while an online
+transport failure retains the snapshot with an explicit stale warning and one
+manual Retry control. Initial loads and mailbox/search changes still fail with
+their ordinary scoped error instead of displaying a snapshot for a different
+view.
+
+The provider-independent update loop marks its snapshot stale after a transient
+wait failure, keeps capped exponential backoff, and records a mandatory refresh
+before it opens the next provider wait. Offline-to-online recovery therefore
+does not wait for the next 55-second JMAP reconciliation or 60-second IMAP poll.
+Only the idempotent workspace read is automatically repeated. Sends, draft
+mutations, message moves, deletion, rules, and other writes retain their own
+existing idempotency or explicit-retry boundaries and are never replayed by the
+connectivity layer. Session-scope failures still invalidate the account and
+activate the privacy curtain rather than exposing a stale authenticated view.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

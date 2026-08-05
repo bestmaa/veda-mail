@@ -10,7 +10,7 @@ import { useMailSessionScopeState } from "@/presentation/features/mail-workspace
 import { useMailMessageSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-message-selection";
 import { useMessageListPreferencesSave } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-save";
 import { useMailSearchModel } from "@/presentation/features/mail-workspace/hooks/use-mail-search-model";
-import { useMailUpdates } from "@/presentation/features/mail-workspace/hooks/use-mail-updates"; import { useNewMailNotifications } from "@/presentation/features/mail-workspace/hooks/use-new-mail-notifications"; import { detectNewMail } from "@/domain/mail/new-mail-notification"; import type { MailWorkspace } from "@/domain/mail/mail";
+import { useMailUpdates } from "@/presentation/features/mail-workspace/hooks/use-mail-updates"; import { useNewMailNotifications } from "@/presentation/features/mail-workspace/hooks/use-new-mail-notifications"; import { useMailConnectivity } from "@/presentation/features/mail-workspace/hooks/use-mail-connectivity"; import { detectNewMail } from "@/domain/mail/new-mail-notification"; import type { MailWorkspace } from "@/domain/mail/mail";
 import { purgeInvalidatedSessionRecovery } from "@/presentation/features/mail-workspace/member-session-recovery";
 import { mailApi } from "@/transport/client/api-client";
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : "Something went wrong.";
@@ -23,10 +23,11 @@ export const useMailDataModel = () => {
   const { listenWhileHidden, notify, view: notificationView } =
     useNewMailNotifications(workspace?.account ?? null);
   const [activeMailboxId, setActiveMailboxId] = useState<MailboxId | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isReaderLoading, setIsReaderLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [readerError, setReaderError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true), [isReaderLoading, setIsReaderLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null), [readerError, setReaderError] = useState<string | null>(null);
+  const connectivityRefreshRef = useRef<() => Promise<boolean>>(async () => false);
+  const { markCurrent, markStale, refresh: refreshConnectivity,
+    retry: retryConnectivity, view: connectivity } = useMailConnectivity(connectivityRefreshRef);
   const workspaceRequestId = useRef(0), acceptedWorkspaceRef = useRef<MailWorkspace | null>(workspace);
   const messageRequestId = useRef(0);
   const sessionInvalidated = useRef(false);
@@ -83,7 +84,7 @@ export const useMailDataModel = () => {
       const requestId = ++workspaceRequestId.current;
       const mailboxId = override ? override.mailboxId : activeMailboxId;
       const search = override ? override.search : appliedSearch;
-      setIsLoading(true);
+      setIsLoading(!override || !acceptedWorkspaceRef.current);
       setError(null);
       try {
         const requestScope = currentScope();
@@ -117,10 +118,12 @@ export const useMailDataModel = () => {
           activeMailboxIdRef.current = resolvedMailboxId;
           setActiveMailboxId(resolvedMailboxId);
         }
+        markCurrent();
         return true;
       } catch (nextError) {
         if (requestId === workspaceRequestId.current) {
           if (handleSessionFailure(nextError)) return false;
+          if (override && acceptedWorkspaceRef.current) markStale();
           else setError(errorMessage(nextError));
         }
         return false;
@@ -131,11 +134,9 @@ export const useMailDataModel = () => {
       }
     },
     [acceptWorkspace, activeMailboxId, appliedSearch, currentScope,
-      handleSessionFailure, resetMailboxView],
+      handleSessionFailure, markCurrent, markStale, resetMailboxView],
   );
-  useEffect(() => {
-    void loadWorkspace();
-  }, [loadWorkspace]);
+  useEffect(() => { void loadWorkspace(); }, [loadWorkspace]);
   const refresh = useCallback(() => void loadWorkspace(), [loadWorkspace]);
   const refreshCurrentView = useCallback(() => loadWorkspace({
     mailboxId: activeMailboxIdRef.current,
@@ -149,8 +150,9 @@ export const useMailDataModel = () => {
     if (event) notify(event);
     return refreshed;
   }, [notify, refreshCurrentView]);
-  useMailUpdates(refreshForUpdates, sessionScope, handleSessionFailure,
-    listenWhileHidden);
+  useEffect(() => { connectivityRefreshRef.current = refreshForUpdates; }, [refreshForUpdates]);
+  useMailUpdates(refreshConnectivity, sessionScope, handleSessionFailure,
+    listenWhileHidden, markStale);
   const beginMessageMutation = useCallback((
     input: Parameters<typeof beginOptimisticMutation>[0],
   ) => {
@@ -210,19 +212,17 @@ export const useMailDataModel = () => {
     settleOptimisticMutation,
     viewKey,
   });
-  const onRefresh: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
-    refresh();
-  }, [refresh]);
+  const onRefresh: MouseEventHandler<HTMLButtonElement> = useCallback(
+    () => retryConnectivity(), [retryConnectivity]);
   return {
     activeMailboxId,
     archive: mutations.archive,
     bulk,
     closeReader: useCallback(() => {
-      messageRequestId.current += 1;
-      clearMessage();
+      messageRequestId.current += 1; clearMessage();
       setIsReaderLoading(false);
     }, [clearMessage]),
-    error, hasActiveSearch: Boolean(appliedSearch),
+    connectivity, error, hasActiveSearch: Boolean(appliedSearch),
     handleSessionFailure,
     isLoading, isLoadingMore: pagination.isLoadingMore,
     isReaderLoading, isReaderMutating: mutations.isBusy || isMessageMutationBusy,

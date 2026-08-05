@@ -21,7 +21,7 @@ import type { UndoSendViewModel } from "@/presentation/features/mail-workspace/u
 import type { KeyboardShortcutsViewModel } from "@/presentation/features/mail-workspace/keyboard-shortcuts.view-model";
 import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
 import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model"; import type { RecipientSuggestionsModel } from "@/presentation/features/mail-workspace/recipient-suggestions.view-model"; import type { ContactManagementViewModel } from "@/presentation/features/mail-workspace/contact-management.view-model"; import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
-import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model"; export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
+import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model"; import type { MailConnectivityViewModel } from "@/presentation/features/mail-workspace/mail-connectivity"; export type { FolderViewModel, MailboxIconName } from "@/presentation/features/mail-workspace/folder.view-model";
 export interface MessageItemViewModel {
   readonly avatar: string;
   readonly canDrag: boolean;
@@ -214,7 +214,7 @@ export type DeliveryNoticeViewModel = DeliveryNoticeViewModelBase &
 export interface MailWorkspaceViewProps {
   readonly account: { readonly avatar: string; readonly email: string;
     readonly name: string; readonly provider: string };
-  readonly branding: BrandingViewModel; readonly canPermanentlyDelete: boolean;
+  readonly branding: BrandingViewModel; readonly canPermanentlyDelete: boolean; readonly connectivity: MailConnectivityViewModel;
   readonly activeFolder: string; readonly activeRole: MailboxRole | null;
   readonly bulkActions: BulkActionsViewModel; readonly composer: ComposerViewModel; readonly contactManagement: ContactManagementViewModel;
   readonly error: string | null; readonly folders: readonly FolderViewModel[];

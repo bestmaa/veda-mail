@@ -198,7 +198,7 @@ export const useMailWorkspaceModel = ({
   return {
     account: { avatar: initials(accountName), email: accountEmail,
       name: accountName, provider: providerLabel },
-    branding: brandingView, ...mailList, bulkActions, contactManagement,
+    branding: brandingView, ...mailList, bulkActions, connectivity: mail.connectivity, contactManagement,
     canPermanentlyDelete,
     composer: createComposerViewModel(composer),
     error: mail.error ?? session.error ??

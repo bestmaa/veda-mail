@@ -46,6 +46,7 @@ export const useMailUpdates = (
   sessionScope: string,
   handleSessionFailure: (failure: unknown) => boolean,
   listenWhileHidden = false,
+  onTransientFailure: () => void = () => undefined,
 ) => {
   useEffect(() => {
     if (!sessionScope) return;
@@ -81,6 +82,8 @@ export const useMailUpdates = (
           }
         } catch (error) {
           if (controller.signal.aborted || handleSessionFailure(error)) break;
+          pendingRefresh = true;
+          onTransientFailure();
           await wait(failureRetryMs, controller.signal);
           failureRetryMs = Math.min(MAX_FAILURE_RETRY_MS, failureRetryMs * 2);
         }
@@ -88,5 +91,6 @@ export const useMailUpdates = (
     };
     void run();
     return () => controller.abort();
-  }, [handleSessionFailure, listenWhileHidden, refresh, sessionScope]);
+  }, [handleSessionFailure, listenWhileHidden, onTransientFailure, refresh,
+    sessionScope]);
 };
