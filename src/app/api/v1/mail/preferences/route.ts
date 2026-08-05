@@ -9,7 +9,7 @@ import {
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
-import { messageListPreferencesSchema } from "@/transport/http/message-list-preferences.schema";
+import { messageListPreferencesUpdateSchema } from "@/transport/http/message-list-preferences.schema";
 import { readJsonBody } from "@/transport/http/read-json-body";
 
 export const runtime = "nodejs";
@@ -24,12 +24,18 @@ export const PATCH = async (request: Request) => {
     assertSubjectRateLimit(
       "message-list-preferences", connection.id, 30, 15 * 60_000,
     );
-    const preferences = messageListPreferencesSchema.parse(
+    const update = messageListPreferencesUpdateSchema.parse(
       await readJsonBody(request, MAX_REQUEST_BYTES),
     );
     const owner = await mailboxOwner(await getMailService(connection));
+    const current = await messageListPreferencesStore.get(owner);
     return apiSuccess({
-      preferences: await messageListPreferencesStore.set(owner, preferences),
+      preferences: await messageListPreferencesStore.set(owner, {
+        ...current,
+        ...update,
+        locale: update.locale ?? current.locale,
+        timeZone: update.timeZone ?? current.timeZone,
+      }),
     });
   } catch (error) {
     return apiFailure(error, "Unable to save message list preferences.");

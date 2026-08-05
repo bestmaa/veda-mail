@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type {
+  MailLocale,
   MessageListDensity,
   MessageListPreferences,
   MessageListSort,
@@ -18,6 +19,7 @@ const same = (
   right: MessageListPreferences,
 ): boolean => left.density === right.density &&
   left.showPreview === right.showPreview && left.sort === right.sort &&
+  left.locale === right.locale && left.timeZone === right.timeZone &&
   left.confirmBeforeSend === right.confirmBeforeSend &&
   left.undoSendSeconds === right.undoSendSeconds &&
   left.keyboardShortcuts === right.keyboardShortcuts;
@@ -63,6 +65,7 @@ export const useMessageListPreferencesModel = (
       isOpen,
       isSaving,
       keyboardShortcuts: draft.keyboardShortcuts,
+      locale: draft.locale,
       onClose,
       onConfirmBeforeSendChange: useCallback((confirmBeforeSend: boolean) => {
         setDraft((value) => ({ ...value, confirmBeforeSend }));
@@ -72,6 +75,9 @@ export const useMessageListPreferencesModel = (
       }, []),
       onKeyboardShortcutsChange: useCallback((keyboardShortcuts: boolean) => {
         setDraft((value) => ({ ...value, keyboardShortcuts }));
+      }, []),
+      onLocaleChange: useCallback((locale: MailLocale) => {
+        setDraft((value) => ({ ...value, locale }));
       }, []),
       onPreviewChange: useCallback((showPreview: boolean) => {
         setDraft((value) => ({ ...value, showPreview }));
@@ -101,11 +107,15 @@ export const useMessageListPreferencesModel = (
           if (requestId === runId.current) setIsSaving(false);
         }
       }, [current, draft, isSaving, save]),
+      onTimeZoneChange: useCallback((timeZone: string) => {
+        setDraft((value) => ({ ...value, timeZone }));
+      }, []),
       onUndoSendSecondsChange: useCallback((undoSendSeconds: UndoSendDelay) => {
         setDraft((value) => ({ ...value, undoSendSeconds }));
       }, []),
       showPreview: draft.showPreview,
       sort: draft.sort,
+      timeZone: draft.timeZone,
       undoSendSeconds: draft.undoSendSeconds,
     },
     onOpen: useCallback(() => {
@@ -113,8 +123,10 @@ export const useMessageListPreferencesModel = (
       setError(null);
       setIsOpen(true);
     }, [current]),
+    locale: current.locale,
     showPreview: current.showPreview,
     sort: current.sort,
+    timeZone: current.timeZone,
     undoSendSeconds: current.undoSendSeconds,
   };
 };

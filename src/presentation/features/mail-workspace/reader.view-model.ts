@@ -1,4 +1,5 @@
 import type { MessageDetail } from "@/domain/mail/mail";
+import type { MailLocale } from "@/domain/mail/message-list-preferences";
 import { formatAddressInput } from "@/domain/mail/compose";
 import type { LabelCapability, MailLabel } from "@/domain/mail/label";
 import type { LabelId } from "@/domain/shared/brand";
@@ -57,10 +58,12 @@ export const createReaderViewModel = (input: {
   readonly message: MessageDetail | null;
   readonly labelCapability: LabelCapability;
   readonly labels: readonly MailLabel[];
+  readonly locale?: MailLocale;
   readonly onSetLabel: (labelId: LabelId, value: boolean) => void;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly readerError: string | null;
   readonly sessionScope: string;
+  readonly timeZone?: string;
 }): ReaderViewModel | null => {
   if (!input.message && !input.isLoading) return null;
   if (!input.message) {
@@ -141,15 +144,20 @@ export const createReaderViewModel = (input: {
   const attachmentDetails = attachmentCount === 0
     ? "None"
     : `${attachmentCount} ${attachmentCount === 1 ? "file" : "files"}${
-      allAttachmentSizesKnown ? ` (${formatFileSize(knownAttachmentBytes)})` : ""
+      allAttachmentSizesKnown
+        ? ` (${formatFileSize(knownAttachmentBytes, input.locale ?? "en-IN")})`
+        : ""
     }`;
-  const date = formatFullDate(message.receivedAt);
+  const date = formatFullDate(
+    message.receivedAt, input.locale ?? "en-IN", input.timeZone,
+  );
   return {
     attachments: createReceivedAttachmentViewModels(
       message.id,
       visibleAttachments,
       input.attachmentPreview,
       input.attachmentDownload,
+      input.locale ?? "en-IN",
     ),
     attachmentPreview: {
       error: previewBelongsToMessage ? input.attachmentPreview.error : null,
@@ -176,7 +184,7 @@ export const createReaderViewModel = (input: {
           : null,
       date,
       from: formatAddressInput(message.from) || "Unknown sender",
-      messageSize: formatFileSize(message.size),
+      messageSize: formatFileSize(message.size, input.locale ?? "en-IN"),
       replyTo: formatAddressInput(message.replyTo) || null,
       to: formatAddressInput(message.to) || "Undisclosed recipients",
     },

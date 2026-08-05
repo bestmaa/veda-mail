@@ -70,6 +70,7 @@ export const useMailRulesModel = (
   mailboxes: readonly MailRuleChoice[],
   labels: readonly MailRuleChoice[],
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
+  localization?: { readonly locale: string; readonly timeZone: string },
 ): MailRulesViewModel => {
   const [snapshot, setSnapshot] = useState<MailRuleWorkspaceSnapshot | null>(null);
   const [definition, setDefinition] = useState<MailRuleDefinition>(emptyDefinition);
@@ -170,7 +171,9 @@ export const useMailRulesModel = (
   return {
     capability: snapshot?.capability ?? null,
     deploymentStatus: snapshot?.book.deployment.status ?? "unknown",
-    editor, error, isBusy, isLoading, labels, mailboxes,
+    editor, error, isBusy, isLoading, labels,
+    ...(localization ? { locale: localization.locale } : {}),
+    mailboxes,
     onCreate: () => { setDefinition(emptyDefinition()); setEditingRuleId(null); setIsEditorOpen(true); setError(null); },
     onDelete: (ruleId) => void mutate({ expectedRevision: revision, operation: "delete", ruleId }, "Rule deleted and deployed."),
     onEdit: (rule: MailRule) => {
@@ -218,5 +221,6 @@ export const useMailRulesModel = (
     onRetry: () => void load(),
     onToggle: (ruleId, enabled) => void mutate({ enabled, expectedRevision: revision, operation: "toggle", ruleId }, enabled ? "Rule enabled." : "Rule disabled."),
     rules, success,
+    ...(localization ? { timeZone: localization.timeZone } : {}),
   };
 };

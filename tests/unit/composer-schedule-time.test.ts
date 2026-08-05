@@ -30,4 +30,14 @@ describe("composer schedule time", () => {
     expect(resolved.getMinutes() % 5).toBe(0);
     expect(resolved.getSeconds()).toBe(0);
   });
+
+  it("resolves the selected IANA zone and rejects a daylight-saving gap", () => {
+    const now = new Date("2026-03-08T05:00:00.000Z");
+    expect(scheduledLocalTimeToIso(
+      "2026-03-08T03:30", now, "America/New_York",
+    )).toBe("2026-03-08T07:30:00.000Z");
+    expect(scheduledLocalTimeToIso(
+      "2026-03-08T02:30", now, "America/New_York",
+    )).toBeNull();
+  });
 });

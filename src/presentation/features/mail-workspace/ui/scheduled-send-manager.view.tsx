@@ -1,6 +1,7 @@
 import { CalendarClock, RefreshCw, Trash2, X } from "lucide-react";
 
 import type { ScheduledSendManagerViewModel } from "@/presentation/features/mail-workspace/scheduled-send-manager.view-model";
+import { mailIntlLocale } from "@/domain/mail/message-list-preferences";
 
 const statusLabel = {
   failed: "Failed",
@@ -10,10 +11,15 @@ const statusLabel = {
   uncertain: "Needs review",
 } as const;
 
-const dateLabel = (value: string): string =>
-  new Intl.DateTimeFormat(undefined, {
+const dateLabel = (
+  value: string,
+  manager: ScheduledSendManagerViewModel,
+): string => new Intl.DateTimeFormat(mailIntlLocale(
+  manager.locale ?? "en-IN",
+), {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: manager.timeZone,
   }).format(new Date(value));
 
 export const ScheduledSendManagerView = ({
@@ -84,7 +90,7 @@ export const ScheduledSendManagerView = ({
                       {message.subject || "(No subject)"}
                     </p>
                     <p className="mt-1 text-xs text-slate-600">
-                      {dateLabel(message.scheduledAt)} · {message.recipientCount} recipient{message.recipientCount === 1 ? "" : "s"}
+                      {dateLabel(message.scheduledAt, manager)} · {message.recipientCount} recipient{message.recipientCount === 1 ? "" : "s"}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-indigo-700">
                       {statusLabel[message.status]}

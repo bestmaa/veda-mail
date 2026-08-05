@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import type { MessageId } from "@/domain/shared/brand";
+import type { MailLocale } from "@/domain/mail/message-list-preferences";
 import { createConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useMessageConversation } from "@/presentation/features/mail-workspace/hooks/use-message-conversation";
@@ -10,8 +11,10 @@ import { useMessageConversation } from "@/presentation/features/mail-workspace/h
 export const useMessageConversationViewModel = (input: {
   readonly anchorMessageId: MessageId | null;
   readonly handleSessionFailure: MailSessionFailureHandler;
+  readonly locale: MailLocale;
   readonly onOpen: (messageId: string) => void;
   readonly sessionScope: string;
+  readonly timeZone: string;
 }) => {
   const state = useMessageConversation({
     anchorMessageId: input.anchorMessageId,
@@ -23,13 +26,17 @@ export const useMessageConversationViewModel = (input: {
     error: state.error,
     isLoading: state.isLoading,
     isLoadingMore: state.isLoadingMore,
+    locale: input.locale,
     onLoadMore: state.loadMore,
     onOpen: input.onOpen,
     page: state.page,
     selectedMessageId: input.anchorMessageId,
+    timeZone: input.timeZone,
   }), [
     input.anchorMessageId,
+    input.locale,
     input.onOpen,
+    input.timeZone,
     state.error,
     state.isLoading,
     state.isLoadingMore,

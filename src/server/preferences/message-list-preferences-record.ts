@@ -25,9 +25,23 @@ const legacySendingPreferencesSchema = z
   })
   .strict();
 
+const legacyShortcutPreferencesSchema = z
+  .object({
+    confirmBeforeSend: z.boolean(),
+    density: z.enum(["compact", "comfortable", "spacious"]),
+    keyboardShortcuts: z.boolean(),
+    showPreview: z.boolean(),
+    sort: z.enum(["newest", "oldest"]),
+    undoSendSeconds: z.union([
+      z.literal(0), z.literal(5), z.literal(10), z.literal(20), z.literal(30),
+    ]),
+  })
+  .strict();
+
 const storedPreferencesSchema = z
   .union([
     messageListPreferencesSchema,
+    legacyShortcutPreferencesSchema,
     legacySendingPreferencesSchema,
     legacyMessageListPreferencesSchema,
   ])

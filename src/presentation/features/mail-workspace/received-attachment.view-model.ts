@@ -62,6 +62,7 @@ export const createReceivedAttachmentViewModels = (
     readonly href: string | null;
     readonly isDownloading: boolean;
   },
+  locale = "en-IN",
 ): readonly AttachmentViewModel[] =>
   attachments.map((attachment) => {
     const href = createAttachmentDownloadHref(messageId, attachment.id);
@@ -86,7 +87,7 @@ export const createReceivedAttachmentViewModels = (
       meta: `${attachment.mimeType} · ${
         attachment.size === null
           ? "Unknown size"
-          : formatFileSize(attachment.size)
+          : formatFileSize(attachment.size, locale)
       }`,
       name: attachment.name,
       onDownload: () => void download?.download(href, attachment.name),

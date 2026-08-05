@@ -1190,6 +1190,16 @@ forced-colors acceptance matrix. Sanitized sender HTML remains untrusted
 content, and Veda Mail does not claim that external message authors supplied
 accessible structure or alternatives.
 
+## Localization boundary
+
+Formatting locale and IANA time zone are encrypted, owner-isolated application
+preferences rather than provider configuration. The server accepts only bounded
+canonical locales and runtime-valid IANA zones. Selected wall-clock values for
+Scheduled Send and Snooze are resolved to one UTC instant and reject nonexistent
+daylight-saving times. Direction is derived from the locale, while document
+language remains English until a translated source catalog exists; this avoids
+giving assistive technology a false language signal.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

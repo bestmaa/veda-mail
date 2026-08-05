@@ -1,6 +1,7 @@
 import { FlaskConical } from "lucide-react";
 
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model";
+import { mailIntlLocale } from "@/domain/mail/message-list-preferences";
 
 export const MailRulesPreviewView = ({ rules }: { readonly rules: MailRulesViewModel }) => {
   const { preview } = rules;
@@ -17,7 +18,7 @@ export const MailRulesPreviewView = ({ rules }: { readonly rules: MailRulesViewM
       {preview.hasRun && !preview.isLoading && !preview.error && !preview.items.length ? <p className="text-xs text-slate-500" role="status">No recent messages were available for this dry run.</p> : null}
       {preview.items.length ? <ol className="max-h-72 space-y-2 overflow-y-auto" aria-label="Dry run results">
         {preview.items.map((item) => <li className="rounded-lg border border-slate-200 bg-white p-3" key={item.messageId}>
-          <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-900">{item.subject}</p><p className="truncate text-[11px] text-slate-500">From {item.from}</p></div><time className="text-[10px] text-slate-500" dateTime={item.receivedAt}>{new Date(item.receivedAt).toLocaleString()}</time></div>
+          <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-bold text-slate-900">{item.subject}</p><p className="truncate text-[11px] text-slate-500">From {item.from}</p></div><time className="text-[10px] text-slate-500" dateTime={item.receivedAt}>{new Intl.DateTimeFormat(mailIntlLocale(rules.locale ?? "en-IN"), { dateStyle: "short", timeStyle: "short", ...(rules.timeZone ? { timeZone: rules.timeZone } : {}) }).format(new Date(item.receivedAt))}</time></div>
           <dl className="mt-2 grid gap-1 text-[11px] sm:grid-cols-2"><div><dt className="font-bold text-slate-500">Matched rules</dt><dd className="text-slate-700">{item.matchedRules}</dd></div><div><dt className="font-bold text-slate-500">Planned actions</dt><dd className="text-slate-700">{item.actions}</dd></div></dl>
         </li>)}
       </ol> : null}

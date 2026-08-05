@@ -36,4 +36,15 @@ describe("mail snooze local time", () => {
     expect(snoozeLocalTimeToIso(value, now)).toBe(new Date(value).toISOString());
     expect(snoozeLocalDateTimeValue(new Date(value))).toBe(value);
   });
+
+  it("uses an explicit zone independently from the server process zone", () => {
+    const now = new Date("2026-08-03T04:32:00.000Z");
+    expect(snoozePresets(now, "Asia/Kolkata").map(({ value }) => value))
+      .toEqual([
+        "2026-08-03T18:00", "2026-08-04T08:00", "2026-08-10T08:00",
+      ]);
+    expect(snoozeLocalTimeToIso(
+      "2026-08-04T08:00", now, "Asia/Kolkata",
+    )).toBe("2026-08-04T02:30:00.000Z");
+  });
 });

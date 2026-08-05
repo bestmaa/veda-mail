@@ -39,7 +39,8 @@ const workspace: MailWorkspace = {
   ],
   messageListPreferences: {
     confirmBeforeSend: false, density: "comfortable", showPreview: true,
-    keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
+    keyboardShortcuts: false, locale: "en-IN", sort: "newest",
+    timeZone: "auto", undoSendSeconds: 0,
   },
   messages: { items: [], nextCursor: null, total: 0 },
   sessionExpiresAt: "2026-08-01T00:00:00.000Z",

@@ -1,4 +1,5 @@
 import type { ScheduledMessage } from "@/domain/mail/scheduled-send";
+import type { MailLocale } from "@/domain/mail/message-list-preferences";
 import type { ChangeEventHandler } from "react";
 
 export interface ScheduledSendManagerViewModel {
@@ -8,6 +9,7 @@ export interface ScheduledSendManagerViewModel {
   readonly isAvailable: boolean;
   readonly isMutating: boolean;
   readonly isOpen: boolean;
+  readonly locale?: MailLocale;
   readonly messages: readonly ScheduledMessage[];
   readonly onCancelMessage: (message: ScheduledMessage) => void;
   readonly onClose: () => void;

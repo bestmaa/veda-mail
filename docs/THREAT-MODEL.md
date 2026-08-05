@@ -389,6 +389,12 @@ metadata.
   session secret, and the owner index is authenticated as additional data.
   File size and owner count are bounded; writes are mode-restricted, fsynced,
   atomically renamed, and serialized within one process.
+- Formatting locale is a closed canonical allowlist, while a time-zone value is
+  length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
+  value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients
+  migrate without replacing an already stored locale or zone. Direction is
+  derived from the accepted locale; the English source catalog keeps `lang=en`
+  so RTL formatting cannot falsely relabel untranslated content.
 - The workspace route compares browser-echoed sort/preview context with the
   persisted preference. A mismatch fails with HTTP 409 before provider data is
   accepted, while the signed cursor independently binds the same values.
@@ -401,7 +407,9 @@ metadata.
 Residual risk: metadata access timing may still reveal that an authenticated
 member changed preferences, and a provider can observe JMAP preview requests
 when previews are enabled. Standard IMAP avoids that body-access expansion at
-the cost of unavailable snippets.
+the cost of unavailable snippets. Locale and time zone can reveal regional
+information to someone who already obtains the encrypted store and installation
+secret; they are not exposed in the plaintext owner index.
 
 ### Stored email signatures
 

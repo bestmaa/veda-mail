@@ -6,6 +6,7 @@ import {
   UNDO_SEND_DELAYS,
 } from "@/domain/mail/message-list-preferences";
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
+import { LocalizationPreferencesFieldsView } from "@/presentation/features/mail-workspace/ui/localization-preferences-fields.view";
 
 const densityLabels = {
   compact: "Compact",
@@ -132,6 +133,8 @@ export const MessageListPreferencesDialogView = ({
           for the shortcut guide.
         </p>
       </fieldset>
+
+      <LocalizationPreferencesFieldsView dialog={dialog} />
 
       <label className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700">
         <input
