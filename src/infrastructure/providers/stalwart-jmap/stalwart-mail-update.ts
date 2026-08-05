@@ -65,7 +65,7 @@ export const waitForStalwartMailUpdate = async (
     return { mode: "push", retryAfterMs: 1_000, shouldRefresh: changed };
   } catch (error) {
     if (signal.aborted) {
-      return { mode: "push", retryAfterMs: 1_000, shouldRefresh: false };
+      return { mode: "push", retryAfterMs: 1_000, shouldRefresh: true };
     }
     throw error;
   }

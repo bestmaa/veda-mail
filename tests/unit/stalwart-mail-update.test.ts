@@ -25,7 +25,10 @@ const client = (eventSourceUrl = session.eventSourceUrl) => ({
   getSession: async () => ({ ...session, eventSourceUrl }),
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("Stalwart mail updates", () => {
   it("consumes one same-origin JMAP state event", async () => {
@@ -55,5 +58,30 @@ describe("Stalwart mail updates", () => {
       .resolves.toEqual({
         mode: "poll", retryAfterMs: 60_000, shouldRefresh: true,
       });
+  });
+
+  it("reconciles authoritatively after a quiet push wait times out", async () => {
+    const timeout = new AbortController();
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(timeout.signal);
+    vi.stubGlobal("fetch", vi.fn(async (_url: URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        if (init?.signal?.aborted) {
+          reject(init.signal.reason);
+          return;
+        }
+        init?.signal?.addEventListener("abort", () => reject(
+          init.signal?.reason ?? new DOMException("Aborted", "AbortError"),
+        ), { once: true });
+      }),
+    ));
+
+    const result = waitForStalwartMailUpdate(client(), "https://mail.example.com");
+    await Promise.resolve();
+    await Promise.resolve();
+    timeout.abort(new DOMException("Timed out", "TimeoutError"));
+
+    await expect(result).resolves.toEqual({
+      mode: "push", retryAfterMs: 1_000, shouldRefresh: true,
+    });
   });
 });

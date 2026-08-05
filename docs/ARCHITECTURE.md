@@ -1094,8 +1094,10 @@ credentials server-side. A scoped `GET /api/v1/mail/updates` request enters one
 connection-keyed single-flight wait. Stalwart validates the discovered JMAP
 `eventSourceUrl` against the configured HTTPS origin, expands only Email and
 Mailbox state events, closes after one state change, and accepts at most a
-64 KiB schema-validated event. Standard IMAP/SMTP advertises a 60-second polling
-fallback instead of holding an IDLE connection in an HTTP request.
+64 KiB schema-validated event. A quiet JMAP wait triggers an authoritative
+reconciliation after 55 seconds, closing the subscription-start and reconnect
+races. Standard IMAP/SMTP advertises a 60-second polling fallback instead of
+holding an IDLE connection in an HTTP request.
 
 The client runs only one update loop for the active session scope. It pauses
 while the tab is hidden or the browser is offline, delays IMAP refresh until the
