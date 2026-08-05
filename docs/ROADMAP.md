@@ -516,7 +516,7 @@ JMAP and an IMAP/SMTP test mailbox.
 
 ## M7 — Notifications, offline resilience, and accessibility
 
-- [ ] New-mail refresh using JMAP events/push where available and bounded polling
+- [x] New-mail refresh using JMAP events/push where available and bounded polling
   fallback for IMAP
 - [x] In-app and opt-in Web Notifications with privacy-safe content controls
 - [x] PWA installability and an explicitly bounded offline cache
@@ -529,6 +529,23 @@ JMAP and an IMAP/SMTP test mailbox.
 Acceptance: notification permissions are never coerced, private message content
 is not cached by default, and the primary flows pass automated and manual
 assistive-technology checks.
+
+Provider-independent live mailbox refresh is released through PRs #87 and #88
+and remains in production commit
+`3639de03de0c7535dea1aa150b085f7d0f1a8cf2`. Stalwart consumes a bounded,
+same-origin JMAP event source for Email and Mailbox state; quiet 55-second waits
+force an authoritative reconciliation, while untrusted or unavailable event
+sources fail over to the same 60-second polling contract used by standard
+IMAP/SMTP. One scoped client loop pauses offline and normally while hidden,
+coalesces provider waits, caps failure backoff, and never exposes credentials or
+provider state tokens. Unit, route, provider, and browser regressions cover
+single-flight waits, session expiry, event bounds, cross-origin rejection,
+quiet reconciliation, hidden/offline behavior, and delayed polling. The
+dedicated JMAP mailbox received `VEDA-FINAL-JMAP-RECONCILE-2026-08-05-0733`
+through the deployed event/reconcile path without manual refresh. Independent
+production SMTP/TLS delivery to the dedicated test account was then discovered
+through read-only IMAP/TLS at the first 60-second poll as
+`VEDA-IMAP-POLL-LIVE-20260805-161156` (61.331 seconds end to end).
 
 The privacy-safe notification slice is released and deployed in production
 commit `fd8353fa3761904b9b5f32507de6f0114d02223a` through PR #89. A direct

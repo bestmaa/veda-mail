@@ -49,3 +49,36 @@ test("preserves a stale snapshot and safely reconciles connectivity", async ({
     hasText: "Back online. Mail is up to date.",
   })).toBeVisible();
 });
+
+test("waits for the bounded IMAP poll before refreshing", async ({ page }) => {
+  let releaseUpdate!: () => void;
+  let updateRequested!: () => void;
+  const released = new Promise<void>((resolve) => { releaseUpdate = resolve; });
+  const requested = new Promise<void>((resolve) => { updateRequested = resolve; });
+  let workspaceRequests = 0;
+
+  await page.route("**/api/v1/mail/updates", async (route) => {
+    updateRequested();
+    await released;
+    await route.fulfill({
+      body: JSON.stringify({ data: {
+        mode: "poll", retryAfterMs: 1_500, shouldRefresh: true,
+      } }),
+      contentType: "application/json",
+      status: 200,
+    });
+  });
+  await page.route("**/api/v1/mail/workspace*", async (route) => {
+    workspaceRequests += 1;
+    await route.continue();
+  });
+
+  await page.reload();
+  await requested;
+  await expect(page.getByRole("button", { name: "New message" })).toBeEnabled();
+  workspaceRequests = 0;
+  releaseUpdate();
+  await page.waitForTimeout(1_200);
+  expect(workspaceRequests).toBe(0);
+  await expect.poll(() => workspaceRequests, { timeout: 1_500 }).toBe(1);
+});
