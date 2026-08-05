@@ -523,7 +523,7 @@ JMAP and an IMAP/SMTP test mailbox.
 - [x] Network reconnection, stale-state indicators, and safe retry behavior
 - [ ] WCAG 2.2 AA keyboard, focus, contrast, zoom/reflow, motion, and
   screen-reader audit
-- [ ] Localization foundation, locale-aware dates/numbers, RTL layout, and
+- [x] Localization foundation, locale-aware dates/numbers, RTL layout, and
   selectable time zone
 
 Acceptance: notification permissions are never coerced, private message content
@@ -590,6 +590,24 @@ skip link with Enter moved focus to the Inbox heading and retained a visible
 and transport/security headers. The checkbox remains open until deployed NVDA
 with Chrome, VoiceOver with Safari, and manual Windows forced-colors acceptance
 are executed and recorded in `docs/ACCESSIBILITY.md`.
+
+The provider-independent localization foundation is released through PR #97
+and deployed in production commit
+`3639de03de0c7535dea1aa150b085f7d0f1a8cf2`. Encrypted owner-isolated
+preferences now select `en-IN`, `hi-IN`, or Arabic formatting and either the
+browser zone or a runtime-valid IANA zone for JMAP and IMAP/SMTP accounts.
+Dates, numbers, attachment sizes, rules previews, scheduled send, and Snooze
+share the accepted locale and zone; chosen wall-clock job times resolve to UTC
+and reject nonexistent daylight-saving times. Arabic enables RTL flow and
+Arabic-Indic digits while the untranslated English source catalog truthfully
+keeps `lang=en`. CI passed quality, coverage, all 91 browser regressions,
+production build/header checks, dependency audit, CodeQL, live ClamAV, and
+source/container scanning. Dokploy deployed the exact merge in 1m 8s; public
+health returned HTTP 200 `ok` with private no-store and transport/security
+headers. The dedicated Stalwart account saved Arabic with `Asia/Riyadh`, showed
+RTL flow plus Arabic-Indic counts and dates without desktop overflow, retained
+the setting after reload, and was restored to `en-IN` with automatic time zone.
+Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 
 ## M8 — Administration, operations, and trust
 
