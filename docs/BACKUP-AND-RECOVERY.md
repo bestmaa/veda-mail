@@ -28,6 +28,7 @@ the supplied Compose deployment.
 - Per-provider/mailbox portable label names, colors, opaque IDs, resumable
   deletion progress, and tombstones encrypted in `mail-label-catalog.json`
 - Organization and product branding
+- Organization member self-service policy in `organization-policy.json`
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
   atomic installation record
@@ -81,8 +82,9 @@ the metadata files contain encrypted owner buckets rather than raw addresses
 or content, the same backup also contains
 its decryption key. Protect the archive as sensitive mailbox-adjacent data.
 
-Signature, template, contact, calendar-event, mailbox-appearance, and label-catalog write
-serialization is process-local, as is the mail-rule store writer. Keep
+Signature, template, contact, calendar-event, mailbox-appearance,
+label-catalog, and organization-policy write serialization is process-local,
+as is the mail-rule store writer. Keep
 exactly one Veda Mail process writing the volume, and stop that writer or use
 an operator-verified atomic whole-volume snapshot. Never mount one writable
 `/data` directory into multiple application replicas or merge individual

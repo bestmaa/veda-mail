@@ -170,6 +170,7 @@ export const useTwoFactorSettingsModel = (
     canManage: false,
     currentPassword,
     currentPasswordInput: (event) => setCurrentPassword(event.target.value),
+    disabledReason: null,
     copyRecoveryCodes: () =>
       void navigator.clipboard.writeText(recoveryCodes.join("\n")),
     enabled,

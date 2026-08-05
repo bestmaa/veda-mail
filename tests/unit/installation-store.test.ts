@@ -141,4 +141,5 @@ describe("installation store", () => {
     expect(JSON.stringify(branding)).not.toContain("password");
     expect(JSON.stringify(branding)).not.toContain("sessionSecret");
   });
+
 });

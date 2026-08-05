@@ -81,6 +81,35 @@ For Standard IMAP + SMTP, allowlist both incoming and outgoing hostnames and
 use only TLS or STARTTLS. Provider password resets and profile changes are not
 available through these protocols. See [mail providers](PROVIDERS.md).
 
+## Capabilities and organization policy
+
+Open **Capabilities** to compare the configured provider's declared support,
+the organization policy, and the resulting effective availability. A policy
+can narrow provider support but cannot turn an unsupported provider operation
+on. Provider-declared limits are an administrative planning view; member
+sessions continue to resolve runtime capabilities such as writable draft
+mailboxes, attachment ceilings, and push availability from the authenticated
+account.
+
+The current organization controls apply to every mailbox in the installation:
+
+- Member profile editing
+- Member mailbox-password changes
+- New Veda-managed TOTP enrollment
+
+The browser display is not the security boundary. Profile and password routes,
+plus both stages of new 2FA enrollment, read the current policy after the exact
+mailbox-session scope is verified and reject disabled operations before parsing
+their body or invoking a provider. Disabling new 2FA enrollment does not remove
+an existing authenticator and does not hide its authenticated disable flow.
+
+Policy is stored as a strict versioned mode-0600
+`/data/organization-policy.json` record using a process-serialized atomic
+rename. A missing file means all three controls are enabled, preserving upgrade
+behavior. Older releases ignore the separate file, so rollback does not make
+their strict `installation.json` parser reject new state. Back up and restore
+the policy file with the rest of `/data`; do not run multiple writable replicas.
+
 ## Mailbox users
 
 When the active provider is Stalwart JMAP and

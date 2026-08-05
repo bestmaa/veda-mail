@@ -13,6 +13,7 @@ import {
 } from "@/presentation/shared/branding/branding.view-model";
 
 const labels: Readonly<Record<AdminSection, string>> = {
+  capabilities: "Capabilities",
   mail: "Mail service",
   organization: "Organization",
   security: "Security",

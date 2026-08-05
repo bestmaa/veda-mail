@@ -47,6 +47,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Provider-aware administrator capability matrix and organization-wide member
+  self-service policy for profile edits, mailbox-password changes, and new
+  Veda-managed 2FA enrollment. Policy writes are authenticated, same-origin,
+  rate-limited, strictly validated, atomically persisted in a rollback-safe
+  standalone record, and enforced again by member APIs before provider work
 - Provider-independent contacts for JMAP and IMAP/SMTP identities, including
   encrypted owner-isolated contacts, groups, delivery-confirmed recent-recipient
   history, keyboard-accessible To/CC/BCC autocomplete, optimistic revisions,

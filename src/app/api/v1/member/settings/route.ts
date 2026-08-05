@@ -9,6 +9,10 @@ import { loadAttachmentCapability } from "@/server/mail/attachment-service";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import { assertSubjectRateLimit } from "@/server/security/rate-limit";
 import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
+import {
+  assertOrganizationFeatureEnabled,
+  getOrganizationPolicy,
+} from "@/server/organization/organization-policy.service";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -32,17 +36,23 @@ const context = async (connection: ProviderConnection) => {
       503,
     );
   }
+  const organizationPolicy = await getOrganizationPolicy();
   return {
     capabilities: {
       mail: provider.manifest.capabilities,
-      passwordChange: provider.manifest.capabilities.supportsPasswordChange,
-      profileSettings: provider.manifest.capabilities.supportsProfileSettings,
-      twoFactorAuthentication: true,
+      passwordChange:
+        provider.manifest.capabilities.supportsPasswordChange &&
+        organizationPolicy.memberPasswordChange,
+      profileSettings:
+        provider.manifest.capabilities.supportsProfileSettings &&
+        organizationPolicy.memberProfileEditing,
+      twoFactorAuthentication: organizationPolicy.memberTwoFactorEnrollment,
     },
     connection,
     gateway,
     profile,
     provider,
+    organizationPolicy,
   };
 };
 
@@ -56,28 +66,33 @@ export const GET = async (request: Request) => {
       120,
       60 * 1000,
     );
-    const { capabilities, gateway } = await context(connection);
-    const [attachmentCapability, mailUpdateMode] = await Promise.all([
+    const { capabilities, gateway, organizationPolicy } = await context(connection);
+    const [account, attachmentCapability, mailUpdateMode] = await Promise.all([
+      gateway.getAccount(),
       loadAttachmentCapability(connection),
       gateway.getMailUpdateMode(),
     ]);
+    const twoFactorEnabled = await memberTwoFactorSecurity.isEnabled(
+      account.email,
+    );
     return apiSuccess({
       attachmentCapability: {
         status: attachmentCapability.status,
       },
       capabilities: {
         ...capabilities,
+        twoFactorAuthentication:
+          capabilities.twoFactorAuthentication || twoFactorEnabled,
         mail: {
           ...capabilities.mail,
           maxAttachmentBytes: attachmentCapability.maxAttachmentBytes ?? 0,
           supportsPush: mailUpdateMode === "push",
         },
       },
+      organizationPolicy,
       profile: await gateway.getMemberProfile(),
       security: {
-        twoFactorEnabled: await memberTwoFactorSecurity.isEnabled(
-          (await gateway.getAccount()).email,
-        ),
+        twoFactorEnabled,
       },
     });
   } catch (error) {
@@ -91,6 +106,7 @@ export const PATCH = async (request: Request) => {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     assertSubjectRateLimit("member-profile", connection.id, 20, 15 * 60 * 1000);
+    await assertOrganizationFeatureEnabled("memberProfileEditing");
     const input = memberProfileUpdateSchema.parse(
       await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
     );
@@ -122,6 +138,7 @@ export const PUT = async (request: Request) => {
       5,
       15 * 60 * 1000,
     );
+    await assertOrganizationFeatureEnabled("memberPasswordChange");
     const input = memberPasswordChangeSchema.parse(
       await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
     );

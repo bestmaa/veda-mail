@@ -134,6 +134,11 @@ export const AccountSettingsView = ({
                   <input className={`${inputClass} mt-1.5 bg-slate-50 text-slate-500`} disabled value={settings.email} />
                 </label>
                 <p className="mt-2 text-[11px] text-slate-600">Email address can only be changed by the mail administrator.</p>
+                {settings.profilePolicyRestricted ? (
+                  <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                    Your organization has disabled member profile changes.
+                  </p>
+                ) : null}
                 <div className="mt-4 flex items-center justify-between gap-3">
                   {status(settings.profile.error, settings.profile.success)}
                   <button
@@ -144,6 +149,11 @@ export const AccountSettingsView = ({
                     {settings.profile.isSaving ? "Saving..." : "Save profile"}
                   </button>
                 </div>
+                {settings.passwordPolicyRestricted ? (
+                  <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                    Your organization has disabled member password changes.
+                  </p>
+                ) : null}
               </form>
 
               <EmailSignatureSettingsView settings={settings.signatures} />

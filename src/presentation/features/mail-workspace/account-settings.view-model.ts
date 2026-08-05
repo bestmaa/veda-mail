@@ -33,6 +33,7 @@ export interface AccountSettingsViewModel {
     readonly otpCodeInput: ChangeEventHandler<HTMLInputElement>;
     readonly success: string | null;
   };
+  readonly passwordPolicyRestricted: boolean;
   readonly profile: {
     readonly displayNameInput: ChangeEventHandler<HTMLInputElement>;
     readonly error: string | null;
@@ -40,6 +41,7 @@ export interface AccountSettingsViewModel {
     readonly onSubmit: FormEventHandler<HTMLFormElement>;
     readonly success: string | null;
   };
+  readonly profilePolicyRestricted: boolean;
   readonly profileName: string | null;
   readonly providerFeatures: readonly {
     readonly detail: string;
@@ -52,6 +54,7 @@ export interface AccountSettingsViewModel {
     readonly canManage: boolean;
     readonly currentPassword: string;
     readonly currentPasswordInput: ChangeEventHandler<HTMLInputElement>;
+    readonly disabledReason: string | null;
     readonly copyRecoveryCodes: () => void;
     readonly enabled: boolean;
     readonly enrollment: MemberTwoFactorEnrollment | null;

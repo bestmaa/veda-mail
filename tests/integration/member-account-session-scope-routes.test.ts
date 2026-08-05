@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  assertOrganizationFeatureEnabled: vi.fn(),
   assertRequestRateLimit: vi.fn(),
   assertSubjectRateLimit: vi.fn(),
   connectionCreate: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   getProviderRegistry: vi.fn(),
   loadAttachmentCapability: vi.fn(),
   profileGet: vi.fn(),
+  getOrganizationPolicy: vi.fn(),
   readJsonBody: vi.fn(),
   resolveGateway: vi.fn(),
   twoFactorDisable: vi.fn(),
@@ -64,6 +66,10 @@ vi.mock("@/server/mail-service/mail-service-profile.store", () => ({
 vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.assertRequestRateLimit,
   assertSubjectRateLimit: mocks.assertSubjectRateLimit,
+}));
+vi.mock("@/server/organization/organization-policy.service", () => ({
+  assertOrganizationFeatureEnabled: mocks.assertOrganizationFeatureEnabled,
+  getOrganizationPolicy: mocks.getOrganizationPolicy,
 }));
 vi.mock("@/transport/http/read-json-body", () => ({
   readJsonBody: mocks.readJsonBody,
@@ -119,6 +125,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getCurrentConnection.mockResolvedValue(connection);
   mocks.connectionIsActive.mockReturnValue(true);
+  mocks.getOrganizationPolicy.mockResolvedValue({
+    memberPasswordChange: true,
+    memberProfileEditing: true,
+    memberTwoFactorEnrollment: true,
+  });
 });
 
 describe("member account session scope routes", () => {
@@ -173,6 +184,44 @@ describe("member account session scope routes", () => {
     expect(mocks.enrollmentRemove).not.toHaveBeenCalled();
     expect(mocks.connectionRemove).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["profile editing", updateProfile, "PATCH", "memberProfileEditing"],
+    ["password changes", changePassword, "PUT", "memberPasswordChange"],
+    ["two-factor start", startTwoFactor, "POST", "memberTwoFactorEnrollment"],
+    ["two-factor confirmation", confirmTwoFactor, "PUT", "memberTwoFactorEnrollment"],
+  ] as const)(
+    "enforces organization policy before %s side effects",
+    async (_, handler, method, feature) => {
+      mocks.assertOrganizationFeatureEnabled.mockRejectedValueOnce(
+        new ApiError(
+          "Your organization has disabled this account feature.",
+          "ORGANIZATION_POLICY_DISABLED",
+          403,
+        ),
+      );
+      const response = await handler(
+        new Request(`${origin}/api/v1/member/settings`, {
+          body: "{}",
+          headers: {
+            "content-type": "application/json",
+            host: "mail.example.com",
+            origin,
+            "x-veda-mail-session-scope": mailSessionScope(connection),
+          },
+          method,
+        }),
+      );
+
+      expect(response.status).toBe(403);
+      expect(mocks.assertOrganizationFeatureEnabled).toHaveBeenCalledWith(
+        feature,
+      );
+      expect(mocks.readJsonBody).not.toHaveBeenCalled();
+      expect(mocks.resolveGateway).not.toHaveBeenCalled();
+      expect(mocks.enrollmentCreate).not.toHaveBeenCalled();
+    },
+  );
 
   it("does not return account data after the connection expires in flight", async () => {
     mocks.resolveGateway.mockResolvedValue({
