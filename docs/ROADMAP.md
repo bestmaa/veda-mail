@@ -578,6 +578,19 @@ no-store and transport/security headers, and the dedicated Stalwart JMAP test
 mailbox signed in, retained its Inbox, and completed an authoritative manual
 refresh without a stale alert.
 
+The automated accessibility-audit slice is released through PR #95 and deployed
+in production commit `73ad20e0c54fe2207b78e816d099de1184f7f421`. CI now rejects
+all axe violations in the WCAG 2.0, 2.1, and 2.2 A/AA rule sets across sign-in,
+mailbox, reader, compose, and account settings. Browser regressions additionally
+prove 320 CSS-pixel reflow, visible keyboard focus, 24 CSS-pixel targets,
+reduced motion, forced-colors focus, and accessible branding contrast. The live
+Stalwart test mailbox loaded after the 1m 19s Dokploy rollout; activating the
+skip link with Enter moved focus to the Inbox heading and retained a visible
+2px focus ring. The public health endpoint returned `ok` with private no-store
+and transport/security headers. The checkbox remains open until deployed NVDA
+with Chrome, VoiceOver with Safari, and manual Windows forced-colors acceptance
+are executed and recorded in `docs/ACCESSIBILITY.md`.
+
 ## M8 — Administration, operations, and trust
 
 - [ ] Admin feature/capability matrix and per-organization policy controls
