@@ -1172,6 +1172,24 @@ existing idempotency or explicit-retry boundaries and are never replayed by the
 connectivity layer. Session-scope failures still invalidate the account and
 activate the privacy curtain rather than exposing a stale authenticated view.
 
+## Accessibility boundary
+
+The presentation layer treats keyboard focus, semantic status, reflow, motion,
+and contrast as release contracts rather than styling details. The primary
+member flows must remain operable at a 320 CSS-pixel viewport, expose no axe
+WCAG A/AA violations, retain a visible primary keyboard path, and reduce all
+non-essential motion when the operating system requests it. Branding derives a
+contrasting accent foreground instead of trusting an administrator-provided
+color to carry readable text. Dialog connectors own initial focus, containment,
+and return focus, while background application regions become inert.
+
+Automated semantics cannot prove the quality of spoken output or arbitrary
+sender-authored mail. The public accessibility guide therefore separates CI
+evidence from the required deployed NVDA, VoiceOver, zoom, reduced-motion, and
+forced-colors acceptance matrix. Sanitized sender HTML remains untrusted
+content, and Veda Mail does not claim that external message authors supplied
+accessible structure or alternatives.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

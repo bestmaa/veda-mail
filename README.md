@@ -288,6 +288,7 @@ Back up `/data` before every upgrade. See the
 - [Upgrading](docs/UPGRADING.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Adding a provider](docs/ADDING-A-PROVIDER.md)
+- [Accessibility support and audit matrix](docs/ACCESSIBILITY.md)
 - [Product roadmap and definition of done](docs/ROADMAP.md)
 - [Threat model and supported security boundaries](docs/THREAT-MODEL.md)
 - [Open-source compliance](docs/OPEN-SOURCE-COMPLIANCE.md)
