@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import {
+  disableProviderDrafts,
   expectNoSeriousAccessibilityViolations,
   sendComposer,
   useInstalledMailbox,
@@ -71,6 +72,7 @@ const attachmentIdFrom = (url: string): string => {
 test("imports sequentially, retries partial failure, and reuses clean IDs", async ({
   page,
 }) => {
+  await disableProviderDrafts(page);
   let releaseFirst: () => void = () => undefined;
   const firstGate = new Promise<void>((resolve) => {
     releaseFirst = resolve;
