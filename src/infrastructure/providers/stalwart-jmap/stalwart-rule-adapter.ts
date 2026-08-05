@@ -141,8 +141,23 @@ export class StalwartRuleAdapter {
       confirmed.accountId !== context.accountId ||
       confirmed.notFound.length || confirmed.list.length !== 1 ||
       installed.id !== scriptId || installed.name !== VEDA_RULE_SCRIPT_NAME ||
-      installed.blobId !== blob.blobId || !installed.isActive
+      !installed.isActive
     ) return ruleRejected();
+    if (installed.blobId !== blob.blobId) {
+      let installedContent: Uint8Array;
+      try {
+        installedContent = await this.content.download({
+          accountId: context.accountId,
+          blobId: installed.blobId,
+          maxBytes: context.maxScriptBytes,
+        });
+      } catch {
+        return ruleRejected();
+      }
+      if (!Buffer.from(installedContent).equals(Buffer.from(bytes))) {
+        return ruleRejected();
+      }
+    }
     return {
       providerState: confirmed.state,
       scriptHash,
