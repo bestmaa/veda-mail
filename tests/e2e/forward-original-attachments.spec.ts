@@ -175,6 +175,10 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
   releaseThird();
   await expect.poll(() => imports.length).toBe(4);
   expect(retryOverlapped).toBe(false);
+  await expect(dialog.getByText("Copying and scanning…")).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Retry copying notes.txt" }),
+  ).toHaveCount(0);
   await expect(dialog.getByText("application/pdf")).toBeVisible();
   await expect(dialog.getByText("text/plain")).toBeVisible();
   const draftIds = imports.map(({ body }) => body["draftId"]);
@@ -211,7 +215,9 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
   await dialog
     .getByRole("combobox", { exact: true, name: "To" })
     .fill("recipient@example.com");
-  await dialog.getByRole("button", { name: /^Send$/ }).click();
+  const sendButton = dialog.getByRole("button", { name: /^Send$/ });
+  await expect(sendButton).toBeEnabled();
+  await sendButton.click();
   await expect(dialog.getByRole("alert")).toContainText(
     "This message may already have been sent.",
   );
