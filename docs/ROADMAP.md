@@ -519,7 +519,7 @@ JMAP and an IMAP/SMTP test mailbox.
 - [ ] New-mail refresh using JMAP events/push where available and bounded polling
   fallback for IMAP
 - [x] In-app and opt-in Web Notifications with privacy-safe content controls
-- [ ] PWA installability and an explicitly bounded offline cache
+- [x] PWA installability and an explicitly bounded offline cache
 - [ ] Network reconnection, stale-state indicators, and safe retry behavior
 - [ ] WCAG 2.2 AA keyboard, focus, contrast, zoom/reflow, motion, and
   screen-reader audit
@@ -547,6 +547,19 @@ environment cannot accept Chrome's native operating-system permission bubble;
 the granted constructor path is therefore deterministic automated evidence,
 while the deployed UI provides the manual opt-in path. Closed-browser delivery
 remains out of scope until the separate PWA/Web Push milestone.
+
+The bounded PWA slice is released through PR #91 and deployed in production
+commit `669542b837f39fbab6195072fc543501347dc85e`. The live domain returned a
+standalone, root-scoped manifest and a root-authorized worker with
+`no-cache, no-store, must-revalidate`; health remained `ok`, and the dedicated
+Stalwart mailbox signed in after the deployment restart. Production-browser
+verification registered the worker, disabled the network, loaded the generic
+offline document, and inspected an exact four-entry Cache Storage inventory:
+offline HTML/CSS plus 192 px and 512 px public icons. Unit regressions prove
+that APIs are not intercepted, stale cleanup is namespace-bounded, and only
+those public assets are precached. Authenticated documents, messages,
+attachments, application chunks, cross-origin requests, and non-GET traffic
+remain outside the worker cache.
 
 ## M8 — Administration, operations, and trust
 
