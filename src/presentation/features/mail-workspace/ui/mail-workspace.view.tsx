@@ -27,6 +27,7 @@ import { ContactManagementView } from "@/presentation/features/mail-workspace/ui
 import { MailSnoozeDialogView } from "@/presentation/features/mail-workspace/ui/mail-snooze-dialog.view";
 import { SnoozedManagerView } from "@/presentation/features/mail-workspace/ui/snoozed-manager.view";
 import { NewMailNotificationNoticeView } from "@/presentation/features/mail-workspace/ui/new-mail-notification-notice.view";
+import { MailConnectivityStatusView } from "@/presentation/features/mail-workspace/ui/mail-connectivity-status.view";
 
 export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   if (props.session.privacyCurtain.isOpen) {
@@ -76,6 +77,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       searchValue={props.searchValue}
       settings={props.settings}
     />
+    <MailConnectivityStatusView connectivity={props.connectivity} />
     {props.navigation.isOpen ? (
       <button
         aria-label="Close navigation"

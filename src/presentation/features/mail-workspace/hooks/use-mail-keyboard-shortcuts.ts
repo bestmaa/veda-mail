@@ -27,6 +27,12 @@ interface Options {
   readonly readerMessageId: string | null;
 }
 
+const focusMessageTrigger = (messageId: string): void => {
+  [...document.querySelectorAll<HTMLElement>("[data-message-id]")]
+    .find((element) => element.dataset["messageId"] === messageId)
+    ?.focus();
+};
+
 export const useMailKeyboardShortcuts = (options: Options): KeyboardShortcutsViewModel => {
   const [announcement, setAnnouncement] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -65,8 +71,11 @@ export const useMailKeyboardShortcuts = (options: Options): KeyboardShortcutsVie
           key === "j" ? "next" : "previous",
         );
         if (adjacent !== null) {
+          const message = options.messages[adjacent];
+          if (!message) return;
           announce(key === "j" ? "Opened next message." : "Opened previous message.");
-          options.messages[adjacent]?.onSelect();
+          focusMessageTrigger(message.id);
+          message.onSelect();
         }
       } else if (key === "escape" && hasReader) {
         announce("Returned to the message list.");

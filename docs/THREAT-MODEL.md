@@ -1174,6 +1174,28 @@ Veda Mail was installed and its public branding, but no mailbox data. Automated
 tests inspect the exact cache inventory and prove a real production offline
 navigation while the network is disabled.
 
+## Connectivity, stale-state, and retry threats
+
+`navigator.onLine` and browser online/offline events are attacker-influenced
+hints and cannot establish provider reachability, authentication, or message
+freshness. Veda Mail uses them only to label the current authorized snapshot
+and schedule an authoritative scoped workspace read. Successful provider data
+is the only signal that clears stale state. A transient update-channel failure
+marks the view stale and requires a reconciliation before another long wait,
+closing the event gap that could otherwise hide new mail after reconnection.
+
+Repeated events or user clicks could amplify provider traffic. Connectivity
+reconciliation is therefore single-flight, existing provider-wait backoff stays
+capped, and the visible Retry control performs only the same idempotent read.
+No send, draft, mutation, attachment, rule, scheduled job, or destructive
+operation is automatically replayed. Existing snapshots remain visible only
+for refreshes of the exact current mailbox/search view; an initial load or view
+change failure uses its ordinary error boundary so content from another view is
+not mislabeled. Session-scope failures bypass stale recovery, clear account
+state, and retain the privacy curtain. Status and alert semantics expose
+offline, checking, stale, and restored phases without storing connectivity or
+mail data in browser persistence.
+
 ## Logging and observability
 
 Logs may contain opaque request, connection, provider, and error identifiers,

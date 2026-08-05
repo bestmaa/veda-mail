@@ -47,10 +47,12 @@ const start = (
   refresh = vi.fn(async () => true),
   handleSessionFailure = vi.fn(() => false),
   listenWhileHidden = false,
+  onTransientFailure = vi.fn(),
 ) => {
-  useMailUpdates(refresh, "scope-1", handleSessionFailure, listenWhileHidden);
+  useMailUpdates(refresh, "scope-1", handleSessionFailure, listenWhileHidden,
+    onTransientFailure);
   const cleanup = state.effect?.();
-  return { cleanup, handleSessionFailure, refresh };
+  return { cleanup, handleSessionFailure, onTransientFailure, refresh };
 };
 
 describe("mail updates hook", () => {
@@ -129,11 +131,13 @@ describe("mail updates hook", () => {
     const current = start();
     await flush();
     expect(state.wait).toHaveBeenCalledOnce();
+    expect(current.onTransientFailure).toHaveBeenCalledOnce();
 
     await vi.advanceTimersByTimeAsync(4_999);
     expect(state.wait).toHaveBeenCalledOnce();
     await vi.advanceTimersByTimeAsync(1);
     expect(state.wait).toHaveBeenCalledTimes(2);
+    expect(current.refresh).toHaveBeenCalledOnce();
     expect(current.handleSessionFailure).toHaveBeenCalledOnce();
     current.cleanup?.();
   });
