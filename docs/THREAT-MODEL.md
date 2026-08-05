@@ -1153,6 +1153,27 @@ style prohibition, bounded authenticated inline-image bridge, and exact
 render-ID event checks. A hidden quote is a visual convenience, not a security
 filter, and can always be revealed.
 
+## PWA installation and offline-cache threats
+
+A service worker can outlive a session and turn any cached authenticated
+response into durable browser storage. Veda Mail therefore treats Cache Storage
+as untrusted persistence and uses an exact four-path allowlist containing only
+the generic offline document, its stylesheet, and public install icons. The
+worker has no dynamic cache-write path; it ignores cross-origin and non-GET
+traffic and never intercepts APIs, authenticated HTML, messages, attachments,
+or application chunks. Navigations are network-first and receive the generic
+document only when the network fails.
+
+Cache cleanup is namespace-bounded: activation removes stale
+`veda-mail-offline-` versions but cannot delete unrelated origin caches. The
+worker script is served with `no-store`, and CSP permits manifests and workers
+only from the same origin. The fallback has no scripts, account identity, or
+mail content, preventing stale private data from being displayed after sign-out
+or to another OS user. Residual browser/OS cache inspection can reveal that
+Veda Mail was installed and its public branding, but no mailbox data. Automated
+tests inspect the exact cache inventory and prove a real production offline
+navigation while the network is disabled.
+
 ## Logging and observability
 
 Logs may contain opaque request, connection, provider, and error identifiers,

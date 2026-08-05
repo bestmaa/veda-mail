@@ -61,8 +61,8 @@ export const buildDocumentSecurityPolicy = (
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",
-    "manifest-src 'none'",
-    "worker-src 'none'",
+    "manifest-src 'self'",
+    "worker-src 'self'",
     ...(production ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 };

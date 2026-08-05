@@ -46,6 +46,15 @@ describe("global security header configuration", () => {
         .some(({ key }) => key === "Strict-Transport-Security"),
     ).toBe(false);
   });
+
+  it("serves the root service worker without reusable HTTP caching", async () => {
+    const rules = await configuredHeaders();
+    const worker = rules.find(({ source }) => source === "/sw.js");
+    expect(worker?.headers).toEqual([
+      { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+      { key: "Service-Worker-Allowed", value: "/" },
+    ]);
+  });
 });
 
 describe("document security proxy", () => {

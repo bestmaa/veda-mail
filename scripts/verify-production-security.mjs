@@ -13,6 +13,7 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { chromium } from "@playwright/test";
+import { verifyProductionPwa } from "./verify-production-pwa.mjs";
 
 const HSTS = "max-age=31536000";
 const CACHE_CONTROL =
@@ -191,6 +192,7 @@ try {
     await page.evaluate(() => window.__vedaProductionCspViolations),
     [],
   );
+  await verifyProductionPwa({ origin, page });
 
   const attachment = await fetch(
     `${origin}/api/v1/mail/messages/fake/attachments/fake`,

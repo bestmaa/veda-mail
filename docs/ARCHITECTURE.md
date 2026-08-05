@@ -1126,6 +1126,29 @@ written to browser storage. This phase deliberately has no service worker or
 Web Push subscription, so browser alerts require an open Veda Mail tab; closed-
 browser delivery belongs to the separately capability-gated PWA milestone.
 
+## Installable application and offline boundary
+
+Production clients register one root-scoped service worker after the window
+load event. The install manifest uses the installation's public product name
+and colors, while its application icons are deterministic crops of the public
+Veda Mail artwork. Development mode does not register a worker, which keeps
+local fixture and hot-reload behavior outside the production cache lifecycle.
+
+The worker owns one versioned, Veda-prefixed cache containing exactly four
+public resources: the generic offline HTML and CSS plus 192 px and 512 px
+icons. It has no runtime `cache.put` path. Same-origin navigations remain
+network-first and fall back to the generic offline document only after a
+network failure. Cross-origin requests, non-GET requests, APIs, authenticated
+documents, mail, attachments, and application chunks are never intercepted or
+cached. Activation deletes only stale Veda-prefixed offline caches, leaving
+unrelated origin storage untouched. Worker HTTP responses are non-cacheable so
+updates are always revalidated by the browser.
+
+Offline mode is deliberately not an offline mailbox. The fallback contains no
+account identity, message metadata, provider state, or executable script and
+states that no messages or account details are stored offline. Reconnection
+and stale-mailbox state remain a separate roadmap slice.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

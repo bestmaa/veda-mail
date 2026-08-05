@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 
 import { accessibleForeground } from "@/domain/shared/color-contrast";
 import { installationStore } from "@/server/installation/installation.store";
+import { PwaRegistration } from "@/presentation/shared/pwa/pwa-registration";
 
 import "./globals.css";
 
@@ -13,6 +14,7 @@ const geistSans = Geist({
 });
 
 export const dynamic = "force-dynamic";
+export const viewport: Viewport = { themeColor: "#0b1238" };
 
 export const generateMetadata = async (): Promise<Metadata> => {
   const branding = await installationStore.getBranding();
@@ -20,8 +22,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
     process.env["VEDA_MAIL_PUBLIC_URL"] || "http://localhost:3000",
   );
   return {
+    appleWebApp: { capable: true, statusBarStyle: "black-translucent",
+      title: branding.productName },
     description: `${branding.productName} is the private webmail workspace for ${branding.organizationName}.`,
     metadataBase,
+    manifest: "/manifest.webmanifest",
     openGraph: {
       description: "White-label, provider-independent webmail for organizations.",
       images: ["/og.png"],
@@ -59,7 +64,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} h-full antialiased`}
       style={brandStyle}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">{children}<PwaRegistration /></body>
     </html>
   );
 }
