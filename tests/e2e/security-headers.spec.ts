@@ -176,3 +176,26 @@ test("preserves route-owned attachment isolation headers end to end", async ({
   expect(inline.headers()["x-content-type-options"]).toBe("nosniff");
   expect(inline.headers()["referrer-policy"]).toBe("no-referrer");
 });
+
+test("publishes a root-scoped manifest and a non-cacheable worker", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/manifest.webmanifest",
+  );
+  const manifestResponse = await page.request.get("/manifest.webmanifest");
+  expect(manifestResponse.status()).toBe(200);
+  expect(await manifestResponse.json()).toMatchObject({
+    display: "standalone",
+    scope: "/",
+    start_url: "/",
+  });
+  const workerResponse = await page.request.get("/sw.js");
+  expect(workerResponse.status()).toBe(200);
+  expect(workerResponse.headers()["cache-control"]).toBe(
+    "no-cache, no-store, must-revalidate",
+  );
+  expect(workerResponse.headers()["service-worker-allowed"]).toBe("/");
+});

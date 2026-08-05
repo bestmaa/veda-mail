@@ -48,6 +48,8 @@ describe("document Content Security Policy", () => {
     expect(policy).toContain("style-src-attr 'unsafe-inline'");
     expect(directiveSources(policy, "frame-src")).toEqual(["blob:"]);
     expect(directiveSources(policy, "child-src")).toEqual(["blob:"]);
+    expect(directiveSources(policy, "manifest-src")).toEqual(["'self'"]);
+    expect(directiveSources(policy, "worker-src")).toEqual(["'self'"]);
     expect(directiveSources(policy, "img-src")).toEqual([
       "'self'",
       "data:",
