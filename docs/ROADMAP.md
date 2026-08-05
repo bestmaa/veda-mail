@@ -520,7 +520,7 @@ JMAP and an IMAP/SMTP test mailbox.
   fallback for IMAP
 - [x] In-app and opt-in Web Notifications with privacy-safe content controls
 - [x] PWA installability and an explicitly bounded offline cache
-- [ ] Network reconnection, stale-state indicators, and safe retry behavior
+- [x] Network reconnection, stale-state indicators, and safe retry behavior
 - [ ] WCAG 2.2 AA keyboard, focus, contrast, zoom/reflow, motion, and
   screen-reader audit
 - [ ] Localization foundation, locale-aware dates/numbers, RTL layout, and
@@ -560,6 +560,23 @@ that APIs are not intercepted, stale cleanup is namespace-bounded, and only
 those public assets are precached. Authenticated documents, messages,
 attachments, application chunks, cross-origin requests, and non-GET traffic
 remain outside the worker cache.
+
+The connectivity-recovery slice is released through PR #93 and deployed in
+production commit `c56a3611b1fbf93626c4e4c29ecac4c881c6e05e`. Browser
+online/offline events now label only the exact accepted snapshot, and one
+single-flight authoritative read reconciles online transitions, manual
+refreshes, retries, and transient provider-update gaps without replaying any
+write. Unit and component regressions cover state transitions, offline request
+suppression, duplicate-event coalescing, status semantics, and the bounded
+update-loop refresh. Production-build Playwright evidence disables and restores
+the browser network, preserves known mail while stale, proves only one request
+for repeated refresh actions, exposes an actionable failed-recovery state, and
+successfully retries. Full CI, CodeQL, container/source scanning, live ClamAV,
+production build, and security-header checks passed. Dokploy recorded the exact
+commit as done in 1m 10s; the live health endpoint returned `ok` with private
+no-store and transport/security headers, and the dedicated Stalwart JMAP test
+mailbox signed in, retained its Inbox, and completed an authoritative manual
+refresh without a stale alert.
 
 ## M8 — Administration, operations, and trust
 
