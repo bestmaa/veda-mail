@@ -21,9 +21,13 @@ const wait = (milliseconds: number, signal: AbortSignal): Promise<void> =>
     if (signal.aborted) aborted();
   });
 
-const waitUntilVisibleAndOnline = (signal: AbortSignal): Promise<void> =>
+const waitUntilReady = (
+  signal: AbortSignal,
+  listenWhileHidden: boolean,
+): Promise<void> =>
   new Promise((resolve) => {
-    const ready = () => document.visibilityState === "visible" && navigator.onLine;
+    const ready = () => navigator.onLine &&
+      (listenWhileHidden || document.visibilityState === "visible");
     const finish = () => {
       if (!ready() && !signal.aborted) return;
       document.removeEventListener("visibilitychange", finish);
@@ -41,6 +45,7 @@ export const useMailUpdates = (
   refresh: () => Promise<boolean>,
   sessionScope: string,
   handleSessionFailure: (failure: unknown) => boolean,
+  listenWhileHidden = false,
 ) => {
   useEffect(() => {
     if (!sessionScope) return;
@@ -49,7 +54,7 @@ export const useMailUpdates = (
       let failureRetryMs = INITIAL_FAILURE_RETRY_MS;
       let pendingRefresh = false;
       while (!controller.signal.aborted) {
-        await waitUntilVisibleAndOnline(controller.signal);
+        await waitUntilReady(controller.signal, listenWhileHidden);
         if (controller.signal.aborted) break;
         if (pendingRefresh) {
           pendingRefresh = false;
@@ -83,5 +88,5 @@ export const useMailUpdates = (
     };
     void run();
     return () => controller.abort();
-  }, [handleSessionFailure, refresh, sessionScope]);
+  }, [handleSessionFailure, listenWhileHidden, refresh, sessionScope]);
 };

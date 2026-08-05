@@ -46,8 +46,9 @@ afterEach(() => {
 const start = (
   refresh = vi.fn(async () => true),
   handleSessionFailure = vi.fn(() => false),
+  listenWhileHidden = false,
 ) => {
-  useMailUpdates(refresh, "scope-1", handleSessionFailure);
+  useMailUpdates(refresh, "scope-1", handleSessionFailure, listenWhileHidden);
   const cleanup = state.effect?.();
   return { cleanup, handleSessionFailure, refresh };
 };
@@ -74,6 +75,15 @@ describe("mail updates hook", () => {
 
     (document as FakeDocument).visibilityState = "visible";
     document.dispatchEvent(new Event("visibilitychange"));
+    await flush();
+    expect(state.wait).toHaveBeenCalledOnce();
+    current.cleanup?.();
+  });
+
+  it("keeps provider events active while hidden after notification opt-in", async () => {
+    (document as FakeDocument).visibilityState = "hidden";
+    state.wait.mockReturnValue(new Promise(() => undefined));
+    const current = start(undefined, undefined, true);
     await flush();
     expect(state.wait).toHaveBeenCalledOnce();
     current.cleanup?.();
