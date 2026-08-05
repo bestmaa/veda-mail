@@ -44,9 +44,8 @@ export const useComposerModel = (
   draftsEnabled = false,
   onDraftChanged: () => void = () => undefined,
   recoveryOwner: ComposerRecoveryOwner | null = null,
-  emailTemplates: EmailTemplatesModel = emptyTemplates,
-  scheduledSendEnabled = true,
-  sendPreferences: ComposerSendPreferences = DEFAULT_COMPOSER_SEND_PREFERENCES,
+  emailTemplates: EmailTemplatesModel = emptyTemplates, scheduledSendEnabled = true,
+  sendPreferences: ComposerSendPreferences = DEFAULT_COMPOSER_SEND_PREFERENCES, preferredTimeZone?: string,
 ) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openAccountKey, setOpenAccountKey] = useState("");
@@ -139,6 +138,7 @@ export const useComposerModel = (
     attachments, body, draft, enabled: scheduledSendEnabled, fields, handleSessionFailure,
     isAccountCurrent: (key) => accountKeyRef.current === key,
     onScheduled, openAccountKey,
+    ...(preferredTimeZone ? { preferredTimeZone } : {}),
   });
   const recoveryFlow = useComposerRecoveryFlow({
     accountKey, attachments, autosaveEnabled: draftsEnabled, draft, enabled: Boolean(recoveryOwner),

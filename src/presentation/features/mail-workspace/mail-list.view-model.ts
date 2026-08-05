@@ -1,4 +1,5 @@
 import type { MailboxRole, MailWorkspace } from "@/domain/mail/mail";
+import type { MailLocale } from "@/domain/mail/message-list-preferences";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 import type { FolderViewModel, MessageItemViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { formatMessageDate, formatSender, initials } from "@/presentation/shared/formatters/mail-formatters";
@@ -14,6 +15,7 @@ interface MailListOptions {
     "canDrop" | "isDropTarget" | "onDragEnter" | "onDragLeave" |
       "onDragOver" | "onDrop"
   >;
+  readonly locale?: MailLocale;
   readonly messageMoveProps: (
     messageId: MessageId,
     label: string,
@@ -30,6 +32,7 @@ interface MailListOptions {
   readonly pendingMessageIds?: ReadonlySet<string>;
   readonly selectedMessageIds: ReadonlySet<string>;
   readonly snoozedMailboxId?: string | null;
+  readonly timeZone?: string;
   readonly selectionDisabled: boolean;
   readonly selectedMessageId?: string;
   readonly workspace: MailWorkspace | null;
@@ -39,6 +42,7 @@ export const createMailListViewModel = ({
   activeMailboxId,
   draftsEnabled,
   folderMoveProps,
+  locale = "en-IN",
   messageMoveProps,
   onOpenDraft,
   onManageMailbox,
@@ -50,6 +54,7 @@ export const createMailListViewModel = ({
   selectionDisabled,
   selectedMessageId,
   snoozedMailboxId,
+  timeZone,
   workspace,
 }: MailListOptions): {
   readonly activeFolder: string;
@@ -89,7 +94,7 @@ export const createMailListViewModel = ({
         ...messageMoveProps(message.id, subject, !opensDrafts),
         avatar: initials(sender),
         canSelect: !opensDrafts,
-        date: formatMessageDate(message.receivedAt),
+        date: formatMessageDate(message.receivedAt, locale, timeZone),
         hasAttachment: message.hasAttachment,
         id: message.id,
         isActive: !opensDrafts && message.id === selectedMessageId,

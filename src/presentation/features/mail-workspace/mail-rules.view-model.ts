@@ -43,6 +43,7 @@ export interface MailRulesViewModel {
   readonly isBusy: boolean;
   readonly isLoading: boolean;
   readonly labels: readonly MailRuleChoice[];
+  readonly locale?: string;
   readonly mailboxes: readonly MailRuleChoice[];
   readonly onCreate: () => void;
   readonly onDelete: (ruleId: string) => void;
@@ -60,4 +61,5 @@ export interface MailRulesViewModel {
   readonly onToggle: (ruleId: string, enabled: boolean) => void;
   readonly rules: readonly MailRule[];
   readonly success: string | null;
+  readonly timeZone?: string;
 }

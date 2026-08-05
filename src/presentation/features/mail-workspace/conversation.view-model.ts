@@ -1,4 +1,5 @@
 import type { ConversationPage } from "@/domain/mail/conversation";
+import type { MailLocale } from "@/domain/mail/message-list-preferences";
 import type { MessageId } from "@/domain/shared/brand";
 import {
   formatMessageDate,
@@ -31,17 +32,21 @@ export const createConversationViewModel = (input: {
   readonly error: string | null;
   readonly isLoading: boolean;
   readonly isLoadingMore: boolean;
+  readonly locale?: MailLocale;
   readonly onLoadMore: () => void;
   readonly onOpen: (messageId: string) => void;
   readonly page: ConversationPage | null;
   readonly selectedMessageId: MessageId | null;
+  readonly timeZone?: string;
 }): ConversationViewModel => ({
   error: input.error,
   isLoading: input.isLoading,
   isLoadingMore: input.isLoadingMore,
   items: (input.page?.items ?? []).map((message) => ({
     avatar: initials(formatSender(message.from)),
-    date: formatMessageDate(message.receivedAt),
+    date: formatMessageDate(
+      message.receivedAt, input.locale ?? "en-IN", input.timeZone,
+    ),
     id: message.id,
     isActive: message.id === input.selectedMessageId,
     isUnread: message.isUnread,

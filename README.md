@@ -289,6 +289,7 @@ Back up `/data` before every upgrade. See the
 - [Architecture](docs/ARCHITECTURE.md)
 - [Adding a provider](docs/ADDING-A-PROVIDER.md)
 - [Accessibility support and audit matrix](docs/ACCESSIBILITY.md)
+- [Localization and time-zone foundation](docs/LOCALIZATION.md)
 - [Product roadmap and definition of done](docs/ROADMAP.md)
 - [Threat model and supported security boundaries](docs/THREAT-MODEL.md)
 - [Open-source compliance](docs/OPEN-SOURCE-COMPLIANCE.md)

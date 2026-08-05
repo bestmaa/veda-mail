@@ -13,11 +13,13 @@ beforeEach(resetMailDataModelHarness);
 
 const compact = {
   confirmBeforeSend: false, density: "compact", showPreview: true,
-  keyboardShortcuts: false, sort: "newest", undoSendSeconds: 0,
+  keyboardShortcuts: false, locale: "en-IN", sort: "newest",
+  timeZone: "auto", undoSendSeconds: 0,
 } as const;
 const spacious = {
   confirmBeforeSend: true, density: "spacious", showPreview: false,
-  keyboardShortcuts: true, sort: "oldest", undoSendSeconds: 10,
+  keyboardShortcuts: true, locale: "hi-IN", sort: "oldest",
+  timeZone: "Asia/Kolkata", undoSendSeconds: 10,
 } as const;
 
 describe("mail data message-list preferences", () => {

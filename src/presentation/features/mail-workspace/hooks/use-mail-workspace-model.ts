@@ -28,16 +28,14 @@ import { useScheduledSendManager } from "@/presentation/features/mail-workspace/
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
 import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
-import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management";
+import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management"; import { useMailLocalization } from "@/presentation/features/mail-workspace/hooks/use-mail-localization";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
 export const useMailWorkspaceModel = ({
   branding, canSignOut, initialSessionScope, maxAttachmentBytes, providerLabel, signOutPath,
 }: MailWorkspaceModelOptions): MailWorkspaceViewProps => {
-  const mail = useMailDataModel();
-  const workspace = mail.workspace;
-  const messageListPreferences = useMessageListPreferencesModel(workspace?.messageListPreferences ?? DEFAULT_MESSAGE_LIST_PREFERENCES, mail.saveListPreferences);
-  const sessionScope = workspace?.sessionScope ?? "";
-  const recoveryAccountId = workspace?.account.id ?? null;
+  const mail = useMailDataModel(); const workspace = mail.workspace;
+  const storedPreferences = workspace?.messageListPreferences ?? DEFAULT_MESSAGE_LIST_PREFERENCES; const localization = useMailLocalization(storedPreferences); const messageListPreferences = useMessageListPreferencesModel(storedPreferences, mail.saveListPreferences);
+  const sessionScope = workspace?.sessionScope ?? ""; const recoveryAccountId = workspace?.account.id ?? null;
   const recoveryProviderId = workspace?.account.providerId ?? null;
   const recoveryExpiresAt = workspace?.sessionExpiresAt ?? null;
   const recoveryOwner = useMemo(() =>
@@ -53,14 +51,15 @@ export const useMailWorkspaceModel = ({
   const closeAttachmentPreview = attachmentPreview.close; const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
-  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure); const contacts = useContactsModel(sessionScope, mail.handleSessionFailure);
+  const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure, localization.timeZone, localization.locale); const contacts = useContactsModel(sessionScope, mail.handleSessionFailure);
   const { refresh: refreshMail } = mail; const { refresh: refreshScheduled } = scheduled;
   const onDraftChanged = useCallback(() => { refreshMail(); void refreshScheduled(); }, [refreshMail, refreshScheduled]);
   const signatureSettings = useEmailSignatureSettingsModel(accountEmail, emailSignatures, sessionScope);
-  const activeMailbox = workspace?.mailboxes.find(({ id }) => id === mail.activeMailboxId) ?? null; const snooze = useWorkspaceSnooze(mail, activeMailbox);
+  const activeMailbox = workspace?.mailboxes.find(({ id }) => id === mail.activeMailboxId) ?? null; const snooze = useWorkspaceSnooze(mail, activeMailbox, localization);
   const rules = useMailRulesModel(sessionScope,
     (workspace?.mailboxes ?? []).filter(({ id, rights, role }) => id !== snooze.snoozedMailboxId && rights.mayAddItems === true && role !== "drafts" && role !== "sent").map(({ id, name }) => ({ id, label: name })),
-    (workspace?.labels ?? []).map(({ id, name }) => ({ id, label: name })), mail.handleSessionFailure);
+    (workspace?.labels ?? []).map(({ id, name }) => ({ id, label: name })),
+    mail.handleSessionFailure, localization);
   const isComposerReady = Boolean(sessionScope) &&
     !emailSignatures.isLoading &&
     !emailSignatures.isSaving &&
@@ -77,6 +76,7 @@ export const useMailWorkspaceModel = ({
     draftsEnabled,
     onDraftChanged,
     recoveryOwner, emailTemplates, scheduled.isAvailable, messageListPreferences,
+    localization.timeZone,
   );
   const recipientSuggestions = useRecipientSuggestionsModel(contacts.book, composer); const contactManagement = useContactManagement(contacts, sessionScope, mail.handleSessionFailure);
   const session = useMemberSessionModel({
@@ -113,7 +113,7 @@ export const useMailWorkspaceModel = ({
   const mailList = useMemo(() => createMailListViewModel({
     activeMailboxId: mail.activeMailboxId,
     draftsEnabled,
-    folderMoveProps: messageMove.folder,
+    folderMoveProps: messageMove.folder, locale: localization.locale,
     messageMoveProps: messageMove.row,
     onOpenDraft: composer.openSavedDraft,
     onManageMailbox: mailboxManagement.openEdit,
@@ -124,13 +124,13 @@ export const useMailWorkspaceModel = ({
     onSelectMessage: mail.selectMessage,
     onToggleMessage: mail.bulk.toggle,
     pendingMessageIds: mail.pendingMessageIds,
-    snoozedMailboxId: snooze.snoozedMailboxId,
+    snoozedMailboxId: snooze.snoozedMailboxId, timeZone: localization.timeZone,
     selectedMessageIds: mail.bulk.selectedIds,
     selectionDisabled: mail.isReaderMutating || mail.bulk.isBusy,
     ...(mail.selectedMessage ? { selectedMessageId: mail.selectedMessage.id } : {}),
     workspace: mail.workspace,
-  }), [composer.openSavedDraft, draftsEnabled, mail, mailboxManagement.openEdit,
-    messageMove.folder, messageMove.row, navigation, snooze.snoozedMailboxId]);
+  }), [composer.openSavedDraft, draftsEnabled, localization.locale, localization.timeZone,
+    mail, mailboxManagement.openEdit, messageMove.folder, messageMove.row, navigation, snooze.snoozedMailboxId]);
   const readerMailbox = resolveReaderMailbox(
     workspace?.mailboxes ?? [], mail.activeMailboxId, mail.selectedMessage,
   );
@@ -155,7 +155,7 @@ export const useMailWorkspaceModel = ({
   useEffect(() => closeAttachmentPreview(), [closeAttachmentPreview, mail.selectedMessage?.id]);
   const conversation = useMessageConversationViewModel({
     anchorMessageId: mail.selectedMessage?.id ?? null, handleSessionFailure: mail.handleSessionFailure,
-    onOpen: mail.selectMessage, sessionScope,
+    locale: localization.locale, onOpen: mail.selectMessage, sessionScope, timeZone: localization.timeZone,
   });
   const reader = useMemo(
     () =>
@@ -169,17 +169,17 @@ export const useMailWorkspaceModel = ({
         conversation,
         deletingLabelIds: new Set((workspace?.labelDeletions ?? []).map(({ labelId }) => labelId)),
         handleSessionFailure: mail.handleSessionFailure,
-        isLoading: mail.isReaderLoading,
+        isLoading: mail.isReaderLoading, locale: localization.locale,
         message: mail.selectedMessage,
         labels: workspace?.labels ?? [],
         labelCapability: workspace?.labelCapability ?? "unsupported",
         onSetLabel: mail.setLabel,
         readerError: mail.readerError,
-        sessionScope,
+        sessionScope, timeZone: localization.timeZone,
       }),
     [mail.isReaderLoading, mail.readerError, mail.selectedMessage, conversation,
       mail.handleSessionFailure, mail.workspace?.mailboxes, readerRole, archiveDownload,
-      attachmentDownload, attachmentPreview, sessionScope,
+      attachmentDownload, attachmentPreview, localization.locale, localization.timeZone, sessionScope,
       workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel],
   );
   const accountName = settings.profileName ?? workspaceAccountName;

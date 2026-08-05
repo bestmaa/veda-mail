@@ -12,8 +12,10 @@ const defaults = {
   confirmBeforeSend: false,
   density: "comfortable",
   keyboardShortcuts: false,
+  locale: "en-IN",
   showPreview: true,
   sort: "newest",
+  timeZone: "auto",
   undoSendSeconds: 0,
 } as const;
 
@@ -56,6 +58,11 @@ test("persists accessible density, sort, and preview controls", async ({ page })
   await dialog.getByRole("checkbox", {
     name: "Enable single-key mailbox shortcuts",
   }).check();
+  await dialog.getByRole("combobox", {
+    name: "Formatting locale and reading direction",
+  }).selectOption("ar");
+  await dialog.getByRole("combobox", { name: "Time zone" })
+    .selectOption("Asia/Riyadh");
   const refresh = page.waitForRequest((request) => {
     const url = new URL(request.url());
     return url.pathname === "/api/v1/mail/workspace" &&
@@ -67,6 +74,15 @@ test("persists accessible density, sort, and preview controls", async ({ page })
 
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
+  await expect(page.locator("html")).toHaveAttribute("data-mail-locale", "ar");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await page.setViewportSize({ height: 720, width: 320 });
+  const reflow = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(reflow.scrollWidth).toBeLessThanOrEqual(reflow.clientWidth + 1);
   await expect(page.locator('[data-density="compact"]')).toBeVisible();
   await expect(page.getByText(
     "Your private mail stack is ready. Here are the next security checks.",
@@ -88,4 +104,9 @@ test("persists accessible density, sort, and preview controls", async ({ page })
   await expect(dialog.getByRole("checkbox", {
     name: "Enable single-key mailbox shortcuts",
   })).toBeChecked();
+  await expect(dialog.getByRole("combobox", {
+    name: "Formatting locale and reading direction",
+  })).toHaveValue("ar");
+  await expect(dialog.getByRole("combobox", { name: "Time zone" }))
+    .toHaveValue("Asia/Riyadh");
 });

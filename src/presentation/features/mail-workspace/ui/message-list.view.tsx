@@ -14,6 +14,7 @@ import { MailboxLifecycleBannerView } from "@/presentation/features/mail-workspa
 import { MessageListSkeletonView } from "@/presentation/features/mail-workspace/ui/message-list-skeleton.view";
 import { MessageRowView } from "@/presentation/features/mail-workspace/ui/message-row.view";
 import type { MessageListPreferencesViewModel } from "@/presentation/features/mail-workspace/message-list-preferences.view-model";
+import { formatMailNumber } from "@/presentation/shared/formatters/mail-formatters";
 import type { MailSearchViewModel } from "@/presentation/features/mail-workspace/mail-search.view-model";
 import { MailSearchFiltersView } from "@/presentation/features/mail-workspace/ui/mail-search-filters.view";
 
@@ -97,7 +98,7 @@ export const MessageListView = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-            {total} messages
+            {formatMailNumber(total, preferences.locale)} messages
           </span>
           <button
             aria-haspopup="dialog"

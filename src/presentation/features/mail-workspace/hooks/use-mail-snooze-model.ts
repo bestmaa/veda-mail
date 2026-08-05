@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MailboxRole, MessageSummary } from "@/domain/mail/mail";
+import {
+  mailIntlLocale,
+  type MailLocale,
+} from "@/domain/mail/message-list-preferences";
 import type { MailboxId, MessageId } from "@/domain/shared/brand";
 import type { OptimisticMutationToken } from "@/presentation/features/mail-workspace/optimistic-message-state";
 import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
 import { snoozeStatusLabel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
 import {
-  snoozeBrowserTimeZone, snoozeLocalDateTimeValue, snoozeLocalTimeToIso, snoozePresets, snoozeTimeLimits,
+  snoozeLocalDateTimeValue, snoozeLocalTimeToIso, snoozePresets,
+  snoozeTimeLimits,
 } from "@/presentation/features/mail-workspace/mail-snooze-time";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useModalDialogFocus } from "@/presentation/shared/hooks/use-modal-dialog-focus";
@@ -22,33 +27,43 @@ interface MailSnoozeOptions {
   readonly beginOptimistic: (messageIds: readonly MessageId[], destinationMailboxId: MailboxId) => OptimisticMutationToken | null;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly markUnconfirmed: (token: OptimisticMutationToken) => void;
+  readonly locale: MailLocale;
   readonly messages: readonly MessageSummary[];
   readonly pendingMessageIds: ReadonlySet<string>;
   readonly refresh: () => void;
   readonly selectedIds: ReadonlySet<MessageId>;
   readonly selectedMessage: MessageSummary | null;
   readonly sessionScope: string;
+  readonly timeZone: string;
   readonly settleOptimistic: (token: OptimisticMutationToken, succeeded: readonly MessageId[]) => void;
 }
 
 const message = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : fallback;
-const displayDate = (value: string): string => new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium", timeStyle: "short",
+const displayDate = (
+  value: string,
+  locale: MailLocale,
+  timeZone: string,
+): string => new Intl.DateTimeFormat(mailIntlLocale(locale), {
+  dateStyle: "medium", timeStyle: "short", timeZone,
 }).format(new Date(value));
 
 export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewModel => {
   const { activeMailbox, beginOptimistic, handleSessionFailure, markUnconfirmed,
-    messages, pendingMessageIds, refresh, selectedIds, selectedMessage,
-    sessionScope, settleOptimistic } = options;
+    locale, messages, pendingMessageIds, refresh, selectedIds, selectedMessage,
+    sessionScope, settleOptimistic, timeZone } = options;
   const [snapshot, setSnapshot] = useState<SnoozeWorkspaceSnapshot | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [targets, setTargets] = useState<readonly SnoozeTarget[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [localTime, setLocalTime] = useState("");
-  const [limits, setLimits] = useState(() => snoozeTimeLimits());
-  const [presets, setPresets] = useState(() => snoozePresets());
+  const [limits, setLimits] = useState(() => snoozeTimeLimits(
+    new Date(), timeZone,
+  ));
+  const [presets, setPresets] = useState(() => snoozePresets(
+    new Date(), timeZone,
+  ));
   const [error, setError] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -86,11 +101,12 @@ export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewMo
   useModalDialogFocus(managerOpen, "#snoozed-manager-dialog", closeManager, "[data-snoozed-manager-initial-focus]");
   const openTargets = useCallback((nextTargets: readonly SnoozeTarget[], editId: string | null = null, wakeAt?: string) => {
     if (!nextTargets.length && !editId) return;
-    const now = new Date(); const nextPresets = snoozePresets(now);
+    const now = new Date(); const nextPresets = snoozePresets(now, timeZone);
     setTargets(nextTargets); setEditingId(editId); setPresets(nextPresets);
-    setLimits(snoozeTimeLimits(now)); setLocalTime(wakeAt ?? nextPresets[1]!.value);
+    setLimits(snoozeTimeLimits(now, timeZone));
+    setLocalTime(wakeAt ?? nextPresets[1]!.value);
     setDialogError(null); setDialogOpen(true);
-  }, []);
+  }, [timeZone]);
 
   const runJobAction = useCallback(async (
     action: "restore" | "retry", snoozeId: string,
@@ -113,7 +129,7 @@ export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewMo
   }, [handleSessionFailure, isBusy, refresh, sessionScope]);
 
   const confirm = useCallback(async () => {
-    const wakeAt = snoozeLocalTimeToIso(localTime);
+    const wakeAt = snoozeLocalTimeToIso(localTime, new Date(), timeZone);
     if (!wakeAt) { setDialogError("Choose a valid future time within the next 366 days."); return; }
     if (!sessionScope || isBusy || inFlight.current) return;
     const requestScope = sessionScope; const requestId = ++operationId.current;
@@ -154,12 +170,15 @@ export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewMo
         setDialogOpen(false); setError("Snooze could not be confirmed. Mail is being refreshed before you retry."); refresh();
       }
     } finally { if (scopeRef.current === requestScope && requestId === operationId.current) { inFlight.current = false; setIsBusy(false); } }
-  }, [beginOptimistic, editingId, handleSessionFailure, isBusy, localTime, markUnconfirmed, refresh, sessionScope, settleOptimistic, snapshot?.book.snoozedMailboxId, snapshot?.capability, targets]);
+  }, [beginOptimistic, editingId, handleSessionFailure, isBusy, localTime,
+    markUnconfirmed, refresh, sessionScope, settleOptimistic,
+    snapshot?.book.snoozedMailboxId, snapshot?.capability, targets, timeZone]);
 
   const ownedMailboxId = snapshot?.capability.snoozedMailboxId ?? snapshot?.book.snoozedMailboxId ?? null;
   const activeEligible = mailboxCanSnooze(activeMailbox, ownedMailboxId, snapshot?.capability.supported ?? false);
   const jobs = (snapshot?.book.messages ?? []).map((job) => ({ ...job,
-    statusLabel: snoozeStatusLabel(job.status), wakeLabel: displayDate(job.wakeAt) }));
+    statusLabel: snoozeStatusLabel(job.status),
+    wakeLabel: displayDate(job.wakeAt, locale, timeZone) }));
   return {
     canSnoozeBulk: Boolean(activeEligible && selectedIds.size),
     canSnoozeReader: Boolean(activeEligible && selectedMessage),
@@ -167,13 +186,23 @@ export const useMailSnoozeModel = (options: MailSnoozeOptions): MailSnoozeViewMo
       ...limits, onCancel: closeDialog, onConfirm: () => void confirm(),
       onPreset: (value) => { setLocalTime(value); setDialogError(null); },
       onTimeInput: (event) => { setLocalTime(event.currentTarget.value); setDialogError(null); },
-      presets: presets.map((preset) => ({ ...preset, resolved: displayDate(new Date(preset.value).toISOString()) })),
-      resolvedUtc: snoozeLocalTimeToIso(localTime), targetLabel: editingId ? "Change snooze time" : targets.length === 1 ? `Snooze “${targets[0]?.subject}”` : `Snooze ${targets.length} messages`, timeZone: snoozeBrowserTimeZone() },
+      presets: presets.map((preset) => {
+        const resolved = snoozeLocalTimeToIso(
+          preset.value, new Date(), timeZone,
+        );
+        return { ...preset, resolved: resolved
+          ? displayDate(resolved, locale, timeZone)
+          : "Unavailable" };
+      }),
+      resolvedUtc: snoozeLocalTimeToIso(localTime, new Date(), timeZone),
+      targetLabel: editingId ? "Change snooze time" : targets.length === 1 ? `Snooze “${targets[0]?.subject}”` : `Snooze ${targets.length} messages`, timeZone },
     error, isBusy, isLoading, jobs,
     manager: { close: closeManager, isOpen: managerOpen, open: () => { setManagerOpen(true); void load(); } },
     onOpenBulk: () => activeMailbox && openTargets(messages.filter(({ id }) => selectedIds.has(id)).map(({ id, subject }) => ({ messageId: id, sourceMailboxId: activeMailbox.id, subject: subject || "(No subject)" }))),
     onOpenReader: () => activeMailbox && selectedMessage && openTargets([{ messageId: selectedMessage.id, sourceMailboxId: activeMailbox.id, subject: selectedMessage.subject || "(No subject)" }]),
-    onReschedule: (job) => { setManagerOpen(false); openTargets([], job.id, snoozeLocalDateTimeValue(new Date(job.wakeAt))); },
+    onReschedule: (job) => { setManagerOpen(false); openTargets(
+      [], job.id, snoozeLocalDateTimeValue(new Date(job.wakeAt), timeZone),
+    ); },
     onRestore: (snoozeId) => void runJobAction("restore", snoozeId),
     onRetry: (snoozeId) => void runJobAction("retry", snoozeId),
     pendingMessageIds, snoozedMailboxId: ownedMailboxId,

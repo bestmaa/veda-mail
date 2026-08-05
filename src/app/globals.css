@@ -172,3 +172,8 @@ button:disabled {
     transition-duration: 0.01ms !important;
   }
 }
+
+html[dir="rtl"] :where(input[type="email"], input[type="url"]) {
+  direction: ltr;
+  text-align: start;
+}

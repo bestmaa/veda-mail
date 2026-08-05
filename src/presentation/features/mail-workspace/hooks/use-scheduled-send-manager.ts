@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ChangeEventHandler } from "react";
 
 import type { ScheduledMessage, ScheduledMessageBook } from "@/domain/mail/scheduled-send";
+import type { MailLocale } from "@/domain/mail/message-list-preferences";
 import {
   browserTimeZone,
   localDateTimeValue,
@@ -14,18 +15,23 @@ import { mailApi } from "@/transport/client/api-client";
 import { ApiClientError } from "@/transport/client/api-request";
 
 const emptyBook: ScheduledMessageBook = { messages: [], revision: null, version: 1 };
-const limits = () => {
+const limits = (timeZone?: string) => {
   const now = Date.now();
   return {
-    maximum: localDateTimeValue(new Date(now + 366 * 24 * 60 * 60 * 1_000)),
-    minimum: localDateTimeValue(new Date(now + 60_000)),
+    maximum: localDateTimeValue(
+      new Date(now + 366 * 24 * 60 * 60 * 1_000), timeZone,
+    ),
+    minimum: localDateTimeValue(new Date(now + 60_000), timeZone),
   };
 };
 
 export const useScheduledSendManager = (
   sessionScope: string,
   handleSessionFailure: MailSessionFailureHandler,
+  preferredTimeZone?: string,
+  locale: MailLocale = "en-IN",
 ): ScheduledSendManagerViewModel & { readonly refresh: () => Promise<void> } => {
+  const timeZone = preferredTimeZone || browserTimeZone();
   const [book, setBook] = useState(emptyBook);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,8 +41,7 @@ export const useScheduledSendManager = (
   const [target, setTarget] = useState<ScheduledMessage | null>(null);
   const [rescheduleTime, setRescheduleTime] = useState("");
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
-  const [timeLimits, setTimeLimits] = useState(limits);
-  const [timeZone] = useState(browserTimeZone);
+  const [timeLimits, setTimeLimits] = useState(() => limits(timeZone));
   const refresh = useCallback(async () => {
     if (!sessionScope) { setBook(emptyBook); return; }
     setIsLoading(true); setError(null);
@@ -69,16 +74,20 @@ export const useScheduledSendManager = (
     } finally { setIsMutating(false); }
   }, [handleSessionFailure, isMutating, refresh, sessionScope]);
   const requestReschedule = useCallback((message: ScheduledMessage) => {
-    setTarget(message); setRescheduleTime(localDateTimeValue(new Date(message.scheduledAt)));
-    setRescheduleError(null); setTimeLimits(limits());
-  }, []);
+    setTarget(message); setRescheduleTime(localDateTimeValue(
+      new Date(message.scheduledAt), timeZone,
+    ));
+    setRescheduleError(null); setTimeLimits(limits(timeZone));
+  }, [timeZone]);
   const onRescheduleTimeInput: ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => { setRescheduleTime(event.currentTarget.value); setRescheduleError(null); },
     [],
   );
   const confirmReschedule = useCallback(async () => {
     if (!target || isMutating) return;
-    const scheduledAt = scheduledLocalTimeToIso(rescheduleTime);
+    const scheduledAt = scheduledLocalTimeToIso(
+      rescheduleTime, new Date(), timeZone,
+    );
     if (!scheduledAt) { setRescheduleError("Choose a valid future time."); return; }
     setIsMutating(true); setRescheduleError(null);
     try {
@@ -88,9 +97,11 @@ export const useScheduledSendManager = (
       if (!handleSessionFailure(nextError)) setRescheduleError(nextError instanceof Error
         ? nextError.message : "Unable to reschedule this message.");
     } finally { setIsMutating(false); }
-  }, [handleSessionFailure, isMutating, rescheduleTime, sessionScope, target]);
+  }, [handleSessionFailure, isMutating, rescheduleTime, sessionScope, target,
+    timeZone]);
   return {
-    count: book.messages.length, error, isAvailable, isLoading, isMutating, isOpen,
+    count: book.messages.length, error, isAvailable, isLoading, isMutating,
+    isOpen, locale,
     messages: book.messages, onCancelMessage: cancel, onClose: close,
     onConfirmReschedule: confirmReschedule, onOpen: open,
     onRequestReschedule: requestReschedule,

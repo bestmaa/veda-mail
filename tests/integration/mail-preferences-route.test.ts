@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ApiError } from "@/transport/http/api-error";
 
 const mocks = vi.hoisted(() => ({
@@ -9,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentConnection: vi.fn(),
   getMailService: vi.fn(),
   mailboxOwner: vi.fn(),
+  preferencesGet: vi.fn(),
   preferencesSet: vi.fn(),
 }));
 
@@ -22,7 +22,10 @@ vi.mock("@/server/mailboxes/mailbox-http", () => ({
   mailboxOwner: mocks.mailboxOwner,
 }));
 vi.mock("@/server/preferences/message-list-preferences.store", () => ({
-  messageListPreferencesStore: { set: mocks.preferencesSet },
+  messageListPreferencesStore: {
+    get: mocks.preferencesGet,
+    set: mocks.preferencesSet,
+  },
 }));
 vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.assertRequestRateLimit,
@@ -41,6 +44,7 @@ const validPreferences = {
   sort: "oldest",
   undoSendSeconds: 10,
 } as const;
+const storedPreferences = { ...validPreferences, locale: "hi-IN", timeZone: "Asia/Kolkata" } as const;
 const owner = { email: "member@example.com", providerId: "stalwart-jmap" };
 
 const request = (input: {
@@ -78,7 +82,8 @@ beforeEach(() => {
   mocks.getCurrentConnection.mockResolvedValue(mocks.connection);
   mocks.getMailService.mockResolvedValue({ id: "mail-service" });
   mocks.mailboxOwner.mockResolvedValue(owner);
-  mocks.preferencesSet.mockResolvedValue(validPreferences);
+  mocks.preferencesGet.mockResolvedValue(storedPreferences);
+  mocks.preferencesSet.mockResolvedValue(storedPreferences);
 });
 
 describe("message list preferences route", () => {
@@ -90,7 +95,7 @@ describe("message list preferences route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
-      data: { preferences: validPreferences },
+      data: { preferences: storedPreferences },
     });
     expect(mocks.assertRequestRateLimit).toHaveBeenCalledWith(
       routeRequest,
@@ -107,7 +112,7 @@ describe("message list preferences route", () => {
     );
     expect(mocks.getMailService).toHaveBeenCalledWith(mocks.connection);
     expect(mocks.mailboxOwner).toHaveBeenCalledWith({ id: "mail-service" });
-    expect(mocks.preferencesSet).toHaveBeenCalledWith(owner, validPreferences);
+    expect(mocks.preferencesSet).toHaveBeenCalledWith(owner, storedPreferences);
   });
 
   it.each([
@@ -184,6 +189,8 @@ describe("message list preferences route", () => {
     [{ ...validPreferences, undoSendSeconds: 15 }, "unsupported undo delay"],
     [{ ...validPreferences, confirmBeforeSend: "yes" }, "non-boolean confirmation"],
     [{ ...validPreferences, keyboardShortcuts: "yes" }, "non-boolean shortcuts"],
+    [{ ...validPreferences, locale: "fr-FR" }, "unsupported locale"],
+    [{ ...validPreferences, timeZone: "Etc/../../secret" }, "invalid time zone"],
     [{ ...validPreferences, mailboxId: "inbox-secret" }, "unknown key"],
     [null, "null body"],
     [[], "array body"],

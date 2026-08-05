@@ -27,35 +27,40 @@ interface ComposerScheduleOptions {
   readonly isAccountCurrent: (accountKey: string) => boolean;
   readonly onScheduled: () => Promise<void>;
   readonly openAccountKey: string;
+  readonly preferredTimeZone?: string;
   readonly enabled: boolean;
 }
 
-const scheduleTimeLimits = () => {
+const scheduleTimeLimits = (timeZone?: string) => {
   const now = Date.now();
   return {
-    maximum: localDateTimeValue(new Date(now + 366 * 24 * 60 * 60 * 1_000)),
-    minimum: localDateTimeValue(new Date(now + 60_000)),
+    maximum: localDateTimeValue(
+      new Date(now + 366 * 24 * 60 * 60 * 1_000), timeZone,
+    ),
+    minimum: localDateTimeValue(new Date(now + 60_000), timeZone),
   };
 };
 
 export const useComposerSchedule = ({
   attachments, body, draft, fields, handleSessionFailure, isAccountCurrent,
-  onScheduled, openAccountKey, enabled,
+  onScheduled, openAccountKey, preferredTimeZone, enabled,
 }: ComposerScheduleOptions) => {
+  const timeZone = preferredTimeZone || browserTimeZone();
   const [isOpen, setIsOpen] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
-  const [localTime, setLocalTime] = useState(defaultScheduledLocalTime);
+  const [localTime, setLocalTime] = useState(
+    () => defaultScheduledLocalTime(new Date(), timeZone),
+  );
   const [error, setError] = useState<string | null>(null);
-  const [limits, setLimits] = useState(scheduleTimeLimits);
-  const [timeZone] = useState(browserTimeZone);
+  const [limits, setLimits] = useState(() => scheduleTimeLimits(timeZone));
 
   const open = useCallback(() => {
     if (!enabled) return;
-    setLocalTime(defaultScheduledLocalTime());
-    setLimits(scheduleTimeLimits());
+    setLocalTime(defaultScheduledLocalTime(new Date(), timeZone));
+    setLimits(scheduleTimeLimits(timeZone));
     setError(null);
     setIsOpen(true);
-  }, [enabled]);
+  }, [enabled, timeZone]);
   const cancel = useCallback(() => {
     if (!isScheduling) setIsOpen(false);
   }, [isScheduling]);
@@ -80,7 +85,7 @@ export const useComposerSchedule = ({
       return;
     }
     if (attachments.expireReady()) { setError(EXPIRED_ATTACHMENT_MESSAGE); return; }
-    const scheduledAt = scheduledLocalTimeToIso(localTime);
+    const scheduledAt = scheduledLocalTimeToIso(localTime, new Date(), timeZone);
     if (!scheduledAt) {
       setError("Choose a valid future time within the next 366 days."); return;
     }
@@ -109,7 +114,8 @@ export const useComposerSchedule = ({
       if (isAccountCurrent(openAccountKey)) setIsScheduling(false);
     }
   }, [attachments, body.payload, body.text, draft, fields, handleSessionFailure,
-    isAccountCurrent, isScheduling, localTime, onScheduled, openAccountKey]);
+    isAccountCurrent, isScheduling, localTime, onScheduled, openAccountKey,
+    timeZone]);
 
   return {
     cancel, confirm, error, isAvailable: enabled, isOpen, isScheduling,
