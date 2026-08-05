@@ -518,7 +518,7 @@ JMAP and an IMAP/SMTP test mailbox.
 
 - [ ] New-mail refresh using JMAP events/push where available and bounded polling
   fallback for IMAP
-- [ ] In-app and opt-in Web Notifications with privacy-safe content controls
+- [x] In-app and opt-in Web Notifications with privacy-safe content controls
 - [ ] PWA installability and an explicitly bounded offline cache
 - [ ] Network reconnection, stale-state indicators, and safe retry behavior
 - [ ] WCAG 2.2 AA keyboard, focus, contrast, zoom/reflow, motion, and
@@ -529,6 +529,24 @@ JMAP and an IMAP/SMTP test mailbox.
 Acceptance: notification permissions are never coerced, private message content
 is not cached by default, and the primary flows pass automated and manual
 assistive-technology checks.
+
+The privacy-safe notification slice is released and deployed in production
+commit `fd8353fa3761904b9b5f32507de6f0114d02223a` through PR #89. A direct
+production session showed browser permission remaining untouched through load
+and settings display, then entering the request state only after the explicit
+Enable action. The dedicated JMAP test mailbox received
+`VEDA-NOTIFICATION-LIVE-2026-08-05-0824` from an independent tab without manual
+refresh and rendered the accessible, dismissible generic notice “New mail in
+Veda Mail / You have a new message.” while the real subject remained confined
+to the Inbox. Unit regressions exercise granted Web Notification construction,
+generic/detail content policy, account-isolated tamper-resistant preferences,
+permission gesture gating, hidden-tab subscriptions, and storage/constructor
+failure containment. Component checks cover the live UI's privacy explanation,
+recommended default, status semantics, and dismiss action. The browser-control
+environment cannot accept Chrome's native operating-system permission bubble;
+the granted constructor path is therefore deterministic automated evidence,
+while the deployed UI provides the manual opt-in path. Closed-browser delivery
+remains out of scope until the separate PWA/Web Push milestone.
 
 ## M8 — Administration, operations, and trust
 
