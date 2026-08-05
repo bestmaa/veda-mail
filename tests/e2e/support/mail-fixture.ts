@@ -27,6 +27,18 @@ export const expectNoSeriousAccessibilityViolations = async (page: Page) => {
   expect(violations).toEqual([]);
 };
 
+export const expectNoWcagAccessibilityViolations = async (page: Page) => {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations.map(({ help, id, impact, nodes }) => ({
+    help,
+    id,
+    impact,
+    nodes: nodes.map((node) => ({ html: node.html, target: node.target })),
+  }))).toEqual([]);
+};
+
 export const installApplication = async (request: APIRequestContext) => {
   const status = await request.get("/api/v1/setup");
   expect(status.ok()).toBe(true);

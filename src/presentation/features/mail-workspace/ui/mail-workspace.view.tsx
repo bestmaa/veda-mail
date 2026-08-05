@@ -59,7 +59,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
   >
     <a
       className="fixed left-4 top-2 z-[120] -translate-y-20 rounded-xl bg-white px-4 py-2 text-sm font-bold text-indigo-700 shadow-xl focus:translate-y-0"
-      href="#message-list-region"
+      href="#message-list-heading"
     >
       Skip to message list
     </a>

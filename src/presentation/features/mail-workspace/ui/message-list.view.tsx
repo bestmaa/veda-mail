@@ -88,6 +88,7 @@ export const MessageListView = ({
             <h1
               className="mt-0.5 text-2xl font-extrabold tracking-[-0.04em] text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               data-message-list-heading
+              id="message-list-heading"
               tabIndex={-1}
             >
               {activeFolder}
