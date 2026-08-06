@@ -157,8 +157,8 @@ describe("attachment import resource settlement", () => {
         })),
       ),
     ).rejects.toBe(original);
-    expect(cleanupLog).toHaveBeenCalledWith(
-      "[veda-mail] Attachment import cleanup failed.",
+    expect(String(cleanupLog.mock.calls[0]?.[0])).toContain(
+      '"event":"attachment.import_cleanup_failed"',
     );
     cleanupLog.mockRestore();
   });

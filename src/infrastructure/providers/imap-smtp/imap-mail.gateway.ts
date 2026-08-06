@@ -28,6 +28,7 @@ import type { MessageId, ProviderDraftId } from "@/domain/shared/brand";
 import { ImapMailReader } from "@/infrastructure/providers/imap-smtp/imap-mail.reader";
 import { ImapMailWriter } from "@/infrastructure/providers/imap-smtp/imap-mail.writer";
 import { ImapDraftStore } from "@/infrastructure/providers/imap-smtp/imap-draft.store";
+import { logError } from "@/server/observability/structured-log";
 import { withImapDraftOperation } from "@/infrastructure/providers/imap-smtp/imap-draft-operation-lock";
 import { ImapMailboxManager } from "@/infrastructure/providers/imap-smtp/imap-mailbox.manager";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
@@ -46,11 +47,9 @@ import {
   downloadImapCalendarPart,
   listImapCalendarParts,
 } from "@/infrastructure/providers/imap-smtp/imap-calendar.reader";
-
 const unsupported = (feature: string): never => {
   throw new Error(`${feature} is not available through standard IMAP/SMTP.`);
 };
-
 export class ImapSmtpMailGateway implements MailGateway {
   private readonly attachmentCapability: SmtpAttachmentCapability;
   private readonly drafts: ImapDraftStore;
@@ -58,7 +57,6 @@ export class ImapSmtpMailGateway implements MailGateway {
   private readonly mailboxes: ImapMailboxManager;
   private readonly writer: ImapMailWriter;
   private readonly snooze: ImapSnoozeAdapter;
-
   public constructor(private readonly config: ImapSmtpMemberConfig) {
     this.attachmentCapability = new SmtpAttachmentCapability(config);
     this.drafts = new ImapDraftStore(config);
@@ -224,7 +222,9 @@ export class ImapSmtpMailGateway implements MailGateway {
         if (receipt.deliveryStatus !== "uncertain") {
           await this.drafts
             .discard(saved.detail.id, saved.detail.revision)
-            .catch(() => console.error("[veda-mail] Accepted IMAP draft cleanup failed."));
+            .catch(() => logError("provider.imap_draft_cleanup_failed", {
+              outcome: "error", providerId: "imap-smtp",
+            }));
         }
         return receipt;
       },

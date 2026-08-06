@@ -17,6 +17,7 @@ import {
   type AttachmentSendMemoryLease,
 } from "@/server/mail/attachment-send-memory-budget";
 import { getMailService } from "@/server/mail/mail-service";
+import { logError } from "@/server/observability/structured-log";
 import {
   asAttachmentMetadata,
   asSavedAttachmentMetadata,
@@ -79,7 +80,9 @@ export const prepareDraftAttachments = async (
       try {
         if (consume) {
           await quarantine.consume(uploadIds, scope).catch(() => {
-            console.error("[veda-mail] Saved draft attachment cleanup failed.");
+            logError("attachment.saved_draft_cleanup_failed", {
+              outcome: "error",
+            });
           });
         } else await quarantine.release(uploadIds, scope);
       } finally {

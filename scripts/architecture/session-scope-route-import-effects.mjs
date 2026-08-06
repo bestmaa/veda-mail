@@ -135,6 +135,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     new Set(["saveDraftWithAttachments"]),
   ],
   ["@/server/mail/gateway-cache", new Set(["resolveGateway"])],
+  ["@/server/observability/structured-log", new Set(["logError"])],
   ["@/server/mail/mail-update-wait", new Set(["waitForMailUpdate"])],
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
   ["@/server/calendar/event-export", new Set(["exportCalendarEvents"])],

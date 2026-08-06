@@ -1250,6 +1250,32 @@ administrator with `/data` write access remains trusted and can change policy;
 these controls do not restrict direct IMAP, SMTP, provider webmail, or provider
 administration outside Veda Mail.
 
+## Observability and diagnostic data
+
+Logs and metrics are a confidentiality and availability boundary. Arbitrary
+objects, exception messages, provider payloads, URLs with query strings, and
+user-controlled labels can leak credentials or mailbox data and can exhaust a
+collector through unbounded cardinality. Veda Mail therefore emits only
+allowlisted structured fields, reduces errors to bounded class names, and uses
+compiled provider and operation names as metric labels. Mailbox, account,
+message, draft, attachment, recipient, connection, session, and request IDs are
+never metric labels. Request IDs appear only in logs and response headers after
+strict length and character validation.
+
+The Prometheus endpoint is disabled unless an independent server-side bearer
+token is configured. It is non-cacheable and the token must remain in a secret
+manager and scraper, never in browser code. Readiness returns only `data` and
+`scanner` states; dependency paths, hosts, and errors are suppressed. Scanner
+or data failure returns 503 and cannot be misreported as ready. Liveness avoids
+dependency checks so signature loading or a provider outage does not create a
+container restart loop.
+
+Counters are process-local and reset on restart. They are operational hints,
+not an audit ledger or billing source. Operators remain responsible for log
+access control, encryption, bounded retention, reverse-proxy redaction, metric
+token rotation, per-replica scraping, and alert thresholds. The supported
+single-writable-replica boundary is unchanged.
+
 ## Supply-chain and release controls
 
 - Lock npm dependencies, the base-image digest, and GitHub Actions; run the

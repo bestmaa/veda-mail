@@ -5,6 +5,11 @@ import {
   API_ERROR_CODE_HEADER,
   ApiError,
 } from "@/transport/http/api-error";
+import { recordHttpResponse } from "@/server/observability/metrics";
+import {
+  logError,
+  safeErrorType,
+} from "@/server/observability/structured-log";
 
 export interface ApiFailure {
   readonly error: {
@@ -20,8 +25,9 @@ export interface ApiSuccess<TData> {
 export const apiSuccess = <TData>(
   data: TData,
   init?: ResponseInit,
-): NextResponse<ApiSuccess<TData>> =>
-  NextResponse.json(
+): NextResponse<ApiSuccess<TData>> => {
+  recordHttpResponse(init?.status ?? 200);
+  return NextResponse.json(
     { data },
     {
       ...init,
@@ -31,6 +37,7 @@ export const apiSuccess = <TData>(
       },
     },
   );
+};
 
 export const apiFailure = (
   error: unknown,
@@ -39,7 +46,11 @@ export const apiFailure = (
   const isValidation = error instanceof ZodError;
   const isApiError = error instanceof ApiError;
   if (!isValidation && !isApiError) {
-    console.error("[veda-mail] Unexpected request failure.", error);
+    logError("http.request_failed", {
+      errorType: safeErrorType(error),
+      outcome: "error",
+      statusCode: 500,
+    });
   }
   const message = isValidation
     ? (error.issues[0]?.message ?? "Invalid request.")
@@ -51,6 +62,8 @@ export const apiFailure = (
     : isApiError
       ? error.code
       : "REQUEST_FAILED";
+  const status = isValidation ? 400 : isApiError ? error.status : 500;
+  recordHttpResponse(status);
   return NextResponse.json(
     {
       error: {
@@ -63,7 +76,7 @@ export const apiFailure = (
         "Cache-Control": "private, no-store",
         [API_ERROR_CODE_HEADER]: code,
       },
-      status: isValidation ? 400 : isApiError ? error.status : 500,
+      status,
     },
   );
 };

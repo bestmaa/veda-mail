@@ -281,6 +281,7 @@ Back up `/data` before every upgrade. See the
 - [Installation and first-run setup](docs/INSTALLATION.md)
 - [Organization administration](docs/ADMINISTRATION.md)
 - [Docker, Dokploy, and reverse proxies](docs/DEPLOYMENT.md)
+- [Observability, dashboards, and alerts](docs/OBSERVABILITY.md)
 - [Mail server and DNS prerequisites](docs/MAIL-SERVER-SETUP.md)
 - [Mail providers and compatibility](docs/PROVIDERS.md)
 - [Member authenticator 2FA](docs/MEMBER-2FA.md)

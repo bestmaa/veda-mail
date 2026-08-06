@@ -1200,6 +1200,24 @@ daylight-saving times. Direction is derived from the locale, while document
 language remains English until a translated source catalog exists; this avoids
 giving assistive technology a false language signal.
 
+## Observability boundary
+
+The API proxy validates or creates a bounded request ID, forwards it through
+the request, and echoes it on the response. Structured logging accepts only an
+allowlisted operational schema and never serializes raw exceptions or provider
+payloads. The gateway cache wraps each provider gateway once, so every provider
+operation contributes process-local duration and success/error counters without
+mailbox or connection labels. Interactive provider failures recover the current
+request ID when available; workers use only stable event names.
+
+`/api/health` is dependency-free liveness. `/api/ready` independently checks
+the writable data boundary and the exact private ClamAV `PONG`, returning only
+bounded check states. `/api/metrics` is disabled by default and requires a
+constant-time compared server-side bearer token. Metrics are Prometheus text
+with compiled provider/operation labels and reset with the process. The
+[observability runbook](OBSERVABILITY.md) defines replica aggregation,
+dashboards, retention, and alert thresholds.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

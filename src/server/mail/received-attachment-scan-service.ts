@@ -7,6 +7,7 @@ import {
   type ReceivedAttachmentScanSpool,
 } from "@/server/mail/received-attachment-scan";
 import { attachmentScanner } from "@/server/mail/attachment-service";
+import { logError } from "@/server/observability/structured-log";
 
 const CLEANUP_INTERVAL_MS = 60_000;
 
@@ -26,7 +27,7 @@ const createProcessSpool = async (): Promise<ReceivedAttachmentScanSpool> => {
   });
   processState.__vedaMailReceivedScanCleanup = setInterval(() => {
     void spool.cleanupExpired().catch(() => {
-      console.error("[veda-mail] Received attachment cleanup failed.");
+      logError("attachment.received_cleanup_failed", { outcome: "error" });
     });
   }, CLEANUP_INTERVAL_MS);
   processState.__vedaMailReceivedScanCleanup.unref();

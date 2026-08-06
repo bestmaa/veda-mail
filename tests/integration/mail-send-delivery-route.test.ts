@@ -239,8 +239,8 @@ describe("mail send delivery receipt boundary", () => {
       data: { deliveryStatus: "partial" },
     });
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
-    expect(log).toHaveBeenCalledWith(
-      "[veda-mail] Delivery notice persistence failed.",
+    expect(String(log.mock.calls[0]?.[0])).toContain(
+      '"event":"mail.delivery_notice_persistence_failed"',
     );
     persistence.mockRestore();
     log.mockRestore();

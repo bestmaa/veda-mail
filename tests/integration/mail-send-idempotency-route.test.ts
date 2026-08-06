@@ -154,8 +154,8 @@ describe("mail send idempotency route", () => {
     const response = await POST(request(payload(crypto.randomUUID())));
     expect(response.status).toBe(201);
     expect(mocks.sendMessage).toHaveBeenCalledOnce();
-    expect(log).toHaveBeenCalledWith(
-      "[veda-mail] Recent-recipient persistence failed.",
+    expect(String(log.mock.calls[0]?.[0])).toContain(
+      '"event":"mail.recent_recipient_persistence_failed"',
     );
     log.mockRestore();
   });
