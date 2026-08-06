@@ -18,6 +18,8 @@ import {
 import { verifyAdminPasswordDigest } from "@/server/installation/password-hash";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { assertSubjectRateLimit } from "@/server/security/rate-limit";
+import { installationAdministratorAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -82,6 +84,7 @@ export const POST = async (request: Request) => {
 };
 
 export const PUT = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     const installation = await currentInstallation();
@@ -126,6 +129,12 @@ export const PUT = async (request: Request) => {
         400,
       );
     }
+    audit = securityAuditOperation({
+      action: "admin.two-factor.enrolled",
+      actor: installationAdministratorAuditActor(),
+      targetType: "two-factor",
+    });
+    await audit.attempt();
     const updated = await installationStore.updateOwner(
       installation.owner.authVersion,
       {
@@ -134,6 +143,8 @@ export const PUT = async (request: Request) => {
         username: installation.owner.username,
       },
     );
+    audit.applied();
+    await audit.success();
     return setSession(
       apiSuccess({
         enabled: true,
@@ -142,11 +153,13 @@ export const PUT = async (request: Request) => {
       updated,
     );
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(error, "Unable to enable administrator 2FA.");
   }
 };
 
 export const DELETE = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     const installation = await currentInstallation();
@@ -177,6 +190,12 @@ export const DELETE = async (request: Request) => {
         401,
       );
     }
+    audit = securityAuditOperation({
+      action: "admin.two-factor.disabled",
+      actor: installationAdministratorAuditActor(),
+      targetType: "two-factor",
+    });
+    await audit.attempt();
     const updated = await installationStore.updateOwner(
       installation.owner.authVersion,
       {
@@ -185,12 +204,15 @@ export const DELETE = async (request: Request) => {
         username: installation.owner.username,
       },
     );
+    audit.applied();
+    await audit.success();
     adminTwoFactorEnrollmentStore.remove(
       installation.owner.authVersion,
       installation.owner.username,
     );
     return setSession(apiSuccess({ enabled: false }), updated);
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(error, "Unable to disable administrator 2FA.");
   }
 };

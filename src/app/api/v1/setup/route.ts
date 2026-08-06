@@ -19,6 +19,8 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import { anonymousAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 
@@ -46,6 +48,7 @@ export const GET = async () => {
 };
 
 export const POST = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     assertRequestRateLimit(
@@ -75,6 +78,12 @@ export const POST = async (request: Request) => {
       parsed.mailProfile.config,
     );
     const password = await hashAdminPassword(parsed.adminPassword);
+    audit = securityAuditOperation({
+      action: "setup.completed",
+      actor: anonymousAuditActor(parsed.adminUsername),
+      targetType: "organization",
+    });
+    await audit.attempt();
     const installation = await installationStore.complete(async () => {
       if (parsed.logo) {
         await writeBrandLogo(parsed.logo);
@@ -86,6 +95,8 @@ export const POST = async (request: Request) => {
       };
     });
     connectionStore.clearAll();
+    audit.applied();
+    await audit.success();
     const response = apiSuccess(
       {
         admin: { username: installation.owner.username },
@@ -104,6 +115,7 @@ export const POST = async (request: Request) => {
     );
     return response;
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(error, "Unable to complete first-run setup.");
   }
 };

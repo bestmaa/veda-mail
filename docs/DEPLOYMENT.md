@@ -52,7 +52,8 @@ openssl rand -base64 32
 ```
 
 Set the first two hex outputs as different setup/recovery tokens, the base64
-output as the scheduled-job key, and the deployment-specific values in `.env`:
+output as the scheduled-job, rules, snooze, and security-audit root key, and
+the deployment-specific values in `.env`:
 
 ```dotenv
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value

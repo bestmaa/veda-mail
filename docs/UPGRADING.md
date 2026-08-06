@@ -13,6 +13,15 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+The security-audit release creates `/data/security-audit.json` on the first
+recorded event. It uses dedicated HKDF/HMAC subkeys derived from the existing
+32-byte `VEDA_MAIL_JOB_KEY`; no new variable, provider migration, Stalwart
+setting, or port is required. Preserve that exact key, back up the strict
+mode-0600 file with the whole volume, and keep one writable application replica.
+Older releases ignore the file. After upgrading, open **Administration → Audit
+log** and verify an administrator policy-save attempt/success pair. Do not merge
+files from different snapshots or rotate the root key in place.
+
 The capability-policy release adds `/data/organization-policy.json` only after
 an administrator saves policy. No environment variable, provider migration,
 Stalwart change, port, or mailbox migration is required. Until that first save,

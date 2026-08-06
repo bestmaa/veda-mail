@@ -1,14 +1,11 @@
 const AUTH_WRAPPER_EXPORTS = new Map([
-  ["@/server/mail/mail-service", new Set(["getMailService"])],
-]);
-
+  ["@/server/mail/mail-service", new Set(["getMailService"])]]);
 const REQUEST_UTILITY_EXPORTS = new Map([
   ["@/server/installation/request-origin", new Set(["assertSameOrigin"])],
   ["@/server/security/rate-limit", new Set(["assertRequestRateLimit"])],
   ["@/transport/http/api-response", new Set(["apiFailure", "apiSuccess"])],
   ["@/transport/http/read-json-body", new Set(["readJsonBody"])],
 ]);
-
 const REVIEWED_HELPER_EXPORTS = new Map([
   ["node:crypto", new Set(["createHash", "randomUUID"])],
   ["next/server", new Set(["NextResponse"])],
@@ -138,6 +135,11 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/observability/structured-log", new Set(["logError"])],
   ["@/server/mail/mail-update-wait", new Set(["waitForMailUpdate"])],
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
+  ["@/server/security-audit/security-audit", new Set([
+    "appendSecurityAudit", "auditTargetId", "memberAuditActor",
+  ])],
+  ["@/server/security-audit/security-audit-operation",
+    new Set(["securityAuditOperation"])],
   ["@/server/calendar/event-export", new Set(["exportCalendarEvents"])],
   ["@/server/calendar/event-import", new Set(["parseCalendarEventImport"])],
   ["@/server/calendar/event-owner", new Set(["calendarEventOwnerForConnection"])],
@@ -226,14 +228,12 @@ const hasExport = (registry, moduleName, exportName) =>
   registry.get(moduleName)?.has(exportName) ||
   registry.get(moduleName)?.has("*") ||
   false;
-
 export const isAuthWrapperExport = (moduleName, exportName) =>
   hasExport(AUTH_WRAPPER_EXPORTS, moduleName, exportName);
 
 export const isRequestUtilityExport = (moduleName, exportName) =>
   hasExport(REQUEST_UTILITY_EXPORTS, moduleName, exportName) ||
   hasExport(REVIEWED_HELPER_EXPORTS, moduleName, exportName);
-
 export const isAuthWrapperModule = (moduleName) =>
   AUTH_WRAPPER_EXPORTS.has(moduleName);
 

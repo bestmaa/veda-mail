@@ -21,6 +21,7 @@ vi.mock("@/server/rules/rule-deployment.service", () => ({
   readRuleWorkspace: mocks.readRuleWorkspace,
   reconcileRules: mocks.reconcileRules,
 }));
+vi.mock("@/server/security-audit/security-audit", () => ({ appendSecurityAudit: vi.fn(), auditTargetId: vi.fn(() => "target"), memberAuditActor: vi.fn(() => ({ actorId: "audit", actorType: "member" })) }));
 
 import { GET, PUT } from "@/app/api/v1/member/rules/route";
 import { POST } from "@/app/api/v1/member/rules/reconcile/route";

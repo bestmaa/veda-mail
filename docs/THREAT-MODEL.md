@@ -1216,8 +1216,18 @@ mail data in browser persistence.
 Logs may contain opaque request, connection, provider, and error identifiers,
 but never passwords, access tokens, cookies, authenticator secrets, full
 message bodies, attachment bytes, or complete recipient lists. Provider errors
-must be normalized before reaching members. Security events need bounded,
-tamper-evident retention before an audit log is advertised.
+must be normalized before reaching members.
+
+The separate security audit store retains at most 10,000 strict metadata-only
+events. Actor and target identities are keyed pseudonyms; raw addresses,
+usernames, provider IDs, message/mailbox IDs, content, IP addresses, and user
+agents are excluded. Protected mutations durably record an attempt before the
+side effect, then success, failure, or partial settlement. HMAC-chained entries,
+a whole-file MAC, key check, monotonic sequence, mode-0600 atomic replacement,
+and verification on every read detect modification, truncation, and wrong-key
+restores. A valid older whole-file rollback cannot be detected without an
+external checkpoint, so operators preserve off-host generations and checksums.
+The file writer remains inside the documented single-replica boundary.
 
 ## Administrative capability-policy threats
 

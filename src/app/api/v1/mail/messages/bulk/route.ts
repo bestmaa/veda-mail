@@ -19,6 +19,8 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import { memberAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { ApiError } from "@/transport/http/api-error";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -104,6 +106,7 @@ const runBounded = async (
 };
 
 export const PATCH = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     assertRequestRateLimit(
@@ -125,6 +128,15 @@ export const PATCH = async (request: Request) => {
       await readJsonBody(request, 64 * 1_024),
     );
     const service = await getMailService(connection);
+    if (payload.type === "destroy") {
+      audit = securityAuditOperation({
+        action: "messages.destroyed",
+        actor: memberAuditActor(connection),
+        count: payload.messageIds.length,
+        targetType: "messages",
+      });
+      await audit.attempt();
+    }
     if (payload.type === "set-label") {
       const result = await mutateBulkMessageLabels(
         service,
@@ -177,8 +189,15 @@ export const PATCH = async (request: Request) => {
       });
     };
     const result = await mutate();
+    if (audit) {
+      audit.applied();
+      const uncertain = result.failed.length > 0 || (result.unconfirmed?.length ?? 0) > 0;
+      if (uncertain) await audit.partial(result.succeeded.length);
+      else await audit.success(result.succeeded.length);
+    }
     return apiSuccess(result);
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(labelHttpError(error), "Unable to update the selected messages.");
   }
 };

@@ -21,7 +21,7 @@ vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.assertRequestRateLimit,
   assertSubjectRateLimit: mocks.assertSubjectRateLimit,
 }));
-
+vi.mock("@/server/security-audit/security-audit", () => ({ appendSecurityAudit: vi.fn(), memberAuditActor: vi.fn(() => ({ actorId: "audit", actorType: "member" })) }));
 import { PATCH } from "@/app/api/v1/mail/messages/bulk/route";
 import { mailSessionScope } from "@/server/connections/mail-session-scope";
 

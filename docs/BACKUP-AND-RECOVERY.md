@@ -41,6 +41,8 @@ the supplied Compose deployment.
   `scheduled-jobs.json`
 - Encrypted snooze intents, owned-mailbox identity, recovery locators, retry
   state, and bounded wake credentials in `snooze-jobs.json`
+- The bounded HMAC-chained, pseudonymous security event trail in
+  `security-audit.json`
 
 It does not contain mailbox messages. Messages remain on the configured mail
 server. Active member sessions are process-memory only and disappear on
@@ -50,12 +52,17 @@ cancellation.
 
 `VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
 deployment secret manager. A `/data` backup without that exact key cannot
-recover scheduled jobs, snooze jobs, or mail-rule books. Never rotate it while
-any of those files contains state. Veda Mail does not currently provide an
+recover scheduled jobs, snooze jobs, mail-rule books, or the security audit
+trail. Never rotate it while any of those files contains state. Veda Mail does
+not currently provide an
 in-place key migration;
 simply changing the secret makes those stores fail closed. Preserve this key
 for the installation lifetime and rehearse any exceptional migration on an
 isolated restored copy first.
+
+An older whole-volume restore also rolls the audit trail back. Before restore,
+retain the current `security-audit.json` and its backup checksum as external
+evidence. Do not merge audit files: each valid file is one authenticated chain.
 
 Interrupted-compose recovery is browser-local IndexedDB state bound to one
 member session. It is not stored in `/data`, is not included in server backups,

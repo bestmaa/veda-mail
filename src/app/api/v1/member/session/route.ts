@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
 import type { MailAccount } from "@/domain/mail/mail";
-import type {
-  MailServiceProfile,
-  ProviderConnection,
-} from "@/domain/provider/provider";
+import type { MailServiceProfile, ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import {
   CONNECTION_COOKIE,
@@ -14,6 +11,11 @@ import {
 import { MEMBER_CONNECTION_TTL_SECONDS } from "@/server/connections/connection-lifetime";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
+import {
+  anonymousMemberSession,
+  memberCookieOptions,
+  memberSessionResponse,
+} from "@/server/connections/member-session-response";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import {
@@ -26,6 +28,11 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import {
+  appendSecurityAudit,
+  memberAuditActor,
+} from "@/server/security-audit/security-audit";
+import { memberAuthenticationAudit } from "@/server/security-audit/member-authentication-audit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -35,31 +42,6 @@ import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 export const runtime = "nodejs";
 
 const MAX_MEMBER_LOGIN_BODY_BYTES = 16 * 1024;
-
-const anonymousSession = {
-  account: null,
-  authenticated: false,
-  service: null,
-} as const;
-
-const memberSession = (
-  account: MailAccount,
-  profile: Pick<MailServiceProfile, "displayName" | "providerId">,
-) => ({
-  account,
-  authenticated: true,
-  service: {
-    displayName: profile.displayName,
-    providerId: profile.providerId,
-  },
-});
-
-const cookieOptions = {
-  httpOnly: true,
-  path: "/",
-  sameSite: "lax",
-  secure: process.env.NODE_ENV === "production",
-} as const;
 
 const activeProfile = async (): Promise<MailServiceProfile> => {
   const profile = await mailServiceProfileStore.get();
@@ -85,12 +67,12 @@ export const GET = async () => {
         401,
       );
     }
-    return apiSuccess(memberSession(account, profile));
+    return apiSuccess(memberSessionResponse(account, profile));
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      const response = apiSuccess(anonymousSession);
+      const response = apiSuccess(anonymousMemberSession);
       response.cookies.set(CONNECTION_COOKIE, "", {
-        ...cookieOptions,
+        ...memberCookieOptions,
         maxAge: 0,
       });
       return response;
@@ -100,6 +82,7 @@ export const GET = async () => {
 };
 
 export const POST = async (request: Request) => {
+  const authenticationAudit = memberAuthenticationAudit();
   try {
     assertSameOrigin(request);
     assertRequestRateLimit(
@@ -112,6 +95,7 @@ export const POST = async (request: Request) => {
     const credentials = memberCredentialsSchema.parse(
       await readJsonBody(request, MAX_MEMBER_LOGIN_BODY_BYTES),
     );
+    authenticationAudit.identify(credentials.email);
     assertSubjectRateLimit(
       "member-login",
       credentials.email.toLowerCase(),
@@ -121,6 +105,7 @@ export const POST = async (request: Request) => {
     const profile = await activeProfile();
     const profileRevision = mailServiceProfileRevision(profile);
     if (!profile.allowedDomains.includes(emailDomain(credentials.email))) {
+      await authenticationAudit.failure();
       throw new ApiError(
         "Incorrect email address or password.",
         "INVALID_MEMBER_CREDENTIALS",
@@ -137,12 +122,14 @@ export const POST = async (request: Request) => {
       },
     );
     if (authentication.status === "mfa-required") {
+      await authenticationAudit.challenge();
       return apiSuccess(
         { authenticated: false, mfaRequired: true },
         { status: 202 },
       );
     }
     if (authentication.status === "rejected") {
+      await authenticationAudit.failure();
       throw new ApiError(
         "Incorrect email address, password or verification code.",
         "INVALID_MEMBER_CREDENTIALS",
@@ -151,6 +138,7 @@ export const POST = async (request: Request) => {
     }
     if (await memberTwoFactorSecurity.isEnabled(credentials.email)) {
       if (!credentials.otpCode) {
+        await authenticationAudit.challenge();
         return apiSuccess(
           { authenticated: false, mfaRequired: true },
           { status: 202 },
@@ -162,6 +150,7 @@ export const POST = async (request: Request) => {
           credentials.otpCode,
         ))
       ) {
+        await authenticationAudit.failure();
         throw new ApiError(
           "Incorrect email address, password or verification code.",
           "INVALID_MEMBER_CREDENTIALS",
@@ -190,6 +179,7 @@ export const POST = async (request: Request) => {
       );
     }
     if (account.email.toLowerCase() !== credentials.email.toLowerCase()) {
+      await authenticationAudit.failure();
       throw new ApiError(
         "Incorrect email address or password.",
         "INVALID_MEMBER_CREDENTIALS",
@@ -197,6 +187,7 @@ export const POST = async (request: Request) => {
       );
     }
     const previous = await getCurrentConnection().catch(() => null);
+    await authenticationAudit.succeed(credentials.email, profile.providerId);
     const connection = connectionStore.create(
       {
         config,
@@ -208,15 +199,16 @@ export const POST = async (request: Request) => {
     if (previous) {
       connectionStore.remove(previous.id);
     }
-    const response = apiSuccess(memberSession(account, profile), {
+    const response = apiSuccess(memberSessionResponse(account, profile), {
       status: 201,
     });
     response.cookies.set(CONNECTION_COOKIE, connection.id, {
-      ...cookieOptions,
+      ...memberCookieOptions,
       maxAge: MEMBER_CONNECTION_TTL_SECONDS,
     });
     return response;
   } catch (error) {
+    await authenticationAudit.recordFailureIfPending();
     return apiFailure(error, "Unable to sign in to this mailbox.");
   }
 };
@@ -227,12 +219,19 @@ export const DELETE = async (request: Request) => {
     const connection = await getCurrentConnection().catch(() => null);
     if (connection) {
       assertMailSessionScope(request, connection);
+      const auditActor = memberAuditActor(connection);
+      await appendSecurityAudit({
+        action: "member.authentication.signed-out",
+        actor: auditActor,
+        outcome: "success",
+        targetType: "session",
+      });
       twoFactorEnrollmentStore.remove(connection.id);
       connectionStore.remove(connection.id);
     }
     const response = new NextResponse(null, { status: 204 });
     response.cookies.set(CONNECTION_COOKIE, "", {
-      ...cookieOptions,
+      ...memberCookieOptions,
       maxAge: 0,
     });
     return response;

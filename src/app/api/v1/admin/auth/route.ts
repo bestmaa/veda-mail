@@ -19,6 +19,12 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import {
+  administratorAuditActor,
+  anonymousAuditActor,
+  appendSecurityAudit,
+  type SecurityAuditActor,
+} from "@/server/security-audit/security-audit";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -35,6 +41,8 @@ const status = async () => ({
 export const GET = async () => apiSuccess(await status());
 
 export const POST = async (request: Request) => {
+  let actor: SecurityAuditActor | null = null;
+  let recorded = false;
   try {
     assertSameOrigin(request);
     assertRequestRateLimit(
@@ -51,6 +59,7 @@ export const POST = async (request: Request) => {
     const input = adminLoginSchema.parse(
       await readJsonBody(request, MAX_ADMIN_LOGIN_BODY_BYTES),
     );
+    actor = anonymousAuditActor(input.username);
     assertSubjectRateLimit(
       "admin-login",
       input.username.toLowerCase(),
@@ -64,13 +73,24 @@ export const POST = async (request: Request) => {
         installation,
       ))
     ) {
+      await appendSecurityAudit({
+        action: "admin.authentication.failed", actor,
+        outcome: "failure", targetType: "authentication",
+      });
+      recorded = true;
       throw new ApiError(
         "Incorrect administrator username or password.",
         "ADMIN_UNAUTHORIZED",
         401,
       );
     }
+    actor = administratorAuditActor(installation.owner.username);
     if (installation.owner.twoFactor && !input.otpCode) {
+      await appendSecurityAudit({
+        action: "admin.authentication.challenge", actor,
+        outcome: "challenge", targetType: "authentication",
+      });
+      recorded = true;
       return apiSuccess(
         {
           authenticated: false,
@@ -88,6 +108,11 @@ export const POST = async (request: Request) => {
         installation.sessionSecret,
       );
       if (!secondFactor.valid) {
+        await appendSecurityAudit({
+          action: "admin.authentication.failed", actor,
+          outcome: "failure", targetType: "authentication",
+        });
+        recorded = true;
         throw new ApiError(
           "Incorrect administrator credentials or verification code.",
           "ADMIN_UNAUTHORIZED",
@@ -108,6 +133,11 @@ export const POST = async (request: Request) => {
         );
       }
     }
+    await appendSecurityAudit({
+      action: "admin.authentication.succeeded", actor,
+      outcome: "success", targetType: "authentication",
+    });
+    recorded = true;
     const response = apiSuccess({
       authenticated: true,
       configured: true,
@@ -123,13 +153,28 @@ export const POST = async (request: Request) => {
     );
     return response;
   } catch (error) {
+    if (actor && !recorded) {
+      await appendSecurityAudit({
+        action: "admin.authentication.failed", actor,
+        outcome: "failure", targetType: "authentication",
+      });
+    }
     return apiFailure(error, "Unable to sign in as administrator.");
   }
 };
 
-export const DELETE = (request: Request) => {
+export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
+    const installation = await installationStore.get();
+    if (installation && await hasAdminAccess()) {
+      await appendSecurityAudit({
+        action: "admin.authentication.signed-out",
+        actor: administratorAuditActor(installation.owner.username),
+        outcome: "success",
+        targetType: "session",
+      });
+    }
     const response = new NextResponse(null, { status: 204 });
     response.cookies.set(ADMIN_COOKIE, "", {
       ...adminCookieOptions,

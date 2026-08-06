@@ -23,6 +23,8 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import { installationAdministratorAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
@@ -53,6 +55,7 @@ export const GET = async () => {
 };
 
 export const PUT = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
@@ -119,10 +122,18 @@ export const PUT = async (request: Request) => {
         );
       }
     }
+    audit = securityAuditOperation({
+      action: "admin.account.updated",
+      actor: installationAdministratorAuditActor(),
+      targetType: "user",
+    });
+    await audit.attempt();
     const updated = await installationStore.updateOwner(
       installation.owner.authVersion,
       { password, twoFactor, username: input.username },
     );
+    audit.applied();
+    await audit.success();
     const response = apiSuccess({
       security: {
         recoveryCodesRemaining:
@@ -142,6 +153,7 @@ export const PUT = async (request: Request) => {
     );
     return response;
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(error, "Unable to update administrator account.");
   }
 };
