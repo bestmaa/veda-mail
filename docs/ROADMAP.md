@@ -630,7 +630,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 
 - [x] Admin feature/capability matrix and per-organization policy controls
 - [x] Configurable message/attachment limits and allowed/blocked file policy
-- [ ] Optional open-source malware scanner integration with quarantine states
+- [x] Optional open-source malware scanner integration with quarantine states
 - [ ] Structured redacted logs, request correlation, metrics, health/readiness,
   provider latency/error dashboards, and alerting guidance
 - [ ] Security audit log for administrator, authentication, rule, delegation,
@@ -678,6 +678,25 @@ post-deploy health endpoint returned HTTP 200 `ok` with private no-store,
 HSTS, and nosniff headers. The live administration route continued to enforce
 its encrypted HttpOnly administrator-session gate; authenticated policy-form
 persistence and accessibility are covered by the passing browser regression.
+
+The open-source malware-scanner hook and quarantine lifecycle are complete.
+PR #20 (`948c265`) introduced the bounded scanner interface, AES-256-GCM
+outbound quarantine, and explicit `reserved`, `uploading`, `quarantined`,
+`clean`, `rejected`, `claimed`, and `consumed` lifecycle states; PR #55
+(`b27e27c`) extended the same fail-closed inspection model to received
+attachment downloads. The hook is replaceable for self-hosters, while
+production attachment operations
+never bypass inspection: an absent, busy, timed-out, incomplete, or invalid
+scanner verdict returns a sanitized failure. Pinned `clamd.conf` limits bound
+archive expansion, recursion, files, parser work, temporary storage, and
+encrypted-member handling. PR #79 (`e426165`) and evidence PR #80 (`404afdc`)
+shipped the immutable private ClamAV sidecar, read-only policy mount, and named
+signature volume. The latest protected-main run `31072579608` and evidence run
+`31074901730` passed the live ClamAV fixtures plus source/container security;
+the focused scheduler, verdict, timeout, adversarial, and state-machine audit
+passed all 42 tests. After the current production deployment, Dokploy reported
+both `veda-mail` and `clamav` running and healthy, and the public health endpoint
+remained HTTP 200 `ok` with private no-store, HSTS, and nosniff headers.
 
 ## Delivery order
 
