@@ -629,7 +629,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 ## M8 — Administration, operations, and trust
 
 - [x] Admin feature/capability matrix and per-organization policy controls
-- [ ] Configurable message/attachment limits and allowed/blocked file policy
+- [x] Configurable message/attachment limits and allowed/blocked file policy
 - [ ] Optional open-source malware scanner integration with quarantine states
 - [ ] Structured redacted logs, request correlation, metrics, health/readiness,
   provider latency/error dashboards, and alerting guidance
@@ -659,6 +659,25 @@ source/container publishing. Dokploy deployed that exact merge successfully in
 1m 10s; the public health endpoint returned HTTP 200 `ok` with private no-store,
 HSTS, and nosniff headers, while the live administration route retained its
 encrypted HttpOnly administrator-session gate.
+
+Configurable organization message and attachment limits plus allowed/blocked
+extension and detected-MIME policies shipped through PR #102 in production
+commit `4907a07f40c78faac29d84ab15eed99d6e0421d1`. The rollback-safe versioned
+mode-0600 policy record preserves prior defaults when absent, normalizes and
+validates bounded rule lists, gives block rules precedence, and applies the
+strictest provider or organization file limit. Enforcement covers uploads,
+imports, provider draft attachments, immediate delivery, and scheduled
+delivery, including fail-closed handling for unknown saved-attachment sizes
+and retry-safe claim release when policy changes. PR run `31071553310` and
+protected-main run `31072579608` passed quality, coverage, all 104 browser
+regressions, production build/header checks, dependency audit, CodeQL, live
+ClamAV, source/container security, and multi-platform publication; coverage
+reported 73.06% lines, 70.32% statements, 67.25% functions, and 62.64%
+branches. Dokploy deployed the exact merge successfully in 2m 18s, and the
+post-deploy health endpoint returned HTTP 200 `ok` with private no-store,
+HSTS, and nosniff headers. The live administration route continued to enforce
+its encrypted HttpOnly administrator-session gate; authenticated policy-form
+persistence and accessibility are covered by the passing browser regression.
 
 ## Delivery order
 
