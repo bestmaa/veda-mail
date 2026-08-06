@@ -11,6 +11,8 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import { installationAdministratorAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { ApiError } from "@/transport/http/api-error";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 
@@ -26,6 +28,7 @@ export const GET = async () => {
 };
 
 export const PUT = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
@@ -50,6 +53,12 @@ export const PUT = async (request: Request) => {
       await readMultipartFormData(request),
       installation.organization,
     );
+    audit = securityAuditOperation({
+      action: "admin.organization.updated",
+      actor: installationAdministratorAuditActor(),
+      targetType: "organization",
+    });
+    await audit.attempt();
     const result = await installationStore.updateBranding(async (current) => {
       const logoFileName = parsed.logo
         ? await writeBrandLogo(parsed.logo)
@@ -65,8 +74,11 @@ export const PUT = async (request: Request) => {
     ) {
       await removeBrandLogo(previousLogo).catch(() => undefined);
     }
+    audit.applied();
+    await audit.success();
     return apiSuccess(await installationStore.getBranding());
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(error, "Unable to save organization settings.");
   }
 };

@@ -21,6 +21,7 @@ vi.mock("@/server/calendar/event-owner", () => ({
 vi.mock("@/server/calendar/event-store", () => ({
   calendarEventStore: { get: mocks.get },
 }));
+vi.mock("@/server/security-audit/security-audit", () => ({ appendSecurityAudit: vi.fn(), memberAuditActor: vi.fn(() => ({ actorId: "audit", actorType: "member" })) }));
 
 import { GET } from "@/app/api/v1/member/calendar/ics/route";
 import { id } from "@/domain/shared/brand";

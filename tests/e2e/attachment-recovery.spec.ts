@@ -42,6 +42,7 @@ test("retries a transient attachment capability probe without reloading", async 
 test("marks a server-invalidated attachment as needing reattachment", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
@@ -50,11 +51,15 @@ test("marks a server-invalidated attachment as needing reattachment", async ({
   await dialog
     .getByRole("textbox", { exact: true, name: "Message body" })
     .fill("Expired attachment recovery.");
+  const uploaded = page.waitForResponse((candidate) =>
+    candidate.request().method() === "POST" &&
+    candidate.url().endsWith("/api/v1/mail/attachments"));
   await dialog.locator('input[type="file"]').setInputFiles({
     buffer: Buffer.from("temporary attachment"),
     mimeType: "text/plain",
     name: "expired.txt",
   });
+  expect((await uploaded).ok()).toBe(true);
   await expect(dialog.getByText("expired.txt", { exact: true })).toBeVisible();
   await expect(dialog.getByText(/text\/plain/)).toBeVisible();
 

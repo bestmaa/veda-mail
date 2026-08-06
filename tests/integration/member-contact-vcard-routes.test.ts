@@ -24,6 +24,7 @@ vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.assertRequestRateLimit,
   assertSubjectRateLimit: mocks.assertSubjectRateLimit,
 }));
+vi.mock("@/server/security-audit/security-audit", () => ({ appendSecurityAudit: vi.fn(), memberAuditActor: vi.fn(() => ({ actorId: "audit", actorType: "member" })) }));
 
 import { GET, POST } from "@/app/api/v1/member/contacts/vcard/route";
 import type { ContactBook } from "@/domain/member/contact";

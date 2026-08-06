@@ -3,6 +3,8 @@ import { assertSameOrigin } from "@/server/installation/request-origin";
 import { mailContentPolicySchema } from "@/server/organization/mail-content-policy.schema";
 import { mailContentPolicyStore } from "@/server/organization/mail-content-policy.store";
 import { assertRequestRateLimit, assertSubjectRateLimit } from "@/server/security/rate-limit";
+import { installationAdministratorAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
 
@@ -19,6 +21,7 @@ export const GET = async () => {
 };
 
 export const PUT = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
@@ -27,8 +30,18 @@ export const PUT = async (request: Request) => {
     const policy = mailContentPolicySchema.parse(
       await readJsonBody(request, MAX_POLICY_BODY_BYTES),
     );
-    return apiSuccess({ policy: await mailContentPolicyStore.put(policy) });
+    audit = securityAuditOperation({
+      action: "admin.mail-policy.updated",
+      actor: installationAdministratorAuditActor(),
+      targetType: "mail-policy",
+    });
+    await audit.attempt();
+    const updated = await mailContentPolicyStore.put(policy);
+    audit.applied();
+    await audit.success();
+    return apiSuccess({ policy: updated });
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(error, "Unable to save mail content policy.");
   }
 };

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  disableProviderDrafts,
   expectNoSeriousAccessibilityViolations,
   sendComposer,
   useInstalledMailbox,
@@ -161,6 +162,7 @@ test("keeps rich compose controls reachable above a short mobile viewport", asyn
 });
 
 test("uploads, removes, scans, and sends an attachment", async ({ page }) => {
+  await disableProviderDrafts(page);
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog", { name: "Compose message" });
   await dialog
@@ -174,21 +176,33 @@ test("uploads, removes, scans, and sends an attachment", async ({ page }) => {
     .fill("The scanned file is attached.");
   const picker = dialog.locator('input[type="file"]');
 
+  const firstUploaded = page.waitForResponse((candidate) =>
+    candidate.request().method() === "POST" &&
+    candidate.url().endsWith("/api/v1/mail/attachments"));
   await picker.setInputFiles({
     buffer: Buffer.from("remove this copy"),
     mimeType: "text/plain",
     name: "first.txt",
   });
+  expect((await firstUploaded).ok()).toBe(true);
   await expect(dialog.getByText("first.txt", { exact: true })).toBeVisible();
   await expect(dialog.getByText(/text\/plain/)).toBeVisible();
+  const firstRemoved = page.waitForResponse((candidate) =>
+    candidate.request().method() === "DELETE" &&
+    candidate.url().includes("/api/v1/mail/attachments/"));
   await dialog.getByRole("button", { name: "Remove first.txt" }).click();
+  expect((await firstRemoved).ok()).toBe(true);
   await expect(dialog.getByText("first.txt", { exact: true })).toBeHidden();
 
+  const evidenceUploaded = page.waitForResponse((candidate) =>
+    candidate.request().method() === "POST" &&
+    candidate.url().endsWith("/api/v1/mail/attachments"));
   await picker.setInputFiles({
     buffer: Buffer.from("byte-identical attachment"),
     mimeType: "text/plain",
     name: "evidence.txt",
   });
+  expect((await evidenceUploaded).ok()).toBe(true);
   await expect(dialog.getByText("evidence.txt", { exact: true })).toBeVisible();
   await expect(dialog.getByText(/text\/plain/)).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
@@ -215,4 +229,5 @@ test("uploads, removes, scans, and sends an attachment", async ({ page }) => {
     .click();
   await expect(page.getByText("evidence.txt", { exact: true })).toBeVisible();
   await expect(page.getByText(/text\/plain/)).toBeVisible();
+  await page.unrouteAll({ behavior: "wait" });
 });

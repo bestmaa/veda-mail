@@ -23,6 +23,7 @@ vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.assertRequestRateLimit,
   assertSubjectRateLimit: mocks.assertSubjectRateLimit,
 }));
+vi.mock("@/server/security-audit/security-audit", () => ({ appendSecurityAudit: vi.fn(), installationAdministratorAuditActor: vi.fn(() => ({ actorId: "audit", actorType: "administrator" })) }));
 
 import { GET, PUT } from "@/app/api/v1/admin/capabilities/route";
 

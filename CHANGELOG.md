@@ -47,6 +47,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added an administrator-only security audit log with strict privacy-bounded
+  events, keyed actor/target pseudonyms, attempt/outcome settlement, 10,000-event
+  retention, HMAC entry chaining and whole-file verification, mode-0600 atomic
+  persistence, verified pagination, an accessible administration view, and
+  operator backup/incident guidance. Authentication, setup, administrator
+  changes, 2FA, rules, standard-data exports/imports, mailbox emptying, and
+  permanent message destruction now emit scoped events
+
 - Privacy-bounded structured JSON logs, validated API request correlation IDs,
   process-local Prometheus metrics behind an optional bearer token, separate
   liveness/readiness endpoints, provider operation latency/error aggregation,

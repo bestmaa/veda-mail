@@ -188,7 +188,6 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
   expect(
     imports.every(({ body }) => Object.keys(body).join() === "draftId"),
   ).toBe(true);
-
   const sends: Record<string, unknown>[] = [];
   await page.route("**/api/v1/mail/send", async (requestRoute) => {
     sends.push(requestRoute.request().postDataJSON() as Record<string, unknown>);
@@ -246,4 +245,5 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
   );
   expect(sends[1]?.["draftId"]).toBe(draftIds[0]);
   await expectNoSeriousAccessibilityViolations(page);
+  await page.unrouteAll({ behavior: "wait" });
 });

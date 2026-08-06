@@ -74,7 +74,7 @@ vi.mock("@/server/organization/organization-policy.service", () => ({
 vi.mock("@/transport/http/read-json-body", () => ({
   readJsonBody: mocks.readJsonBody,
 }));
-
+vi.mock("@/server/security-audit/security-audit", () => ({ appendSecurityAudit: vi.fn(), memberAuditActor: vi.fn(() => ({ actorId: "audit", actorType: "member" })) }));
 import {
   GET as readSettings,
   PATCH as updateProfile,

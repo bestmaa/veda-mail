@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ApiError } from "@/transport/http/api-error";
-
 const mocks = vi.hoisted(() => ({
   assertAccess: vi.fn(),
   assertOrigin: vi.fn(),
@@ -11,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   snapshot: vi.fn(),
   stepUp: vi.fn(),
   subjectRate: vi.fn(),
+  auditAppend: vi.fn(),
 }));
 
 vi.mock("@/server/auth/admin-session", () => ({
@@ -36,6 +35,11 @@ vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.requestRate,
   assertSubjectRateLimit: mocks.subjectRate,
 }));
+vi.mock("@/server/security-audit/security-audit", () => ({
+  administratorAuditActor: vi.fn(() => ({ actorId: "audit-actor", actorType: "administrator" })),
+  appendSecurityAudit: mocks.auditAppend,
+  auditTargetId: vi.fn(() => "audit-target"),
+}));
 
 import { GET, POST } from "@/app/api/v1/admin/users/route";
 
@@ -50,6 +54,7 @@ const installation = {
     version: 1,
   },
   sessionSecret: "installation-secret",
+  owner: { username: "administrator" },
 };
 const user = {
   aliases: [],
@@ -71,10 +76,7 @@ const input = {
   password: "  Mailbox Password 123  ",
 };
 
-const request = (
-  body: unknown = input,
-  headers: Record<string, string> = {},
-): Request =>
+const request = (body: unknown = input, headers: Record<string, string> = {}): Request =>
   new Request("https://webmail.example.com/api/v1/admin/users", {
     body: JSON.stringify(body),
     headers: {
@@ -90,10 +92,8 @@ const request = (
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.issueToken.mockResolvedValue("refreshed-token");
-  mocks.stepUp.mockResolvedValue({
-    installation,
-    sessionRotated: false,
-  });
+  mocks.auditAppend.mockResolvedValue(undefined);
+  mocks.stepUp.mockResolvedValue({ installation, sessionRotated: false });
   mocks.provision.mockResolvedValue({ outcome: "created", user });
   mocks.snapshot.mockResolvedValue({
     adminTwoFactorEnabled: false,
@@ -114,9 +114,9 @@ describe("admin mailbox users API", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(mocks.snapshot).toHaveBeenCalledWith({ domain: "example.com" });
 
-    mocks.assertAccess.mockRejectedValueOnce(
-      new ApiError("Sign in.", "ADMIN_UNAUTHORIZED", 401),
-    );
+    mocks.assertAccess.mockRejectedValueOnce(new ApiError(
+      "Sign in.", "ADMIN_UNAUTHORIZED", 401,
+    ));
     expect((await GET(new Request("https://webmail.example.com/api/v1/admin/users"))).status).toBe(401);
   });
 
@@ -139,9 +139,9 @@ describe("admin mailbox users API", () => {
   });
 
   it("returns 401, 413, and 429 before provisioning", async () => {
-    mocks.assertAccess.mockRejectedValueOnce(
-      new ApiError("Sign in.", "ADMIN_UNAUTHORIZED", 401),
-    );
+    mocks.assertAccess.mockRejectedValueOnce(new ApiError(
+      "Sign in.", "ADMIN_UNAUTHORIZED", 401,
+    ));
     expect((await POST(request())).status).toBe(401);
 
     expect(
@@ -174,6 +174,7 @@ describe("admin mailbox users API", () => {
       "installation-secret",
       expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
     );
+    expect(mocks.auditAppend).toHaveBeenCalledTimes(2);
   });
 
   it("redacts secrets from domain-scope and provider failures", async () => {

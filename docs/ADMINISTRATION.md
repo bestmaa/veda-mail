@@ -179,6 +179,21 @@ This second factor protects only Veda Mail. It does not protect direct IMAP,
 the provider's own webmail, or other mail clients. Provider-native MFA remains
 recommended. See [member authenticator 2FA](MEMBER-2FA.md).
 
+## Security audit log
+
+Open **Audit log** to inspect integrity-verified protected-action metadata.
+Events are newest first and can be paged without exposing addresses, usernames,
+message IDs, content, or network identifiers. Actor and target values are keyed
+pseudonyms; use the request ID to correlate an event with the redacted
+structured application log.
+
+Investigate `failure` outcomes and reconcile `partial` outcomes before retrying
+an external mutation. The green verification banner means the current strict
+file, chain, sequence, and deployment-key check passed; it does not prove that
+the whole volume was never rolled back. See the
+[security audit runbook](SECURITY-AUDIT.md) for retention, backup, restore, and
+incident guidance.
+
 ## Routine checks
 
 Monthly:
@@ -187,5 +202,6 @@ Monthly:
 - Test administrator and a dedicated member account.
 - Confirm backups and perform periodic restore rehearsals.
 - Review application and provider logs for repeated failures.
+- Review audit failures/partials and verify the audit integrity banner.
 - Install supported security updates.
 - Confirm the public source link matches the running modified version.

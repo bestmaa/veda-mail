@@ -9,6 +9,10 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import {
+  appendSecurityAudit,
+  memberAuditActor,
+} from "@/server/security-audit/security-audit";
 import { apiFailure } from "@/transport/http/api-response";
 
 export const runtime = "nodejs";
@@ -24,6 +28,7 @@ export const GET = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
+    const auditActor = memberAuditActor(connection);
     assertSubjectRateLimit(
       "member-calendar-event-export",
       connection.id,
@@ -33,6 +38,13 @@ export const GET = async (request: Request) => {
     const book = await calendarEventStore.get(
       await calendarEventOwnerForConnection(connection),
     );
+    await appendSecurityAudit({
+      action: "member.calendar.exported",
+      actor: auditActor,
+      count: book.events.length,
+      outcome: "success",
+      targetType: "calendar",
+    });
     return new Response(exportCalendarEvents(book.events), {
       headers: {
         "Cache-Control": "private, no-store",

@@ -1218,6 +1218,24 @@ with compiled provider/operation labels and reset with the process. The
 [observability runbook](OBSERVABILITY.md) defines replica aggregation,
 dashboards, retention, and alert thresholds.
 
+## Security audit boundary
+
+Protected routes produce strict metadata events through one server-only audit
+contract. Mutations append an HMAC-authenticated attempt before the side effect
+and settle it as success, failure, or partial. Actor and target indexes use
+dedicated HKDF-derived HMAC keys; raw account, provider, rule, mailbox, message,
+contact, and calendar identities never enter the record. Authentication events
+use the same contract without storing credentials or source-network metadata.
+
+The mode-0600 version-1 file is bounded to 10,000 entries, process-serialized,
+fsynced, and atomically replaced. An entry-chain HMAC plus whole-file HMAC,
+key-check, and monotonic sequence are verified before every append or read.
+Retention advances the authenticated anchor and disclosed dropped count. The
+administrator API returns only verified reverse pages and remains inside the
+authenticated, rate-limited, private/no-store boundary. The store inherits the
+single-writer runtime restriction and cannot detect restoration of an older
+internally valid whole-file snapshot without an external checkpoint.
+
 ## Enforced invariants
 
 - Source, test, script, and stylesheet files stay at or below 250 lines.

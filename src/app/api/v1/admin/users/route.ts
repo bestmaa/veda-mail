@@ -21,6 +21,11 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import {
+  administratorAuditActor,
+  auditTargetId,
+} from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
 
@@ -75,6 +80,7 @@ export const GET = async (request: Request) => {
 
 export const POST = async (request: Request) => {
   let refreshedInstallation: InstallationRecord | null = null;
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
@@ -102,6 +108,13 @@ export const POST = async (request: Request) => {
       ...(input.otpCode ? { otpCode: input.otpCode } : {}),
     });
     if (stepUp.sessionRotated) refreshedInstallation = stepUp.installation;
+    audit = securityAuditOperation({
+      action: "admin.mail-user.created",
+      actor: administratorAuditActor(stepUp.installation.owner.username),
+      targetId: auditTargetId("user", input.email),
+      targetType: "user",
+    });
+    await audit.attempt();
     const result = await provisionAdminMailUser(
       idempotencyKey,
       {
@@ -112,6 +125,8 @@ export const POST = async (request: Request) => {
       stepUp.installation.sessionSecret,
       mailServiceProfileRevision(stepUp.installation.mailProfile),
     );
+    audit.applied();
+    await audit.success();
     return refreshAdminSession(
       apiSuccess(
         {
@@ -126,6 +141,7 @@ export const POST = async (request: Request) => {
       refreshedInstallation,
     );
   } catch (error) {
+    await audit?.failureIfPending();
     return refreshAdminSession(
       apiFailure(error, "Unable to create this mailbox user."),
       refreshedInstallation,

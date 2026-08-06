@@ -214,4 +214,32 @@ export const GET = wrap(actual);`,
     name: "a re-exported handler fails closed",
     source: `export { handler as POST } from "./handler";`,
   },
+  {
+    expected: [],
+    name: "reviewed security audit helpers preserve a guarded connection",
+    source: `${imports}
+import { appendSecurityAudit, memberAuditActor } from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
+export const POST = async (request: Request) => {
+  const connection = await getCurrentConnection();
+  assertMailSessionScope(request, connection);
+  const actor = memberAuditActor(connection);
+  const audit = securityAuditOperation({ action: "messages.destroyed", actor });
+  await audit.attempt();
+  await appendSecurityAudit({ action: "messages.destroyed", actor });
+  return readProtectedMailbox(connection);
+};`,
+  },
+  {
+    expected: ["POST"],
+    name: "security audit helpers cannot consume an unguarded connection",
+    source: `${imports}
+import { memberAuditActor } from "@/server/security-audit/security-audit";
+export const POST = async (request: Request) => {
+  const connection = await getCurrentConnection();
+  const actor = memberAuditActor(connection);
+  assertMailSessionScope(request, connection);
+  return actor;
+};`,
+  },
 ];

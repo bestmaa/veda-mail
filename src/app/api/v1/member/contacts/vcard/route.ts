@@ -15,6 +15,11 @@ import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
+import {
+  appendSecurityAudit,
+  memberAuditActor,
+} from "@/server/security-audit/security-audit";
+import { securityAuditOperation } from "@/server/security-audit/security-audit-operation";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
 
@@ -25,6 +30,7 @@ export const GET = async (request: Request) => {
     assertRequestRateLimit(request, "member-contact-vcard-export", 10_000, 60, 60 * 1000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
+    const auditActor = memberAuditActor(connection);
     assertSubjectRateLimit("member-contact-vcard-export", connection.id, 20, 15 * 60 * 1000);
     const book = await contactStore.get(await contactOwnerForConnection(connection));
     const cards = book.contacts.map((contact) => ({
@@ -40,6 +46,13 @@ export const GET = async (request: Request) => {
       uid: contact.id,
     }));
     const body = cards.length > 0 ? exportVCards(cards) : "";
+    await appendSecurityAudit({
+      action: "member.contacts.exported",
+      actor: auditActor,
+      count: cards.length,
+      outcome: "success",
+      targetType: "contacts",
+    });
     return new Response(body, { headers: {
       "Cache-Control": "private, no-store",
       "Content-Disposition": 'attachment; filename="veda-mail-contacts.vcf"',
@@ -52,18 +65,29 @@ export const GET = async (request: Request) => {
 };
 
 export const POST = async (request: Request) => {
+  let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
     assertRequestRateLimit(request, "member-contact-vcard-import", 5_000, 30, 60 * 1000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
+    const auditActor = memberAuditActor(connection);
     assertSubjectRateLimit("member-contact-vcard-import", connection.id, 5, 15 * 60 * 1000);
+    audit = securityAuditOperation({
+      action: "member.contacts.imported",
+      actor: auditActor,
+      targetType: "contacts",
+    });
+    await audit.attempt();
     const book = await importContactVCards(
       await contactOwnerForConnection(connection),
       await readJsonBody(request, MAX_VCARD_IMPORT_REQUEST_BYTES),
     );
+    audit.applied();
+    await audit.success();
     return apiSuccess(book, { status: 201 });
   } catch (error) {
+    await audit?.failureIfPending();
     return apiFailure(asVCardApiError(error), "Unable to import contacts.");
   }
 };

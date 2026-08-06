@@ -2,6 +2,7 @@ import type { BrandingViewModel } from "@/presentation/shared/branding/branding.
 import type { ReactNode } from "react";
 
 export type AdminSection =
+  | "audit"
   | "capabilities"
   | "mail"
   | "organization"
