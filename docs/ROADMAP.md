@@ -633,7 +633,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 - [x] Optional open-source malware scanner integration with quarantine states
 - [x] Structured redacted logs, request correlation, metrics, health/readiness,
   provider latency/error dashboards, and alerting guidance
-- [ ] Security audit log for administrator, authentication, rule, delegation,
+- [x] Security audit log for administrator, authentication, rule, delegation,
   export, and destructive mailbox actions
 - [ ] Session inventory/revocation, idle/absolute expiry, CSRF review, login
   throttling, and distributed rate-limit option
@@ -717,6 +717,28 @@ HTTP 200 `ok` with a generated and caller-echoed `x-request-id`; readiness
 returned HTTP 200 with both `data` and `scanner` `ok`; the unconfigured metrics
 endpoint returned private, non-cacheable HTTP 404. The new Veda Mail container
 and the ClamAV sidecar both reported healthy after deployment.
+
+The tamper-evident security audit slice shipped through PR #113 in production
+commit `4980ff766453258f89d162e03ecbc3db7aeb390c`. A serialized, atomic,
+mode-0600 record store authenticates both the complete bounded snapshot and an
+HMAC-linked sequence, derives separate integrity and pseudonymization keys from
+the deployment job key, and fails closed before protected mutations when a
+durable attempt cannot be recorded. Raw usernames, addresses, provider IDs,
+message or mailbox IDs, content, IP addresses, and user agents are excluded;
+the administrator API returns only verified, bounded, newest-first evidence.
+Authentication, setup, administrator policy and account changes, user
+provisioning, TOTP changes, rules, contact/calendar exports and imports,
+mailbox emptying, and permanent message destruction record explicit attempt,
+success, partial, or failure outcomes. Delegation action names are reserved but
+not claimed until the separate delegation feature exists. PR run `31110776697`
+passed quality, coverage, all 96 browser regressions, production build and
+security-header verification, dependency audit, CodeQL, live ClamAV, and
+source/container scans. Dokploy deployed that exact merge in 1m 8s; production
+health returned `ok`, readiness returned both `data` and `scanner` `ok`, and
+the live audit endpoint rejected an unauthenticated request with the bounded
+`ADMIN_UNAUTHORIZED` response. The passing browser regression proves the
+authenticated Audit log view, chain-verification banner, login event, privacy
+redaction, and WCAG contrast on the deployed source revision.
 
 ## Delivery order
 
