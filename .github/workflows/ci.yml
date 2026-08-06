@@ -21,6 +21,8 @@ env:
   BUILDX_VERSION: v0.35.0
   CLAMAV_IMAGE: >-
     clamav/clamav:1.5.3@sha256:7f5389ccaa2368c383fa80e167ccfe44348d71e685f926fce4755eed1757673a
+  REDIS_IMAGE: >-
+    redis:8.4.0-alpine@sha256:e9a8794f6d9d48751f76eeff9b8402405e208d043b35602a33ea415e7cff347c
   SBOM_SCANNER_DIGEST: 79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
   SBOM_SCANNER_IMAGE: >-
     docker/buildkit-syft-scanner@sha256:79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
@@ -36,6 +38,18 @@ jobs:
       VEDA_MAIL_SETUP_TOKEN: ci-only-token-not-used-in-production
       VEDA_MAIL_JOB_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       VEDA_MAIL_DATA_DIR: /tmp/veda-mail-data
+      VEDA_MAIL_TEST_REDIS_URL: redis://127.0.0.1:6379
+
+    services:
+      redis:
+        image: redis:8.4.0-alpine@sha256:e9a8794f6d9d48751f76eeff9b8402405e208d043b35602a33ea415e7cff347c
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
 
     steps:
       - name: Check out source
@@ -254,6 +268,19 @@ jobs:
           hide-progress: true
           ignore-unfixed: "false"
           image-ref: ${{ env.CLAMAV_IMAGE }}
+          scan-type: image
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          skip-setup-trivy: "true"
+          vuln-type: os,library
+
+      - name: Scan pinned Redis login-limiter sidecar
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          exit-code: "1"
+          hide-progress: true
+          ignore-unfixed: "false"
+          image-ref: ${{ env.REDIS_IMAGE }}
           scan-type: image
           scanners: vuln,secret
           severity: HIGH,CRITICAL

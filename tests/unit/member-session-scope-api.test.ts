@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   memberSessionApi,
+  memberSessionsApi,
   memberSettingsApi,
   memberTwoFactorApi,
 } from "@/transport/client/api-client";
@@ -33,14 +34,16 @@ describe("member client session scope", () => {
     await memberTwoFactorApi.confirm("password", "123456", scope);
     await memberTwoFactorApi.disable("password", "RECOVERY-CODE", scope);
     await memberSessionApi.signOut(scope);
+    await memberSessionsApi.get(scope);
+    await memberSessionsApi.revoke("opaque-handle", scope);
 
     const calls = vi.mocked(fetch).mock.calls;
-    expect(calls).toHaveLength(7);
+    expect(calls).toHaveLength(9);
     expect(
       calls.map(([, init]) =>
         new Headers(init?.headers).get("x-veda-mail-session-scope"),
       ),
-    ).toEqual(Array.from({ length: 7 }, () => scope));
+    ).toEqual(Array.from({ length: 9 }, () => scope));
     expect(calls.map(([, init]) => init?.method ?? "GET")).toEqual([
       "GET",
       "PATCH",
@@ -48,6 +51,8 @@ describe("member client session scope", () => {
       "POST",
       "PUT",
       "DELETE",
+      "DELETE",
+      "GET",
       "DELETE",
     ]);
   });

@@ -64,6 +64,8 @@ VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
+VEDA_MAIL_RATE_LIMIT_REDIS_URL=
+VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX=veda-mail:rate-limit:v1
 VEDA_MAIL_METRICS_TOKEN=optional-output-from-openssl-rand-hex-32
 VEDA_MAIL_CLAMAV_HOST=clamav
 VEDA_MAIL_CLAMAV_PORT=3310
@@ -142,6 +144,16 @@ and 1,000 active records. It expires after 30 minutes through a background
 sweep and is intentionally excluded from backups. Run one Veda Mail process
 per container; multi-replica operation requires a shared encrypted quarantine,
 session store, and coordinated rate limiter.
+
+Interactive sessions idle-expire after 30 minutes and have a non-extendable
+12-hour absolute lifetime. They are individually revocable but remain
+process-local; a restart signs everyone out. An optional Redis-compatible
+backend coordinates only admin/member login global, trusted-source, and
+subject windows across processes. Configure `VEDA_MAIL_RATE_LIMIT_REDIS_URL`
+with a secret-managed `rediss://` URL and an optional deployment-specific
+`VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
+configured backend fails login closed. This does not remove the one-replica
+requirement because provider sessions and mutable stores are not yet shared.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool
 with the same 512 MiB/1,000-record process ceiling and random mode-0600 files in
@@ -223,6 +235,7 @@ VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=<optional dedicated Stalwart API key>
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
+VEDA_MAIL_RATE_LIMIT_REDIS_URL=<optional rediss URL for shared login throttling>
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_CLAMAV_HOST=clamav
 VEDA_MAIL_CLAMAV_PORT=3310
@@ -349,14 +362,15 @@ official init process currently starts as root before dropping to ClamAV
 service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
-Keep one replica. Member sessions, rate limits, delivery notices, and the send
+Keep one replica. Administrator/member provider sessions, non-login rate
+limits, delivery notices, and the send
 idempotency ledger are process-local. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
-lose updates. Scaling requires a shared encrypted session repository,
-distributed limiter, atomic shared send ledger, and transactional replacement
+lose updates. Scaling requires a shared encrypted session repository, atomic
+shared send ledger, and transactional replacement
 for all per-member metadata stores.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup

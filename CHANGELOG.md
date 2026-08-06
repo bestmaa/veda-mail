@@ -47,6 +47,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added server-authoritative administrator/member session inventories with
+  selective revocation, privacy-safe management handles, coarse client labels,
+  30-minute idle and 12-hour absolute expiry, fail-closed ambiguous-origin
+  rejection, and an optional atomic Redis-backed shared login limiter whose
+  account/source keys are HMAC-pseudonymized
 - Added an administrator-only security audit log with strict privacy-bounded
   events, keyed actor/target pseudonyms, attempt/outcome settlement, 10,000-event
   retention, HMAC entry chaining and whole-file verification, mode-0600 atomic

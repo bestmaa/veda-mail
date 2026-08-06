@@ -26,7 +26,7 @@ export const AdminTwoFactorView = (model: AdminSecurityViewProps) => (
       <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${
         model.twoFactorEnabled
           ? "bg-emerald-50 text-emerald-700"
-          : "bg-slate-100 text-slate-500"
+          : "bg-slate-100 text-slate-700"
       }`}>
         {model.twoFactorEnabled ? "Enabled" : "Disabled"}
       </span>

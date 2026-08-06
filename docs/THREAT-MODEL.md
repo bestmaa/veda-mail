@@ -69,13 +69,23 @@ URLs, analytics, or client-readable cookies.
   cleared before paint on a scope change, and stale async completions are
   ignored.
 - State-changing routes enforce same-origin requests and reject suspicious
-  cross-site fetch metadata. Authentication and sensitive actions are
+  cross-site fetch metadata. Requests with neither a valid Origin nor an
+  explicit same-origin/none Fetch Metadata signal fail closed. Authentication and sensitive actions are
   rate-limited by request source and subject.
+- Administrator and member sessions are server-registered, individually
+  inventoryable/revocable, idle-expire after 30 minutes, and have a
+  non-extendable 12-hour lifetime. Browser APIs receive HMAC management handles,
+  never replayable raw bearer IDs. A restart intentionally invalidates them.
+- Login throttles always use process-local global, trusted-source, and
+  normalized-subject windows. Operators may configure Redis for equivalent
+  cross-replica atomic windows; identifiers are HMAC-pseudonymized and a
+  configured unavailable backend fails login closed.
 - Administrator recovery is an interactive container command; the recovery
   token is not accepted by an HTTP route.
 
-Residual risk: member sessions are memory-local. A restart signs members out,
-and multiple replicas do not share sessions or rate-limit state.
+Residual risk: sessions and non-login rate limits remain memory-local. A restart
+signs administrators and members out, and multiple replicas cannot share
+provider sessions. The Redis option coordinates login throttles only.
 
 ### Stalwart mailbox provisioning
 

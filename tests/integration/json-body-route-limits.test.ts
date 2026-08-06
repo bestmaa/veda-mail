@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   assertRequestRateLimit: vi.fn(),
   assertSubjectRateLimit: vi.fn(),
+  rateLimitSourceFor: vi.fn(() => null),
   connectionCreate: vi.fn(),
   connectionIsActive: vi.fn(),
   connectionRemove: vi.fn(),
@@ -90,6 +91,7 @@ vi.mock("@/server/mail-service/mail-service-profile.store", () => ({
 vi.mock("@/server/security/rate-limit", () => ({
   assertRequestRateLimit: mocks.assertRequestRateLimit,
   assertSubjectRateLimit: mocks.assertSubjectRateLimit,
+  rateLimitSourceFor: mocks.rateLimitSourceFor,
 }));
 
 import { POST as adminLogin } from "@/app/api/v1/admin/auth/route";

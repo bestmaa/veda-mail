@@ -31,7 +31,10 @@ vi.mock("@/server/mail/send-idempotency-store", () => ({
 import type { ProviderConnection } from "@/domain/provider/provider";
 import type { ConnectionId } from "@/domain/shared/brand";
 import { id } from "@/domain/shared/brand";
-import { MEMBER_CONNECTION_TTL_MS } from "@/server/connections/connection-lifetime";
+import {
+  MEMBER_CONNECTION_IDLE_TTL_MS,
+  MEMBER_CONNECTION_TTL_MS,
+} from "@/server/connections/connection-lifetime";
 import { connectionStore } from "@/server/connections/connection-store";
 
 interface TestConnectionState {
@@ -78,7 +81,7 @@ describe("connection store lifetime", () => {
     (providerId) => {
       const connection = createConnection(providerId);
 
-      vi.advanceTimersByTime(MEMBER_CONNECTION_TTL_MS - 1);
+      vi.advanceTimersByTime(MEMBER_CONNECTION_IDLE_TTL_MS - 1);
       expect(state().connections.has(connection.id)).toBe(true);
       expect(connectionStore.isActive(connection)).toBe(true);
 
@@ -94,6 +97,19 @@ describe("connection store lifetime", () => {
     },
   );
 
+  it("touches activity but never extends the twelve-hour absolute lifetime", () => {
+    const connection = createConnection();
+    for (let elapsed = 0; elapsed < MEMBER_CONNECTION_TTL_MS; elapsed += 20 * 60_000) {
+      vi.advanceTimersByTime(Math.min(20 * 60_000, MEMBER_CONNECTION_TTL_MS - elapsed - 1));
+      if (Date.now() < Date.parse(connection.createdAt) + MEMBER_CONNECTION_TTL_MS) {
+        expect(connectionStore.get(connection.id)).not.toBeNull();
+      }
+    }
+
+    vi.setSystemTime(Date.parse(connection.createdAt) + MEMBER_CONNECTION_TTL_MS);
+    expect(connectionStore.get(connection.id)).toBeNull();
+  });
+
   it("cancels scheduled cleanup when a connection is removed early", () => {
     const connection = createConnection();
     connectionStore.remove(connection.id);
@@ -103,6 +119,33 @@ describe("connection store lifetime", () => {
 
     expect(mocks.clearGateway).not.toHaveBeenCalled();
     expect(mocks.clearTwoFactorEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("lists only sessions belonging to the requested opaque owner", () => {
+    connectionStore.create(
+      {
+        config: { credential: "first-secret" },
+        displayName: "First mailbox",
+        providerId: id.provider("mock"),
+      },
+      "profile-revision",
+      { clientLabel: "Chrome on Linux", ownerKey: "owner-a" },
+    );
+    connectionStore.create(
+      {
+        config: { credential: "second-secret" },
+        displayName: "Second mailbox",
+        providerId: id.provider("mock"),
+      },
+      "profile-revision",
+      { clientLabel: "Firefox on Linux", ownerKey: "owner-b" },
+    );
+
+    const sessions = connectionStore.listForOwner("owner-a");
+
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.clientLabel).toBe("Chrome on Linux");
+    expect(sessions[0]?.connection.config).toEqual({ credential: "first-secret" });
   });
 
   it("keeps explicit removal idempotent for orphaned connection resources", () => {

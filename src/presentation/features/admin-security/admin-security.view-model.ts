@@ -2,6 +2,7 @@ import type {
   ChangeEventHandler,
   FormEventHandler,
 } from "react";
+import type { AdminSessionModel } from "@/presentation/features/admin-security/admin-session.view-model";
 
 export interface AdminSecurityViewProps {
   readonly accountOtpCode: string;
@@ -25,6 +26,7 @@ export interface AdminSecurityViewProps {
   readonly recoveryCodes: readonly string[];
   readonly recoveryCodesRemaining: number;
   readonly recoveryConfigured: boolean;
+  readonly sessions: AdminSessionModel;
   readonly success: string | null;
   readonly twoFactorCode: string;
   readonly twoFactorCodeInput: ChangeEventHandler<HTMLInputElement>;

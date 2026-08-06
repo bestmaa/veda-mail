@@ -13,6 +13,7 @@ import { EmailSignatureSettingsView } from "@/presentation/features/mail-workspa
 import { TwoFactorSettingsView } from "@/presentation/features/mail-workspace/ui/two-factor-settings.view";
 import { MailRulesView } from "@/presentation/features/mail-workspace/ui/mail-rules.view";
 import { NewMailNotificationSettingsView } from "@/presentation/features/mail-workspace/ui/new-mail-notification-settings.view";
+import { MemberSessionsView } from "@/presentation/features/mail-workspace/ui/member-sessions.view";
 
 const status = (error: string | null, success: string | null) =>
   error ? (
@@ -163,6 +164,8 @@ export const AccountSettingsView = ({
               <MailRulesView rules={settings.rules} />
 
               <TwoFactorSettingsView settings={settings.twoFactor} />
+
+              <MemberSessionsView sessions={settings.sessions} />
 
               <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" onSubmit={settings.password.onSubmit}>
                 <div className="mb-4 flex items-center gap-3">

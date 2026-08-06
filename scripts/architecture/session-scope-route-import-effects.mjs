@@ -16,6 +16,8 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/domain/member/contact", new Set(["contactNameKey", "MAX_CONTACT_EMAILS"])],
   ["@/domain/shared/brand", new Set(["id"])],
   ["@/server/connections/connection-store", new Set(["connectionStore"])],
+  ["@/server/connections/connection-session-record", new Set(["storedConnectionExpiresAt"])],
+  ["@/server/auth/session-management", new Set(["sessionManagementId"])],
   ["@/server/auth/member-two-factor", new Set(["memberTwoFactorSecurity"])],
   ["@/server/auth/two-factor-enrollment", new Set(["twoFactorEnrollmentStore"])],
   ["@/server/organization/organization-policy.service", new Set([
@@ -223,7 +225,6 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ],
   ["@/transport/http/api-error", new Set(["ApiError"])],
 ]);
-
 const hasExport = (registry, moduleName, exportName) =>
   registry.get(moduleName)?.has(exportName) ||
   registry.get(moduleName)?.has("*") ||
@@ -236,7 +237,6 @@ export const isRequestUtilityExport = (moduleName, exportName) =>
   hasExport(REVIEWED_HELPER_EXPORTS, moduleName, exportName);
 export const isAuthWrapperModule = (moduleName) =>
   AUTH_WRAPPER_EXPORTS.has(moduleName);
-
 export const isRequestUtilityModule = (moduleName) =>
   REQUEST_UTILITY_EXPORTS.has(moduleName) ||
   REVIEWED_HELPER_EXPORTS.has(moduleName);

@@ -14,6 +14,13 @@ import { mailSessionScopeHeaders } from "@/transport/client/mail-session-scope";
 
 export { ApiClientError } from "@/transport/client/api-request";
 export { mailApi } from "@/transport/client/mail-api";
+export {
+  adminSessionsApi,
+  memberSessionsApi,
+  type AdminSessionsSnapshot,
+  type ManagedSessionSummary,
+  type MemberSessionsSnapshot,
+} from "@/transport/client/session-api";
 
 export interface MemberSignInInput {
   readonly email: string;
@@ -50,6 +57,7 @@ export interface SessionResult {
   readonly mfaRequired?: boolean;
   readonly providerLabel?: string;
 }
+
 
 export interface AdminMailServiceConfiguration {
   readonly allowedDomains: readonly string[];
