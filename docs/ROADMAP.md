@@ -631,7 +631,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 - [x] Admin feature/capability matrix and per-organization policy controls
 - [x] Configurable message/attachment limits and allowed/blocked file policy
 - [x] Optional open-source malware scanner integration with quarantine states
-- [ ] Structured redacted logs, request correlation, metrics, health/readiness,
+- [x] Structured redacted logs, request correlation, metrics, health/readiness,
   provider latency/error dashboards, and alerting guidance
 - [ ] Security audit log for administrator, authentication, rule, delegation,
   export, and destructive mailbox actions
@@ -697,6 +697,26 @@ the focused scheduler, verdict, timeout, adversarial, and state-machine audit
 passed all 42 tests. After the current production deployment, Dokploy reported
 both `veda-mail` and `clamav` running and healthy, and the public health endpoint
 remained HTTP 200 `ok` with private no-store, HSTS, and nosniff headers.
+
+Privacy-bounded observability shipped through PR #105 in production commit
+`2292f95b021065445ceabe698ad70001bf56154a`. Every API request now receives a
+validated correlation identifier, while one-line structured logs allow only
+bounded operational fields and replace dynamic route identifiers with `:id`.
+Provider-independent gateway timing and outcome counters feed an optional
+constant-time bearer-protected Prometheus endpoint; metrics stay hidden when
+unconfigured. The readiness endpoint checks the data repository and exact
+ClamAV `PONG` response without exposing paths, hosts, or raw errors. The
+observability runbook supplies replica-safe Grafana queries, sustained alert
+thresholds, retention guidance, and strict label/cardinality rules. PR run
+`31081172416` and protected-main run `31089116705` passed quality and coverage
+(483 files and 2,395 tests), all 103 browser regressions, production build and
+security smoke, dependency audit, CodeQL, live ClamAV, source/container scans,
+amd64 and arm64 builds, Trivy validation, attestation, and multi-platform
+publication. Dokploy deployed that exact merge in 1m 7s. Production returned
+HTTP 200 `ok` with a generated and caller-echoed `x-request-id`; readiness
+returned HTTP 200 with both `data` and `scanner` `ok`; the unconfigured metrics
+endpoint returned private, non-cacheable HTTP 404. The new Veda Mail container
+and the ClamAV sidecar both reported healthy after deployment.
 
 ## Delivery order
 
