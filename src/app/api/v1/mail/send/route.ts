@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { MessageDeliveryRejectedError } from "@/domain/mail/mail-errors";
 import { canonicalizeSendReceipt } from "@/domain/mail/send-receipt";
-import { getMailService } from "@/server/mail/mail-service";
 import type {
   OutgoingAttachment,
   SendMessageInput,
@@ -41,6 +40,7 @@ import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
 import { sendMessageSchema } from "@/transport/http/request-schemas";
 import { ZodError } from "zod";
+import { assertSendMailPolicy } from "@/server/mail/outgoing-policy-validation";
 
 export const runtime = "nodejs";
 
@@ -180,9 +180,8 @@ export const POST = async (request: Request) => {
       };
       let receipt: SendReceipt;
       try {
-        const providerReceipt: unknown = await (
-          await getMailService(connection)
-        ).sendMessage(input);
+        const mail = await assertSendMailPolicy(connection, input, attachments);
+        const providerReceipt: unknown = await mail.sendMessage(input);
         receipt = canonicalizeSendReceipt(input, providerReceipt, {
           deliveryNoticeId: randomUUID(),
           id: id.message(`receipt-${randomUUID()}`),

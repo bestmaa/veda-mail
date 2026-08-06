@@ -22,6 +22,14 @@ separate file, so rollback remains parse-compatible; restore the matching file
 when returning to a newer image. Its writer supports one writable application
 replica, matching the current deployment boundary.
 
+The outbound-content-policy release separately adds
+`/data/mail-content-policy.json` only after an administrator saves those
+controls. A missing file keeps the previous hard ceilings and unrestricted
+file-type behavior. The strict version-1 mode-0600 record is atomically
+replaced and must be backed up with `/data`; older images ignore it, preserving
+rollback parser compatibility. No environment variable, provider migration,
+Stalwart change, port, or mailbox migration is required.
+
 Scheduled send adds the required external `VEDA_MAIL_JOB_KEY` deployment secret
 and `/data/scheduled-jobs.json`. Generate the key with `openssl rand -base64 32`
 before starting the new Compose definition, store it outside `/data`, and back

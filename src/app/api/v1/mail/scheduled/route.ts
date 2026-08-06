@@ -4,6 +4,10 @@ import { assertSameOrigin } from "@/server/installation/request-origin";
 import { asDraftDomainApiError } from "@/server/mail/draft-http";
 import { getMailService } from "@/server/mail/mail-service";
 import {
+  assertSavedDraftMailPolicy,
+  getMailContentPolicy,
+} from "@/server/organization/mail-content-policy.service";
+import {
   assertSchedulableProviderDraft,
   canonicalScheduledRequest,
   scheduledMessageOwner,
@@ -67,6 +71,7 @@ export const POST = async (request: Request) => {
       await getMailService(connection)
     ).getDraft(durableRequest.providerDraftId);
     assertSchedulableProviderDraft(draft, durableRequest);
+    assertSavedDraftMailPolicy(await getMailContentPolicy(), draft);
     return apiSuccess(
       await scheduledSendStore.schedule({
         connection,

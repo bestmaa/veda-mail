@@ -19,6 +19,7 @@ import {
 } from "@/server/security/attachment-inspection";
 import { scheduleAttachmentScanner } from "@/server/security/attachment-scan-scheduler";
 import { getMailService } from "@/server/mail/mail-service";
+import { getMailContentPolicy } from "@/server/organization/mail-content-policy.service";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalAttachments = globalThis as typeof globalThis & {
@@ -131,9 +132,11 @@ export const attachmentScope = (
 export const resolveAttachmentCapability = async (
   connection: ProviderConnection,
 ): Promise<number> => {
-  const maximum = await (
-    await getMailService(connection)
-  ).getMaxAttachmentBytes();
+  const [providerMaximum, policy] = await Promise.all([
+    (await getMailService(connection)).getMaxAttachmentBytes(),
+    getMailContentPolicy(),
+  ]);
+  const maximum = Math.min(providerMaximum, policy.maxAttachmentBytes);
   if (!Number.isSafeInteger(maximum) || maximum < 0) {
     throw new Error("Mail provider returned an invalid attachment limit.");
   }

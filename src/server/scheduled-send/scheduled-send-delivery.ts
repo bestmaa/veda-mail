@@ -15,8 +15,9 @@ import type { SendMessageInput, SendReceipt } from "@/domain/mail/mail";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { clearGateway } from "@/server/mail/gateway-cache";
-import { getMailService } from "@/server/mail/mail-service";
+import { assertSendMailPolicy } from "@/server/mail/outgoing-policy-validation";
 import type { ScheduledJob } from "@/server/scheduled-send/scheduled-send-record";
+import { ApiError } from "@/transport/http/api-error";
 
 export type ScheduledDeliveryPort = (
   connection: ProviderConnection,
@@ -24,7 +25,10 @@ export type ScheduledDeliveryPort = (
 ) => Promise<SendReceipt>;
 
 const defaultDelivery: ScheduledDeliveryPort = async (connection, input) =>
-  (await getMailService(connection)).sendMessage(input);
+  (await assertSendMailPolicy(connection, input, [])).sendMessage(input);
+
+const isOrganizationPolicyError = (error: unknown): error is ApiError =>
+  error instanceof ApiError && error.code.startsWith("ORGANIZATION_");
 
 export const scheduledJobConnection = (
   job: ScheduledJob,
@@ -58,7 +62,8 @@ export const isTerminalScheduledSendError = (error: unknown): boolean =>
   error instanceof DraftNotFoundError ||
   error instanceof DraftUnavailableError ||
   error instanceof MessageDeliveryRejectedError ||
-  error instanceof OutgoingMessageSizeError;
+  error instanceof OutgoingMessageSizeError ||
+  isOrganizationPolicyError(error);
 
 export const scheduledSendErrorMessage = (error: unknown): string =>
   error instanceof DraftConflictError
@@ -69,6 +74,8 @@ export const scheduledSendErrorMessage = (error: unknown): string =>
         ? "The provider rejected every recipient."
         : error instanceof OutgoingMessageSizeError
           ? "The message exceeds the provider size limit."
+          : isOrganizationPolicyError(error)
+            ? "The message no longer satisfies organization mail policy."
           : isTerminalScheduledSendError(error)
             ? "The saved draft can no longer be sent safely."
             : "The provider is temporarily unavailable.";

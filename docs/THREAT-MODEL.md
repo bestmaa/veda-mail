@@ -900,6 +900,13 @@ limiter and encrypted shared session repository.
   `maxSizeUpload`; SMTP uses authenticated EHLO `SIZE` and an optional lower
   administrator ceiling. SMTP picker limits reserve base64/MIME overhead and
   the exact composed message is checked before submission.
+- Organization outbound policy can only narrow those provider and quarantine
+  ceilings. Sanitized filename extensions are checked before reservation,
+  scanner-detected MIME is checked after upload, and message bytes, count,
+  file size, extension, and MIME are revalidated for draft save and every
+  immediate or scheduled delivery. Block rules precede allow rules; declared
+  MIME is never authoritative, policy changes cover saved drafts, unknown
+  saved-attachment sizes fail closed, and rejected uploads are deleted.
 - Concurrent sends share an 18 MiB FIFO plaintext-memory budget with bounded
   waiters and timeout. Capacity is acquired before decrypting and released
   after provider submission or any failure.

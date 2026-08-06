@@ -47,6 +47,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Configurable organization message and attachment limits plus extension and
+  scanner-detected MIME allow/block rules. The rollback-safe atomic policy is
+  enforced before quarantine allocation, after scanning, during original-file
+  forwarding and provider-draft save, and again for immediate and scheduled
+  delivery so policy changes cannot be bypassed by an older saved draft
 - Provider-aware administrator capability matrix and organization-wide member
   self-service policy for profile edits, mailbox-password changes, and new
   Veda-managed 2FA enrollment. Policy writes are authenticated, same-origin,

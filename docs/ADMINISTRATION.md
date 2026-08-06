@@ -110,6 +110,23 @@ behavior. Older releases ignore the separate file, so rollback does not make
 their strict `installation.json` parser reject new state. Back up and restore
 the policy file with the rest of `/data`; do not run multiple writable replicas.
 
+The same **Capabilities** page provides an organization-wide outbound mail
+policy. Administrators can set maximum raw message bytes, per-file bytes, and
+attachment count, plus comma-separated extension and detected-MIME allowlists
+and blocklists. Empty allowlists permit every value not explicitly blocked;
+blocklists take precedence, and contradictory rules are rejected. The effective
+file limit is always the lower of provider and organization limits.
+
+Veda Mail checks the sanitized filename before reserving quarantine space,
+checks scanner-detected MIME after upload, and repeats the complete policy for
+forwarded originals, provider-draft saves, immediate sends, scheduled-send
+creation, and scheduled delivery. A policy change therefore applies to already
+saved drafts before delivery. Unknown saved-attachment sizes fail closed.
+Policy is stored in a separate strict mode-0600
+`/data/mail-content-policy.json` version-1 record with serialized atomic
+replacement. A missing file preserves the prior 32 MiB raw-message, 18 MiB
+per-file, ten-attachment, unrestricted-file-type behavior.
+
 ## Mailbox users
 
 When the active provider is Stalwart JMAP and

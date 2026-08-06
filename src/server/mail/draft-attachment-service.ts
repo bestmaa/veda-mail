@@ -17,6 +17,12 @@ import {
   type AttachmentSendMemoryLease,
 } from "@/server/mail/attachment-send-memory-budget";
 import { getMailService } from "@/server/mail/mail-service";
+import {
+  asAttachmentMetadata,
+  asSavedAttachmentMetadata,
+  assertOutgoingMailPolicy,
+  getMailContentPolicy,
+} from "@/server/organization/mail-content-policy.service";
 
 export interface PreparedDraftAttachments {
   readonly attachments: readonly OutgoingAttachment[];
@@ -117,8 +123,25 @@ export const saveDraftWithAttachments = async (
   connection,
   input.composeId,
   uploadIds,
-  async (attachments) => (await getMailService(connection)).saveDraft({
-    ...input,
-    attachments,
-  } as DraftSaveInput),
+  async (attachments) => {
+    const mail = await getMailService(connection);
+    const retained = input.providerDraftId && input.retainedAttachmentIds?.length
+      ? (await mail.getDraft(input.providerDraftId)).attachments?.filter(
+          ({ id: attachmentId }) =>
+            input.retainedAttachmentIds?.includes(attachmentId),
+        ) ?? []
+      : [];
+    assertOutgoingMailPolicy(
+      await getMailContentPolicy(),
+      input.content,
+      [
+        ...retained.map(asSavedAttachmentMetadata),
+        ...attachments.map(asAttachmentMetadata),
+      ],
+    );
+    return mail.saveDraft({
+      ...input,
+      attachments,
+    } as DraftSaveInput);
+  },
 );
