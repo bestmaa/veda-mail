@@ -63,6 +63,7 @@ VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
+VEDA_MAIL_METRICS_TOKEN=optional-output-from-openssl-rand-hex-32
 VEDA_MAIL_CLAMAV_HOST=clamav
 VEDA_MAIL_CLAMAV_PORT=3310
 VEDA_MAIL_CLAMD_CONFIG_PATH=./config/clamd.conf
@@ -78,6 +79,7 @@ docker compose up -d
 docker compose ps
 docker compose logs --tail=100 veda-mail
 curl --fail http://127.0.0.1:3000/api/health
+curl --fail http://127.0.0.1:3000/api/ready
 ```
 
 The supplied Compose file uses the published GHCR image by default and starts
@@ -368,7 +370,11 @@ owner/label operation queue.
 docker compose ps
 docker compose logs --tail=100 veda-mail
 curl --fail https://webmail.example.com/api/health
+curl --fail https://webmail.example.com/api/ready
 ```
+
+Configure private metrics scraping, provider dashboards, structured-log
+retention, and sustained alerts from the [observability runbook](OBSERVABILITY.md).
 
 Verify:
 

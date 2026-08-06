@@ -14,7 +14,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import { chromium } from "@playwright/test";
 import { verifyProductionPwa } from "./verify-production-pwa.mjs";
-
+import { verifyProductionObservability } from "./verify-production-observability.mjs";
 const HSTS = "max-age=31536000";
 const CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate";
@@ -163,6 +163,7 @@ try {
   const health = await waitForHealth(origin, server);
   assert.equal(health.headers.get("strict-transport-security"), HSTS);
   assert.equal(health.headers.get("content-security-policy"), null);
+  await verifyProductionObservability({ health, origin });
 
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();

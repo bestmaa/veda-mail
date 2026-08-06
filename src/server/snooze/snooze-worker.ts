@@ -3,6 +3,7 @@ import "server-only";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { clearGateway } from "@/server/mail/gateway-cache";
+import { logError, logWarn } from "@/server/observability/structured-log";
 import {
   getSnoozeOperationPort,
   SnoozeProviderError,
@@ -92,7 +93,9 @@ const workerGlobal = globalThis as typeof globalThis & {
 const tick = (port: SnoozeOperationPort): void => {
   if (workerGlobal.__vedaMailSnoozeRunning) return;
   const running = processSnoozeJobs(port).then(() => undefined)
-    .catch(() => console.error("[veda-mail] Snooze worker tick failed."))
+    .catch(() =>
+      logError("worker.snooze_tick_failed", { outcome: "error" }),
+    )
     .finally(() => { delete workerGlobal.__vedaMailSnoozeRunning; });
   workerGlobal.__vedaMailSnoozeRunning = running;
 };
@@ -102,7 +105,7 @@ export const startSnoozeWorker = async (
   if (!snoozeConfigured() || workerGlobal.__vedaMailSnoozeTimer) return;
   const port = suppliedPort ?? getSnoozeOperationPort();
   const recovered = await recoverInterruptedSnoozes();
-  if (recovered) console.warn(`[veda-mail] Reconciliating ${recovered} snooze(s).`);
+  if (recovered) logWarn("worker.snooze_recovered", { count: recovered });
   tick(port);
   const timer = setInterval(() => tick(port), POLL_INTERVAL_MS); timer.unref();
   workerGlobal.__vedaMailSnoozeTimer = timer;

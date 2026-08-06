@@ -214,8 +214,12 @@ describe("attachment import scanner failure cleanup", () => {
     await expect(importReceivedAttachment(input(), deps)).rejects.toBe(
       original,
     );
-    expect(consoleError).toHaveBeenCalledWith(
-      "[veda-mail] Attachment import cleanup failed.",
+    expect(consoleError).toHaveBeenCalledOnce();
+    expect(String(consoleError.mock.calls[0]?.[0])).toContain(
+      '"event":"attachment.import_cleanup_failed"',
+    );
+    expect(String(consoleError.mock.calls[0]?.[0])).not.toContain(
+      "private storage path",
     );
     consoleError.mockRestore();
   });

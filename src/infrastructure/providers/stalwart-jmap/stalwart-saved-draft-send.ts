@@ -26,6 +26,7 @@ import {
 import { sendClaimedStalwartDraft } from "@/infrastructure/providers/stalwart-jmap/stalwart-saved-draft-replacement";
 import { sameStoredJmapDraftAttachments } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft-attachments";
 import type { StalwartDraftRecord } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.reader";
+import { logError } from "@/server/observability/structured-log";
 
 const uncertainReceipt = (
   source: StalwartDraftSendSource,
@@ -185,10 +186,16 @@ export const submitStalwartSavedDraft = async (
           claimed.source.record,
         );
         if (!cleaned) {
-          console.error("[veda-mail] Accepted draft cleanup failed.");
+          logError("provider.stalwart_draft_cleanup_failed", {
+            outcome: "error",
+            providerId: "stalwart-jmap",
+          });
         }
       } catch {
-        console.error("[veda-mail] Accepted draft cleanup failed.");
+        logError("provider.stalwart_draft_cleanup_failed", {
+          outcome: "error",
+          providerId: "stalwart-jmap",
+        });
       }
       return {
         deliveryStatus: "accepted",

@@ -58,6 +58,21 @@ describe("global security header configuration", () => {
 });
 
 describe("document security proxy", () => {
+  it("adds a bounded correlation ID to API requests and responses", () => {
+    const response = proxy(
+      new NextRequest("https://mail.example/api/health", {
+        headers: { "x-request-id": "trace_1234567890abcdef" },
+      }),
+    );
+    expect(response.headers.get("x-request-id")).toBe(
+      "trace_1234567890abcdef",
+    );
+    expect(response.headers.get("x-middleware-request-x-request-id")).toBe(
+      "trace_1234567890abcdef",
+    );
+    expect(response.headers.get("content-security-policy")).toBeNull();
+  });
+
   it("sets matching response and downstream request policies", () => {
     const response = proxy(new NextRequest("https://mail.example/"));
     const policy = response.headers.get("content-security-policy");
@@ -106,8 +121,8 @@ describe("document security proxy", () => {
     ["/setup", true],
     ["/admin", true],
     ["/admin/login", true],
-    ["/api/health", false],
-    ["/api/v1/mail/workspace", false],
+    ["/api/health", true],
+    ["/api/v1/mail/workspace", true],
     ["/_next/static/chunk.js", false],
     ["/_next/image?url=%2Fog.png", false],
     ["/favicon.ico", false],

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { logError } from "@/server/observability/structured-log";
+
 const CLEANUP_WAIT_MS = 250;
 
 interface AttachmentImportCleanupInput {
@@ -15,7 +17,7 @@ export const cleanupAttachmentImport = async (
   const report = (): void => {
     if (reported) return;
     reported = true;
-    console.error("[veda-mail] Attachment import cleanup failed.");
+    logError("attachment.import_cleanup_failed", { outcome: "error" });
   };
   if (input.body) {
     try {

@@ -47,6 +47,10 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Privacy-bounded structured JSON logs, validated API request correlation IDs,
+  process-local Prometheus metrics behind an optional bearer token, separate
+  liveness/readiness endpoints, provider operation latency/error aggregation,
+  and a self-hosted dashboard and alerting runbook
 - Configurable organization message and attachment limits plus extension and
   scanner-detected MIME allow/block rules. The rollback-safe atomic policy is
   enforced before quarantine allocation, after scanning, during original-file

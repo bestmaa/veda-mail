@@ -113,8 +113,8 @@ describe("scheduled-send worker outcomes", () => {
     expect(mocks.settleScheduledJob).toHaveBeenCalledWith(current, {
       kind: "complete",
     });
-    expect(log).toHaveBeenCalledWith(
-      "[veda-mail] Scheduled recent-recipient persistence failed.",
+    expect(String(log.mock.calls[0]?.[0])).toContain(
+      '"event":"worker.scheduled_recipient_persistence_failed"',
     );
     log.mockRestore();
   });

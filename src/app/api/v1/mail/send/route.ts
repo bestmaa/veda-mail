@@ -14,6 +14,7 @@ import { connectionStore } from "@/server/connections/connection-store";
 import { contactOwnerForConnection } from "@/server/contacts/contact-owner";
 import { recordConfirmedRecentRecipients } from "@/server/contacts/contact-recipient-history";
 import { assertSameOrigin } from "@/server/installation/request-origin";
+import * as observabilityLog from "@/server/observability/structured-log";
 import {
   asAttachmentApiError,
   assertAttachmentCapability,
@@ -191,7 +192,9 @@ export const POST = async (request: Request) => {
       } catch (error) {
         if (uploadIds.length > 0) {
           await quarantine.release(uploadIds, scope).catch(() => {
-            console.error("[veda-mail] Attachment claim release failed.");
+            observabilityLog.logError("attachment.claim_release_failed", {
+              outcome: "error",
+            });
           });
         }
         throw error;
@@ -203,18 +206,24 @@ export const POST = async (request: Request) => {
           receipt,
         );
       } catch {
-        console.error("[veda-mail] Recent-recipient persistence failed.");
+        observabilityLog.logError("mail.recent_recipient_persistence_failed", {
+          outcome: "error",
+        });
       }
       try {
         if (receipt.deliveryStatus !== "accepted") {
           connectionStore.appendDeliveryNoticeIfActive(connection, receipt);
         }
       } catch {
-        console.error("[veda-mail] Delivery notice persistence failed.");
+        observabilityLog.logError("mail.delivery_notice_persistence_failed", {
+          outcome: "error",
+        });
       }
       if (uploadIds.length > 0) {
         await quarantine.consume(uploadIds, scope).catch(() => {
-          console.error("[veda-mail] Sent attachment cleanup failed.");
+          observabilityLog.logError("attachment.sent_cleanup_failed", {
+            outcome: "error",
+          });
         });
       }
       return apiSuccess(receipt, { status: 201 });

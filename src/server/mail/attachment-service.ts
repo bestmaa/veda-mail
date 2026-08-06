@@ -20,6 +20,7 @@ import {
 import { scheduleAttachmentScanner } from "@/server/security/attachment-scan-scheduler";
 import { getMailService } from "@/server/mail/mail-service";
 import { getMailContentPolicy } from "@/server/organization/mail-content-policy.service";
+import { logError } from "@/server/observability/structured-log";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalAttachments = globalThis as typeof globalThis & {
@@ -87,7 +88,7 @@ export const scheduleAttachmentExpirySweep = (
   }
   const timer = setInterval(() => {
     void service.cleanupExpired().catch(() => {
-      console.error("[veda-mail] Attachment expiry cleanup failed.");
+      logError("attachment.expiry_cleanup_failed", { outcome: "error" });
     });
   }, intervalMs);
   timer.unref();

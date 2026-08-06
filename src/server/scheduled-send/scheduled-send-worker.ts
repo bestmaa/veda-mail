@@ -2,6 +2,7 @@ import "server-only";
 
 import { contactOwnerForConnection } from "@/server/contacts/contact-owner";
 import { recordConfirmedRecentRecipients } from "@/server/contacts/contact-recipient-history";
+import { logError, logWarn } from "@/server/observability/structured-log";
 import {
   deliverScheduledJob,
   isTerminalScheduledSendError,
@@ -50,7 +51,9 @@ export const runScheduledJob = async (
         receipt,
       );
     } catch {
-      console.error("[veda-mail] Scheduled recent-recipient persistence failed.");
+      logError("worker.scheduled_recipient_persistence_failed", {
+        outcome: "error",
+      });
     }
     await settleScheduledJob(claim, { kind: "complete" });
   } catch (error) {
@@ -90,7 +93,9 @@ const tick = (): void => {
   if (schedulerGlobal.__vedaMailScheduledSendRunning) return;
   const running = processScheduledJobs()
     .then(() => undefined)
-    .catch(() => console.error("[veda-mail] Scheduled-send worker tick failed."))
+    .catch(() =>
+      logError("worker.scheduled_send_tick_failed", { outcome: "error" }),
+    )
     .finally(() => { schedulerGlobal.__vedaMailScheduledSendRunning = undefined; });
   schedulerGlobal.__vedaMailScheduledSendRunning = running;
 };
@@ -101,7 +106,7 @@ export const startScheduledSendWorker = async (): Promise<void> => {
   }
   const recovered = await recoverInterruptedScheduledJobs();
   if (recovered > 0) {
-    console.warn(`[veda-mail] ${recovered} interrupted scheduled send(s) need review.`);
+    logWarn("worker.scheduled_send_recovered", { count: recovered });
   }
   tick();
   const timer = setInterval(tick, POLL_INTERVAL_MS);
