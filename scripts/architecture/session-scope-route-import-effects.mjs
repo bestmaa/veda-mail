@@ -4,10 +4,7 @@ const AUTH_WRAPPER_EXPORTS = new Map([
 
 const REQUEST_UTILITY_EXPORTS = new Map([
   ["@/server/installation/request-origin", new Set(["assertSameOrigin"])],
-  [
-    "@/server/security/rate-limit",
-    new Set(["assertRequestRateLimit"]),
-  ],
+  ["@/server/security/rate-limit", new Set(["assertRequestRateLimit"])],
   ["@/transport/http/api-response", new Set(["apiFailure", "apiSuccess"])],
   ["@/transport/http/read-json-body", new Set(["readJsonBody"])],
 ]);
@@ -19,16 +16,17 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/bootstrap/provider-registry", new Set(["getProviderRegistry"])],
   ["@/domain/mail/send-receipt", new Set(["canonicalizeSendReceipt"])],
   ["@/domain/mail/mailbox-policy", new Set(["assertMailboxMutation"])],
-  [
-    "@/domain/member/contact",
-    new Set(["contactNameKey", "MAX_CONTACT_EMAILS"]),
-  ],
+  ["@/domain/member/contact", new Set(["contactNameKey", "MAX_CONTACT_EMAILS"])],
   ["@/domain/shared/brand", new Set(["id"])],
   ["@/server/connections/connection-store", new Set(["connectionStore"])],
   ["@/server/auth/member-two-factor", new Set(["memberTwoFactorSecurity"])],
   ["@/server/auth/two-factor-enrollment", new Set(["twoFactorEnrollmentStore"])],
   ["@/server/organization/organization-policy.service", new Set([
     "assertOrganizationFeatureEnabled", "getOrganizationPolicy",
+  ])],
+  ["@/server/organization/mail-content-policy.service", new Set([
+    "asSavedAttachmentMetadata", "assertAttachmentFilePolicy", "assertOutgoingMailPolicy",
+    "assertSavedDraftMailPolicy", "getMailContentPolicy",
   ])],
   ["@/server/attachments", new Set(["parseAttachmentContentLength"])],
   ["@/server/mail-service/mail-service-profile.store", new Set(["mailServiceProfileStore"])],
@@ -68,6 +66,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ],
   ["@/server/mail/attachment-send-memory-budget", new Set(["attachmentSendMemoryBudget"])],
   ["@/server/mail/outgoing-mail-content", new Set(["canonicalizeOutgoingMailContent"])],
+  ["@/server/mail/outgoing-policy-validation", new Set(["assertSendMailPolicy"])],
   ["@/server/mailboxes/mailbox-appearance.store", new Set(["mailboxAppearanceStore"])],
   [
     "@/server/preferences/message-list-preferences.store",

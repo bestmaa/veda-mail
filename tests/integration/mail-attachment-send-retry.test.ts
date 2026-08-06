@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
     getCurrentConnection: vi.fn(),
     getMaxAttachmentBytes,
     mailService: vi.fn(async () => ({ getMaxAttachmentBytes, sendMessage })),
+    policy: vi.fn(),
     sendMessage,
   };
 });
@@ -22,6 +23,10 @@ vi.mock("@/server/connections/connection-session", () => ({
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: mocks.mailService,
 }));
+vi.mock("@/server/organization/mail-content-policy.service", async (original) => ({
+  ...(await original()),
+  getMailContentPolicy: mocks.policy,
+}));
 
 import {
   MessageDeliveryRejectedError,
@@ -29,6 +34,7 @@ import {
 } from "@/domain/mail/mail-errors";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
+import { DEFAULT_MAIL_CONTENT_POLICY } from "@/domain/installation/mail-content-policy";
 import { connectionStore } from "@/server/connections/connection-store";
 import { attachmentService } from "@/server/mail/attachment-service";
 import {
@@ -62,6 +68,8 @@ beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockResolvedValue(18 * 1024 * 1024);
   mocks.mailService.mockClear();
   mocks.sendMessage.mockClear();
+  mocks.policy.mockReset();
+  mocks.policy.mockResolvedValue(DEFAULT_MAIL_CONTENT_POLICY);
 });
 
 describe("attachment send retry", () => {
@@ -141,5 +149,24 @@ describe("attachment send retry", () => {
     const retry = await sendDraft(draftId, attachmentId);
     expect(retry.status).toBe(201);
     expect(mocks.sendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases a claim when policy changes after upload", async () => {
+    const { attachmentId, draftId } = await reserveAndUpload();
+    mocks.policy.mockResolvedValue({
+      ...DEFAULT_MAIL_CONTENT_POLICY,
+      blockedMimeTypes: ["text/plain"],
+    });
+    const blocked = await sendDraft(draftId, attachmentId);
+    expect(blocked.status).toBe(422);
+    await expect(blocked.json()).resolves.toMatchObject({
+      error: { code: "ORGANIZATION_MIME_TYPE_BLOCKED" },
+    });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+
+    mocks.policy.mockResolvedValue(DEFAULT_MAIL_CONTENT_POLICY);
+    const retry = await sendDraft(draftId, attachmentId);
+    expect(retry.status).toBe(201);
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
   });
 });

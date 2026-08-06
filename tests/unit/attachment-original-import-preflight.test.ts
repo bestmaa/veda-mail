@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getMailService: vi.fn(),
   importReceivedAttachment: vi.fn(),
   listMessageAttachments: vi.fn(),
+  removeAttachment: vi.fn(),
 }));
 
 vi.mock("@/server/mail/attachment-import", () => ({
@@ -27,7 +28,7 @@ vi.mock("@/server/mail/attachment-import", () => ({
 vi.mock("@/server/mail/attachment-service", () => ({
   assertAttachmentCapability: mocks.assertAttachmentCapability,
   attachmentScope: vi.fn(),
-  attachmentService: vi.fn(),
+  attachmentService: vi.fn(() => ({ remove: mocks.removeAttachment })),
 }));
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: mocks.getMailService,
@@ -126,7 +127,13 @@ describe("original attachment import authorization", () => {
   );
 
   it("allows a currently listed visible attachment into quarantine import", async () => {
-    const imported = { state: "clean" };
+    const imported = {
+      contentLength: 128,
+      detectedMimeType: "image/png",
+      fileName: "provider-only-name.png",
+      id: "imported-attachment",
+      state: "clean",
+    };
     mocks.assertAttachmentCapability.mockResolvedValue(1_024);
     mocks.listMessageAttachments.mockResolvedValue([
       attachment("attachment"),

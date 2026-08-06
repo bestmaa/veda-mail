@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getCurrentConnection: vi.fn(),
+  getDraft: vi.fn(),
   sendMessage: vi.fn(),
 }));
 
@@ -9,7 +10,10 @@ vi.mock("@/server/connections/connection-session", () => ({
   getCurrentConnection: mocks.getCurrentConnection,
 }));
 vi.mock("@/server/mail/mail-service", () => ({
-  getMailService: vi.fn(async () => ({ sendMessage: mocks.sendMessage })),
+  getMailService: vi.fn(async () => ({
+    getDraft: mocks.getDraft,
+    sendMessage: mocks.sendMessage,
+  })),
 }));
 
 import { POST } from "@/app/api/v1/mail/send/route";
@@ -61,6 +65,8 @@ beforeEach(() => {
   mocks.getCurrentConnection.mockReset();
   mocks.getCurrentConnection.mockResolvedValue(connection);
   mocks.sendMessage.mockReset();
+  mocks.getDraft.mockReset();
+  mocks.getDraft.mockResolvedValue({ attachments: [] });
   mocks.sendMessage.mockResolvedValue({
     deliveryStatus: "accepted",
     id: id.message("sent-message"),

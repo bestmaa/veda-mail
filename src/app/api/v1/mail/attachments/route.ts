@@ -15,6 +15,10 @@ import {
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
 import { readJsonBody } from "@/transport/http/read-json-body";
 import { attachmentReservationSchema } from "@/transport/http/request-schemas";
+import {
+  assertAttachmentFilePolicy,
+  getMailContentPolicy,
+} from "@/server/organization/mail-content-policy.service";
 
 export const runtime = "nodejs";
 
@@ -34,6 +38,10 @@ export const POST = async (request: Request) => {
     const input = attachmentReservationSchema.parse(
       await readJsonBody(request, 16 * 1024),
     );
+    assertAttachmentFilePolicy(await getMailContentPolicy(), {
+      name: input.fileName,
+      size: input.size,
+    });
     await assertAttachmentCapability(connection, input.size);
     const attachment = await attachmentService().reserve({
       contentLength: input.size,

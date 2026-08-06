@@ -3,6 +3,7 @@ import type {
   ProviderManifest,
 } from "@/domain/provider/provider";
 import type { OrganizationFeaturePolicy } from "@/domain/installation/organization-policy";
+import type { MailContentPolicy } from "@/domain/installation/mail-content-policy";
 import type { MemberProfile } from "@/domain/member/member-settings";
 import type { MemberTwoFactorEnrollment } from "@/domain/member/member-settings";
 import {
@@ -183,5 +184,19 @@ export const adminCapabilitiesApi = {
       body: JSON.stringify(policy),
       method: "PUT",
     });
+  },
+};
+
+export const adminMailPolicyApi = {
+  get() {
+    return fetchData<{ readonly policy: MailContentPolicy }>(
+      "/api/v1/admin/mail-policy",
+    );
+  },
+  save(policy: MailContentPolicy) {
+    return fetchData<{ readonly policy: MailContentPolicy }>(
+      "/api/v1/admin/mail-policy",
+      { body: JSON.stringify(policy), method: "PUT" },
+    );
   },
 };

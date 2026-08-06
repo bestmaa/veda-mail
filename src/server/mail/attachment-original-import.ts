@@ -22,6 +22,10 @@ import {
   attachmentService,
 } from "@/server/mail/attachment-service";
 import { getMailService } from "@/server/mail/mail-service";
+import {
+  assertAttachmentFilePolicy,
+  getMailContentPolicy,
+} from "@/server/organization/mail-content-policy.service";
 
 export interface OriginalAttachmentImportInput {
   readonly attachmentId: AttachmentId;
@@ -62,7 +66,7 @@ export const importOriginalAttachment = async (
         "The attachment was not found.",
       );
     }
-    return await importReceivedAttachment(
+    const imported = await importReceivedAttachment(
       {
         attachmentId: input.attachmentId,
         messageId: input.messageId,
@@ -79,6 +83,22 @@ export const importOriginalAttachment = async (
         quarantine: attachmentService(),
       },
     );
+    try {
+      assertAttachmentFilePolicy(await getMailContentPolicy(), {
+        ...(imported.detectedMimeType
+          ? { mimeType: imported.detectedMimeType }
+          : {}),
+        name: imported.fileName,
+        size: imported.contentLength,
+      });
+    } catch (error) {
+      await attachmentService().remove(
+        imported.id,
+        attachmentScope(input.connection, input.draftId),
+      );
+      throw error;
+    }
+    return imported;
   } catch (error) {
     throw mapAttachmentImportFailure(
       error,

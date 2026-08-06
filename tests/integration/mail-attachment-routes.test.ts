@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
     connection: vi.fn(),
     getMaxAttachmentBytes,
     mailService: vi.fn(async () => ({ getMaxAttachmentBytes })),
+    policy: vi.fn(),
   };
 });
 
@@ -13,6 +14,10 @@ vi.mock("@/server/connections/connection-session", () => ({
 }));
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: mocks.mailService,
+}));
+vi.mock("@/server/organization/mail-content-policy.service", async (original) => ({
+  ...(await original()),
+  getMailContentPolicy: mocks.policy,
 }));
 
 import { POST as reserve } from "@/app/api/v1/mail/attachments/route";
@@ -24,6 +29,7 @@ import type { ProviderConnection } from "@/domain/provider/provider";
 import { id } from "@/domain/shared/brand";
 import { connectionStore } from "@/server/connections/connection-store";
 import { mailSessionScope } from "@/server/connections/mail-session-scope";
+import { DEFAULT_MAIL_CONTENT_POLICY } from "@/domain/installation/mail-content-policy";
 const origin = "https://mail.example.com";
 let activeConnection: ProviderConnection;
 const draftId = () => crypto.randomUUID();
@@ -100,6 +106,8 @@ beforeEach(() => {
   mocks.getMaxAttachmentBytes.mockReset();
   mocks.getMaxAttachmentBytes.mockResolvedValue(18 * 1024 * 1024);
   mocks.mailService.mockClear();
+  mocks.policy.mockReset();
+  mocks.policy.mockResolvedValue(DEFAULT_MAIL_CONTENT_POLICY);
 });
 
 describe("secure attachment routes", () => {
@@ -221,4 +229,5 @@ describe("secure attachment routes", () => {
     });
     expect(mocks.mailService).not.toHaveBeenCalled();
   });
+
 });

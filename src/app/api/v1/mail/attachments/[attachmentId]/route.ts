@@ -16,6 +16,10 @@ import {
   assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 import { apiFailure, apiSuccess } from "@/transport/http/api-response";
+import {
+  assertAttachmentFilePolicy,
+  getMailContentPolicy,
+} from "@/server/organization/mail-content-policy.service";
 
 export const runtime = "nodejs";
 
@@ -64,6 +68,18 @@ export const PUT = async (request: Request, route: RouteContext) => {
       request.body,
       contentLength,
     );
+    try {
+      assertAttachmentFilePolicy(await getMailContentPolicy(), {
+        ...(uploaded.detectedMimeType
+          ? { mimeType: uploaded.detectedMimeType }
+          : {}),
+        name: uploaded.fileName,
+        size: uploaded.contentLength,
+      });
+    } catch (error) {
+      await attachmentService().remove(current.attachmentId, current.scope);
+      throw error;
+    }
     return apiSuccess({
       expiresAt: uploaded.expiresAt,
       id: id.attachmentUpload(uploaded.id),
