@@ -85,19 +85,16 @@ describe("composer authoritative draft save response", () => {
         onSaved: vi.fn(),
       });
     };
-
     let draft = render();
     draft.markUnsaved();
     draft = render();
     await expect(draft.save()).resolves.toBe(true);
     draft = render();
-
     expect(onHydrate).toHaveBeenCalledOnce();
     expect(composerContent).toEqual(content("server canonical"));
     expect(draft.phase).toBe("saved");
     expect(draft.canSend).toBe(true);
   });
-
   it("preserves a newer local edit and leaves it dirty", async () => {
     const pending = Promise.withResolvers<DraftDetail>();
     api.createDraft.mockReturnValueOnce(pending.promise);
@@ -112,7 +109,6 @@ describe("composer authoritative draft save response", () => {
         onSaved: vi.fn(),
       });
     };
-
     let draft = render();
     draft.markUnsaved();
     draft = render();
@@ -122,7 +118,6 @@ describe("composer authoritative draft save response", () => {
     pending.resolve(detail("server canonical"));
     await expect(saving).resolves.toBe(true);
     draft = render();
-
     expect(onHydrate).not.toHaveBeenCalled();
     expect(composerContent).toEqual(content("newer local edit"));
     expect(draft.phase).toBe("unsaved");
@@ -144,7 +139,6 @@ describe("composer authoritative draft save response", () => {
         onSaved: vi.fn(),
       });
     };
-
     let draft = render();
     draft.markUnsaved();
     draft = render();
@@ -153,7 +147,6 @@ describe("composer authoritative draft save response", () => {
     draft.markUnsaved();
     draft = render();
     const explicitSave = draft.saveDetail();
-
     pending.resolve(detail("autosave snapshot"));
     await expect(autosaving).resolves.toBe(true);
     await expect(explicitSave).resolves.toEqual(detail("latest edit", "revision-b"));
@@ -177,7 +170,6 @@ describe("composer authoritative draft save response", () => {
         onSaved: vi.fn(),
       });
     };
-
     let draft = render();
     draft.markUnsaved();
     draft = render();
@@ -190,6 +182,27 @@ describe("composer authoritative draft save response", () => {
     pending.reject(new Error("Connection lost"));
     await expect(autosaving).resolves.toBe(false);
     await expect(explicitSave).resolves.toBeNull();
+    expect(api.createDraft).toHaveBeenCalledOnce();
+    expect(api.updateDraft).not.toHaveBeenCalled();
+  });
+
+  it("reuses the authoritative draft when the saved generation is current", async () => {
+    api.createDraft.mockResolvedValueOnce(detail("saved snapshot"));
+    const render = () => {
+      hooks.begin();
+      return useComposerDraft({
+        accountKey: "account-a", composeId,
+        content: content("saved snapshot"), enabled: true,
+        handleSessionFailure: () => false, hasLocalAttachments: false,
+        onDiscarded: vi.fn(), onHydrate: vi.fn(), onSaved: vi.fn(),
+      });
+    };
+    let draft = render();
+    draft.markUnsaved();
+    draft = render();
+    await expect(draft.autosave()).resolves.toBe(true);
+    draft = render();
+    await expect(draft.saveDetail()).resolves.toEqual(detail("saved snapshot"));
     expect(api.createDraft).toHaveBeenCalledOnce();
     expect(api.updateDraft).not.toHaveBeenCalled();
   });

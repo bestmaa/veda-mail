@@ -73,7 +73,14 @@ export const useComposerDraftPersistence = ({
   const recoveryAttempt = useRef<ComposerDraftSaveAttempt | null>(null);
   const inFlight = useRef<Promise<DraftDetail | null> | null>(null);
   const savedRef = useRef(saved);
-  useEffect(() => { savedRef.current = saved; }, [saved]);
+  const savedGeneration = useRef<number | null>(
+    saved ? contentGeneration.current : null,
+  );
+  useEffect(() => {
+    if (savedRef.current === saved) return;
+    savedRef.current = saved;
+    savedGeneration.current = saved ? contentGeneration.current : null;
+  }, [contentGeneration, saved]);
 
   const persist = useCallback((
     attempt: ComposerDraftSaveAttempt,
@@ -110,6 +117,7 @@ export const useComposerDraftPersistence = ({
         recoveryAttempt.current = null;
         void recovery?.acknowledgeSave(prepared, next);
         savedRef.current = next;
+        savedGeneration.current = prepared.contentGeneration;
         setSaved(next);
         setRequiresRecovery(false);
         setRetryKind("none");
@@ -169,6 +177,9 @@ export const useComposerDraftPersistence = ({
       setError(editBlock);
       setPhase("error");
       return null;
+    }
+    if (savedGeneration.current === contentGeneration.current) {
+      return latestSaved;
     }
     return persist(composerDraftSaveAttempt(
       composeId, content, contentGeneration.current, latestSaved,
