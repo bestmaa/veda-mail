@@ -177,11 +177,7 @@ for the dedicated live JMAP and IMAP/SMTP mailbox scan/download evidence above.
 - [x] Per-identity signatures with multiple named plain-text and
   sanitized-rich variants, explicit new/reply-forward defaults, and exact-once
   composer insertion
-- [ ] Reusable templates with explicit insert/replace behavior. The encrypted,
-  provider-independent implementation, abuse tests, accessibility checks, and
-  full local browser suite are complete; this remains open until the immutable
-  release is published and the live production create/reload/insert/replace
-  smoke evidence is recorded
+- [x] Reusable templates with explicit insert/replace behavior
 - [x] Send confirmation preference and an undo-send delay backed by a durable
   queue
 - [ ] Complete the keyboard-shortcut and assistive-technology audit beyond v1
@@ -256,8 +252,16 @@ image digest
 The reusable-template slice was merged as `d0afd06` and published as the
 scanned, attested amd64/arm64 image digest
 `sha256:688e8a3b0c8f5dad2c5c4d3fd5c42fee59e702042de0d750c3cb8f6dcb465eac`.
-Production deployment and live critical-flow evidence remain open for both
-slices. The earlier `wovvtec.site`/`mail.wovvtec.site` NXDOMAIN entry used
+Production acceptance was completed on 2026-08-07 against the deployed
+protected-main release. A dedicated Stalwart mailbox created a unique rich
+template, reloaded the application, and recovered the same named template.
+Insert preserved the current subject and appended the stored body; Replace
+required the context-loss confirmation and then applied the exact stored
+subject and body. The synthetic template and provider drafts were deleted
+after verification. Public liveness and readiness both returned HTTP 200,
+with the data and scanner readiness checks `ok`. Provider-durable attachment
+production and live critical-flow evidence remains open. The earlier
+`wovvtec.site`/`mail.wovvtec.site` NXDOMAIN entry used
 incorrect hostnames; the canonical deployment endpoints are
 `panel.wovvtech.site` and `webmail.vedaconcepts.com`, and public webmail health
 was HTTP 200 on 2026-08-03. Completing this milestone still requires feature-
