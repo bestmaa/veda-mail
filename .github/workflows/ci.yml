@@ -22,7 +22,7 @@ env:
   CLAMAV_IMAGE: >-
     clamav/clamav:1.5.3@sha256:7f5389ccaa2368c383fa80e167ccfe44348d71e685f926fce4755eed1757673a
   REDIS_IMAGE: >-
-    redis:8.4.0-alpine@sha256:e9a8794f6d9d48751f76eeff9b8402405e208d043b35602a33ea415e7cff347c
+    redis:8.4.5-alpine@sha256:bd4a0d37e7cd830117ffec9329052b4a1887afa060c265e1768f82b177ff6f43
   SBOM_SCANNER_DIGEST: 79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
   SBOM_SCANNER_IMAGE: >-
     docker/buildkit-syft-scanner@sha256:79e7b013cbec16bbb436f312819a49a4a57752b2270c1a9332ae1a10fcc82a68
@@ -42,7 +42,7 @@ jobs:
 
     services:
       redis:
-        image: redis:8.4.0-alpine@sha256:e9a8794f6d9d48751f76eeff9b8402405e208d043b35602a33ea415e7cff347c
+        image: redis:8.4.5-alpine@sha256:bd4a0d37e7cd830117ffec9329052b4a1887afa060c265e1768f82b177ff6f43
         ports:
           - 6379:6379
         options: >-
