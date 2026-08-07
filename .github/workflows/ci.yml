@@ -127,7 +127,7 @@ jobs:
           }
           trap cleanup EXIT
 
-          docker compose config --quiet
+          npm run check:compose
           configured_image="$(
             docker compose config --format json \
               | jq -er '.services.clamav.image'

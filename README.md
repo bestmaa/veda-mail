@@ -159,8 +159,15 @@ docker compose up -d
 docker compose ps
 ```
 
-The Compose file uses `ghcr.io/bestmaa/veda-mail:latest` by default. To build
-the checked-out source instead, run `docker compose up --build -d`.
+The release Compose file uses `ghcr.io/bestmaa/veda-mail:latest` by default and
+contains no application build section, so an immutable digest remains safe even
+when a deployment platform adds `--build`. To build the checked-out source
+instead, explicitly add the source-build override:
+
+```bash
+docker compose -f compose.yaml -f compose.build.yaml up --build -d
+```
+
 It also starts an immutable official ClamAV sidecar and persists its signatures
 in a separate named volume. The approved zero-HIGH/CRITICAL sidecar digest is
 currently `linux/amd64`-only; run `./scripts/check-clamav-platform.sh` before

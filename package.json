@@ -46,6 +46,7 @@
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:production-security": "node scripts/verify-production-security.mjs",
     "test:watch": "vitest",
+    "check:compose": "node scripts/check-compose-contract.mjs",
     "check:clamav-config": "node scripts/check-clamav-config.mjs",
     "check:lines": "node scripts/check-line-limits.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
