@@ -9,26 +9,14 @@ import {
 } from "react";
 
 import type { AdminSecurityViewProps } from "@/presentation/features/admin-security/admin-security.view-model";
-interface SecuritySnapshot {
-  readonly recoveryCodesRemaining: number;
-  readonly recoveryConfigured: boolean;
-  readonly twoFactorEnabled: boolean;
-}
-interface AccountSnapshot {
-  readonly security: SecuritySnapshot;
-  readonly username: string;
-}
-const data = async <T,>(response: Response): Promise<T> => {
-  const payload = (await response.json()) as {
-    readonly data?: T;
-    readonly error?: { readonly message?: string };
-  };
-  if (!response.ok || !payload.data) {
-    throw new Error(payload.error?.message ?? "The request could not be completed.");
-  }
-  return payload.data;
-};
+import {
+  adminSecurityData as data,
+  type AccountSnapshot,
+  type SecuritySnapshot,
+} from "@/presentation/features/admin-security/admin-security-client";
+import { useAdminSessionModel } from "@/presentation/features/admin-security/hooks/use-admin-session-model";
 export const useAdminSecurityModel = (): AdminSecurityViewProps => {
+  const sessions = useAdminSessionModel();
   const [username, setUsername] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -236,6 +224,7 @@ export const useAdminSecurityModel = (): AdminSecurityViewProps => {
     recoveryCodes,
     recoveryCodesRemaining: security.recoveryCodesRemaining,
     recoveryConfigured: security.recoveryConfigured,
+    sessions,
     success,
     twoFactorCode,
     twoFactorCodeInput: input(setTwoFactorCode),

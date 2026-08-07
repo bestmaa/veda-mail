@@ -6,6 +6,7 @@ import {
   adminCookieOptions,
   hasAdminAccess,
   issueAdminToken,
+  revokeCurrentAdminSession,
   verifyAdminCredentials,
 } from "@/server/auth/admin-session";
 import {
@@ -16,9 +17,9 @@ import { installationStore } from "@/server/installation/installation.store";
 import { adminLoginSchema } from "@/server/installation/installation.schema";
 import { assertSameOrigin } from "@/server/installation/request-origin";
 import {
-  assertRequestRateLimit,
-  assertSubjectRateLimit,
-} from "@/server/security/rate-limit";
+  assertAuthenticationRequestRateLimit,
+  assertAuthenticationSubjectRateLimit,
+} from "@/server/security/authentication-rate-limit";
 import {
   administratorAuditActor,
   anonymousAuditActor,
@@ -45,7 +46,7 @@ export const POST = async (request: Request) => {
   let recorded = false;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertAuthenticationRequestRateLimit(
       request,
       "admin-login",
       500,
@@ -60,7 +61,7 @@ export const POST = async (request: Request) => {
       await readJsonBody(request, MAX_ADMIN_LOGIN_BODY_BYTES),
     );
     actor = anonymousAuditActor(input.username);
-    assertSubjectRateLimit(
+    await assertAuthenticationSubjectRateLimit(
       "admin-login",
       input.username.toLowerCase(),
       8,
@@ -168,12 +169,16 @@ export const DELETE = async (request: Request) => {
     assertSameOrigin(request);
     const installation = await installationStore.get();
     if (installation && await hasAdminAccess()) {
-      await appendSecurityAudit({
-        action: "admin.authentication.signed-out",
-        actor: administratorAuditActor(installation.owner.username),
-        outcome: "success",
-        targetType: "session",
-      });
+      try {
+        await appendSecurityAudit({
+          action: "admin.authentication.signed-out",
+          actor: administratorAuditActor(installation.owner.username),
+          outcome: "success",
+          targetType: "session",
+        });
+      } finally {
+        await revokeCurrentAdminSession();
+      }
     }
     const response = new NextResponse(null, { status: 204 });
     response.cookies.set(ADMIN_COOKIE, "", {

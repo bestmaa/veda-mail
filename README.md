@@ -246,6 +246,20 @@ Keep proxy trust disabled unless the deployment meets the requirements in the
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 ```
 
+Administrator and member logins always use bounded in-process request,
+trusted-source, and account windows. A multi-process or multi-replica edge can
+add an open-source Redis-compatible shared login limiter without changing mail
+providers:
+
+```text
+VEDA_MAIL_RATE_LIMIT_REDIS_URL=rediss://user:password@redis.example.com:6379
+VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX=veda-mail:rate-limit:v1
+```
+
+Shared limiter keys are HMAC-pseudonymized; email addresses and client IPs are
+not Redis keys. A configured backend fails closed for login if unreachable.
+Leave the URL empty for the supported single-replica topology.
+
 The setup token is not an administrator password or recovery token. It is only proof that the
 person claiming a fresh installation can read its deployment secrets. Keep it
 secret even after setup; the installation lock remains authoritative.
@@ -267,10 +281,14 @@ backup codes are stored only as salted digests. The ledger contains safe
 results and keyed fingerprints, never initial mailbox passwords or the
 Stalwart management key. `/data` does not contain mailbox messages.
 
-Member provider credentials are process-memory only except for the minimum
+Administrator and member sessions expire after 30 minutes without authenticated
+activity and have a non-extendable 12-hour lifetime. Security settings list
+active sessions and can revoke any one server-side; displayed management IDs
+cannot be replayed as cookies. Member provider credentials are process-memory
+only except for the minimum
 encrypted copy in an explicitly scheduled job. A restart signs members out but
 the background queue continues. Run one replica unless you add a shared
-encrypted session repository, rate limiter, and transactional metadata/job
+encrypted session repository and transactional metadata/job
 stores.
 
 Back up `/data` before every upgrade. See the

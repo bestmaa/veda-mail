@@ -41,9 +41,9 @@ export const assertSameOrigin = (request: Request): void => {
   const origin = request.headers.get("origin");
   if (!origin) {
     const fetchSite = request.headers.get("sec-fetch-site");
-    if (fetchSite && !["none", "same-origin"].includes(fetchSite)) {
+    if (!fetchSite || !["none", "same-origin"].includes(fetchSite)) {
       throw new ApiError(
-        "Cross-origin request rejected.",
+        "A verifiable same-origin request is required.",
         "INVALID_REQUEST_ORIGIN",
         403,
       );

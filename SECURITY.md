@@ -34,6 +34,8 @@ Please allow a reasonable remediation window before public disclosure.
 - `/` uses each member's provider credentials and a member-only cookie.
 - Provider and member secrets remain server-side.
 - Member credentials are held only in process memory and vanish on restart.
+- Administrator/member sessions have server-side revocation, a 30-minute idle
+  timeout, and a non-extendable 12-hour absolute timeout.
 - Installation/provider state persists on `/data` and must be protected.
 
 ## Deployment responsibility
@@ -44,8 +46,9 @@ Operators must:
 - Generate a strong setup token and protect the `/data` volume.
 - Restrict provider hostnames.
 - Keep proxy trust disabled unless forwarding headers are controlled.
-- Run a single application replica until shared sessions and rate limits are
-  implemented.
+- Run a single application replica until shared encrypted sessions and all
+  mutable member stores are implemented. Redis can coordinate login throttles,
+  but it does not make provider sessions replica-portable.
 - Back up before upgrading.
 - Keep the mail server, Docker host, reverse proxy, and dependencies patched.
 

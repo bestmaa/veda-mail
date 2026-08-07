@@ -3,7 +3,10 @@ import "server-only";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { MEMBER_CONNECTION_TTL_MS } from "@/domain/provider/connection-lifetime-policy";
 
-export { MEMBER_CONNECTION_TTL_MS } from "@/domain/provider/connection-lifetime-policy";
+export {
+  MEMBER_CONNECTION_IDLE_TTL_MS,
+  MEMBER_CONNECTION_TTL_MS,
+} from "@/domain/provider/connection-lifetime-policy";
 export const MEMBER_CONNECTION_TTL_SECONDS =
   MEMBER_CONNECTION_TTL_MS / 1_000;
 

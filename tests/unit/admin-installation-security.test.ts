@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { id } from "@/domain/shared/brand";
 import {
   issueAdminToken,
+  revokeAdminToken,
   verifyAdminCredentials,
   verifyAdminToken,
 } from "@/server/auth/admin-session";
@@ -123,6 +124,14 @@ describe("installation security", () => {
     await expect(verifyAdminToken(token)).resolves.toBe(false);
   });
 
+  it("revokes a valid administrator token server-side", async () => {
+    const installation = await install();
+    const token = await issueAdminToken(installation);
+
+    await expect(revokeAdminToken(token)).resolves.toBe(true);
+    await expect(verifyAdminToken(token)).resolves.toBe(false);
+  });
+
   it("loads installation records created before administrator 2FA", async () => {
     const installation = await install();
     const legacy = structuredClone(installation) as unknown as {
@@ -162,5 +171,19 @@ describe("installation security", () => {
       method: "POST",
     });
     expect(() => assertSameOrigin(proxied)).not.toThrow();
+  });
+
+  it("fails closed when both browser origin signals are absent", () => {
+    const ambiguous = new Request(
+      "https://mail.example.com/api/v1/admin/auth",
+      { method: "POST" },
+    );
+    const sameOriginNavigation = new Request(
+      "https://mail.example.com/api/v1/admin/auth",
+      { headers: { "sec-fetch-site": "none" }, method: "POST" },
+    );
+
+    expect(() => assertSameOrigin(ambiguous)).toThrow("same-origin");
+    expect(() => assertSameOrigin(sameOriginNavigation)).not.toThrow();
   });
 });

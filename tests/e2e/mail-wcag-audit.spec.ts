@@ -134,6 +134,11 @@ test("keeps reader and account settings free of WCAG violations", async ({
   await expect(settings).toBeVisible();
   await expect(settings.getByRole("heading", { name: "Provider capabilities" }))
     .toBeVisible();
+  const sessions = settings.getByRole("region", { name: "Active sessions" });
+  await expect(sessions.getByText(/This browser/u)).toBeVisible();
+  await expect(sessions.getByRole("button", {
+    name: "Revoke this browser session",
+  })).toBeVisible();
   await expectNoPageHorizontalOverflow(page);
   await expectNoWcagAccessibilityViolations(page);
 });

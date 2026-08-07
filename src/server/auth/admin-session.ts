@@ -4,6 +4,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import { cookies } from "next/headers";
 
 import type { InstallationRecord } from "@/domain/installation/installation";
+import { adminSessionStore } from "@/server/auth/admin-session-store";
 import { installationStore } from "@/server/installation/installation.store";
 import { verifyAdminPasswordDigest } from "@/server/installation/password-hash";
 import { ApiError } from "@/transport/http/api-error";
@@ -53,14 +54,20 @@ export const issueAdminToken = async (
   if (!current) {
     throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
   }
-  const expiresAt = String(
-    Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SECONDS,
-  );
+  const expiresAtNumber =
+    Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SECONDS;
+  const expiresAt = String(expiresAtNumber);
+  const nonce = randomBytes(18).toString("base64url");
   const payload = [
     current.owner.authVersion,
     expiresAt,
-    randomBytes(18).toString("base64url"),
+    nonce,
   ].join(".");
+  adminSessionStore.create({
+    authVersion: current.owner.authVersion,
+    expiresAt: expiresAtNumber * 1_000,
+    id: nonce,
+  });
   return `${payload}.${signature(payload, current.sessionSecret)}`;
 };
 
@@ -92,10 +99,33 @@ export const verifyAdminToken = async (
     return false;
   }
   const payload = `${authVersion}.${expiresAt}.${nonce}`;
-  return equal(
+  const validSignature = equal(
     suppliedSignature,
     signature(payload, current.sessionSecret),
   );
+  return validSignature && Boolean(
+    adminSessionStore.get(nonce, current.owner.authVersion),
+  );
+};
+
+export const revokeAdminToken = async (
+  token: string | undefined,
+): Promise<boolean> => {
+  if (!(await verifyAdminToken(token))) return false;
+  const nonce = token?.split(".")[2];
+  return nonce ? adminSessionStore.remove(nonce) : false;
+};
+
+export const getCurrentAdminSessionId = async (): Promise<string | null> => {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE)?.value;
+  if (!(await verifyAdminToken(token))) return null;
+  return token?.split(".")[2] ?? null;
+};
+
+export const revokeCurrentAdminSession = async (): Promise<boolean> => {
+  const cookieStore = await cookies();
+  return revokeAdminToken(cookieStore.get(ADMIN_COOKIE)?.value);
 };
 
 export const hasAdminAccess = async (): Promise<boolean> => {

@@ -1,11 +1,5 @@
 "use client";
-import {
-  type FormEvent,
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type FormEvent, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { DEFAULT_MEMBER_CAPABILITIES } from "@/presentation/features/mail-workspace/account-settings-default-capabilities";
 import { createProviderFeatures } from "@/presentation/features/mail-workspace/account-settings-provider-features";
 import { createAccountSettingsPolicy } from "@/presentation/features/mail-workspace/account-settings-policy";
@@ -13,6 +7,7 @@ import type { AccountSettingsViewModel } from "@/presentation/features/mail-work
 import type { EmailSignatureSettingsViewModel } from "@/presentation/features/mail-workspace/email-signature-settings.view-model";
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model"; import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
+import { useMemberSessionsModel } from "@/presentation/features/mail-workspace/hooks/use-member-sessions-model";
 import {
   ignoreMailSessionFailure,
   type MailSessionFailureHandler,
@@ -50,6 +45,8 @@ export const useAccountSettingsModel = (
   const scopeRef = useRef(sessionScope);
   const { reset: resetTwoFactor, view: twoFactorView } =
     useTwoFactorSettingsModel(sessionScope, handleSessionFailure);
+  const { load: loadMemberSessions, reset: resetMemberSessions,
+    view: memberSessions } = useMemberSessionsModel(sessionScope, handleSessionFailure);
   useLayoutEffect(() => {
     scopeRef.current = sessionScope;
     setIsOpen(false);
@@ -68,7 +65,8 @@ export const useAccountSettingsModel = (
     setPasswordSuccess(null);
     setIsPasswordSaving(false);
     resetTwoFactor(false);
-  }, [fallbackName, handleSessionFailure, resetTwoFactor, sessionScope]);
+    resetMemberSessions();
+  }, [fallbackName, handleSessionFailure, resetMemberSessions, resetTwoFactor, sessionScope]);
   const close = useCallback(() => {
     if (signatures.hasUnsavedChanges) {
       setIsCloseConfirmationOpen(true);
@@ -89,6 +87,7 @@ export const useAccountSettingsModel = (
     setDisplayName(fallbackName);
     setProfileError(null);
     resetTwoFactor(false);
+    loadMemberSessions();
     const requestScope = sessionScope;
     if (!requestScope) {
       setIsLoading(false);
@@ -113,7 +112,7 @@ export const useAccountSettingsModel = (
       .finally(() => {
         if (scopeRef.current === requestScope) setIsLoading(false);
       });
-  }, [fallbackName, handleSessionFailure, resetTwoFactor, sessionScope]);
+  }, [fallbackName, handleSessionFailure, loadMemberSessions, resetTwoFactor, sessionScope]);
   const onProfileSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -239,6 +238,7 @@ export const useAccountSettingsModel = (
       snapshot?.attachmentCapability.status,
     ),
     rules,
+    sessions: memberSessions,
     signatures,
     twoFactor: {
       ...twoFactorView,

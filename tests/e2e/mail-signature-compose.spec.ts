@@ -223,14 +223,12 @@ test("places the reply-forward default once before quoted content", async ({
     dialog.getByRole("combobox", { name: "Email signature" }),
   ).toHaveValue(seeded.signature.id);
   await expectNoSeriousAccessibilityViolations(page);
-  await page.keyboard.press("Escape");
+  await dialog.getByRole("button", { name: "Close composer" }).click();
   const closeWarning = dialog.getByRole("alertdialog", {
     name: "Close with unsaved changes?",
   });
-  await expect.poll(async () =>
-    await closeWarning.isVisible() || !await dialog.isVisible(),
-  ).toBe(true);
-  if (await closeWarning.isVisible()) await closeWarning
+  await expect(closeWarning).toBeVisible();
+  await closeWarning
     .getByRole("button", { name: "Close without saving" }).click();
   await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "Forward" }).click();

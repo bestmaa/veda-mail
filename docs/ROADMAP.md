@@ -635,7 +635,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
   provider latency/error dashboards, and alerting guidance
 - [x] Security audit log for administrator, authentication, rule, delegation,
   export, and destructive mailbox actions
-- [ ] Session inventory/revocation, idle/absolute expiry, CSRF review, login
+- [x] Session inventory/revocation, idle/absolute expiry, CSRF review, login
   throttling, and distributed rate-limit option
 - [ ] Encrypted shared session and job repositories for multi-replica operation
 - [ ] Export/import of settings, contacts, rules, and mail in standard formats
@@ -739,6 +739,20 @@ the live audit endpoint rejected an unauthenticated request with the bounded
 `ADMIN_UNAUTHORIZED` response. The passing browser regression proves the
 authenticated Audit log view, chain-verification banner, login event, privacy
 redaction, and WCAG contrast on the deployed source revision.
+
+The session-security slice adds server-registered administrator and mailbox
+sessions with selective revocation, a 30-minute idle deadline, and a
+non-extendable 12-hour absolute deadline. Administrator Security and member
+Account settings expose privacy-safe session inventories without returning raw
+cookies, provider credentials, email addresses, IP addresses, or user-agent
+strings. Mutation CSRF checks now require either an exact Origin or trustworthy
+same-origin fetch metadata. Login throttles remain protected by local limits
+and can additionally use an atomic Redis fixed-window backend with HMAC-derived
+keys; a configured but unavailable shared backend fails authentication closed.
+Unit, integration, live-Redis concurrency, component, accessibility, provider,
+architecture, build, dependency-audit, and browser regression coverage protect
+the slice. Sessions and non-login mutable repositories remain explicitly
+single-replica until the later shared-state roadmap item is delivered.
 
 ## Delivery order
 

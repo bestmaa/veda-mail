@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
 import type { MailAccount } from "@/domain/mail/mail";
 import type { MailServiceProfile, ProviderConnection } from "@/domain/provider/provider";
@@ -11,6 +10,10 @@ import {
 import { MEMBER_CONNECTION_TTL_SECONDS } from "@/server/connections/connection-lifetime";
 import { connectionStore } from "@/server/connections/connection-store";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
+import {
+  memberSessionClientLabel,
+  memberSessionOwnerKey,
+} from "@/server/connections/member-session-metadata";
 import {
   anonymousMemberSession,
   memberCookieOptions,
@@ -25,9 +28,9 @@ import {
 import { mailServiceProfileRevision } from "@/server/mail-service/mail-service-profile-revision";
 import { mailServiceProfileStore } from "@/server/mail-service/mail-service-profile.store";
 import {
-  assertRequestRateLimit,
-  assertSubjectRateLimit,
-} from "@/server/security/rate-limit";
+  assertAuthenticationRequestRateLimit,
+  assertAuthenticationSubjectRateLimit,
+} from "@/server/security/authentication-rate-limit";
 import {
   appendSecurityAudit,
   memberAuditActor,
@@ -40,9 +43,7 @@ import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
 import { memberTwoFactorSecurity } from "@/server/auth/member-two-factor";
 
 export const runtime = "nodejs";
-
 const MAX_MEMBER_LOGIN_BODY_BYTES = 16 * 1024;
-
 const activeProfile = async (): Promise<MailServiceProfile> => {
   const profile = await mailServiceProfileStore.get();
   if (!profile) {
@@ -85,7 +86,7 @@ export const POST = async (request: Request) => {
   const authenticationAudit = memberAuthenticationAudit();
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertAuthenticationRequestRateLimit(
       request,
       "member-login",
       2_000,
@@ -96,7 +97,7 @@ export const POST = async (request: Request) => {
       await readJsonBody(request, MAX_MEMBER_LOGIN_BODY_BYTES),
     );
     authenticationAudit.identify(credentials.email);
-    assertSubjectRateLimit(
+    await assertAuthenticationSubjectRateLimit(
       "member-login",
       credentials.email.toLowerCase(),
       10,
@@ -195,6 +196,10 @@ export const POST = async (request: Request) => {
         providerId: profile.providerId,
       },
       profileRevision,
+      {
+        clientLabel: memberSessionClientLabel(request),
+        ownerKey: memberSessionOwnerKey(credentials.email),
+      },
     );
     if (previous) {
       connectionStore.remove(previous.id);
@@ -220,14 +225,17 @@ export const DELETE = async (request: Request) => {
     if (connection) {
       assertMailSessionScope(request, connection);
       const auditActor = memberAuditActor(connection);
-      await appendSecurityAudit({
-        action: "member.authentication.signed-out",
-        actor: auditActor,
-        outcome: "success",
-        targetType: "session",
-      });
-      twoFactorEnrollmentStore.remove(connection.id);
-      connectionStore.remove(connection.id);
+      try {
+        await appendSecurityAudit({
+          action: "member.authentication.signed-out",
+          actor: auditActor,
+          outcome: "success",
+          targetType: "session",
+        });
+      } finally {
+        twoFactorEnrollmentStore.remove(connection.id);
+        connectionStore.remove(connection.id);
+      }
     }
     const response = new NextResponse(null, { status: 204 });
     response.cookies.set(CONNECTION_COOKIE, "", {

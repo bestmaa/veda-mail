@@ -31,5 +31,12 @@ test("shows verified, privacy-bounded administrator security evidence", async ({
     .toBeVisible();
   await expect(audit).not.toContainText("playwright-admin");
   await expect(audit).not.toContainText("Playwright123456");
+
+  await page.getByRole("button", { name: "Security", exact: true }).click();
+  const sessions = page.getByRole("region", { name: "Active sessions" });
+  await expect(sessions.getByText("This administrator session")).toBeVisible();
+  await expect(sessions.getByRole("button", {
+    name: "Revoke this administrator session",
+  })).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 });

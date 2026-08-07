@@ -2,14 +2,15 @@ import { KeyRound, LoaderCircle, Save, ShieldCheck } from "lucide-react";
 
 import type { AdminSecurityViewProps } from "@/presentation/features/admin-security/admin-security.view-model";
 import { AdminTwoFactorView } from "@/presentation/features/admin-security/ui/admin-two-factor.view";
+import { AdminSessionsView } from "@/presentation/features/admin-security/ui/admin-sessions.view";
 
 export const AdminSecurityView = (model: AdminSecurityViewProps) => (
   <section>
-    <p className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#ff785a]">
+    <p className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#b7331b]">
       Owner account
     </p>
     <h2 className="mt-1 text-3xl font-extrabold tracking-[-0.05em]">Security</h2>
-    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
       Change the administrator username or rotate its password. Mailbox
       credentials remain separate.
     </p>
@@ -29,7 +30,7 @@ export const AdminSecurityView = (model: AdminSecurityViewProps) => (
           <label className="block"><span className="mb-2 block text-xs font-bold">Admin username</span><input autoComplete="username" className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" onChange={model.usernameInput} required value={model.username} /></label>
           <label className="mt-4 block"><span className="mb-2 block text-xs font-bold">Current password</span><span className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 px-4 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-100"><KeyRound aria-hidden className="text-slate-400" size={17} /><input autoComplete="current-password" className="min-w-0 flex-1 bg-transparent text-sm outline-none" onChange={model.currentPasswordInput} required type="password" value={model.currentPassword} /></span></label>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="block"><span className="mb-2 block text-xs font-bold">New password <span className="font-normal text-slate-400">(optional)</span></span><input autoComplete="new-password" className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" minLength={12} onChange={model.newPasswordInput} type="password" value={model.newPassword} /></label>
+            <label className="block"><span className="mb-2 block text-xs font-bold">New password <span className="font-normal text-slate-600">(optional)</span></span><input autoComplete="new-password" className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" minLength={12} onChange={model.newPasswordInput} type="password" value={model.newPassword} /></label>
             <label className="block"><span className="mb-2 block text-xs font-bold">Confirm new password</span><input autoComplete="new-password" className="h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" minLength={12} onChange={model.confirmationInput} type="password" value={model.confirmation} /></label>
           </div>
           {model.twoFactorEnabled ? (
@@ -47,5 +48,6 @@ export const AdminSecurityView = (model: AdminSecurityViewProps) => (
       )}
     </div>
     {!model.isLoading ? <AdminTwoFactorView {...model} /> : null}
+    <AdminSessionsView model={model.sessions} />
   </section>
 );

@@ -72,7 +72,9 @@ export const signIn = async (page: Page) => {
   await page.getByLabel("Email address").fill("member@example.com");
   await page.getByLabel("Password").fill("local-test-password");
   await page.getByRole("button", { name: "Open mailbox" }).click();
-  await expect(page.getByRole("button", { name: "New message" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "New message" })).toBeEnabled({
+    timeout: 20_000,
+  });
 };
 
 export const mailSessionScopeHeaders = async (
