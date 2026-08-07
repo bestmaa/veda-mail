@@ -75,11 +75,15 @@ export const useRecipientSuggestionsModel = (
           });
           return;
         }
-        if (event.key === "Enter" && activeField === name && activeIndex >= 0) {
-          const suggestion = items[activeIndex];
-          if (suggestion) {
-            event.preventDefault();
-            select(name, suggestion);
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const suggestion = activeField === name && activeIndex >= 0
+            ? items[activeIndex]
+            : undefined;
+          if (suggestion) select(name, suggestion);
+          else {
+            setActiveField(null);
+            setActiveIndex(-1);
           }
           return;
         }

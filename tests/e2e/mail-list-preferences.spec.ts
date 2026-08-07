@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import type { MessageListPreferences } from "@/domain/mail/message-list-preferences";
+
 import {
   expectNoSeriousAccessibilityViolations,
   mailSessionScopeHeaders,
@@ -8,7 +10,7 @@ import {
 
 useInstalledMailbox();
 
-const defaults = {
+const defaults: MessageListPreferences = {
   confirmBeforeSend: false,
   density: "comfortable",
   keyboardShortcuts: false,
@@ -17,11 +19,11 @@ const defaults = {
   sort: "newest",
   timeZone: "auto",
   undoSendSeconds: 0,
-} as const;
+};
 
 const savePreferences = async (
   page: Parameters<typeof mailSessionScopeHeaders>[0],
-  preferences: typeof defaults,
+  preferences: MessageListPreferences,
 ) => {
   const scope = await mailSessionScopeHeaders(page);
   const response = await page.request.patch("/api/v1/mail/preferences", {
@@ -109,4 +111,24 @@ test("persists accessible density, sort, and preview controls", async ({ page })
   })).toHaveValue("ar");
   await expect(dialog.getByRole("combobox", { name: "Time zone" }))
     .toHaveValue("Asia/Riyadh");
+});
+
+test("recipient Enter never opens send confirmation", async ({ page }) => {
+  await savePreferences(page, {
+    ...defaults,
+    confirmBeforeSend: true,
+    undoSendSeconds: 20,
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "New message" }).click();
+  const composer = page.getByRole("dialog", { name: "Compose message" });
+  const recipient = composer.getByRole("combobox", { name: "To" });
+
+  await recipient.fill("person@example.com");
+  await recipient.press("Enter");
+
+  await expect(composer).toBeVisible();
+  await expect(recipient).toHaveValue("person@example.com");
+  await expect(page.getByRole("dialog", { name: "Send this message?" }))
+    .toHaveCount(0);
 });

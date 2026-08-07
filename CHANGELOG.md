@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Recipient-field Enter no longer falls through to the composer form and opens
+  send confirmation before the message is ready. Explicit draft saves used by
+  Undo Send now wait for any in-flight autosave, adopt its provider revision,
+  and persist the latest local generation instead of returning a transient
+  failure or creating a duplicate provider draft.
 - Split the image-only release Compose definition from the opt-in source-build
   override. Digest-pinned Dokploy releases can no longer fail by trying to tag
   a local build with a digest reference, while explicit developer builds retain

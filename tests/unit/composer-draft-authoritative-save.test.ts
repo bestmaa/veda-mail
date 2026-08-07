@@ -130,6 +130,70 @@ describe("composer authoritative draft save response", () => {
     expect(draft.canSend).toBe(false);
   });
 
+  it("waits for autosave before explicitly saving the latest edit", async () => {
+    const pending = Promise.withResolvers<DraftDetail>();
+    api.createDraft.mockReturnValueOnce(pending.promise);
+    api.updateDraft.mockResolvedValueOnce(detail("latest edit", "revision-b"));
+    let composerContent = content("autosave snapshot");
+    const render = () => {
+      hooks.begin();
+      return useComposerDraft({
+        accountKey: "account-a", composeId, content: composerContent,
+        enabled: true, handleSessionFailure: () => false,
+        hasLocalAttachments: false, onDiscarded: vi.fn(), onHydrate: vi.fn(),
+        onSaved: vi.fn(),
+      });
+    };
+
+    let draft = render();
+    draft.markUnsaved();
+    draft = render();
+    const autosaving = draft.autosave();
+    composerContent = content("latest edit");
+    draft.markUnsaved();
+    draft = render();
+    const explicitSave = draft.saveDetail();
+
+    pending.resolve(detail("autosave snapshot"));
+    await expect(autosaving).resolves.toBe(true);
+    await expect(explicitSave).resolves.toEqual(detail("latest edit", "revision-b"));
+    expect(api.createDraft).toHaveBeenCalledOnce();
+    expect(api.updateDraft).toHaveBeenCalledWith(providerId, {
+      attachmentIds: [], composeId, content: content("latest edit"),
+      expectedRevision: "revision-a", retainedAttachmentIds: [],
+    }, "account-a", expect.any(AbortSignal));
+  });
+
+  it("fails closed when the autosave ahead of an explicit save is uncertain", async () => {
+    const pending = Promise.withResolvers<DraftDetail>();
+    api.createDraft.mockReturnValueOnce(pending.promise);
+    let composerContent = content("autosave snapshot");
+    const render = () => {
+      hooks.begin();
+      return useComposerDraft({
+        accountKey: "account-a", composeId, content: composerContent,
+        enabled: true, handleSessionFailure: () => false,
+        hasLocalAttachments: false, onDiscarded: vi.fn(), onHydrate: vi.fn(),
+        onSaved: vi.fn(),
+      });
+    };
+
+    let draft = render();
+    draft.markUnsaved();
+    draft = render();
+    const autosaving = draft.autosave();
+    composerContent = content("latest edit");
+    draft.markUnsaved();
+    draft = render();
+    const explicitSave = draft.saveDetail();
+
+    pending.reject(new Error("Connection lost"));
+    await expect(autosaving).resolves.toBe(false);
+    await expect(explicitSave).resolves.toBeNull();
+    expect(api.createDraft).toHaveBeenCalledOnce();
+    expect(api.updateDraft).not.toHaveBeenCalled();
+  });
+
   it("uses the adopted server content for the next save and send handle", async () => {
     api.createDraft.mockResolvedValueOnce(detail("server canonical"));
     api.updateDraft.mockResolvedValueOnce(detail("canonical plus edit", "revision-b"));
