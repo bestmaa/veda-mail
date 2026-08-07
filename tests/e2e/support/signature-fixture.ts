@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type {
   EmailSignature,
@@ -12,6 +12,22 @@ export const testSignaturePrefix = "E2E signature workflow";
 export const signatureAttribute = "data-veda-signature-id";
 const sessionScopeHeader = "x-veda-mail-session-scope";
 const sessionScopes = new WeakMap<Page, string>();
+
+export const closeSignatureComposer = async (
+  dialog: Locator,
+): Promise<void> => {
+  await dialog.getByRole("button", { name: "Close composer" }).click();
+  const warning = dialog.getByRole("alertdialog", {
+    name: "Close with unsaved changes?",
+  });
+  await expect
+    .poll(async () => (await warning.isVisible()) || !(await dialog.isVisible()))
+    .toBe(true);
+  if (await warning.isVisible()) {
+    await warning.getByRole("button", { name: "Close without saving" }).click();
+  }
+  await expect(dialog).toBeHidden();
+};
 
 const signatureSessionScope = async (page: Page): Promise<string> => {
   const cached = sessionScopes.get(page);

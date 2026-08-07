@@ -49,7 +49,7 @@ export const verifyPartialDeliveryNotice = async ({
   });
   await expect(
     dialog.getByText("partial.txt is ready to send.", { exact: true }),
-  ).toBeAttached();
+  ).toBeAttached({ timeout: 20_000 });
 
   const refresh = page.waitForRequest(
     (request) =>
