@@ -11,7 +11,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 - Repinned the optional live Redis login-limiter CI sidecar to Redis 8.4.5 on
   the patched Alpine 3.22 base, and made long Playwright composer batches wait
-  deterministically for mailbox readiness and use the visible close control.
+  deterministically for mailbox and attachment readiness, use the visible
+  close control, and accept the composer's two intentional clean/dirty close
+  outcomes before continuing the reply-forward regression. The complete
+  quality job now has a 45-minute ceiling after a slow hosted run passed its
+  browser and production-build stages but exhausted the previous 30-minute
+  ceiling during the security-header check.
 - Patched transitive `brace-expansion` and `postcss` releases after newly
   published denial-of-service and source-map path disclosure advisories, and
   pinned the safe versions through npm overrides
