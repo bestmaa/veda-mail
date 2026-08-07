@@ -754,6 +754,27 @@ architecture, build, dependency-audit, and browser regression coverage protect
 the slice. Sessions and non-login mutable repositories remain explicitly
 single-replica until the later shared-state roadmap item is delivered.
 
+The session-security and immutable-Compose hardening is released and deployed.
+PRs #115 and #117 shipped the session slice and stabilized its hosted browser
+evidence; PR #118 removed the application build from the production Compose
+definition and added an explicit source-build override plus a shared local/CI
+contract verifier. Protected-main run `31151325373` passed quality and coverage
+(494 files and 2,436 tests), all 105 browser regressions, production build and
+security-header verification, dependency audit, CodeQL, live ClamAV, source
+and container scans, amd64/arm64 image validation, attestation, and signed
+multi-platform publication for commit
+`d9f490d63856f9e01b94ae59b10e0a3a0a1a3f2f`. Dokploy pulled, rather than
+built, the exact immutable release
+`ghcr.io/bestmaa/veda-mail:sha-d9f490d63856f9e01b94ae59b10e0a3a0a1a3f2f@sha256:ab7df159aeeef37b3df84c02a7b87e22d8b54e3b26be6e73ad95ffe0be6bd7d8`
+and completed the rollout in 31 seconds. Both containers reported healthy;
+public liveness and readiness returned HTTP 200 with data and scanner checks
+`ok`; HSTS, frame-denial, content-type, and permissions-policy headers remained
+present. A fresh dedicated-mailbox session sent unique-subject evidence to an
+external Gmail recipient, the message appeared in Sent Items, and Gmail
+received it. The Account settings session inventory also exposed the current
+browser, idle/absolute expiry policy, and selective revocation control without
+returning raw session secrets.
+
 ## Delivery order
 
 Work proceeds in small vertical slices. For every checkbox: contract and threat
