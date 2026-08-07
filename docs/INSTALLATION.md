@@ -79,8 +79,14 @@ docker compose ps
 docker compose logs --tail=100 veda-mail
 ```
 
-This uses the published GHCR image. To build the checked-out source, replace
-the first two commands with `docker compose up --build -d`.
+This uses the published GHCR image. The release file intentionally contains no
+application build section, so digest-pinned deployments cannot accidentally
+retag local source. To build the checked-out source, replace the first two
+commands with:
+
+```bash
+docker compose -f compose.yaml -f compose.build.yaml up --build -d
+```
 
 Compose publishes port `3000` on `127.0.0.1` by default. Open
 <http://127.0.0.1:3000/setup> locally, or configure an HTTPS reverse proxy

@@ -166,8 +166,8 @@ For a source checkout:
 git fetch origin main
 git checkout --detach <full-protected-main-commit>
 ./scripts/check-clamav-platform.sh
-docker compose build --pull
-docker compose up -d
+docker compose -f compose.yaml -f compose.build.yaml build --pull
+docker compose -f compose.yaml -f compose.build.yaml up -d
 docker compose ps
 docker compose logs --tail=100 veda-mail
 ```

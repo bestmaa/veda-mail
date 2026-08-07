@@ -9,6 +9,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Split the image-only release Compose definition from the opt-in source-build
+  override. Digest-pinned Dokploy releases can no longer fail by trying to tag
+  a local build with a digest reference, while explicit developer builds retain
+  the same Dockerfile, service topology, named volumes, and security controls.
+  The shared local/CI contract verifier now rejects a release definition that
+  regains an application build, a source-build override that loses it, topology
+  drift between modes, or mutation of an exact digest reference.
 - Repinned the optional live Redis login-limiter CI sidecar to Redis 8.4.5 on
   the patched Alpine 3.22 base, and made long Playwright composer batches wait
   deterministically for mailbox and attachment readiness, use the visible

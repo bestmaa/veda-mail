@@ -1,0 +1,5 @@
+services:
+  veda-mail:
+    build:
+      context: .
+      dockerfile: Dockerfile

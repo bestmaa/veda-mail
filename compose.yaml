@@ -1,9 +1,6 @@
 services:
   veda-mail:
     image: ${VEDA_MAIL_IMAGE:-ghcr.io/bestmaa/veda-mail:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
     environment:
       NODE_ENV: production
       VEDA_MAIL_SETUP_TOKEN: ${VEDA_MAIL_SETUP_TOKEN:?Set a setup token of at least 24 characters}

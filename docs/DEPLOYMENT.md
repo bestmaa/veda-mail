@@ -85,20 +85,27 @@ curl --fail http://127.0.0.1:3000/api/health
 curl --fail http://127.0.0.1:3000/api/ready
 ```
 
-The supplied Compose file uses the published GHCR image by default and starts
-the official Alpine-based ClamAV 1.5.3 `linux/amd64` image at an immutable
+The supplied release Compose file uses the published GHCR image and contains no
+application `build` section. This prevents platforms that append `--build` from
+trying to retag an immutable digest reference. It also starts the official
+Alpine-based ClamAV 1.5.3 `linux/amd64` image at an immutable
 digest. CI scans that exact digest with pinned Trivy settings and rejects any
 HIGH or CRITICAL vulnerability or detected secret. ClamAV is reachable only
 on the private Compose network; its signature database is kept in the
 `clamav-signatures` volume. To build the checked-out Veda Mail source instead,
-use `docker compose up --build -d`.
+explicitly add the source-build override:
+
+```bash
+docker compose -f compose.yaml -f compose.build.yaml up --build -d
+```
 
 ### Dokploy Compose deployment
 
 Use a repository-backed **Git** or **GitHub** Compose provider for production,
 not an independently maintained single-service Raw definition. Configure the
 public repository URL, protected `main` branch, and `./compose.yaml` path, then
-pin `VEDA_MAIL_IMAGE` to the verified immutable release digest. Preview the
+pin `VEDA_MAIL_IMAGE` to the verified immutable release digest. Do not add
+`compose.build.yaml` to a production deployment. Preview the
 converted Compose before deploying and require both `veda-mail` and `clamav`
 services to be present.
 
