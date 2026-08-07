@@ -180,7 +180,7 @@ for the dedicated live JMAP and IMAP/SMTP mailbox scan/download evidence above.
 - [x] Reusable templates with explicit insert/replace behavior
 - [x] Send confirmation preference and an undo-send delay backed by a durable
   queue
-- [ ] Complete the keyboard-shortcut and assistive-technology audit beyond v1
+- [x] Complete the keyboard-shortcut and assistive-technology audit beyond v1
   browser spellcheck and standard formatting shortcuts
 
 Acceptance: reloading or losing the network cannot silently lose a draft, and
@@ -229,9 +229,18 @@ Its amd64 manifest is
 `sha256:a5cadfcd63dccf8ac8bef6a338f15a84baefd61764e85823d4da83f88e39e0df`
 and its arm64 manifest is
 `sha256:a219d04ceeba9186ef9a0c3d02799ee43a8a3fceb3054eb0ec182ede44dab32d`;
-both carry the exact merge revision and repository source labels. Its checkbox
-remains open until live production keyboard plus screen-reader smoke evidence
-is recorded.
+both carry the exact merge revision and repository source labels. Production
+keyboard and assistive-technology acceptance completed on 2026-08-08 with the
+dedicated live Stalwart mailbox. The shortcut guide exposed a named dialog,
+announced the enabled state and complete command list, trapped focus, closed
+with Escape, and returned focus to its exact trigger. The `/` command focused
+mail search without inserting the key; typing then suppressed the `C` command.
+Outside an editable field, `C` opened a single compose dialog and `J` opened the
+next loaded message with focus on its subject heading. Escape closed the reader
+and returned focus to the exact originating message button. The live controls
+exposed `aria-keyshortcuts` for `?`, `/`, and `C`, and polite status messages
+announced the completed actions. The temporary shortcut preference was restored
+to its original disabled state after acceptance.
 Stalwart JMAP and Standard IMAP/SMTP now have security-reviewed provider-draft
 vertical slices: create, update, Drafts-list/open, discard, save-first send,
   lost-response reconciliation, serialized autosave, visible state, durable
@@ -264,9 +273,8 @@ production and live critical-flow evidence remains open. The earlier
 `wovvtec.site`/`mail.wovvtec.site` NXDOMAIN entry used
 incorrect hostnames; the canonical deployment endpoints are
 `panel.wovvtech.site` and `webmail.vedaconcepts.com`, and public webmail health
-was HTTP 200 on 2026-08-03. Completing this milestone still requires feature-
-specific live evidence, delayed send, and the broader shortcut/accessibility
-audit listed above.
+was HTTP 200 on 2026-08-03. Completing this milestone now requires only the
+provider-durable attachment production evidence listed above.
 
 ## M4 — Fast mailbox management
 
