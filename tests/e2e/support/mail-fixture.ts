@@ -96,7 +96,16 @@ export const disableProviderDrafts = async (page: Page) => {
       data: { draftCapability: { status: string } };
     };
     payload.data.draftCapability = { status: "unsupported" };
-    await route.fulfill({ json: payload, response });
+    try {
+      await route.fulfill({ json: payload, response });
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("Route is already handled")
+      ) {
+        throw error;
+      }
+    }
   });
   await page.reload();
   await expect(page.getByRole("button", { name: "New message" })).toBeEnabled();
