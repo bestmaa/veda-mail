@@ -84,6 +84,7 @@ test("confirms, delays, atomically undoes, and restores the provider draft", asy
     .fill("Undo browser proof");
   await composer.getByRole("textbox", { exact: true, name: "Message body" })
     .fill("This exact provider draft must return after cancellation.");
+  await expect(composer.getByText("Saved", { exact: true }).first()).toBeVisible();
   await composer.getByRole("button", { exact: true, name: "Send" }).click();
 
   const confirmation = page.getByRole("dialog", { name: "Send this message?" });
