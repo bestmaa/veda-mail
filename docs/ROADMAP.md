@@ -182,7 +182,7 @@ for the dedicated live JMAP and IMAP/SMTP mailbox scan/download evidence above.
   full local browser suite are complete; this remains open until the immutable
   release is published and the live production create/reload/insert/replace
   smoke evidence is recorded
-- [ ] Send confirmation preference and an undo-send delay backed by a durable
+- [x] Send confirmation preference and an undo-send delay backed by a durable
   queue
 - [ ] Complete the keyboard-shortcut and assistive-technology audit beyond v1
   browser spellcheck and standard formatting shortcuts
@@ -203,9 +203,22 @@ Its amd64 manifest is
 `sha256:599bc0e5d6d2f98a162c67d0f8c861d8a9d58ace6fe5c7c0ba8c7aed4f3ff660`
 and its arm64 manifest is
 `sha256:f995524d9af0e0d8085616a398ac691cd8dde2ef50f6f0f3c8dff291f080c9c2`;
-both carry the exact merge revision and repository source labels. Live
-production schedule/undo evidence—and therefore the checkbox—remains blocked
-by the DNS condition below.
+both carry the exact merge revision and repository source labels.
+
+Production acceptance completed on 2026-08-07 after PRs #120 and #121. The
+exact protected-main revision `3733693aca7b2dc22995e3b44fbc795aeaa2dae2` was
+deployed from the scanned and attested image digest
+`sha256:f38d3cbc836df41c31981ee46e070297804d5da3fe10e024b5747694d7018b8c`;
+both `/api/health` and `/api/ready` returned 200. The live Stalwart mailbox
+proved that Enter in an unresolved recipient field cannot bypass validation,
+an already-autosaved provider draft can enter the durable 20-second window,
+and cancellation atomically restores the exact subject and body. A Gmail
+`in:anywhere` search proved the cancelled message was absent after the window.
+The non-cancelled control completed once, appeared in Sent Items with the exact
+recipient, and arrived at Gmail (classified as Spam), proving the positive
+external-delivery path as well as the cancellation path. The temporary test
+account preferences were then restored to immediate send without confirmation.
+
 The keyboard and assistive-technology slice is locally complete: encrypted
 opt-in preferences with backward migration, an accessible focus-trapped guide,
 search/compose/list/reader commands, editable/composer/modal suppression,
