@@ -27,7 +27,12 @@ const retainedAttachments = (
     ? readJmapReceivedAttachmentProviderBlobId(match)
     : null;
   if (!match || !blobId) throw new DraftConflictError();
-  return { blobId, name: match.metadata.name, type: match.metadata.mimeType };
+  return {
+    blobId,
+    name: match.metadata.name,
+    size: match.metadata.size,
+    type: match.metadata.mimeType,
+  };
 });
 
 export const allStalwartDraftAttachments = (
@@ -73,8 +78,17 @@ export const resolveStalwartDraftAttachments = async (
 export const jmapDraftAttachmentFingerprint = (
   attachments: readonly JmapComposeAttachment[],
 ): string => createHash("sha256").update(JSON.stringify(attachments.map((item) => ({
+  name: item.name,
+  size: item.size,
+  type: item.type,
+})))).digest("hex");
+
+const jmapStoredAttachmentFingerprint = (
+  attachments: readonly JmapComposeAttachment[],
+): string => createHash("sha256").update(JSON.stringify(attachments.map((item) => ({
   blobId: item.blobId,
   name: item.name,
+  size: item.size,
   type: item.type,
 })))).digest("hex");
 
@@ -94,10 +108,18 @@ export const sameJmapDraftAttachments = (
   email: JmapDraftEmail,
   expected: readonly JmapComposeAttachment[],
 ): boolean => {
+  // Stalwart materializes uploaded blobs into MIME parts and may assign those
+  // parts new blob IDs. The signed attachment intent binds the source bytes;
+  // verify the resulting ordered inventory here instead of a transient ID.
   const actual = bindJmapReceivedAttachments(accountId, email).flatMap((item) => {
     const blobId = readJmapReceivedAttachmentProviderBlobId(item);
     return item.metadata.disposition === "attachment" && blobId
-      ? [{ blobId, name: item.metadata.name, type: item.metadata.mimeType }]
+      ? [{
+          blobId,
+          name: item.metadata.name,
+          size: item.metadata.size,
+          type: item.metadata.mimeType,
+        }]
       : [];
   });
   return jmapDraftAttachmentFingerprint(actual) ===
@@ -108,8 +130,8 @@ export const sameStoredJmapDraftAttachments = (
   accountId: string,
   left: JmapDraftEmail,
   right: JmapDraftEmail,
-): boolean => jmapDraftAttachmentFingerprint(
+): boolean => jmapStoredAttachmentFingerprint(
   allStalwartDraftAttachments(accountId, left),
-) === jmapDraftAttachmentFingerprint(
+) === jmapStoredAttachmentFingerprint(
   allStalwartDraftAttachments(accountId, right),
 );

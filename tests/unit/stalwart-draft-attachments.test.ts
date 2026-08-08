@@ -56,7 +56,7 @@ describe("Stalwart durable draft attachments", () => {
     );
 
     expect(resolved).toEqual([
-      { blobId: "provider-blob", name: "kept.txt", type: "text/plain" },
+      { blobId: "provider-blob", name: "kept.txt", size: 4, type: "text/plain" },
     ]);
     expect(sameJmapDraftAttachments("account", existing, resolved)).toBe(true);
     await expect(resolveStalwartDraftAttachments(client, "account", {
@@ -74,7 +74,7 @@ describe("Stalwart durable draft attachments", () => {
     await expect(resolveStalwartDraftAttachments(
       client, "account", input,
     )).resolves.toEqual([
-      { blobId: "new-blob", name: "new.txt", type: "text/plain" },
+      { blobId: "new-blob", name: "new.txt", size: 11, type: "text/plain" },
     ]);
     await expect(resolveStalwartDraftAttachments(client, "account", {
       ...input, attachments: [uploaded("0".repeat(64))],

@@ -78,7 +78,9 @@ describe("Stalwart draft attachment replacement", () => {
     candidate.email.messageId = old.email.messageId;
     const anchor = {
       accountId: "account", attachmentCount: 1,
-      attachments: [{ blobId: "blob-one", name: "notes.txt", type: "text/plain" }],
+      attachments: [{
+        blobId: "blob-one", name: "notes.txt", size: 12, type: "text/plain",
+      }],
       composeId, content: edited, existing: old,
     };
     const keyword = replacementOperationKeyword(anchor, account);
@@ -95,6 +97,15 @@ describe("Stalwart draft attachment replacement", () => {
     };
     expect(() => assertReplacementCandidate(
       swapped, anchor, account, keyword,
+    )).not.toThrow();
+    const changedBytes = {
+      ...candidate,
+      email: { ...candidate.email, attachments: [{
+        ...candidate.email.attachments![0]!, blobId: "swapped", size: 13,
+      }] },
+    };
+    expect(() => assertReplacementCandidate(
+      changedBytes, anchor, account, keyword,
     )).toThrow();
   });
 });
