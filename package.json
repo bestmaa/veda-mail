@@ -59,7 +59,7 @@
     "@lexical/list": "0.44.0",
     "@lexical/react": "0.44.0",
     "@lexical/rich-text": "0.44.0",
-    "@lexical/selection": "0.44.0",
+    "@lexical/selection": "0.49.0",
     "file-type": "22.0.1",
     "html-to-text": "10.0.0",
     "imapflow": "^1.5.0",
