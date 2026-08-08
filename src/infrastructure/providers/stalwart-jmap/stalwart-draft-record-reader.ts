@@ -88,6 +88,8 @@ export const loadStalwartDraftRecord = async (
           accountId: context.accountId,
           bodyProperties: [
             "partId",
+            "blobId",
+            "size",
             "type",
             "headers",
             "charset",
