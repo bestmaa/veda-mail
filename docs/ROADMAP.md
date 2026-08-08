@@ -167,7 +167,7 @@ for the dedicated live JMAP and IMAP/SMTP mailbox scan/download evidence above.
 ## M3 — Draft-safe, rich composing
 
 - [x] Provider-backed create, update, list, open, and discard drafts
-- [ ] Provider-durable attachment autosave and saved-draft attachment sending
+- [x] Provider-durable attachment autosave and saved-draft attachment sending
 - [x] Debounced autosave with visible saving/saved/offline/error status
 - [x] Restore an interrupted compose session without duplicating a draft
 - [x] Safe rich-text editor v1: headings, emphasis, lists, isolated links,
@@ -268,13 +268,27 @@ Insert preserved the current subject and appended the stored body; Replace
 required the context-loss confirmation and then applied the exact stored
 subject and body. The synthetic template and provider drafts were deleted
 after verification. Public liveness and readiness both returned HTTP 200,
-with the data and scanner readiness checks `ok`. Provider-durable attachment
-production and live critical-flow evidence remains open. The earlier
+with the data and scanner readiness checks `ok`.
+
+Provider-durable attachment production acceptance was completed on 2026-08-08
+against the dedicated Stalwart mailbox. A unique 135-byte text attachment was
+uploaded and reported `Saved`; after a fresh application reload, the provider
+draft reopened with the same attachment name and size, no unsupported-content
+warning, and an enabled Send action. The clean saved-draft send completed,
+appeared in Veda Mail Sent Items with the attachment, and arrived in the
+recipient Gmail inbox marked as having that attachment. Stalwart compatibility
+fixes were merged through PRs #125, #126, and #127. The final protected-main
+release was commit `4eca729d173664cc4e0117c1035d26a1429764d6`, deployed from
+the scanned and attested multi-platform image digest
+`sha256:9d93373e68e4010b3012589c88e461f13b915f1561fc2f6d9553eebb28136afd`.
+Public liveness returned `ok`; readiness returned `ready` with data and scanner
+checks `ok`. All five known synthetic provider drafts were matched by exact
+test subject, deleted, and followed by a provider query reporting zero drafts.
+The earlier
 `wovvtec.site`/`mail.wovvtec.site` NXDOMAIN entry used
 incorrect hostnames; the canonical deployment endpoints are
 `panel.wovvtech.site` and `webmail.vedaconcepts.com`, and public webmail health
-was HTTP 200 on 2026-08-03. Completing this milestone now requires only the
-provider-durable attachment production evidence listed above.
+was HTTP 200 on 2026-08-03.
 
 ## M4 — Fast mailbox management
 
