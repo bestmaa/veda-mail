@@ -77,6 +77,10 @@ const fakeClient = () => {
           }
         : false;
     }),
+    fetchAll: vi.fn(async (uids: number[]) => uids.flatMap((uid) => {
+      const stored = messages.get(uid);
+      return stored ? [{ headers: stored.source, uid }] : [];
+    })),
     list: vi.fn().mockResolvedValue([
       {
         flags: new Set<string>(),
@@ -93,8 +97,11 @@ const fakeClient = () => {
     }),
     messageDelete: vi.fn(async (uid: number) =>
       deleteFailures.has(uid) ? false : messages.delete(uid)),
-    search: vi.fn(async (query: { header: Record<string, string> }) => {
-      const [name, value] = Object.entries(query.header)[0] ?? [];
+    search: vi.fn(async (query: {
+      all?: boolean; header?: Record<string, string>;
+    }) => {
+      if (query.all) return [...messages.keys()];
+      const [name, value] = Object.entries(query.header ?? {})[0] ?? [];
       if (!name || !value) return false;
       const found = [...messages.entries()]
         .filter(([, message]) => headerValue(message.source, name) === value)
@@ -138,7 +145,6 @@ describe("IMAP draft store", () => {
   it("creates a durable draft and recovers an idempotent retry", async () => {
     const first = await store.save({ composeId, content });
     const retry = await store.save({ composeId, content });
-
     expect(first).toMatchObject({
       composeId,
       content,
@@ -154,7 +160,6 @@ describe("IMAP draft store", () => {
       store.save({ composeId, content }),
       store.save({ composeId, content }),
     ]);
-
     expect(second).toEqual(first);
     expect(fake.client.append).toHaveBeenCalledOnce();
     expect(fake.messages.size).toBe(1);
@@ -165,7 +170,6 @@ describe("IMAP draft store", () => {
       fake.messages.set(10, { date: new Date(), source });
       return { destination: "Drafts" };
     });
-
     await expect(store.save({ composeId, content })).resolves.toMatchObject({
       id: providerId(10),
     });
@@ -182,7 +186,6 @@ describe("IMAP draft store", () => {
       expectedRevision: first.revision,
       providerDraftId: first.id,
     });
-
     expect(replacement).toMatchObject({ content: changed, id: providerId(11) });
     expect(fake.messages.has(10)).toBe(false);
     expect(fake.messages.has(11)).toBe(true);
@@ -190,7 +193,6 @@ describe("IMAP draft store", () => {
 
   it("rejects stale revisions before appending replacement content", async () => {
     const first = await store.save({ composeId, content });
-
     await expect(
       store.save({
         composeId,
@@ -205,7 +207,6 @@ describe("IMAP draft store", () => {
   it("removes an uncommitted replacement when old-draft deletion fails", async () => {
     const first = await store.save({ composeId, content });
     fake.deleteFailures.add(10);
-
     await expect(
       store.save({
         composeId,
@@ -239,7 +240,6 @@ describe("IMAP draft store", () => {
   it("discards only the account-scoped draft with the expected revision", async () => {
     const saved = await store.save({ composeId, content });
     const otherAccountId = providerId(10, { ...config, username: "other@example.com" });
-
     await expect(store.discard(otherAccountId, saved.revision)).rejects.toMatchObject({
       name: "DraftNotFoundError",
     });
