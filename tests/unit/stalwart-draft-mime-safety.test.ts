@@ -90,6 +90,48 @@ describe("Stalwart editable MIME safety", () => {
     })).toBe(false);
   });
 
+  it("normalizes Stalwart's plain-body HTML alias inside multipart/mixed", () => {
+    const plain = safeStalwartDraftShape({
+      from: [{ email: "member@example.com", name: "Member" }],
+      messageId: "mixed-plain@example.com",
+      to: [{ email: "reader@example.com", name: null }],
+    });
+    const message = plain.bodyStructure; const attachment = {
+      blobId: "materialized-blob", disposition: "attachment",
+      headers: [
+        { name: "Content-Disposition", value: "attachment; filename=notes.txt" },
+        { name: "Content-Type", value: "text/plain" },
+        { name: "Content-Transfer-Encoding", value: "quoted-printable" },
+      ],
+      name: "notes.txt", partId: "2", size: 12, type: "text/plain",
+    };
+    const headers = (plain.headers ?? []).map((header) =>
+      header.name.toLowerCase() === "content-type"
+        ? { ...header, value: 'multipart/mixed; boundary="materialized"' }
+        : header);
+    const parsed = jmapDraftEmailSchema.parse(parseable({
+      ...plain,
+      attachments: [attachment],
+      bcc: [],
+      bodyStructure: {
+        headers, subParts: [message, attachment], type: "multipart/mixed",
+      },
+      bodyValues: { text: { value: "Safe" } },
+      cc: [], from: [{ email: "member@example.com", name: "Member" }],
+      hasAttachment: true, headers, htmlBody: [message],
+      messageId: ["mixed-plain@example.com"],
+      textBody: [message],
+      to: [{ email: "reader@example.com", name: null }],
+    }));
+
+    expect(parsed.htmlBody).toEqual([]);
+    expect(hasSupportedDraftBodyStructure(parsed)).toBe(true);
+    expect(mapJmapDraft(parsed, "account", "drafts")).toMatchObject({
+      attachments: [expect.objectContaining({ name: "notes.txt", size: 12 })],
+      hasTruncatedContent: false,
+    });
+  });
+
   it("accepts the canonical plain/html alternative shape", () => {
     expect(hasSupportedDraftHeaderInventory(safe())).toBe(true);
     expect(hasSupportedDraftBodyStructure(safe())).toBe(true);

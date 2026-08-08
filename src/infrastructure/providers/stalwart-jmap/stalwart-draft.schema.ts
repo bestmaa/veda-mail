@@ -77,12 +77,14 @@ const record = (value: unknown): Record<string, unknown> | null =>
 
 const normalizePlainBodyAlias = (value: unknown): unknown => {
   const email = record(value);
-  const structure = record(email?.["bodyStructure"]);
   const textBody = email?.["textBody"];
   const htmlBody = email?.["htmlBody"];
+  const soleTextPart = Array.isArray(textBody) && textBody.length === 1
+    ? record(textBody[0])
+    : null;
   if (
-    typeof structure?.["type"] === "string" &&
-    structure["type"].trim().toLowerCase() === "text/plain" &&
+    typeof soleTextPart?.["type"] === "string" &&
+    soleTextPart["type"].trim().toLowerCase() === "text/plain" &&
     Array.isArray(textBody) &&
     Array.isArray(htmlBody) &&
     JSON.stringify(textBody) === JSON.stringify(htmlBody)
