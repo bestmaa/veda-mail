@@ -74,6 +74,18 @@ describe("Stalwart exact draft queries", () => {
     await expect(
       loadStalwartDraftRecord(client, context, id.providerDraft("draft")),
     ).rejects.toThrow("changed since it was last loaded");
+    expect(client.request).toHaveBeenCalledWith(
+      [
+        [
+          "Email/get",
+          expect.objectContaining({
+            bodyProperties: expect.arrayContaining(["blobId", "size"]),
+          }),
+          "draft",
+        ],
+      ],
+      expect.any(Array),
+    );
   });
 
   it("requires an empty notFound partition for a state-only read", async () => {
