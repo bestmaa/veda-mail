@@ -108,10 +108,10 @@ receiving-side interoperability remains the release verification gate.
 
 - [x] Upload attachments with per-file/count/total limits, safe filenames,
   truthful content types, cancel/remove controls, and provider capability checks
-- [ ] Download attachments through an authenticated, non-cacheable endpoint
+- [x] Download attachments through an authenticated, non-cacheable endpoint
   using safe `Content-Disposition`, `nosniff`, and streaming limits
-- [ ] Forward original attachments without trusting client-supplied blob IDs
-- [ ] Download all as a bounded, server-streamed, collision-safe ZIP
+- [x] Forward original attachments without trusting client-supplied blob IDs
+- [x] Download all as a bounded, server-streamed, collision-safe ZIP
 - [ ] Safe attachment preview allowlist with isolated renderers (plain-text v1
   implemented; live JMAP/IMAP/ClamAV acceptance remains before completion)
 - [x] Inline CID JPEG/PNG/WebP handling for JMAP and IMAP without
@@ -132,13 +132,30 @@ providers; authorization, size, MIME, filename, timeout, content-sniffing, and
 malicious-file tests pass.
 
 Direct download, original-attachment forwarding, and Download all implementation
-plus automated security/browser coverage are complete. Their checkboxes remain
-open until receiving-side SHA-256 and response-header evidence is recorded from
-dedicated live JMAP and IMAP/SMTP mailboxes. Download all now uses a 30-second,
+plus automated security/browser coverage are complete. Download all uses a 30-second,
 single-use connection/message-bound ticket, so the reusable mailbox-session
 scope never appears in a native-download URL. JMAP downloads also support
 standards-compliant unknown-length identity streams while retaining exact
 verification whenever a length is known and the existing byte ceiling always.
+
+Dedicated receiving-side acceptance completed on 2026-08-08 through isolated
+live JMAP and IMAP/SMTP Veda Mail profiles connected to the Stalwart test
+mailbox. Each adapter sent two deterministic files to itself, received them,
+downloaded both through the authenticated endpoint, independently extracted the
+Download all ZIP, forwarded the received message through the server-side import
+path, and downloaded the two forwarded copies. Source, received, ZIP-entry and
+forwarded SHA-256 values matched: IMAP text
+`4f6a910ac2d9b77b7849e4b0985051c49e43dded1ca4e6f90185bd9ff9e571d8`,
+JMAP text `46e5bcad583fb220f579518d3f63932f8aad00fcfde58014efcdfd8ddc732fae`,
+and the shared binary fixture
+`ecb206fd0de61128823e890f059dc0f0434a165ae082493dae2697c1b93fc7c8`.
+All four direct/forward responses returned safe attachment disposition,
+`private, no-store, no-transform, max-age=0`, `nosniff`, sandbox CSP,
+same-origin CORP, no-referrer, and no byte ranges. The independent ZIP digests
+were `3e3e6881744672505619669aef8836574765d8d3cd9e0b9b841d96e4e6b86279`
+(IMAP) and `f3880998e67dfee2b2b94a7b106f4f03f066b13d3eedbe98590d4fcdec70dce9`
+(JMAP). The isolated acceptance used the deterministic clean-scanner adapter,
+so it does not close the separate live ClamAV checkbox.
 
 The received-malware vertical slice is also implemented for direct and Download
 all delivery: the exact known- or unknown-length provider stream enters an
