@@ -11,20 +11,20 @@ import type {
 import { hasHeaderControlCharacter } from "@/domain/mail/header-safety";
 import type { MessageSummary } from "@/domain/mail/mail";
 import { mapImapSummary } from "@/infrastructure/providers/imap-smtp/imap-mail.mapper";
+import {
+  boundedHeaderSourceQuery,
+  boundedImapHeaders,
+} from "@/infrastructure/providers/imap-smtp/imap-bounded-headers";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 
 export const MAX_READABLE_MAILBOXES = 32;
-const MAX_HEADER_BYTES = 64 * 1024;
 const MAX_IDENTIFIER_LENGTH = 998;
 export const MAX_GRAPH_IDENTIFIERS = 64;
 export const IDENTIFIERS_PER_SEARCH = 16;
 export const MAX_IDENTIFIER_SEARCH_BATCHES = 4;
 
 export const conversationFetchQuery = {
-  bodyParts: [{
-    key: "HEADER.FIELDS (MESSAGE-ID IN-REPLY-TO REFERENCES)",
-    maxLength: MAX_HEADER_BYTES + 1,
-  }],
+  ...boundedHeaderSourceQuery,
   bodyStructure: true,
   envelope: true,
   flags: true,
@@ -62,14 +62,11 @@ const normalizedIdentifier = (value?: string | null): string | null => {
   return candidate.toLowerCase();
 };
 
-const identifiersFromHeader = (headers?: Buffer): {
+const identifiersFromHeader = (headers?: Buffer, truncated = false): {
   readonly identifiers: readonly string[];
   readonly truncated: boolean;
 } => {
-  if (!headers) return { identifiers: [], truncated: false };
-  if (headers.byteLength > MAX_HEADER_BYTES) {
-    return { identifiers: [], truncated: true };
-  }
+  if (!headers) return { identifiers: [], truncated };
   const unfolded = headers.toString("utf8").replace(/\r?\n[\t ]+/gu, " ");
   const values: string[] = [];
   for (const line of unfolded.split(/\r?\n/gu)) {
@@ -88,7 +85,8 @@ export const graphNode = (message: FetchMessageObject): HeaderGraphNode => {
   if (ownIdentifier) identifiers.add(ownIdentifier);
   const parent = normalizedIdentifier(message.envelope?.inReplyTo);
   if (parent) identifiers.add(parent);
-  const header = identifiersFromHeader(message.headers);
+  const bounded = boundedImapHeaders(message);
+  const header = identifiersFromHeader(bounded.headers, bounded.truncated);
   header.identifiers.forEach((value) => identifiers.add(value));
   return {
     identifiers: [...identifiers].sort(compareStrings),

@@ -17,6 +17,10 @@ import { id } from "@/domain/shared/brand";
 import { evaluateMailRules } from "@/server/rules/rule-evaluator";
 import { encodeScopedImapMessageId } from "@/infrastructure/providers/imap-smtp/imap-codec";
 import { hasImapDownloadableAttachment } from "@/infrastructure/providers/imap-smtp/imap-attachment-structure";
+import {
+  boundedHeaderSourceQuery,
+  boundedImapHeaders,
+} from "@/infrastructure/providers/imap-smtp/imap-bounded-headers";
 import { withImapClient } from "@/infrastructure/providers/imap-smtp/imap-client";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 
@@ -94,10 +98,14 @@ const resultFor = (
   const messageId = id.message(encodeScopedImapMessageId(config, {
     mailbox: "INBOX", uid: message.uid, uidValidity,
   }));
+  const boundedHeaders = boundedImapHeaders(message);
+  if (headers.length && boundedHeaders.truncated) {
+    throw new Error("The provider returned incomplete preview headers.");
+  }
   const facts = {
     cc: addresses(message.envelope?.cc), from: addresses(message.envelope?.from),
     hasAttachment: hasImapDownloadableAttachment(message.bodyStructure),
-    headers: parseHeaders(message.headers, headers), id: messageId,
+    headers: parseHeaders(boundedHeaders.headers, headers), id: messageId,
     recipient: [], receivedAt: received.toISOString(), size: message.size ?? 0,
     subject: message.envelope?.subject ?? "",
     to: addresses(message.envelope?.to),
@@ -129,10 +137,7 @@ export const previewImapRules = (
   const uids = (matches === false ? [] : matches).slice(-input.limit).reverse();
   const query: FetchQueryObject = {
     bodyStructure: true, envelope: true, internalDate: true, size: true, uid: true,
-    ...(headers.length ? { bodyParts: [{
-      key: `HEADER.FIELDS (${headers.join(" ")})`,
-      maxLength: MAX_HEADER_BYTES + 1,
-    }] } : {}),
+    ...(headers.length ? boundedHeaderSourceQuery : {}),
   };
   const messages = uids.length
     ? await client.fetchAll(uids, query, { uid: true }) : [];
