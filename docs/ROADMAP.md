@@ -112,8 +112,7 @@ receiving-side interoperability remains the release verification gate.
   using safe `Content-Disposition`, `nosniff`, and streaming limits
 - [x] Forward original attachments without trusting client-supplied blob IDs
 - [x] Download all as a bounded, server-streamed, collision-safe ZIP
-- [ ] Safe attachment preview allowlist with isolated renderers (plain-text v1
-  implemented; live JMAP/IMAP/ClamAV acceptance remains before completion)
+- [x] Safe attachment preview allowlist with isolated renderers (plain-text v1)
 - [x] Inline CID JPEG/PNG/WebP handling for JMAP and IMAP without
   remote-content leakage, capped at eight rendered images per message and a
   1,600-pixel output dimension
@@ -124,7 +123,7 @@ receiving-side interoperability remains the release verification gate.
   inline-image preparation failures
 - [x] Add an explicit manual retry control for inline images that remain
   unavailable after the bounded automatic retry
-- [ ] Open-source malware-scanner hook, quarantine state, timeouts, and archive
+- [x] Open-source malware-scanner hook, quarantine state, timeouts, and archive
   expansion defenses
 
 Acceptance: allowed attachments send and download byte-identically through both
@@ -154,8 +153,8 @@ All four direct/forward responses returned safe attachment disposition,
 same-origin CORP, no-referrer, and no byte ranges. The independent ZIP digests
 were `3e3e6881744672505619669aef8836574765d8d3cd9e0b9b841d96e4e6b86279`
 (IMAP) and `f3880998e67dfee2b2b94a7b106f4f03f066b13d3eedbe98590d4fcdec70dce9`
-(JMAP). The isolated acceptance used the deterministic clean-scanner adapter,
-so it does not close the separate live ClamAV checkbox.
+(JMAP). That first isolated acceptance used the deterministic clean-scanner
+adapter; the independent real-ClamAV evidence below covers the scanner boundary.
 
 The received-malware vertical slice is also implemented for direct and Download
 all delivery: the exact known- or unknown-length provider stream enters an
@@ -165,9 +164,7 @@ concurrency and connect/idle/absolute/verdict deadlines fail closed. A pinned
 `clamd.conf` blocks encrypted or limit-exceeded content and bounds expanded
 archive bytes, recursion, files, parser work, CPU, memory, PIDs and temporary
 storage. Unit, adversarial, route, browser, real JMAP/IMAP adapter and live
-ClamAV nested/limit fixtures cover the implementation. The malware-scanner
-checkbox remains open only until the immutable release is deployed and the live
-mailbox evidence above plus production scanner health are recorded.
+ClamAV nested/limit fixtures cover the implementation.
 
 Production scanner deployment evidence is now recorded for merge
 `e4261652eb81bf346902f41fee62fc089e6bd4c7` (PR #79). Dokploy deployed the
@@ -178,8 +175,36 @@ the corresponding scanned and attested multi-platform release digest is
 Both the Veda Mail and ClamAV containers reported healthy on 2026-08-04. The
 application retained the named `veda-mail-data` volume at `/data`; ClamAV used
 the read-only Dokploy-managed `clamd.conf` bind and its named signature volume.
-The public sign-in surface loaded successfully. The checkbox remains open only
-for the dedicated live JMAP and IMAP/SMTP mailbox scan/download evidence above.
+The public sign-in surface loaded successfully.
+
+Dedicated real-ClamAV acceptance completed on 2026-08-08 against the exact
+production release `240f5ed70d38943e83865e5e8f4305a19b41efb7` and an isolated
+Standard IMAP/SMTP profile. Production JMAP and isolated IMAP both previewed
+their known-clean 60-byte text fixture only after a real ClamAV verdict. Each
+preview used a `blob:` URL in an iframe titled `Plain text attachment preview`
+with exactly `sandbox="allow-same-origin"` and no script permission, and rendered
+the exact source line. The binary fixture remained Download-only. Direct
+downloads and independently inspected Download-all archives retained the
+existing exact SHA-256 values: JMAP text
+`46e5bcad583fb220f579518d3f63932f8aad00fcfde58014efcdfd8ddc732fae`,
+IMAP text
+`4f6a910ac2d9b77b7849e4b0985051c49e43dded1ca4e6f90185bd9ff9e571d8`,
+and binary
+`ecb206fd0de61128823e890f059dc0f0434a165ae082493dae2697c1b93fc7c8`.
+
+The same dedicated account accepted an IMAP-appended EICAR fixture so both
+receiving adapters could exercise the hostile provider-stream path rather than
+only outbound upload quarantine. JMAP and IMAP direct download each failed
+closed with the sanitized malware-blocked result and created no download. A
+second message combined EICAR with a known-clean companion; Download all failed
+closed through both adapters before emitting a ZIP. Outbound EICAR uploads were
+also rejected while the clean control reached the ready state in both profiles.
+The pinned ClamAV 1.5.3 sidecar's live integration suite passed clean/EICAR,
+plain-text preview, nested-malware archive, and expanded-archive-limit cases
+(2/2 tests). Production `/api/ready` independently reported both `data` and
+`scanner` as `ok`. The two exact synthetic mailbox messages, isolated profile,
+temporary quarantine data, scanner container, and signature volume were removed
+after verification.
 
 ## M3 — Draft-safe, rich composing
 
