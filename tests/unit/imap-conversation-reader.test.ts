@@ -68,14 +68,17 @@ const message = (input: {
   internalDate: new Date(receivedAt),
   seq: input.uid,
   size: input.uid,
+  ...(!input.headers ? { source: Buffer.from("\r\n") } : {}),
   ...(input.threadId ? { threadId: input.threadId } : {}),
   uid: input.uid,
   };
 };
 
-const anchorId = (mailboxPath = "INBOX", uidValidity = BigInt(7)) =>
+const anchorId = (
+  mailboxPath = "INBOX", uidValidity = BigInt(7), uid = 1,
+) =>
   id.message(encodeScopedImapMessageId(config, {
-    mailbox: mailboxPath, uid: 1, uidValidity,
+    mailbox: mailboxPath, uid, uidValidity,
   }));
 
 const query = (
@@ -87,7 +90,7 @@ const query = (
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   imap.client.capabilities = new Map();
   imap.client.list.mockResolvedValue([mailbox("INBOX")]);
   imap.client.mailboxOpen.mockImplementation(async (path: string) => {

@@ -22,6 +22,7 @@ import {
 import {
   conversationFetchQuery,
   conversationSummary,
+  fetchAnchorSequenceWindow,
   fetchConversationCandidates,
   graphNode,
   identifierSearch,
@@ -113,6 +114,7 @@ const referenceConversation = async (input: {
   const knownIdentifiers = new Set(anchorNode.identifiers);
   const pendingIdentifiers = [...knownIdentifiers].sort();
   const searchedIdentifiers = new Set<string>();
+  let anchorWindowScanned = false;
   let batches = 0;
   let truncated = input.initiallyTruncated || anchorNode.truncated;
 
@@ -132,9 +134,18 @@ const referenceConversation = async (input: {
       const uids = await searchConversationUids(
         input.client, identifierSearch(batch),
       );
-      const candidates = await fetchConversationCandidates(
-        input.client, uids, input.fetchBudget,
-      );
+      const shouldScanAnchorWindow = !uids.length &&
+        mailbox === input.anchorMailbox && !anchorWindowScanned;
+      if (shouldScanAnchorWindow) anchorWindowScanned = true;
+      const candidates = uids.length
+        ? await fetchConversationCandidates(input.client, uids, input.fetchBudget)
+        : shouldScanAnchorWindow
+          ? await fetchAnchorSequenceWindow(input.client, {
+            anchorSequence: input.anchor.seq,
+            exists: opened.exists,
+            fetchBudget: input.fetchBudget,
+          })
+          : { messages: [], truncated: false };
       truncated ||= candidates.truncated;
       for (const candidate of candidates.messages) {
         const node = graphNode(candidate);
