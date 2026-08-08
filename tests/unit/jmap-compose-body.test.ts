@@ -43,6 +43,7 @@ describe("JMAP compose body", () => {
         {
           blobId: "provider-blob",
           name: "evidence.bin",
+          size: 42,
           type: "application/octet-stream",
         },
       ],
@@ -82,6 +83,7 @@ describe("JMAP compose body", () => {
       blobId: "calendar-blob",
       calendarMethod: "REPLY",
       name: "reply.ics",
+      size: 42,
       type: "text/calendar",
     }]);
 

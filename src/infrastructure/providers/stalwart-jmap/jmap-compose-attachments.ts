@@ -9,6 +9,7 @@ export interface JmapComposeAttachment {
   readonly blobId: string;
   readonly calendarMethod?: "REPLY";
   readonly name: string;
+  readonly size: number | null;
   readonly type: string;
 }
 
@@ -40,6 +41,7 @@ export const uploadVerifiedJmapAttachments = async (
         ? { calendarMethod: attachment.calendarMethod }
         : {}),
       name: attachment.name,
+      size: attachment.size,
       type: provider.type,
     });
   }
