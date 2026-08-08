@@ -160,6 +160,39 @@ export const fetchConversationCandidates = async (
   };
 };
 
+export const fetchAnchorSequenceWindow = async (
+  client: ImapFlow,
+  input: {
+    readonly anchorSequence: number;
+    readonly exists: number;
+    readonly fetchBudget: ConversationFetchBudget;
+  },
+): Promise<{ readonly messages: readonly FetchMessageObject[]; readonly truncated: boolean }> => {
+  if (!Number.isSafeInteger(input.anchorSequence) || input.anchorSequence < 1 ||
+      !Number.isSafeInteger(input.exists) || input.exists < input.anchorSequence ||
+      input.fetchBudget.remaining < 1) {
+    return { messages: [], truncated: input.exists > 0 };
+  }
+  const count = Math.min(input.exists, input.fetchBudget.remaining);
+  const before = Math.floor((count - 1) / 2);
+  const start = Math.max(
+    1,
+    Math.min(input.anchorSequence - before, input.exists - count + 1),
+  );
+  const end = start + count - 1;
+  input.fetchBudget.remaining -= count;
+  const fetched = await client.fetchAll(
+    `${start}:${end}`, conversationFetchQuery,
+  );
+  return {
+    messages: fetched.filter(({ seq, uid }) =>
+      Number.isSafeInteger(seq) && seq >= start && seq <= end &&
+      Number.isSafeInteger(uid) && uid > 0)
+      .sort((left, right) => left.seq - right.seq),
+    truncated: count < input.exists,
+  };
+};
+
 export const identifierSearch = (identifiers: readonly string[]): SearchObject => ({
   or: identifiers.flatMap((identifier) => [
     { header: { "message-id": identifier } },
