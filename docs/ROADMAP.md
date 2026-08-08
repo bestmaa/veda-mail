@@ -434,8 +434,8 @@ recreation, and the public `/api/health` endpoint returned HTTP 200.
 
 ## M5 — Conversations and powerful search
 
-- [ ] Provider-backed conversation/thread view with deterministic fallback
-- [ ] Reply/forward placement, quoted-content collapsing, and per-message details
+- [x] Provider-backed conversation/thread view with deterministic fallback
+- [x] Reply/forward placement, quoted-content collapsing, and per-message details
 - [x] Search grammar for from, to, cc, subject, body, dates, size, attachment,
   unread, starred, mailbox, and exact phrases
 - [x] Search suggestions, recent searches, clear active-filter chips, and
@@ -456,9 +456,23 @@ deterministic chronological ordering. Signed connection/anchor-bound and
 membership-snapshot-bound cursors, dedicated rate limits, 64-KiB reply-header
 limits, stable loaded-page navigation, selected-message mailbox rights,
 strict route validation, sanitized failures, unit/provider-contract/component,
-and browser regressions cover the slice. The checkbox remains open until the
-merged immutable image is deployed and live authenticated Stalwart evidence is
-recorded; live IMAP evidence remains a separate acceptance requirement.
+and browser regressions cover the slice. Authenticated production JMAP
+acceptance proved a two-message Provider thread in chronological order, exact
+selected-message switching, and the selected-message action group. Dedicated
+live Stalwart IMAP acceptance then exposed a provider that returned no HEADER
+or TEXT search hits despite correct Message-ID, In-Reply-To, and References
+headers. The released fallback scans one anchor-centred sequence window within
+the existing 100-message budget, post-verifies the identifier graph, never
+groups by subject, and reports truncation when the mailbox exceeds the window.
+The exact two-message fixture returned `references`, total 2, root then reply,
+and `truncated: false`; both verified synthetic messages were deleted afterward.
+PR #132 was squash-merged as
+`53b4ceb2486eb43312dbba81d666f8641f698571`. Its scanned and attested
+amd64/arm64 release digest
+`sha256:b34d437a06cc94ecde6358e7d98395395f96bb5988dc925b90101679cd4a6822`
+was pinned and deployed through Dokploy. The Veda Mail and ClamAV containers
+were healthy, `/api/health` returned `ok`, and `/api/ready` returned `ok` for
+both data and scanner on 2026-08-08.
 
 The selected-message reader follow-up is locally complete. Reply, Reply All,
 and Forward remain bound to the exact expanded message and sit in an explicitly
@@ -468,8 +482,12 @@ collapsed only in presentation and can always be restored. Raw headers,
 provider identifiers, and hidden message mutation are outside this surface.
 Unit, component, and browser coverage protects quote recognition, sandbox/CSP
 isolation, accessibility state, conversation position, and narrow-screen use.
-Its checkbox remains open until the merged immutable image is deployed and
-authenticated production evidence is recorded.
+Authenticated production acceptance selected the root and reply independently,
+verified the exact Reply, Reply all, and Forward action group, expanded portable
+From/To/Date/Size/Attachments/conversation-position details, and restored a
+collapsed quoted reply through `Show quoted content`. The immutable release and
+production health evidence above close this follow-up together with the
+provider-backed conversation slice.
 
 The advanced-search slice is locally complete: the bounded AND grammar covers
 addresses, subject/body/text phrases, inclusive/exclusive protocol dates, strict
