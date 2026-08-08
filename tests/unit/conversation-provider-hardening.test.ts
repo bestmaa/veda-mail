@@ -21,10 +21,10 @@ describe("conversation provider hardening", () => {
       headers: Buffer.from(`References: ${"x".repeat(65_536)}`),
     } as FetchMessageObject;
 
-    expect(conversationFetchQuery.bodyParts).toEqual([{
-      key: "HEADER.FIELDS (MESSAGE-ID IN-REPLY-TO REFERENCES)",
-      maxLength: 65_537,
-    }]);
+    expect(conversationFetchQuery).toMatchObject({
+      source: { maxLength: 65_540 },
+    });
+    expect(conversationFetchQuery).not.toHaveProperty("bodyParts");
     expect(graphNode(message).truncated).toBe(true);
   });
 
