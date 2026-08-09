@@ -257,6 +257,15 @@ resolved before rerunning. Never replace its generated account with an existing
 mailbox, expose the loopback listener, or run it while management access points
 at a different organization.
 
+The release gate also has an opt-in, provider-neutral protocol integration test.
+Set `VEDA_MAIL_TEST_MANAGESIEVE_HOST`,
+`VEDA_MAIL_TEST_MANAGESIEVE_USERNAME`, and
+`VEDA_MAIL_TEST_MANAGESIEVE_PASSWORD` for a fresh `veda-accept-*` mailbox before
+running `tests/integration/manage-sieve-live.test.ts`. The test refuses a normal
+mailbox, requires an empty script list, and removes its exact probe script in a
+`finally` block. Network filtering can make this test unreachable from CI; the
+container acceptance runner remains authoritative for production evidence.
+
 ## Dokploy
 
 1. Create a project, then create a Compose service.

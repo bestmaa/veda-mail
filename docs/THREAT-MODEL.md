@@ -1060,6 +1060,11 @@ operator monitoring.
   greeting, failed STARTTLS upgrade, failed post-TLS discovery, or parser error
   destroys the setup socket; a partially initialized plaintext connection is
   never returned to the provider adapter.
+- Command literals use RFC 5804 synchronizing framing: Veda Mail waits for the
+  provider continuation and then sends exactly the advertised byte count. It
+  does not append a CRLF after those length-delimited bytes, because Stalwart
+  treats that suffix as a second empty command whose extra response can
+  desynchronize later activation and ownership verification.
 - The route accepts at most 50 ordered rules, ten conditions per rule, and
   eight actions per rule. Strict schemas normalize NFKC, reject control and
   bidi characters, enforce header-token syntax and byte limits, and reject

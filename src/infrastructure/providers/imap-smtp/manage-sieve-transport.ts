@@ -123,7 +123,10 @@ class NodeManageSieveSession implements ManageSieveSession {
     this.socket.write(`${command} {${literal.byteLength}}\r\n`);
     const continuation = await this.response();
     if (continuation.status !== "OK") return continuation;
-    this.socket.write(Buffer.concat([Buffer.from(literal), Buffer.from("\r\n")]));
+    // A literal is length-delimited and completes the command by itself. An
+    // extra CRLF after its bytes is a second, empty command on Stalwart. That
+    // produces an extra OK response and shifts every later response by one.
+    this.socket.write(literal);
     return this.response();
   }
 
