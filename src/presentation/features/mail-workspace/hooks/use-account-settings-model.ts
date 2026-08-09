@@ -8,6 +8,7 @@ import type { EmailSignatureSettingsViewModel } from "@/presentation/features/ma
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model"; import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
 import { useMemberSessionsModel } from "@/presentation/features/mail-workspace/hooks/use-member-sessions-model";
+import { useVacationSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-vacation-settings-model";
 import {
   ignoreMailSessionFailure,
   type MailSessionFailureHandler,
@@ -45,8 +46,8 @@ export const useAccountSettingsModel = (
   const scopeRef = useRef(sessionScope);
   const { reset: resetTwoFactor, view: twoFactorView } =
     useTwoFactorSettingsModel(sessionScope, handleSessionFailure);
-  const { load: loadMemberSessions, reset: resetMemberSessions,
-    view: memberSessions } = useMemberSessionsModel(sessionScope, handleSessionFailure);
+  const { load: loadMemberSessions, reset: resetMemberSessions, view: memberSessions
+  } = useMemberSessionsModel(sessionScope, handleSessionFailure); const vacation = useVacationSettingsModel(sessionScope, handleSessionFailure);
   useLayoutEffect(() => {
     scopeRef.current = sessionScope;
     setIsOpen(false);
@@ -245,5 +246,4 @@ export const useAccountSettingsModel = (
       canManage: capabilities.twoFactorAuthentication,
       disabledReason: policyView.twoFactorDisabledReason,
     },
-  };
-};
+    vacation }; };

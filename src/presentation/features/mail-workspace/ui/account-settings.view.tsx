@@ -14,6 +14,7 @@ import { TwoFactorSettingsView } from "@/presentation/features/mail-workspace/ui
 import { MailRulesView } from "@/presentation/features/mail-workspace/ui/mail-rules.view";
 import { NewMailNotificationSettingsView } from "@/presentation/features/mail-workspace/ui/new-mail-notification-settings.view";
 import { MemberSessionsView } from "@/presentation/features/mail-workspace/ui/member-sessions.view";
+import { VacationSettingsView } from "@/presentation/features/mail-workspace/ui/vacation-settings.view";
 
 const status = (error: string | null, success: string | null) =>
   error ? (
@@ -162,6 +163,8 @@ export const AccountSettingsView = ({
               <NewMailNotificationSettingsView notifications={settings.notifications} />
 
               <MailRulesView rules={settings.rules} />
+
+              <VacationSettingsView settings={settings.vacation} />
 
               <TwoFactorSettingsView settings={settings.twoFactor} />
 

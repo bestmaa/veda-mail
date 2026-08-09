@@ -102,6 +102,8 @@ test("traps focus and safely locks an ambiguous provider send", async ({
     "Keep this draft after every recoverable error.",
   );
   await expectNoSeriousAccessibilityViolations(page);
+  await discard.click();
+  await expect(dialog).toBeHidden();
 });
 
 test(

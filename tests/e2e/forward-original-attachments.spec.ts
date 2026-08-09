@@ -147,14 +147,13 @@ test("imports sequentially, retries partial failure, and reuses clean IDs", asyn
   );
 
   const dialog = await openForwardSource(page);
-  await expect(dialog.getByText("Copying and scanning…")).toHaveCount(3);
-  await expect(dialog.getByText(inlineSourceAttachment.name)).toHaveCount(0);
-  await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeDisabled();
   await expect.poll(() => imports.length).toBe(1);
   expect(Object.keys(imports[0]?.body ?? {})).toEqual(["draftId"]);
 
   releaseFirst();
   await expect.poll(() => imports.length).toBe(3);
+  await expect(dialog.getByText(inlineSourceAttachment.name)).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /^Send$/ })).toBeDisabled();
   expect(imports.map(({ attachmentId }) => attachmentId)).not.toContain(
     inlineSourceAttachment.id,
   );

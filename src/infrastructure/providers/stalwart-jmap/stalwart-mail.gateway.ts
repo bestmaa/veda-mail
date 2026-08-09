@@ -1,5 +1,4 @@
 import "server-only";
-
 import { createHash } from "node:crypto";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
@@ -43,6 +42,8 @@ import { StalwartRuleAdapter } from "@/infrastructure/providers/stalwart-jmap/st
 import { StalwartSieveTransport } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-transport";
 import { previewStalwartRules } from "@/infrastructure/providers/stalwart-jmap/stalwart-rule-preview";
 import { StalwartSnoozeAdapter } from "@/infrastructure/providers/stalwart-jmap/stalwart-snooze-adapter";
+import { StalwartVacationAdapter } from "@/infrastructure/providers/stalwart-jmap/stalwart-vacation-adapter";
+import type { VacationResponseUpdate } from "@/domain/mail/vacation";
 import {
   getStalwartMailUpdateMode,
   waitForStalwartMailUpdate,
@@ -56,6 +57,7 @@ export class StalwartMailGateway implements MailGateway {
   private readonly mailboxes: StalwartMailboxManager;
   private readonly writer: StalwartMailWriter;
   private readonly snooze: StalwartSnoozeAdapter;
+  private readonly vacation: StalwartVacationAdapter;
 
   public constructor(private readonly config: StalwartConfig) {
     this.client = new StalwartJmapClient(config);
@@ -65,6 +67,7 @@ export class StalwartMailGateway implements MailGateway {
     this.writer = new StalwartMailWriter(this.client, this.reader);
     this.accountManager = new StalwartAccountManager(this.client, this.reader);
     this.snooze = new StalwartSnoozeAdapter(this.client, this.reader);
+    this.vacation = new StalwartVacationAdapter(this.client);
   }
 
   public discardDraft(...input: Parameters<StalwartDraftStore["discard"]>) {
@@ -114,6 +117,10 @@ export class StalwartMailGateway implements MailGateway {
   }
 
   public getSnoozeCapability() { return this.snooze.getCapability(); }
+  public getVacationCapability() { return this.vacation.getCapability(); }
+  public getVacationResponse() { return this.vacation.get(); }
+  public updateVacationResponse(input: VacationResponseUpdate) {
+    return this.vacation.set(input); }
   public async getSnoozeAccountScope() {
     const origin = new URL(this.config.baseUrl).origin.toLowerCase();
     const accountId = await this.reader.getAccountId();
@@ -226,17 +233,11 @@ export class StalwartMailGateway implements MailGateway {
     );
   }
 
-  public async testConnection(): Promise<void> {
-    await this.reader.listMailboxes();
-  }
-
+  public async testConnection(): Promise<void> { await this.reader.listMailboxes(); }
   public updateMemberProfile(input: MemberProfileUpdate) {
-    return this.accountManager.updateProfile(input);
-  }
-
+    return this.accountManager.updateProfile(input); }
   public updateTwoFactor(input: MemberTwoFactorUpdate) {
-    return this.accountManager.updateTwoFactor(input);
-  }
+    return this.accountManager.updateTwoFactor(input); }
 
   private ruleAdapter(mailboxNames: Readonly<Record<string, string>>) {
     return new StalwartRuleAdapter(

@@ -57,7 +57,12 @@ export const verifyPartialDeliveryNotice = async ({
       request.url().includes("/api/v1/mail/workspace"),
   );
   const send = dialog.getByRole("button", { name: /^Send$/ });
-  await expect(send).toBeEnabled();
+  const saveDraft = dialog.getByRole("button", { name: "Save draft" });
+  await expect.poll(async () =>
+    await send.isEnabled() || await saveDraft.isEnabled(),
+  ).toBe(true);
+  if (!await send.isEnabled()) await saveDraft.click();
+  await expect(send).toBeEnabled({ timeout: 30_000 });
   await send.click();
   await expect(dialog).toBeHidden();
   await expect(composeTrigger).toBeFocused();

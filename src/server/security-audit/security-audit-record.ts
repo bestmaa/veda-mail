@@ -41,6 +41,7 @@ export const securityAuditActionSchema = z.enum([
   "member.two-factor.disabled",
   "member.two-factor.enrolled",
   "member.two-factor.recovery-regenerated",
+  "member.vacation.updated",
   "messages.destroyed",
   "setup.completed",
 ]);
@@ -75,6 +76,7 @@ export const securityAuditEntrySchema = z.object({
     "session",
     "two-factor",
     "user",
+    "vacation",
   ]).nullable(),
 }).strict();
 
