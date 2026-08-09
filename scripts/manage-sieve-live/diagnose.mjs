@@ -91,7 +91,11 @@ const write = async (socket, reader, command, literal) => {
 };
 
 const assertOk = (phase, result) => {
-  console.error(JSON.stringify({ phase, status: result.status }));
+  console.error(JSON.stringify({
+    ...(phase.startsWith("list-") ? { lines: result.lines } : {}),
+    phase,
+    status: result.status,
+  }));
   if (result.status !== "OK") {
     const detail = [result.statusLine, ...result.lines].join(" ").slice(0, 512);
     throw new Error(`${phase} rejected${detail ? `: ${detail}` : "."}`);
