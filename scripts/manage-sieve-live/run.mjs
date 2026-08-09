@@ -181,16 +181,38 @@ export const runManageSieveAcceptance = async () => {
   const managementOrigin = process.env.VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN;
   const apiKey = process.env.VEDA_MAIL_STALWART_MANAGEMENT_API_KEY;
   const domain = (process.env.VEDA_MAIL_ACCEPTANCE_DOMAIN ?? "vedaconcepts.com").toLowerCase();
-  invariant(managementOrigin && apiKey, "Stalwart management access is required.");
+  const suppliedEmail = process.env.VEDA_MAIL_ACCEPTANCE_USERNAME?.toLowerCase();
+  const suppliedPassword = process.env.VEDA_MAIL_ACCEPTANCE_PASSWORD;
+  const externalAccount = suppliedEmail || suppliedPassword;
+  invariant(
+    externalAccount ? suppliedEmail && suppliedPassword : managementOrigin && apiKey,
+    "Stalwart management access or a temporary acceptance account is required.",
+  );
+  const suppliedLocalPart = suppliedEmail?.split("@")[0];
+  invariant(
+    !externalAccount || suppliedEmail?.endsWith(`@${domain}`) &&
+      suppliedLocalPart?.startsWith("veda-accept-"),
+    "The supplied acceptance account must use the acceptance prefix and domain.",
+  );
+  invariant(managementOrigin, "The provider origin is required.");
   const providerHost = new URL(managementOrigin).hostname;
-  report("management-discovery");
-  const management = await openManagement(managementOrigin, apiKey);
+  const management = externalAccount ? null : await (async () => {
+    report("management-discovery");
+    return openManagement(managementOrigin, apiKey);
+  })();
   let account;
   let child;
   let dataDirectory;
   try {
-    report("temporary-account-create");
-    account = await createTemporaryAccount(management, domain);
+    if (management) {
+      report("temporary-account-create");
+      account = await createTemporaryAccount(management, domain);
+    } else {
+      account = {
+        email: suppliedEmail, id: null, localPart: suppliedLocalPart,
+        password: suppliedPassword,
+      };
+    }
     const port = await freePort();
     const baseUrl = `http://127.0.0.1:${port}`;
     const setupToken = randomBytes(32).toString("hex");
@@ -221,6 +243,6 @@ export const runManageSieveAcceptance = async () => {
     report("cleanup");
     await stopChild(child);
     if (dataDirectory) await rm(dataDirectory, { force: true, recursive: true });
-    if (account) await deleteTemporaryAccount(management, account);
+    if (management && account) await deleteTemporaryAccount(management, account);
   }
 };

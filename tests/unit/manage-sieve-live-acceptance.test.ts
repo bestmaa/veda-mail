@@ -18,7 +18,26 @@ describe("ManageSieve live acceptance runner", () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("Stalwart management access is required.");
+    expect(result.stderr).toContain(
+      "Stalwart management access or a temporary acceptance account is required.",
+    );
+  });
+
+  it("rejects an operator account without the isolated prefix", () => {
+    const secret = "temporary-password-that-must-not-be-printed";
+    const result = spawnSync(process.execPath, [entry], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        VEDA_MAIL_ACCEPTANCE_PASSWORD: secret,
+        VEDA_MAIL_ACCEPTANCE_USERNAME: "existing@vedaconcepts.com",
+        VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN: "https://mail.example.test",
+      },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("must use the acceptance prefix and domain");
+    expect(`${result.stdout}${result.stderr}`).not.toContain(secret);
   });
 
   it("rejects a non-HTTPS management origin without disclosing its key", () => {

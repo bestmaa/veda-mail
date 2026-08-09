@@ -1336,6 +1336,11 @@ lacks the acceptance prefix. Passwords, provider credentials, Sieve source,
 ownership markers, email addresses, and message contents are excluded from its
 output. Cleanup is performed in `finally`; a cleanup failure keeps the run
 failed so an orphan cannot be mistaken for successful evidence.
+When a read-only management key requires an operator-created mailbox, the
+runner accepts only the configured domain and the `veda-accept-*` prefix, never
+deletes that account itself, and requires exact UI cleanup as separate release
+evidence. The password is passed through a non-echoing terminal read and is not
+placed in command history, logs, documentation, or repository state.
 
 ## Observability and diagnostic data
 

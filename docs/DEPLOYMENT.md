@@ -243,6 +243,14 @@ independent SMTP delivery that is marked read and starred by the active Sieve
 rules. Its `finally` path stops the isolated process, removes the temporary data
 directory, and destroys only the exact account created by that run.
 
+If the configured management key is intentionally read-only, an operator may
+instead supply a freshly created mailbox through
+`VEDA_MAIL_ACCEPTANCE_USERNAME` and `VEDA_MAIL_ACCEPTANCE_PASSWORD`. The runner
+accepts only an address in the configured acceptance domain whose local part
+starts with `veda-accept-`; it never deletes an operator-supplied account. The
+operator must delete that exact mailbox immediately after the run and record
+cleanup as part of the acceptance evidence.
+
 The command prints no mailbox password, provider credential, script content,
 or ownership marker. A failed cleanup is a failed acceptance run and must be
 resolved before rerunning. Never replace its generated account with an existing
