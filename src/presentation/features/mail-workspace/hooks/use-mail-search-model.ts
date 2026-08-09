@@ -122,6 +122,7 @@ export const useMailSearchModel = (
   }) ?? [];
 
   return {
+    apply,
     appliedSearch,
     clear,
     inputValue,
@@ -132,6 +133,11 @@ export const useMailSearchModel = (
     viewModel: {
       error,
       filters,
+      saved: {
+        canSave: false, error: null, isLoading: false, isSaving: false,
+        items: [], name: "", onNameChange: () => undefined,
+        onSave: () => undefined,
+      },
       suggestions: [...recent, ...SEARCH_SUGGESTIONS]
         .filter((item, index, all) => all.indexOf(item) === index),
     },

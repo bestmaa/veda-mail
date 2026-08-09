@@ -26,7 +26,7 @@ import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-pre
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
-import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model";
+import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
 import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management"; import { useMailLocalization } from "@/presentation/features/mail-workspace/hooks/use-mail-localization";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
@@ -36,6 +36,7 @@ export const useMailWorkspaceModel = ({
   const mail = useMailDataModel(); const workspace = mail.workspace;
   const storedPreferences = workspace?.messageListPreferences ?? DEFAULT_MESSAGE_LIST_PREFERENCES; const localization = useMailLocalization(storedPreferences); const messageListPreferences = useMessageListPreferencesModel(storedPreferences, mail.saveListPreferences);
   const sessionScope = workspace?.sessionScope ?? ""; const recoveryAccountId = workspace?.account.id ?? null;
+  const savedSearches = useSavedSearchesModel(sessionScope, mail.appliedSearch, mail.applySearch, mail.handleSessionFailure);
   const recoveryProviderId = workspace?.account.providerId ?? null;
   const recoveryExpiresAt = workspace?.sessionExpiresAt ?? null;
   const recoveryOwner = useMemo(() =>
@@ -230,13 +231,12 @@ export const useMailWorkspaceModel = ({
     onRestore: mail.restore,
     onSearchClear: mail.onSearchClear,
     onSearchSubmit: mail.onSearchSubmit,
-    onToggleRead: mail.toggleRead,
-    onToggleStar: mail.toggleStar,
+    onToggleRead: mail.toggleRead, onToggleStar: mail.toggleStar,
     deliveryNotice: partialDelivery.notice,
     reader, recipientSuggestions,
     readerRole,
     readerDestroyConfirmation,
-    search: mail.search, searchInput: mail.onSearchInput, snooze,
+    search: { ...mail.search, saved: savedSearches }, searchInput: mail.onSearchInput, snooze,
     searchMaxLength: mail.searchMaxLength,
     searchValue: mail.searchValue, scheduled, undoSend: composer.undoSend,
     session: {

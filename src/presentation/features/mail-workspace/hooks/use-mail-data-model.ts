@@ -215,7 +215,7 @@ export const useMailDataModel = () => {
   const onRefresh: MouseEventHandler<HTMLButtonElement> = useCallback(
     () => retryConnectivity(), [retryConnectivity]);
   return {
-    activeMailboxId,
+    activeMailboxId, appliedSearch, applySearch: search.apply,
     archive: mutations.archive,
     bulk,
     closeReader: useCallback(() => {
