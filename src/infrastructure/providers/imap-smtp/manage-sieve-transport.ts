@@ -28,6 +28,7 @@ export interface ManageSieveSession {
 class SocketReader {
   private buffer = Buffer.alloc(0);
   private ended = false;
+  private failure: Error | null = null;
   private readonly waiters: (() => void)[] = [];
   private readonly onData = (chunk: Buffer) => {
     if (this.buffer.byteLength + chunk.byteLength > MAX_RESPONSE_BYTES + MAX_LINE_BYTES) {
@@ -38,11 +39,17 @@ class SocketReader {
     this.wake();
   };
   private readonly onEnd = () => { this.ended = true; this.wake(); };
+  private readonly onError = (error: Error) => {
+    this.failure = error;
+    this.ended = true;
+    this.wake();
+  };
 
   public constructor(private readonly socket: Socket | TLSSocket) {
     socket.on("data", this.onData);
     socket.on("end", this.onEnd);
     socket.on("close", this.onEnd);
+    socket.on("error", this.onError);
   }
 
   public async line(): Promise<string> {
@@ -54,9 +61,10 @@ class SocketReader {
         this.buffer = this.buffer.subarray(end + 2);
         return line;
       }
-      if (this.buffer.byteLength > MAX_LINE_BYTES || this.ended) {
-        throw new Error("ManageSieve connection ended unexpectedly.");
+      if (this.buffer.byteLength > MAX_LINE_BYTES) {
+        throw new Error("ManageSieve response line is too long.");
       }
+      if (this.ended) throw this.connectionError();
       await this.more();
     }
   }
@@ -64,7 +72,7 @@ class SocketReader {
   public async exact(size: number): Promise<Uint8Array> {
     if (size < 0 || size > MAX_RESPONSE_BYTES) throw new Error("ManageSieve literal is too large.");
     while (this.buffer.byteLength < size) {
-      if (this.ended) throw new Error("ManageSieve connection ended unexpectedly.");
+      if (this.ended) throw this.connectionError();
       await this.more();
     }
     const value = this.buffer.subarray(0, size);
@@ -77,6 +85,7 @@ class SocketReader {
     this.socket.off("data", this.onData);
     this.socket.off("end", this.onEnd);
     this.socket.off("close", this.onEnd);
+    this.socket.off("error", this.onError);
   }
 
   private more(): Promise<void> {
@@ -85,6 +94,10 @@ class SocketReader {
 
   private wake(): void {
     this.waiters.splice(0).forEach((resolve) => resolve());
+  }
+
+  private connectionError(): Error {
+    return this.failure ?? new Error("ManageSieve connection ended unexpectedly.");
   }
 }
 
@@ -169,31 +182,47 @@ export const openManageSieveSession = async (
   if (!host || !Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error("ManageSieve is not configured.");
   }
+  if (config.manageSieveSecurity !== "tls" &&
+    config.manageSieveSecurity !== "starttls") {
+    throw new Error("ManageSieve requires TLS or STARTTLS.");
+  }
   const resolved = await safeAddress(host);
-  let socket: Socket | TLSSocket;
   if (config.manageSieveSecurity === "tls") {
-    socket = connectTls({ ...tlsOptions(host, resolved.address), port });
-    await connected(socket, "secureConnect");
-  } else if (config.manageSieveSecurity === "starttls") {
-    const plain = connectTcp({ host: resolved.address, family: resolved.family, port });
+    const socket = connectTls({ ...tlsOptions(host, resolved.address), port });
+    try {
+      await connected(socket, "secureConnect");
+      const session = new NodeManageSieveSession(socket, new SocketReader(socket));
+      if ((await session.greeting()).status !== "OK") {
+        throw new Error("ManageSieve greeting was rejected.");
+      }
+      return session;
+    } catch (error) {
+      socket.destroy();
+      throw error;
+    }
+  }
+
+  const plain = connectTcp({ host: resolved.address, family: resolved.family, port });
+  let socket: Socket | TLSSocket = plain;
+  try {
     await connected(plain, "connect");
     const initialReader = new SocketReader(plain);
     const initial = new NodeManageSieveSession(plain, initialReader);
     if ((await initial.greeting()).status !== "OK" ||
       (await initial.command("STARTTLS")).status !== "OK") {
-      plain.destroy();
       throw new Error("ManageSieve STARTTLS was rejected.");
     }
     initialReader.release();
     socket = connectTls({ rejectUnauthorized: true, servername: host, socket: plain });
     await connected(socket, "secureConnect");
     const session = new NodeManageSieveSession(socket, new SocketReader(socket));
-    if ((await session.command("CAPABILITY")).status !== "OK") throw new Error("ManageSieve discovery failed.");
+    if ((await session.command("CAPABILITY")).status !== "OK") {
+      throw new Error("ManageSieve discovery failed.");
+    }
     return session;
-  } else {
-    throw new Error("ManageSieve requires TLS or STARTTLS.");
+  } catch (error) {
+    socket.destroy();
+    if (socket !== plain) plain.destroy();
+    throw error;
   }
-  const session = new NodeManageSieveSession(socket, new SocketReader(socket));
-  if ((await session.greeting()).status !== "OK") throw new Error("ManageSieve greeting was rejected.");
-  return session;
 };

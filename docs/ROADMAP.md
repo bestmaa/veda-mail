@@ -564,6 +564,14 @@ confirmation and was squash-merged as
 authenticated JMAP evidence confirmed reconcile, deployment, a server-side
 mark-as-read delivery, and safe removal of the test rule on 2026-08-05. The two
 rules checkboxes remain open only until generic ManageSieve evidence is recorded.
+On 2026-08-09 the deployed Stalwart container was independently confirmed to
+listen on 4190 and advertise STARTTLS plus the required Sieve extensions, while
+the compose contract also published `4190:4190`. The public TCP path remained
+filtered, so no script or mailbox was mutated and the checkboxes remain open.
+Transport hardening now directly covers fragmented lines/literals, direct TLS,
+STARTTLS, certificate/setup failure cleanup, timeouts, response limits, command
+injection, unsafe DNS answers, capability failure, missing extensions, provider
+drift, ambiguous active scripts, and rejected CHECK/PUT/activation operations.
 
 The provider-managed vacation-response slice is implemented for providers that
 advertise RFC 8621 `urn:ietf:params:jmap:vacationresponse` on the writable

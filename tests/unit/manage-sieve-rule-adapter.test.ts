@@ -28,6 +28,7 @@ const config: ImapSmtpMemberConfig = {
 };
 const ok = (lines: readonly string[] = [], literal: Uint8Array | null = null): ManageSieveResponse =>
   ({ lines, literal, status: "OK" });
+const no = (): ManageSieveResponse => ({ lines: [], literal: null, status: "NO" });
 const input = (expectedProviderState: string | null = null): RuleDeploymentInput => ({
   expectedProviderState,
   rules: [],
@@ -40,7 +41,12 @@ const compiler: StalwartSieveCompiler = {
 const harness = (initial: {
   active?: string;
   content?: string;
+  driftAfterCheck?: string;
+  extraActive?: string;
+  failCommand?: string;
   foreignAfterPut?: boolean;
+  requiredExtensions?: readonly string[];
+  sieve?: string;
 } = {}) => {
   let active = initial.active;
   let content = initial.content;
@@ -49,21 +55,28 @@ const harness = (initial: {
     close: vi.fn(async () => undefined),
     command: vi.fn(async (command, literal) => {
       commands.push(command);
+      if (command === initial.failCommand) return no();
       if (command === "CAPABILITY") {
         return ok([
           '"IMPLEMENTATION" "test"',
           '"SASL" "PLAIN"',
-          '"SIEVE" "fileinto imap4flags envelope"',
+          `"SIEVE" "${initial.sieve ?? "fileinto imap4flags envelope"}"`,
         ]);
       }
       if (command.startsWith("AUTHENTICATE")) return ok();
       if (command === "LISTSCRIPTS") {
-        return ok(active ? [`"${active}" ACTIVE`] : content ? ['"Veda Mail Rules"'] : []);
+        return ok([
+          ...(active ? [`"${active}" ACTIVE`] : content ? ['"Veda Mail Rules"'] : []),
+          ...(initial.extraActive ? [`"${initial.extraActive}" ACTIVE`] : []),
+        ]);
       }
       if (command.startsWith("GETSCRIPT")) {
         return ok([], new TextEncoder().encode(content ?? ""));
       }
-      if (command === "CHECKSCRIPT") return ok();
+      if (command === "CHECKSCRIPT") {
+        if (initial.driftAfterCheck) content = initial.driftAfterCheck;
+        return ok();
+      }
       if (command.startsWith("PUTSCRIPT")) {
         content = new TextDecoder().decode(literal);
         if (initial.foreignAfterPut) active = "Vacation";
@@ -77,7 +90,18 @@ const harness = (initial: {
     }),
   };
   const client = new ManageSieveClient(config, async () => session);
-  return { adapter: new ManageSieveRuleAdapter(client, compiler), commands };
+  const configuredCompiler: StalwartSieveCompiler = {
+    ...compiler,
+    compile: vi.fn(() => ({
+      content: `${marker}keep;\r\n`,
+      requiredExtensions: initial.requiredExtensions ?? [],
+    })),
+  };
+  return {
+    adapter: new ManageSieveRuleAdapter(client, configuredCompiler),
+    commands,
+    session,
+  };
 };
 
 describe("ManageSieve rules adapter", () => {
@@ -90,6 +114,28 @@ describe("ManageSieve rules adapter", () => {
     });
     expect(capability.supportedConditions).toContain("recipient");
     expect(capability.supportedConditions).not.toContain("attachment");
+  });
+
+  it("keeps rules visibly unsupported when discovery is rejected", async () => {
+    const { adapter, session } = harness({ failCommand: "CAPABILITY" });
+
+    await expect(adapter.getCapability()).resolves.toMatchObject({
+      reason: "ManageSieve discovery or authentication failed.",
+      supported: false,
+    });
+    expect(session.close).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a rule requiring an unadvertised extension before mutation", async () => {
+    const { adapter, commands } = harness({
+      requiredExtensions: ["fileinto"],
+      sieve: "imap4flags",
+    });
+
+    await expect(adapter.deploy(input())).rejects.toMatchObject({
+      code: "RULE_PROVIDER_UNSUPPORTED",
+    } satisfies Partial<ManageSieveError>);
+    expect(commands).not.toContain("LISTSCRIPTS");
   });
 
   it("installs, activates, and verifies an owned script", async () => {
@@ -118,6 +164,44 @@ describe("ManageSieve rules adapter", () => {
     } satisfies Partial<ManageSieveError>);
     expect(commands.some((command) => command.startsWith("SETACTIVE"))).toBe(false);
   });
+
+  it("rejects ambiguous active provider state without mutation", async () => {
+    const { adapter, commands } = harness({
+      active: "Veda Mail Rules",
+      content: `${marker}old;\r\n`,
+      extraActive: "Another script",
+    });
+
+    await expect(adapter.deploy(input())).rejects.toMatchObject({
+      code: "RULE_PROVIDER_CONFLICT",
+    } satisfies Partial<ManageSieveError>);
+    expect(commands.some((command) => command.startsWith("PUTSCRIPT"))).toBe(false);
+  });
+
+  it("detects provider drift between CHECKSCRIPT and deployment", async () => {
+    const { adapter, commands } = harness({
+      active: "Veda Mail Rules",
+      content: `${marker}old;\r\n`,
+      driftAfterCheck: `${marker}changed;\r\n`,
+    });
+
+    await expect(adapter.deploy(input())).rejects.toMatchObject({
+      code: "RULE_PROVIDER_CONFLICT",
+    } satisfies Partial<ManageSieveError>);
+    expect(commands.some((command) => command.startsWith("PUTSCRIPT"))).toBe(false);
+  });
+
+  it.each(["CHECKSCRIPT", 'PUTSCRIPT "Veda Mail Rules"', 'SETACTIVE "Veda Mail Rules"'])(
+    "fails closed when %s is rejected",
+    async (failCommand) => {
+      const { adapter, session } = harness({ failCommand });
+
+      await expect(adapter.deploy(input())).rejects.toMatchObject({
+        code: "RULE_PROVIDER_REJECTED",
+      } satisfies Partial<ManageSieveError>);
+      expect(session.close).toHaveBeenCalledOnce();
+    },
+  );
 
   it("rejects an existing same-name script without the installation marker", async () => {
     const { adapter, commands } = harness({ content: "keep;\r\n" });
