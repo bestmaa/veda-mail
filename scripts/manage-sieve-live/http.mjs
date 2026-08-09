@@ -1,14 +1,52 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 const MAX_ERROR_BODY = 2_048;
+const MAX_JSON_BODY = 1_024 * 1_024;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export const invariant = (condition, message) => {
   if (!condition) throw new Error(message);
 };
 
+const readBounded = async (response, maximum) => {
+  const declared = response.headers.get("content-length");
+  if (declared && /^\d+$/u.test(declared) && Number(declared) > maximum) {
+    await response.body?.cancel();
+    throw new Error("The acceptance response exceeded its size limit.");
+  }
+  const reader = response.body?.getReader();
+  invariant(reader, "The acceptance response has no body.");
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.byteLength;
+      if (size > maximum) throw new Error("The acceptance response exceeded its size limit.");
+      chunks.push(next.value);
+    }
+  } finally {
+    if (size > maximum) await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+};
+
+const readJson = async (response) => JSON.parse(
+  new TextDecoder("utf-8", { fatal: true }).decode(
+    await readBounded(response, MAX_JSON_BODY),
+  ),
+);
+
 const responseFailure = async (response) => {
-  const body = (await response.text()).slice(0, MAX_ERROR_BODY);
+  const body = new TextDecoder().decode(await readBounded(response, MAX_ERROR_BODY));
   return new Error(`HTTP ${response.status}: ${body || response.statusText}`);
 };
 
@@ -19,7 +57,7 @@ export const fetchJson = async (url, options = {}, statuses = [200]) => {
     signal: AbortSignal.timeout(30_000),
   });
   if (!statuses.includes(response.status)) throw await responseFailure(response);
-  return { payload: await response.json(), response };
+  return { payload: await readJson(response), response };
 };
 
 export const fetchSameOriginJson = async (
@@ -41,9 +79,10 @@ export const fetchSameOriginJson = async (
     });
     if (!REDIRECT_STATUSES.has(response.status)) {
       if (!statuses.includes(response.status)) throw await responseFailure(response);
-      return { payload: await response.json(), response };
+      return { payload: await readJson(response), response };
     }
     const location = response.headers.get("location");
+    await response.body?.cancel().catch(() => undefined);
     invariant(location && count < 3, "The management redirect is invalid.");
     url = new URL(location, url);
   }

@@ -14,6 +14,7 @@ import {
   waitForHealth,
   waitForMessage,
 } from "./http.mjs";
+import { isolatedEnvironment } from "./environment.mjs";
 import {
   createTemporaryAccount,
   deleteTemporaryAccount,
@@ -221,7 +222,7 @@ export const runManageSieveAcceptance = async () => {
     child = spawn(process.execPath, [process.env.VEDA_MAIL_ACCEPTANCE_SERVER_ENTRY ?? "server.js"], {
       cwd: process.cwd(),
       env: {
-        ...process.env, HOSTNAME: "127.0.0.1", PORT: String(port),
+        ...isolatedEnvironment(), HOSTNAME: "127.0.0.1", PORT: String(port),
         VEDA_MAIL_ALLOWED_PROVIDER_HOSTS: providerHost,
         VEDA_MAIL_DATA_DIR: dataDirectory,
         VEDA_MAIL_JOB_KEY: randomBytes(32).toString("base64"),

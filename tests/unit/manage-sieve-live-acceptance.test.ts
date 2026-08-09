@@ -58,6 +58,10 @@ describe("ManageSieve live acceptance runner", () => {
 
   it("ships the runner and helpers in the production image", async () => {
     const dockerfile = await readFile("Dockerfile", "utf8");
+    const environment = await readFile(
+      "scripts/manage-sieve-live/environment.mjs",
+      "utf8",
+    );
 
     expect(dockerfile).toContain(
       "/app/scripts/manage-sieve-live-acceptance.mjs ./scripts/manage-sieve-live-acceptance.mjs",
@@ -65,5 +69,8 @@ describe("ManageSieve live acceptance runner", () => {
     expect(dockerfile).toContain(
       "/app/scripts/manage-sieve-live ./scripts/manage-sieve-live",
     );
+    expect(environment).toContain("delete environment[name]");
+    expect(environment).toContain('"VEDA_MAIL_ACCEPTANCE_PASSWORD"');
+    expect(environment).toContain('"VEDA_MAIL_STALWART_MANAGEMENT_API_KEY"');
   });
 });
