@@ -1,28 +1,22 @@
 import { EventEmitter } from "node:events";
 import type { Socket } from "node:net";
 import type { TLSSocket } from "node:tls";
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { ImapSmtpMemberConfig } from
   "@/infrastructure/providers/imap-smtp/imap-smtp.types";
-
 const mocks = vi.hoisted(() => ({
   connectTcp: vi.fn(),
   connectTls: vi.fn(),
   lookup: vi.fn(),
 }));
-
 vi.mock("node:net", () => ({
   connect: mocks.connectTcp,
   isIP: (value: string) => value.includes(":") ? 6 : /^\d+(?:\.\d+){3}$/u.test(value) ? 4 : 0,
 }));
 vi.mock("node:tls", () => ({ connect: mocks.connectTls }));
 vi.mock("node:dns/promises", () => ({ lookup: mocks.lookup }));
-
 import { openManageSieveSession } from
   "@/infrastructure/providers/imap-smtp/manage-sieve-transport";
-
 const baseConfig: ImapSmtpMemberConfig = {
   imapHost: "localhost",
   imapPort: "993",
@@ -42,11 +36,9 @@ class FakeSocket extends EventEmitter {
   public destroyed = false;
   public readonly writes: Buffer[] = [];
   private timeoutHandler: (() => void) | null = null;
-
   public constructor(
     private readonly onWrite: (value: Buffer, socket: FakeSocket) => void = () => undefined,
   ) { super(); }
-
   public destroy(error?: Error): this {
     if (this.destroyed) return this;
     this.destroyed = true;
@@ -56,7 +48,6 @@ class FakeSocket extends EventEmitter {
   }
 
   public fireTimeout(): void { this.timeoutHandler?.(); }
-
   public respond(...chunks: string[]): void {
     for (const chunk of chunks) {
       queueMicrotask(() => this.emit("data", Buffer.from(chunk, "utf8")));
@@ -122,12 +113,18 @@ describe("ManageSieve transport", () => {
     expect(socket.destroyed).toBe(true);
   });
 
-  it("frames command literals and rejects command injection", async () => {
+  it("keeps literal and following command responses aligned", async () => {
     const socket = new FakeSocket((value, current) => {
       if (value.toString() === "CHECKSCRIPT {5}\r\n") {
         current.respond("OK Ready for 5 bytes.\r\n");
       }
-      if (value.toString() === "keep;\r\n") current.respond("NO script rejected\r\n");
+      if (value.toString() === "keep;") current.respond("OK script accepted\r\n");
+      if (value.toString() === "keep;\r\n") {
+        current.respond("OK script accepted\r\n", "OK empty command\r\n");
+      }
+      if (value.toString() === "LISTSCRIPTS\r\n") {
+        current.respond('"Veda Mail Rules"\r\nOK\r\n');
+      }
     });
     mocks.connectTls.mockImplementation(() => {
       connect(socket, "secureConnect", "OK\r\n");
@@ -138,10 +135,14 @@ describe("ManageSieve transport", () => {
     await expect(session.command(
       "CHECKSCRIPT",
       new TextEncoder().encode("keep;"),
-    )).resolves.toMatchObject({ status: "NO" });
+    )).resolves.toMatchObject({ status: "OK" });
+    await expect(session.command("LISTSCRIPTS")).resolves.toMatchObject({
+      lines: ['"Veda Mail Rules"'],
+      status: "OK",
+    });
     expect(socket.writes.slice(-2).map((item) => item.toString())).toEqual([
-      "CHECKSCRIPT {5}\r\n",
-      "keep;\r\n",
+      "keep;",
+      "LISTSCRIPTS\r\n",
     ]);
     await expect(session.command("NOOP\r\nLOGOUT")).rejects.toThrow(
       "Invalid ManageSieve command",
