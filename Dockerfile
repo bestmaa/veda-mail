@@ -39,6 +39,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs \
   /app/scripts/admin-recovery.mjs ./scripts/admin-recovery.mjs
 COPY --from=builder --chown=nextjs:nodejs \
+  /app/scripts/manage-sieve-live-acceptance.mjs ./scripts/manage-sieve-live-acceptance.mjs
+COPY --from=builder --chown=nextjs:nodejs \
+  /app/scripts/manage-sieve-live ./scripts/manage-sieve-live
+COPY --from=builder --chown=nextjs:nodejs \
   /app/LICENSE /app/NOTICE /app/TRADEMARKS.md ./
 
 USER nextjs
