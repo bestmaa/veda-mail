@@ -124,7 +124,10 @@ describe("ManageSieve transport", () => {
 
   it("frames command literals and rejects command injection", async () => {
     const socket = new FakeSocket((value, current) => {
-      if (value.toString().startsWith("CHECKSCRIPT ")) current.respond("OK\r\n");
+      if (value.toString() === "CHECKSCRIPT {5}\r\n") {
+        current.respond("OK Ready for 5 bytes.\r\n");
+      }
+      if (value.toString() === "keep;\r\n") current.respond("OK\r\n");
     });
     mocks.connectTls.mockImplementation(() => {
       connect(socket, "secureConnect", "OK\r\n");
@@ -137,12 +140,37 @@ describe("ManageSieve transport", () => {
       new TextEncoder().encode("keep;"),
     )).resolves.toMatchObject({ status: "OK" });
     expect(socket.writes.slice(-2).map((item) => item.toString())).toEqual([
-      "CHECKSCRIPT {5+}\r\n",
+      "CHECKSCRIPT {5}\r\n",
       "keep;\r\n",
     ]);
     await expect(session.command("NOOP\r\nLOGOUT")).rejects.toThrow(
       "Invalid ManageSieve command",
     );
+  });
+
+  it("does not treat a literal continuation as the final command result", async () => {
+    const socket = new FakeSocket((value, current) => {
+      if (value.toString() === "PUTSCRIPT \"Rules\" {5}\r\n") {
+        current.respond("OK Ready for 5 bytes.\r\n");
+      }
+      if (value.toString() === "keep;\r\n") {
+        current.respond("NO script rejected\r\n");
+      }
+    });
+    mocks.connectTls.mockImplementation(() => {
+      connect(socket, "secureConnect", "OK\r\n");
+      return asTlsSocket(socket);
+    });
+    const session = await openManageSieveSession(baseConfig);
+
+    await expect(session.command(
+      'PUTSCRIPT "Rules"',
+      new TextEncoder().encode("keep;"),
+    )).resolves.toMatchObject({ status: "NO" });
+    expect(socket.writes.slice(-2).map((item) => item.toString())).toEqual([
+      'PUTSCRIPT "Rules" {5}\r\n',
+      "keep;\r\n",
+    ]);
   });
 
   it("upgrades STARTTLS before post-TLS capability discovery", async () => {

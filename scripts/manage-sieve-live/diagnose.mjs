@@ -85,8 +85,12 @@ const response = async (reader) => {
 };
 
 const write = async (socket, reader, command, literal) => {
-  socket.write(`${command}${literal ? ` {${literal.length}+}` : ""}\r\n`);
-  if (literal) socket.write(Buffer.concat([literal, Buffer.from("\r\n")]));
+  socket.write(`${command}${literal ? ` {${literal.length}}` : ""}\r\n`);
+  if (literal) {
+    const continuation = await response(reader);
+    if (continuation.status !== "OK") return continuation;
+    socket.write(Buffer.concat([literal, Buffer.from("\r\n")]));
+  }
   return response(reader);
 };
 
