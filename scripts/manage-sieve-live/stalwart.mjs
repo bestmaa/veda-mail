@@ -93,7 +93,15 @@ export const createTemporaryAccount = async (client, domain) => {
   ]]);
   const created = result(responses, "account-create", "x:Account/set");
   const id = created.created?.acceptance?.id;
-  invariant(id && !created.notCreated?.acceptance, "Temporary account creation failed.");
+  const rejectedType = created.notCreated?.acceptance?.type;
+  const safeType = typeof rejectedType === "string" &&
+    /^[A-Za-z][A-Za-z0-9_-]{0,63}$/u.test(rejectedType)
+    ? rejectedType
+    : "unknown";
+  invariant(
+    id && !created.notCreated?.acceptance,
+    `Temporary account creation failed (${safeType}).`,
+  );
   return { email: `${localPart}@${domain}`, id, localPart, password };
 };
 
