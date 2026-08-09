@@ -105,8 +105,13 @@ const connected = (socket, event) => new Promise((resolve, reject) => {
 
 const name = "Veda Mail Diagnostic";
 const script = Buffer.from(
-  "require [\"imap4flags\"];\r\n" +
-  "if header :contains \"subject\" \"veda-live-diagnostic\" { addflag \"\\\\Seen\"; }\r\n",
+  "# Veda-Mail-Owned-v1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA." +
+  "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\r\n" +
+  "# Veda Mail generated rules v1. Do not edit.\r\n" +
+  "require [\"imap4flags\"];\r\n\r\n" +
+  "if allof(header :contains \"subject\" \"veda-live-diagnostic\") {\r\n" +
+  "  addflag \"\\\\Seen\";\r\n" +
+  "}\r\n",
   "utf8",
 );
 let socket = net.createConnection({ host, port: 4190 });
