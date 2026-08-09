@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./message-print.css";
 
 :root {
   --background: #f8f9fc;

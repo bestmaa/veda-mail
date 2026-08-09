@@ -441,7 +441,7 @@ recreation, and the public `/api/health` endpoint returned HTTP 200.
 - [x] Search suggestions, recent searches, clear active-filter chips, and
   shareable URL state without leaking credentials
 - [x] Saved searches or virtual mailboxes
-- [ ] Print-friendly message/conversation view
+- [x] Print-friendly message/conversation view
 
 Acceptance: thread membership and search semantics have provider contract tests;
 unsupported predicates are reported rather than silently ignored.
@@ -456,6 +456,21 @@ owner-bound AAD value, and fail closed on tampering. The accessible header
 manager saves, reloads, replays through the existing typed JMAP/IMAP search
 contract, and deletes searches. Unit, route, client, full coverage, production
 build, dependency audit, and browser save/reload/replay/delete regressions pass.
+
+Print-friendly message and full-conversation views reuse only the portable
+`getMessage`/`getConversation` contracts, so JMAP and IMAP/SMTP remain feature
+equivalent. A same-origin, session-scoped POST prepares a private no-store
+document, limits each conversation to 100 unique messages, eight provider
+pages, four concurrent detail reads, and four preparations per member per
+minute, and fails closed on provider anchor, cursor, or message-ID mismatch.
+Provider HTML is sanitized again at the print boundary with all inline/remote
+images removed; executable content, attachment bytes/links, provider cursors,
+raw headers, and credentials never enter the print DOM. The print-only portal
+includes portable From/To/CC/Reply-To/date/size and attachment metadata,
+preserves page breaks and long-message pagination, reports safe-limit
+truncation, invokes the native print dialog, and is hidden from the interactive
+accessibility tree. Unit, integration, component, architecture, and browser
+regressions cover both single-message and complete-conversation flows.
 
 The conversation vertical slice is locally complete. Stalwart resolves the
 authenticated anchor before using exact `Thread/get` membership. IMAP prefers

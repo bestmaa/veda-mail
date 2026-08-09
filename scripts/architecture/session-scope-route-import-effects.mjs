@@ -51,7 +51,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     new Set(["receivedAttachmentScanSpool"]),
   ],
   ["@/server/mail/attachment-preview", new Set(["prepareTextAttachmentPreview"])],
-  ["@/server/mail/inline-image", new Set(["prepareInlineImage"])],
+  ["@/server/mail/inline-image", new Set(["prepareInlineImage"])], ["@/server/mail/message-print", new Set(["createConnectionMessagePrintDocument"])],
   [
     "@/server/mail/attachment-service",
     new Set([
@@ -211,7 +211,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/transport/http/request-schemas", new Set(["*"])],
   ["@/transport/http/mailbox-mutation.schema", new Set(["*"])],
   ["@/transport/http/mailbox-empty.schema", new Set(["*"])],
-  ["@/transport/http/message-list-preferences.schema", new Set(["*"])],
+  ["@/transport/http/message-list-preferences.schema", new Set(["*"])], ["@/transport/http/message-print.schema", new Set(["*"])],
   ["@/transport/http/scheduled-send.schema", new Set(["*"])],
   ["@/transport/http/label.schema", new Set(["*"])],
   ["@/transport/http/conversation-query", new Set(["parseConversationQuery"])],

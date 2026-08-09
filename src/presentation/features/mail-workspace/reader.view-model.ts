@@ -6,6 +6,7 @@ import type { LabelId } from "@/domain/shared/brand";
 import type { ReaderViewModel } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import type { MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import type { ConversationViewModel } from "@/presentation/features/mail-workspace/conversation.view-model";
+import type { MessagePrintViewModel } from "@/presentation/features/mail-workspace/message-print.view-model";
 import {
   createAttachmentArchiveViewModel,
   createReceivedAttachmentViewModels,
@@ -60,6 +61,7 @@ export const createReaderViewModel = (input: {
   readonly labels: readonly MailLabel[];
   readonly locale?: MailLocale;
   readonly onSetLabel: (labelId: LabelId, value: boolean) => void;
+  readonly print: MessagePrintViewModel;
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly readerError: string | null;
   readonly sessionScope: string;
@@ -106,6 +108,7 @@ export const createReaderViewModel = (input: {
       labelActions: null,
       labels: [],
       messageId: "",
+      print: input.print,
       sessionScope: input.sessionScope,
       subject: "Opening message…",
       to: "",
@@ -207,6 +210,7 @@ export const createReaderViewModel = (input: {
     } : null,
     labels: appliedLabels,
     messageId: message.id,
+    print: input.print,
     sessionScope: input.sessionScope,
     subject: message.subject,
     to: message.to.map((address) => address.email).join(", "),

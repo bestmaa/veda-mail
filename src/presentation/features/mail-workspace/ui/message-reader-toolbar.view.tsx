@@ -4,6 +4,8 @@ import {
   FolderInput,
   Mail,
   MailOpen,
+  MessagesSquare,
+  Printer,
   RotateCcw,
   Star,
   Tag,
@@ -155,6 +157,22 @@ export const MessageReaderToolbarView = ({
         <Trash2 aria-hidden size={18} />
       </ReaderActionView>
     )}
+    <ReaderActionView
+      disabled={isBusy || reader.isLoading || reader.print.isPreparing}
+      label="Print message"
+      onClick={reader.print.onPrintMessage}
+    >
+      <Printer aria-hidden size={18} />
+    </ReaderActionView>
+    {reader.print.canPrintConversation ? (
+      <ReaderActionView
+        disabled={isBusy || reader.isLoading || reader.print.isPreparing}
+        label="Print conversation"
+        onClick={reader.print.onPrintConversation}
+      >
+        <MessagesSquare aria-hidden size={18} />
+      </ReaderActionView>
+    ) : null}
     <span className="flex-1" />
     <ReaderActionView
       label={reader.isStarred ? "Remove star" : "Add star"}

@@ -26,7 +26,7 @@ import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-pre
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
-import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model";
+import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model"; import { useMessagePrint } from "@/presentation/features/mail-workspace/hooks/use-message-print";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
 import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management"; import { useMailLocalization } from "@/presentation/features/mail-workspace/hooks/use-mail-localization";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
@@ -154,10 +154,9 @@ export const useMailWorkspaceModel = ({
     sessionScope, total: workspace?.messages.total ?? 0,
   });
   useEffect(() => closeAttachmentPreview(), [closeAttachmentPreview, mail.selectedMessage?.id]);
-  const conversation = useMessageConversationViewModel({
-    anchorMessageId: mail.selectedMessage?.id ?? null, handleSessionFailure: mail.handleSessionFailure,
-    locale: localization.locale, onOpen: mail.selectMessage, sessionScope, timeZone: localization.timeZone,
-  });
+  const conversation = useMessageConversationViewModel({ anchorMessageId: mail.selectedMessage?.id ?? null, handleSessionFailure: mail.handleSessionFailure, locale: localization.locale, onOpen: mail.selectMessage, sessionScope, timeZone: localization.timeZone });
+  const messagePrint = useMessagePrint({ anchorMessageId: mail.selectedMessage?.id ?? null, conversationTotal: conversation.total, handleSessionFailure: mail.handleSessionFailure,
+    locale: localization.locale, sessionScope, timeZone: localization.timeZone });
   const reader = useMemo(
     () =>
       createReaderViewModel({
@@ -174,14 +173,15 @@ export const useMailWorkspaceModel = ({
         message: mail.selectedMessage,
         labels: workspace?.labels ?? [],
         labelCapability: workspace?.labelCapability ?? "unsupported",
-        onSetLabel: mail.setLabel,
+        onSetLabel: mail.setLabel, print: messagePrint,
         readerError: mail.readerError,
         sessionScope, timeZone: localization.timeZone,
       }),
     [mail.isReaderLoading, mail.readerError, mail.selectedMessage, conversation,
       mail.handleSessionFailure, mail.workspace?.mailboxes, readerRole, archiveDownload,
       attachmentDownload, attachmentPreview, localization.locale, localization.timeZone, sessionScope,
-      workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel],
+      workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel,
+      messagePrint],
   );
   const accountName = settings.profileName ?? workspaceAccountName;
   const primaryActions = useWorkspacePrimaryActions({

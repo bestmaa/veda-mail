@@ -152,6 +152,32 @@ sanitization. A future external script, image, connection, worker, or frame
 source requires a threat-model update and an explicit narrowly scoped policy
 change. Reverse proxies must preserve exactly one CSP and HSTS value.
 
+### Print views
+
+- Print preparation is a same-origin POST that requires the live browser mail
+  session scope and separate request/subject rate limits. Message IDs and the
+  strict `message`/`conversation` choice are reparsed server-side.
+- Conversation printing uses only the portable provider contract. It accepts
+  at most 100 unique messages across eight pages, detects repeated cursors,
+  requires the selected anchor on the returned membership, verifies every
+  fetched detail ID, and runs no more than four detail reads concurrently.
+- Already-sanitized provider HTML is sanitized again without any verified
+  inline-image allowance. This strips scripts, forms, styles, remote media, and
+  all images before the body reaches the print-only React portal.
+- Printed metadata is limited to portable addressing, date, size, and inert
+  attachment name/size values. Attachment bytes and links, raw headers,
+  provider cursors, credentials, and account secrets are excluded. React
+  escapes every non-HTML field.
+- The server response is private and non-cacheable. The portal is absent from
+  the interactive accessibility tree, screen CSS hides it, print CSS hides the
+  application, and the native browser print dialog is invoked only after two
+  rendered animation frames.
+
+Residual risk: browser and operating-system print dialogs, preview caches, and
+printer queues are outside Veda Mail's control. Members must treat printed or
+exported output as sensitive data. Conversations beyond the safe bound are
+explicitly marked truncated instead of triggering unbounded provider work.
+
 ### New-mail notifications
 
 - The application never requests notification permission during page load,

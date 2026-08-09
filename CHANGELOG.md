@@ -68,6 +68,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added provider-independent print-friendly views for the selected message or
+  its complete conversation. The session-scoped, same-origin preparation path
+  reuses the JMAP/IMAP contracts, re-sanitizes hostile HTML without images,
+  exposes only portable headers and attachment metadata, bounds pagination and
+  detail-read concurrency, reports safe-limit truncation, and invokes the
+  browser's native print dialog through an isolated print-only portal.
+
 - Added server-authoritative administrator/member session inventories with
   selective revocation, privacy-safe management handles, coarse client labels,
   30-minute idle and 12-hour absolute expiry, fail-closed ambiguous-origin
