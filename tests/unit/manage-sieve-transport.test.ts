@@ -124,7 +124,10 @@ describe("ManageSieve transport", () => {
 
   it("frames command literals and rejects command injection", async () => {
     const socket = new FakeSocket((value, current) => {
-      if (value.toString().startsWith("CHECKSCRIPT ")) current.respond("OK\r\n");
+      if (value.toString() === "CHECKSCRIPT {5}\r\n") {
+        current.respond("OK Ready for 5 bytes.\r\n");
+      }
+      if (value.toString() === "keep;\r\n") current.respond("NO script rejected\r\n");
     });
     mocks.connectTls.mockImplementation(() => {
       connect(socket, "secureConnect", "OK\r\n");
@@ -135,9 +138,9 @@ describe("ManageSieve transport", () => {
     await expect(session.command(
       "CHECKSCRIPT",
       new TextEncoder().encode("keep;"),
-    )).resolves.toMatchObject({ status: "OK" });
+    )).resolves.toMatchObject({ status: "NO" });
     expect(socket.writes.slice(-2).map((item) => item.toString())).toEqual([
-      "CHECKSCRIPT {5+}\r\n",
+      "CHECKSCRIPT {5}\r\n",
       "keep;\r\n",
     ]);
     await expect(session.command("NOOP\r\nLOGOUT")).rejects.toThrow(

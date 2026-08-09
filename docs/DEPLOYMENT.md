@@ -223,6 +223,40 @@ VEDA_MAIL_PORT=3100
 
 Do not expose the container directly to the internet over HTTP.
 
+### Generic ManageSieve live acceptance
+
+The production image includes a deliberately manual acceptance runner for the
+standard IMAP/SMTP rules adapter. Run it only from an application container
+that already has the Stalwart management origin and API key configured and can
+reach the provider's IMAP, SMTP, and ManageSieve endpoints:
+
+```sh
+node scripts/manage-sieve-live-acceptance.mjs
+```
+
+The runner creates a uniquely prefixed temporary mailbox, starts a second Veda
+Mail process on an unexposed loopback port with a fresh temporary data
+directory and job key, and configures that process for TLS IMAP/SMTP plus
+STARTTLS ManageSieve. It verifies capability discovery, optimistic conflicts,
+ordering, disable/enable, bounded dry-run results, redacted audit history, and
+independent SMTP delivery that is marked read and starred by the active Sieve
+rules. Its `finally` path stops the isolated process, removes the temporary data
+directory, and destroys only the exact account created by that run.
+
+If the configured management key is intentionally read-only, an operator may
+instead supply a freshly created mailbox through
+`VEDA_MAIL_ACCEPTANCE_USERNAME` and `VEDA_MAIL_ACCEPTANCE_PASSWORD`. The runner
+accepts only an address in the configured acceptance domain whose local part
+starts with `veda-accept-`; it never deletes an operator-supplied account. The
+operator must delete that exact mailbox immediately after the run and record
+cleanup as part of the acceptance evidence.
+
+The command prints no mailbox password, provider credential, script content,
+or ownership marker. A failed cleanup is a failed acceptance run and must be
+resolved before rerunning. Never replace its generated account with an existing
+mailbox, expose the loopback listener, or run it while management access points
+at a different organization.
+
 ## Dokploy
 
 1. Create a project, then create a Compose service.

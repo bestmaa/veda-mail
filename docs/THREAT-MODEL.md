@@ -1327,6 +1327,21 @@ ManageSieve vacation is also fail-closed for now: installing a second active
 script could disable the signed Veda rules program. It requires one ownership-
 verified composed script and conflict-safe deployment before it may be exposed.
 
+The generic rules live-acceptance runner is an operator-only release tool, not
+an HTTP capability. It reads management credentials only from the container
+environment, creates a random `veda-accept-*` mailbox, and starts the tested
+application on an unexposed loopback port with a new data directory and key.
+It refuses non-HTTPS management origins and refuses cleanup of any account that
+lacks the acceptance prefix. Passwords, provider credentials, Sieve source,
+ownership markers, email addresses, and message contents are excluded from its
+output. Cleanup is performed in `finally`; a cleanup failure keeps the run
+failed so an orphan cannot be mistaken for successful evidence.
+When a read-only management key requires an operator-created mailbox, the
+runner accepts only the configured domain and the `veda-accept-*` prefix, never
+deletes that account itself, and requires exact UI cleanup as separate release
+evidence. The password is passed through a non-echoing terminal read and is not
+placed in command history, logs, documentation, or repository state.
+
 ## Observability and diagnostic data
 
 Logs and metrics are a confidentiality and availability boundary. Arbitrary

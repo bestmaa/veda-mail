@@ -112,9 +112,18 @@ class NodeManageSieveSession implements ManageSieveSession {
     if (literal && literal.byteLength > MAX_RESPONSE_BYTES) {
       throw new Error("ManageSieve command literal is too large.");
     }
-    const suffix = literal ? ` {${literal.byteLength}+}\r\n` : "\r\n";
-    this.socket.write(command + suffix);
-    if (literal) this.socket.write(Buffer.concat([Buffer.from(literal), Buffer.from("\r\n")]));
+    if (!literal) {
+      this.socket.write(`${command}\r\n`);
+      return this.response();
+    }
+    // Use the RFC 5804 synchronizing literal form. Some deployed servers
+    // advertise ManageSieve but still send an OK continuation for {n+};
+    // treating that continuation as the final command result desynchronizes
+    // every response that follows and can make an upload appear successful.
+    this.socket.write(`${command} {${literal.byteLength}}\r\n`);
+    const continuation = await this.response();
+    if (continuation.status !== "OK") return continuation;
+    this.socket.write(Buffer.concat([Buffer.from(literal), Buffer.from("\r\n")]));
     return this.response();
   }
 
