@@ -177,21 +177,25 @@ const exerciseRules = async (baseUrl, session, account) => {
 };
 
 export const runManageSieveAcceptance = async () => {
+  const report = (phase) => console.error(JSON.stringify({ phase, status: "running" }));
   const managementOrigin = process.env.VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN;
   const apiKey = process.env.VEDA_MAIL_STALWART_MANAGEMENT_API_KEY;
   const domain = (process.env.VEDA_MAIL_ACCEPTANCE_DOMAIN ?? "vedaconcepts.com").toLowerCase();
   invariant(managementOrigin && apiKey, "Stalwart management access is required.");
   const providerHost = new URL(managementOrigin).hostname;
+  report("management-discovery");
   const management = await openManagement(managementOrigin, apiKey);
   let account;
   let child;
   let dataDirectory;
   try {
+    report("temporary-account-create");
     account = await createTemporaryAccount(management, domain);
     const port = await freePort();
     const baseUrl = `http://127.0.0.1:${port}`;
     const setupToken = randomBytes(32).toString("hex");
     dataDirectory = await mkdtemp(path.join(os.tmpdir(), "veda-mail-sieve-"));
+    report("isolated-server-start");
     child = spawn(process.execPath, [process.env.VEDA_MAIL_ACCEPTANCE_SERVER_ENTRY ?? "server.js"], {
       cwd: process.cwd(),
       env: {
@@ -206,11 +210,15 @@ export const runManageSieveAcceptance = async () => {
       stdio: ["ignore", "ignore", "ignore"],
     });
     await waitForHealth(baseUrl, child);
+    report("isolated-setup");
     await setup(baseUrl, setupToken, domain, providerHost);
+    report("member-login");
     const session = await login(baseUrl, account);
+    report("rules-and-delivery");
     const evidence = await exerciseRules(baseUrl, session, account);
     return { evidence, provider: "imap-smtp", status: "passed" };
   } finally {
+    report("cleanup");
     await stopChild(child);
     if (dataDirectory) await rm(dataDirectory, { force: true, recursive: true });
     if (account) await deleteTemporaryAccount(management, account);
