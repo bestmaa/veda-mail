@@ -13,7 +13,12 @@ const reader = {
   isUnread: false,
   labelActions: null,
   messageId: "message-a",
-} as ReaderViewModel;
+  print: {
+    canPrintConversation: false, document: null, error: null,
+    isPreparing: false, locale: "en-IN", onPrintConversation: vi.fn(),
+    onPrintMessage: vi.fn(), onPrinted: vi.fn(), timeZone: "Asia/Kolkata",
+  },
+} as unknown as ReaderViewModel;
 const toolbar = (activeRole: "inbox" | "spam" | "trash") =>
   renderToStaticMarkup(createElement(MessageReaderToolbarView, {
     activeRole,

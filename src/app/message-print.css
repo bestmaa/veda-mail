@@ -1,0 +1,131 @@
+.veda-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+    size: auto;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: #111827 !important;
+    min-height: auto;
+  }
+
+  body > :not(.veda-print-root) {
+    display: none !important;
+  }
+
+  .veda-print-root {
+    display: block !important;
+    font-family: Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .veda-print-heading {
+    border-bottom: 2px solid #111827;
+    margin-bottom: 18pt;
+    padding-bottom: 10pt;
+  }
+
+  .veda-print-heading h1,
+  .veda-print-message h2 {
+    color: #111827;
+    line-height: 1.25;
+    margin: 0;
+  }
+
+  .veda-print-heading h1 {
+    font-size: 19pt;
+  }
+
+  .veda-print-heading p {
+    color: #475569;
+    font-size: 9pt;
+    margin: 3pt 0;
+  }
+
+  .veda-print-message + .veda-print-message {
+    break-before: page;
+  }
+
+  .veda-print-message h2 {
+    font-size: 14pt;
+    margin-bottom: 8pt;
+  }
+
+  .veda-print-message dl {
+    border-bottom: 1px solid #cbd5e1;
+    margin: 0 0 14pt;
+    padding-bottom: 10pt;
+  }
+
+  .veda-print-message dl > div {
+    display: grid;
+    grid-template-columns: 72pt minmax(0, 1fr);
+    gap: 6pt;
+  }
+
+  .veda-print-message dt {
+    color: #475569;
+    font-weight: 700;
+  }
+
+  .veda-print-message dd {
+    margin: 0;
+  }
+
+  .veda-print-body {
+    color: #1f2937;
+    white-space: normal;
+  }
+
+  .veda-print-body img {
+    display: none !important;
+  }
+
+  .veda-print-body a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .veda-print-body blockquote {
+    border-left: 2px solid #94a3b8;
+    color: #475569;
+    margin-left: 0;
+    padding-left: 10pt;
+  }
+
+  .veda-print-body pre {
+    font-family: ui-monospace, Consolas, monospace;
+    white-space: pre-wrap;
+  }
+
+  .veda-print-body table {
+    border-collapse: collapse;
+    max-width: 100%;
+  }
+
+  .veda-print-body td,
+  .veda-print-body th {
+    border: 1px solid #cbd5e1;
+    padding: 3pt 5pt;
+  }
+
+  .veda-print-message hr {
+    display: none;
+  }
+
+  .veda-print-limit-note {
+    border-top: 1px solid #cbd5e1;
+    color: #92400e;
+    font-size: 9pt;
+    margin-top: 16pt;
+    padding-top: 8pt;
+  }
+}

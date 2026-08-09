@@ -64,6 +64,17 @@ describe("reader view model details", () => {
       labels: [],
       message,
       onSetLabel: vi.fn(),
+      print: {
+        canPrintConversation: true,
+        document: null,
+        error: null,
+        isPreparing: false,
+        locale: "en-IN",
+        onPrintConversation: vi.fn(),
+        onPrintMessage: vi.fn(),
+        onPrinted: vi.fn(),
+        timeZone: "Asia/Kolkata",
+      },
       readerError: null,
       sessionScope: "scope-one",
     });

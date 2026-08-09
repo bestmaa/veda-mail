@@ -12,6 +12,7 @@ import { MessageBodyConnector } from "@/presentation/features/mail-workspace/con
 import { MessageDetailsView } from "@/presentation/features/mail-workspace/ui/message-details.view";
 import { CalendarInvitationConnector } from "@/presentation/features/mail-workspace/connectors/calendar-invitation.connector";
 import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
+import { MessagePrintPortalConnector } from "@/presentation/features/mail-workspace/connectors/message-print-portal.connector";
 
 interface MessageReaderViewProps {
   readonly activeRole: MailboxRole | null;
@@ -92,6 +93,19 @@ export const MessageReaderView = ({
             >
               {reader.error}
             </div>
+          ) : null}
+          {reader.print.error ? (
+            <div
+              className="mb-5 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700"
+              role="alert"
+            >
+              {reader.print.error}
+            </div>
+          ) : null}
+          {reader.print.isPreparing ? (
+            <p className="mb-5 text-sm font-semibold text-slate-600" role="status">
+              Preparing a secure print view…
+            </p>
           ) : null}
           <MessageConversationView conversation={reader.conversation} />
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
@@ -209,5 +223,6 @@ export const MessageReaderView = ({
         </div>
       ) : null}
     </article>
+    <MessagePrintPortalConnector print={reader.print} />
   </section>
 );
