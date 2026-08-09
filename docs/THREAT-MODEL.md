@@ -1054,6 +1054,12 @@ operator monitoring.
   inbox or executes arbitrary user code. Stalwart uses RFC 9661 JMAP Sieve and
   Standard IMAP uses RFC 5804 ManageSieve only when a TLS or STARTTLS endpoint
   is explicitly configured. There is no cleartext ManageSieve fallback.
+- ManageSieve resolves and pins one public provider address before connecting,
+  validates the TLS hostname and certificate, bounds lines, literals, commands,
+  and aggregate responses, and preserves socket timeout failures. A rejected
+  greeting, failed STARTTLS upgrade, failed post-TLS discovery, or parser error
+  destroys the setup socket; a partially initialized plaintext connection is
+  never returned to the provider adapter.
 - The route accepts at most 50 ordered rules, ten conditions per rule, and
   eight actions per rule. Strict schemas normalize NFKC, reject control and
   bidi characters, enforce header-token syntax and byte limits, and reject

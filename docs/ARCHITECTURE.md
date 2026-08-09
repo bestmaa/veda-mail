@@ -768,6 +768,14 @@ to a separately configured TLS-protected RFC 5804 ManageSieve session. Provider
 capability discovery is authoritative; missing ManageSieve leaves Rules visibly
 unsupported rather than falling back to browser or server polling.
 
+The ManageSieve transport treats connection establishment as one fail-closed
+transaction. Direct TLS must complete certificate and hostname verification
+before the greeting is read. STARTTLS must receive an accepted plaintext
+greeting and upgrade response, then complete verified TLS and a fresh
+CAPABILITY exchange. Any failure destroys both the current wrapper and its
+underlying setup socket. Bounded fragmented response parsing retains the
+original timeout or socket failure for diagnosis without exposing credentials.
+
 `/data/member-rules.json` stores the desired rule book, deployment revision,
 provider state/hash/script ID, and bounded audit under an owner-isolated
 AES-256-GCM envelope. A deployment first commits an encrypted intent containing
