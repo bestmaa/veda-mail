@@ -92,7 +92,10 @@ const write = async (socket, reader, command, literal) => {
 
 const assertOk = (phase, result) => {
   console.error(JSON.stringify({
-    ...(phase.startsWith("list-") ? { lines: result.lines } : {}),
+    ...(phase.startsWith("list-") ? {
+      lines: result.lines,
+      literal: result.literal?.toString("utf8") ?? null,
+    } : {}),
     phase,
     status: result.status,
   }));
