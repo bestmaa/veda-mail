@@ -10,6 +10,7 @@ import type {
   MessageListQuery,
   MessagePage,
 } from "@/domain/mail/mail";
+import type { MessageSourceDownloadInput } from "@/domain/mail/message-source";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import {
   imapSearchPlan,
@@ -38,6 +39,7 @@ import {
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
 import { imapLabelCapability } from "@/infrastructure/providers/imap-smtp/imap-label-mutation";
 import { readImapConversation } from "@/infrastructure/providers/imap-smtp/imap-conversation.reader";
+import { downloadImapMessageSource } from "@/infrastructure/providers/imap-smtp/imap-message-source";
 
 const summaryQuery = {
   bodyStructure: true,
@@ -167,6 +169,10 @@ export class ImapMailReader {
     input: AttachmentDownloadInput,
   ): Promise<AttachmentDownload> {
     return downloadImapAttachment(this.config, input);
+  }
+
+  public downloadMessageSource(input: MessageSourceDownloadInput) {
+    return downloadImapMessageSource(this.config, input);
   }
 
   public async listMessageAttachments(input: MessageAttachmentListInput) {

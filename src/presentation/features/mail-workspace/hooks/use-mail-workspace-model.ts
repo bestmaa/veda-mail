@@ -26,7 +26,7 @@ import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-pre
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
-import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model"; import { useMessagePrint } from "@/presentation/features/mail-workspace/hooks/use-message-print";
+import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model"; import { useMessagePrint } from "@/presentation/features/mail-workspace/hooks/use-message-print"; import { useMessageSourceDownload } from "@/presentation/features/mail-workspace/hooks/use-message-source-download";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
 import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management"; import { useMailLocalization } from "@/presentation/features/mail-workspace/hooks/use-mail-localization";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
@@ -46,9 +46,8 @@ export const useMailWorkspaceModel = ({
       : null,
   [recoveryAccountId, recoveryExpiresAt, recoveryProviderId, sessionScope]);
   const partialDelivery = usePartialDeliveryNotice(mail.refresh, sessionScope, mail.handleSessionFailure); const navigation = useMobileNavigationModel();
-  const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure);
-  const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
-  const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure);
+  const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure); const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
+  const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure); const messageSourceDownload = useMessageSourceDownload(sessionScope, mail.handleSessionFailure);
   const closeAttachmentPreview = attachmentPreview.close; const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
@@ -174,6 +173,7 @@ export const useMailWorkspaceModel = ({
         labels: workspace?.labels ?? [],
         labelCapability: workspace?.labelCapability ?? "unsupported",
         onSetLabel: mail.setLabel, print: messagePrint,
+        sourceDownload: messageSourceDownload,
         readerError: mail.readerError,
         sessionScope, timeZone: localization.timeZone,
       }),
@@ -181,7 +181,7 @@ export const useMailWorkspaceModel = ({
       mail.handleSessionFailure, mail.workspace?.mailboxes, readerRole, archiveDownload,
       attachmentDownload, attachmentPreview, localization.locale, localization.timeZone, sessionScope,
       workspace?.labelCapability, workspace?.labelDeletions, workspace?.labels, mail.setLabel,
-      messagePrint],
+      messagePrint, messageSourceDownload],
   );
   const accountName = settings.profileName ?? workspaceAccountName;
   const primaryActions = useWorkspacePrimaryActions({

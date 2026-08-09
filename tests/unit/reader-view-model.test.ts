@@ -77,6 +77,7 @@ describe("reader view model details", () => {
       },
       readerError: null,
       sessionScope: "scope-one",
+      sourceDownload: { download: vi.fn(), error: null, isDownloading: false },
     });
 
     expect(model?.details).toMatchObject({

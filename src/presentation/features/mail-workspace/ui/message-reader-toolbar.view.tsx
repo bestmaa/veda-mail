@@ -1,6 +1,7 @@
 import {
   Archive,
   Clock3,
+  Download,
   FolderInput,
   Mail,
   MailOpen,
@@ -173,6 +174,13 @@ export const MessageReaderToolbarView = ({
         <MessagesSquare aria-hidden size={18} />
       </ReaderActionView>
     ) : null}
+    <ReaderActionView
+      disabled={isBusy || reader.isLoading || reader.sourceDownload.isDownloading}
+      label="Download original message (.eml)"
+      onClick={reader.sourceDownload.onClick}
+    >
+      <Download aria-hidden size={18} />
+    </ReaderActionView>
     <span className="flex-1" />
     <ReaderActionView
       label={reader.isStarred ? "Remove star" : "Add star"}

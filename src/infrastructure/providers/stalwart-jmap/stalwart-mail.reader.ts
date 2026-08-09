@@ -1,15 +1,8 @@
 import "server-only";
-import type {
-  AttachmentDownload,
-  AttachmentDownloadInput,
-  MailAccount,
-  Mailbox,
-  MessageDetail,
-  MessageListQuery,
-  MessageAttachmentListInput,
-  MessagePage,
-  ReplyContext,
-} from "@/domain/mail/mail";
+import type { AttachmentDownload, AttachmentDownloadInput, MailAccount,
+  Mailbox, MessageDetail, MessageListQuery, MessageAttachmentListInput,
+  MessagePage, ReplyContext } from "@/domain/mail/mail";
+import type { MessageSourceDownloadInput } from "@/domain/mail/message-source";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import { id, type MessageId } from "@/domain/shared/brand";
 import type { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
@@ -34,6 +27,7 @@ import {
   type StalwartMailboxSnapshot,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.reader";
 import { assertStalwartMessageListResult } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-list-result";
+import { downloadStalwartMessageSource } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-source";
 import { stalwartSearchFilter } from "@/infrastructure/providers/stalwart-jmap/stalwart-search-filter";
 import { JMAP_MAIL, JMAP_RECEIVED_ATTACHMENT_BODY_PROPERTIES,
   MAX_JMAP_BODY_VALUE_BYTES, type StalwartConfig } from
@@ -191,6 +185,10 @@ export class StalwartMailReader {
       throw normalizeStalwartAttachmentLookupError(error, input.signal);
     }
   }
+
+  public async downloadMessageSource(input: MessageSourceDownloadInput) {
+    return downloadStalwartMessageSource(this.client,
+      (await this.getAccountContext(input.signal)).accountId, input); }
 
   public async listMessageAttachments(input: MessageAttachmentListInput) {
     try {

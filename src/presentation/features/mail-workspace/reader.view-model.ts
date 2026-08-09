@@ -65,6 +65,11 @@ export const createReaderViewModel = (input: {
   readonly handleSessionFailure: MailSessionFailureHandler;
   readonly readerError: string | null;
   readonly sessionScope: string;
+  readonly sourceDownload: {
+    readonly download: (messageId: string) => Promise<void>;
+    readonly error: string | null;
+    readonly isDownloading: boolean;
+  };
   readonly timeZone?: string;
 }): ReaderViewModel | null => {
   if (!input.message && !input.isLoading) return null;
@@ -97,7 +102,7 @@ export const createReaderViewModel = (input: {
         to: "",
       },
       downloadAll: null,
-      error: input.readerError,
+      error: input.readerError ?? input.sourceDownload.error,
       from: "",
       fromEmail: "",
       htmlBody: null,
@@ -109,6 +114,11 @@ export const createReaderViewModel = (input: {
       labels: [],
       messageId: "",
       print: input.print,
+      sourceDownload: {
+        error: input.sourceDownload.error,
+        isDownloading: input.sourceDownload.isDownloading,
+        onClick: () => undefined,
+      },
       sessionScope: input.sessionScope,
       subject: "Opening message…",
       to: "",
@@ -192,7 +202,7 @@ export const createReaderViewModel = (input: {
       to: formatAddressInput(message.to) || "Undisclosed recipients",
     },
     downloadAll: archive.downloadAll,
-    error: input.readerError,
+    error: input.readerError ?? input.sourceDownload.error,
     from: formatSender(message.from),
     fromEmail: message.from[0]?.email ?? "",
     htmlBody: message.htmlBody,
@@ -211,6 +221,11 @@ export const createReaderViewModel = (input: {
     labels: appliedLabels,
     messageId: message.id,
     print: input.print,
+    sourceDownload: {
+      error: input.sourceDownload.error,
+      isDownloading: input.sourceDownload.isDownloading,
+      onClick: () => { void input.sourceDownload.download(message.id); },
+    },
     sessionScope: input.sessionScope,
     subject: message.subject,
     to: message.to.map((address) => address.email).join(", "),

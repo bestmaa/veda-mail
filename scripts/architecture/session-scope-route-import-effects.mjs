@@ -118,6 +118,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     ]),
   ],
   ["@/server/mail/attachment-preview-http", new Set(["*"])],
+  ["@/server/mail/message-source-download-http", new Set(["*"])],
   ["@/server/mail/inline-image-http", new Set(["*"])],
   ["@/server/mail/attachment-import", new Set(["asAttachmentImportApiError"])],
   ["@/server/mail/delivery-notice-store", new Set(["deliveryNoticeStore"])],

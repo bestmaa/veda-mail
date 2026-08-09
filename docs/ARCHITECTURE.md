@@ -1283,5 +1283,12 @@ SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,
 a mandatory production hostname allowlist, DNS resolution checks, and
 private-address rejection. The same policy is checked when configuration is
 saved and before provider requests.
+
+Original-message export follows the same provider boundary. JMAP resolves an
+exact `Email/get` blob behind the server-side authenticated download template;
+IMAP decodes the account-scoped opaque reference and pins mailbox UIDVALIDITY
+plus UID before fetching source bytes. Both paths reject oversized, truncated,
+stale, or mismatched results and expose only a fixed `message.eml` download to
+the browser.
 Rate-limit window keys contain keyed hashes of account, verified-session, or
 trusted-source identifiers rather than their raw values.

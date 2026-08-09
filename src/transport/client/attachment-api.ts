@@ -1,4 +1,5 @@
 import type { UploadedAttachment } from "@/domain/mail/mail";
+import { MAX_MESSAGE_SOURCE_DOWNLOAD_BYTES } from "@/domain/mail/message-source";
 import type {
   AttachmentId,
   AttachmentUploadId,
@@ -64,6 +65,30 @@ export const attachmentApi = {
     });
     await assertOk(response);
     await saveAttachmentResponse(response, fileName);
+  },
+
+  async downloadMessageSource(
+    messageId: string,
+    sessionScope: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const response = await fetch(
+      `/api/v1/mail/messages/${encodeURIComponent(messageId)}/source`,
+      {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: mailSessionScopeHeaders(sessionScope),
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        ...(signal ? { signal } : {}),
+      },
+    );
+    await assertOk(response);
+    await saveAttachmentResponse(
+      response,
+      "message.eml",
+      MAX_MESSAGE_SOURCE_DOWNLOAD_BYTES,
+    );
   },
 
   async getAttachmentCapability(sessionScope: string): Promise<{
