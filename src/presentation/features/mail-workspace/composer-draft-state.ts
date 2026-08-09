@@ -17,7 +17,7 @@ export const TRUNCATED_PROVIDER_DRAFT_MESSAGE =
 export const UNCERTAIN_PROVIDER_DRAFT_MESSAGE =
   "This draft has an uncertain send outcome. Check Sent before continuing. You can copy its content or explicitly discard it.";
 export const SAVED_DRAFT_ATTACHMENT_SEND_MESSAGE =
-  "Remove local attachments before sending this saved provider draft.";
+  "Save this draft to move local attachments into the provider before sending.";
 export const SAVE_CHANGES_BEFORE_SEND_MESSAGE =
   "Save changes before sending this provider draft.";
 export const SAVE_IMPORTED_DRAFT_MESSAGE =

@@ -1,5 +1,4 @@
 import "server-only";
-
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import { DraftConflictError } from "@/domain/mail/draft-errors";
 import type { LabelCleanupInput } from "@/domain/mail/label";
@@ -9,6 +8,7 @@ import type {
   RulePreviewInput,
 } from "@/domain/mail/rule";
 import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze";
+import type { VacationResponseUpdate } from "@/domain/mail/vacation";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -65,7 +65,6 @@ export class ImapSmtpMailGateway implements MailGateway {
     this.writer = new ImapMailWriter(config, this.attachmentCapability);
     this.snooze = new ImapSnoozeAdapter(config);
   }
-
   public async changePassword(_input: MemberPasswordChange): Promise<void> {
     void _input;
     unsupported("Password changes");
@@ -90,13 +89,11 @@ export class ImapSmtpMailGateway implements MailGateway {
   public discardDraft(providerDraftId: ProviderDraftId, expectedRevision: string) {
     return this.drafts.discard(providerDraftId, expectedRevision);
   }
-
   public getAccount() {
     return this.reader.getAccount();
   }
 
   public async getMailUpdateMode() { return "poll" as const; }
-
   public async waitForMailUpdate() { return { mode: "poll" as const,
     retryAfterMs: 60_000, shouldRefresh: true }; }
 
@@ -107,7 +104,6 @@ export class ImapSmtpMailGateway implements MailGateway {
   public getDraftCapability() {
     return this.drafts.capability();
   }
-
   public getLabelCapability(mailboxId: Parameters<ImapMailReader["getLabelCapability"]>[0]) {
     return this.reader.getLabelCapability(mailboxId);
   }
@@ -123,6 +119,12 @@ export class ImapSmtpMailGateway implements MailGateway {
     return previewImapRules(this.config, input);
   }
   public getSnoozeCapability() { return this.snooze.getCapability(); }
+  public async getVacationCapability() { return { reason:
+    "Vacation responses are unavailable until this IMAP account advertises a safely composable provider capability.",
+    supported: false } as const; }
+  public async getVacationResponse(): Promise<never> { return unsupported("Vacation responses"); }
+  public async updateVacationResponse(_input: VacationResponseUpdate): Promise<never> {
+    void _input; return unsupported("Vacation responses"); }
   public getSnoozeAccountScope() { return this.snooze.getAccountScope(); }
   public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
   public preflightSnooze(input: SnoozePreflightInput) {
@@ -231,9 +233,7 @@ export class ImapSmtpMailGateway implements MailGateway {
     );
   }
 
-  public async testConnection(): Promise<void> {
-    await this.reader.listMailboxes();
-  }
+  public async testConnection(): Promise<void> { await this.reader.listMailboxes(); }
 
   public async updateMemberProfile(
     _input: MemberProfileUpdate,

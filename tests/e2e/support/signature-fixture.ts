@@ -13,6 +13,17 @@ export const signatureAttribute = "data-veda-signature-id";
 const sessionScopeHeader = "x-veda-mail-session-scope";
 const sessionScopes = new WeakMap<Page, string>();
 
+const readWorkspace = async (page: Page) => {
+  try {
+    return await page.request.get("/api/v1/mail/workspace");
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("ECONNRESET")) {
+      throw error;
+    }
+    return page.request.get("/api/v1/mail/workspace");
+  }
+};
+
 export const closeSignatureComposer = async (
   dialog: Locator,
 ): Promise<void> => {
@@ -32,7 +43,7 @@ export const closeSignatureComposer = async (
 const signatureSessionScope = async (page: Page): Promise<string> => {
   const cached = sessionScopes.get(page);
   if (cached) return cached;
-  const response = await page.request.get("/api/v1/mail/workspace");
+  const response = await readWorkspace(page);
   expect(response.ok()).toBe(true);
   const scope = (
     (await response.json()) as { data: { sessionScope: string } }

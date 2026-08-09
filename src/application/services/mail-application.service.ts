@@ -20,6 +20,7 @@ import type {
 import type { MailSearchQuery } from "@/domain/mail/mail-search";
 import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
 import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze";
+import type { VacationResponseUpdate } from "@/domain/mail/vacation";
 import type {
   MailboxId,
   MessageId,
@@ -131,6 +132,11 @@ export class MailApplicationService {
 
   public getSnoozeAccountScope() { return this.gateway.getSnoozeAccountScope(); }
   public getSnoozeCapability() { return this.gateway.getSnoozeCapability(); }
+  public getVacationCapability() { return this.gateway.getVacationCapability(); }
+  public getVacationResponse() { return this.gateway.getVacationResponse(); }
+  public updateVacationResponse(input: VacationResponseUpdate) {
+    return this.gateway.updateVacationResponse(input);
+  }
   public snoozeMailboxIntent() { return this.gateway.snoozeMailboxIntent(); }
   public preflightSnooze(input: SnoozePreflightInput) {
     return this.gateway.preflightSnooze(input);

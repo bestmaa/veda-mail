@@ -1296,6 +1296,31 @@ administrator with `/data` write access remains trusted and can change policy;
 these controls do not restrict direct IMAP, SMTP, provider webmail, or provider
 administration outside Veda Mail.
 
+## Vacation-response and delegation threats
+
+Automatic replies can disclose absence windows, amplify mail loops, or be
+silently overwritten by a concurrent client. Veda Mail therefore delegates
+delivery semantics to the provider's standard JMAP VacationResponse object and
+only enables the UI when both the server and writable primary mail account
+advertise the RFC 8621 capability. Updates carry the exact provider state with
+`ifInState`; stale or rejected mutations fail closed. Dates must be canonical
+UTC values with an ordered window, text and subject sizes are bounded, unknown
+fields are rejected, and an enabled response requires explicit message content.
+
+Reads and writes require the exact HttpOnly mailbox-session scope. Writes also
+require same-origin validation, request and subject rate limits, a bounded JSON
+body, and metadata-only audit settlement. Provider errors are normalized and
+raw content is never written to the audit log. HTML automatic replies are not
+authored by the current UI; the adapter preserves a bounded provider value but
+the UI writes plaintext with `htmlBody: null`.
+
+Veda Mail does not claim mail delegation merely because a provider supports
+calendar, address-book, or file sharing. Delegation remains visibly unavailable
+until a provider advertises a reviewed mail-delegation contract. Generic
+ManageSieve vacation is also fail-closed for now: installing a second active
+script could disable the signed Veda rules program. It requires one ownership-
+verified composed script and conflict-safe deployment before it may be exposed.
+
 ## Observability and diagnostic data
 
 Logs and metrics are a confidentiality and availability boundary. Arbitrary

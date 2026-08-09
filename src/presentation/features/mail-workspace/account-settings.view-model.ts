@@ -7,6 +7,7 @@ import type {
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model";
 import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 import type { MemberSessionsViewModel } from "@/presentation/features/mail-workspace/member-sessions.view-model";
+import type { VacationSettingsViewModel } from "@/presentation/features/mail-workspace/vacation-settings.view-model";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
@@ -70,4 +71,5 @@ export interface AccountSettingsViewModel {
     readonly startEnrollment: () => void;
     readonly success: string | null;
   };
+  readonly vacation: VacationSettingsViewModel;
 }

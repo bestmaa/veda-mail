@@ -166,6 +166,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/contacts/contact-store", new Set(["contactStore"])], ["@/server/contacts/contact-owner", new Set(["contactOwnerForConnection"])],
   ["@/server/saved-searches/saved-search-schema", new Set(["parseSavedSearchPutOperation"])],
   ["@/server/saved-searches/saved-search-store", new Set(["savedSearchStore"])], ["@/server/saved-searches/saved-search-owner", new Set(["savedSearchOwnerForConnection"])],
+  ["@/server/vacation/vacation-schema", new Set(["parseVacationResponseUpdate"])], ["@/server/vacation/vacation-update.service", new Set(["updateVacationResponse"])],
   [
     "@/server/contacts/contact-vcard",
     new Set(["exportVCards", "importVCards", "VCARD_LIMITS"]),
@@ -175,10 +176,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     "@/server/contacts/contact-vcard-import",
     new Set(["importContactVCards", "MAX_VCARD_IMPORT_REQUEST_BYTES"]),
   ],
-  [
-    "@/server/contacts/contact-recipient-history",
-    new Set(["recordConfirmedRecentRecipients"]),
-  ],
+  ["@/server/contacts/contact-recipient-history", new Set(["recordConfirmedRecentRecipients"])],
   ["@/server/signatures/email-signature.schema", new Set(["parseEmailSignaturePutOperation"])],
   ["@/server/signatures/email-signature.store", new Set(["emailSignatureStore"])],
   ["@/server/templates/email-template.schema", new Set(["parseEmailTemplatePutOperation"])],

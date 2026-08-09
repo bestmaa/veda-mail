@@ -17,21 +17,12 @@ import type { CalendarPartDownloadInput } from "@/domain/mail/calendar";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
 import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze"; // provider DTOs
-import { id, type MessageId } from "@/domain/shared/brand";
+import type { VacationResponse, VacationResponseUpdate } from "@/domain/mail/vacation"; import { id, type MessageId } from "@/domain/shared/brand";
 import { AttachmentDownloadError } from "@/domain/mail/attachment-download-error";
-import type {
-  MemberPasswordChange,
-  MemberProfileUpdate,
-  MemberTwoFactorUpdate,
-} from "@/domain/member/member-settings";
-import {
-  downloadMockMessageAttachment,
-  listMockMessageAttachments,
+import type { MemberPasswordChange, MemberProfileUpdate, MemberTwoFactorUpdate } from "@/domain/member/member-settings";
+import { downloadMockMessageAttachment, listMockMessageAttachments
 } from "@/infrastructure/providers/mock/mock-received-attachment.reader";
-import {
-  createMockAttachmentContents,
-  createMockMessages,
-  mockMailboxIds,
+import { createMockAttachmentContents, createMockMessages, mockMailboxIds
 } from "@/infrastructure/providers/mock/mock-seed";
 import { mockArchiveFailureMessageId } from "@/infrastructure/providers/mock/mock-archive-fixture";
 import { MockDraftStore } from "@/infrastructure/providers/mock/mock-draft.store";
@@ -57,6 +48,8 @@ export class MockMailGateway implements MailGateway {
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
   private readonly mailboxes = new MockMailboxStore();
+  private vacation: VacationResponse = { fromDate: null, htmlBody: null, isEnabled: false,
+    revision: "mock-vacation-1", subject: null, textBody: null, toDate: null };
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
   public readonly getDraft = this.drafts.get.bind(this.drafts); public readonly getDraftCapability = this.drafts.capability.bind(this.drafts);
   public async getLabelCapability() { return "supported" as const; } public async getRuleCapability() { return mockRuleCapability(); }
@@ -68,6 +61,13 @@ export class MockMailGateway implements MailGateway {
   public async getSnoozeCapability() { return {
     maxMessages: 100, snoozedMailboxId: mockMailboxIds.snoozed,
     supported: true } as const; }
+  public async getVacationCapability() { return { supported: true } as const; }
+  public async getVacationResponse() { return this.vacation; }
+  public async updateVacationResponse(input: VacationResponseUpdate) {
+    if (input.expectedRevision !== this.vacation.revision) {
+      throw new Error("Vacation settings changed in another session."); }
+    this.vacation = { ...input, revision: `mock-vacation-${crypto.randomUUID()}` };
+    return this.vacation; }
   public async getSnoozeAccountScope() {
     return createHash("sha256").update("veda-mail/mock-account").digest("base64url"); }
   public async snoozeMailboxIntent() { return mockSnoozeMailbox(); }

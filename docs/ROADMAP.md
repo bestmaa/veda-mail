@@ -565,6 +565,19 @@ authenticated JMAP evidence confirmed reconcile, deployment, a server-side
 mark-as-read delivery, and safe removal of the test rule on 2026-08-05. The two
 rules checkboxes remain open only until generic ManageSieve evidence is recorded.
 
+The provider-managed vacation-response slice is implemented for providers that
+advertise RFC 8621 `urn:ietf:params:jmap:vacationresponse` on the writable
+primary mail account. The strict member route uses exact mailbox-session scope,
+same-origin writes, bounded UTC dates and bodies, provider-state concurrency,
+subject rate limits, and metadata-only security audit events. Account settings
+show the automatic-reply form only when supported and explicitly explain when
+vacation response or mail delegation is unavailable. Standard IMAP/SMTP remains
+fail-closed because a separate ManageSieve vacation script would replace the
+single active Veda-owned rules script; safe script composition and live provider
+acceptance are still required before this checkbox can close. Current Stalwart
+sharing documentation advertises calendar, address-book, and file sharing, not
+mail delegation, so delegation is not invented or over-advertised.
+
 The provider-independent Snooze slice is released and deployed. Authenticated
 JMAP evidence is recorded; Standard IMAP plus restart/wake evidence remains. It
 persists a unique owned

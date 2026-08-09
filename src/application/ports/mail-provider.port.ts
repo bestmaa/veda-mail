@@ -53,6 +53,11 @@ import type {
 import type { MailUpdateWaitResult } from "@/domain/mail/mail-update";
 import type { MailUpdateMode } from "@/domain/mail/mail-update";
 import type {
+  VacationCapability,
+  VacationResponse,
+  VacationResponseUpdate,
+} from "@/domain/mail/vacation";
+import type {
   MailboxEmptyInput,
   MailboxEmptyResult,
 } from "@/domain/mail/mailbox-empty";
@@ -98,6 +103,8 @@ export interface MailGateway {
   getSnoozeAccountScope(): Promise<string>;
   getSnoozeCapability(): Promise<SnoozeCapability>;
   getTwoFactorEnabled(): Promise<boolean>;
+  getVacationCapability(): Promise<VacationCapability>;
+  getVacationResponse(): Promise<VacationResponse>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
   getConversation(query: ConversationQuery): Promise<ConversationPage>;
   listMessageAttachments(
@@ -122,6 +129,7 @@ export interface MailGateway {
   sendMessage(input: SendMessageInput): Promise<SendReceipt>;
   testConnection(): Promise<void>;
   updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void>;
+  updateVacationResponse(input: VacationResponseUpdate): Promise<VacationResponse>;
   updateMemberProfile(input: MemberProfileUpdate): Promise<MemberProfile>;
 }
 
