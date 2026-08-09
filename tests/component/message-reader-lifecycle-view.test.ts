@@ -18,6 +18,7 @@ const reader = {
     isPreparing: false, locale: "en-IN", onPrintConversation: vi.fn(),
     onPrintMessage: vi.fn(), onPrinted: vi.fn(), timeZone: "Asia/Kolkata",
   },
+  sourceDownload: { error: null, isDownloading: false, onClick: vi.fn() },
 } as unknown as ReaderViewModel;
 const toolbar = (activeRole: "inbox" | "spam" | "trash") =>
   renderToStaticMarkup(createElement(MessageReaderToolbarView, {

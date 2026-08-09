@@ -93,7 +93,7 @@ export interface ReaderViewModel {
   } | null;
   readonly labels: readonly MessageLabelViewModel[];
   readonly messageId: string; readonly print: MessagePrintViewModel;
-  readonly sessionScope: string;
+  readonly sourceDownload: { readonly error: string | null; readonly isDownloading: boolean; readonly onClick: () => void }; readonly sessionScope: string;
   readonly subject: string;
   readonly to: string;
 }

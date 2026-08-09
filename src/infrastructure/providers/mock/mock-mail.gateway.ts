@@ -1,10 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
-import type {
-  AttachmentDownloadInput,
-  Mailbox,
-  MailboxMutation,
+import type { AttachmentDownloadInput,
+  Mailbox, MailboxMutation,
   MessageDetail,
   MessageAttachmentListInput,
   MessageListQuery,
@@ -31,6 +29,7 @@ import { cleanupMockLabel } from "@/infrastructure/providers/mock/mock-label-cle
 import { emptyMockMailbox } from "@/infrastructure/providers/mock/mock-mailbox-empty";
 import { listMockMessages } from "@/infrastructure/providers/mock/mock-message-list";
 import { readMockConversation } from "@/infrastructure/providers/mock/mock-conversation";
+import { downloadMockMessageSource } from "@/infrastructure/providers/mock/mock-message-source";
 import {
   deployMockRules,
   mockRuleCapability,
@@ -101,6 +100,7 @@ export class MockMailGateway implements MailGateway {
       input,
     );
   }
+  public async downloadMessageSource(input: Parameters<typeof downloadMockMessageSource>[1]) { return downloadMockMessageSource(this.messages, input); }
   public async downloadCalendarPart(input: CalendarPartDownloadInput): Promise<never> {
     void input;
     throw new AttachmentDownloadError("not_found", "Calendar invitation not found.");

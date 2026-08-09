@@ -140,6 +140,14 @@ export const jmapReplyContextSchema = z
   })
   .passthrough();
 
+export const jmapMessageSourceSchema = z
+  .object({
+    blobId: z.string().min(1).max(1_024),
+    id: z.string().min(1).max(1_024),
+    size: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  })
+  .passthrough();
+
 export const jmapSessionSchema = z
   .object({
     accounts: z.record(

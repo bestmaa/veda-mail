@@ -64,6 +64,7 @@ const reader: ReaderViewModel = {
     onPrinted: vi.fn(),
     timeZone: "Asia/Kolkata",
   },
+  sourceDownload: { error: null, isDownloading: false, onClick: vi.fn() },
   sessionScope: "scope-one",
   subject: "Subject",
   to: "member@example.com",
@@ -96,5 +97,6 @@ describe("message reader safety copy", () => {
     expect(html).not.toContain('aria-live="polite"');
     expect(html).toContain("Message details");
     expect(html).toContain('aria-label="Actions for this message"');
+    expect(html).toContain('aria-label="Download original message (.eml)"');
   });
 });

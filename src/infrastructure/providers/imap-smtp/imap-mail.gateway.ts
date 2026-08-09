@@ -148,7 +148,7 @@ export class ImapSmtpMailGateway implements MailGateway {
   ): Promise<AttachmentDownload> {
     return this.reader.downloadAttachment(input);
   }
-
+  public downloadMessageSource(input: Parameters<ImapMailReader["downloadMessageSource"]>[0]) { return this.reader.downloadMessageSource(input); }
   public downloadCalendarPart(
     input: Parameters<typeof downloadImapCalendarPart>[1],
   ) {

@@ -1353,6 +1353,18 @@ access control, encryption, bounded retention, reverse-proxy redaction, metric
 token rotation, per-replica scraping, and alert thresholds. The supported
 single-writable-replica boundary is unchanged.
 
+## Original-message export
+
+RFC 5322 source is active, attacker-controlled content even when delivered as
+a download. The export route is authenticated, account-scoped, same-origin,
+rate-limited, size-bounded, non-cacheable, range-disabled, `nosniff`, and
+sandboxed with a fixed filename. Provider URLs, credentials, mailbox names,
+and JMAP blob identifiers never cross into browser state or audit records.
+JMAP metadata must match the requested account and message; IMAP references
+must match the configured account scope, mailbox UIDVALIDITY, UID, declared
+size, and returned byte count. Import and bulk-archive parsing are separate
+future trust boundaries and are not implied by this single-message export.
+
 ## Supply-chain and release controls
 
 - Lock npm dependencies, the base-image digest, and GitHub Actions; run the

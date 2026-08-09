@@ -147,7 +147,7 @@ export class StalwartMailGateway implements MailGateway {
   public downloadAttachment(input: AttachmentDownloadInput) {
     return this.reader.downloadAttachment(input);
   }
-
+  public downloadMessageSource(input: Parameters<StalwartMailReader["downloadMessageSource"]>[0]) { return this.reader.downloadMessageSource(input); }
   public async downloadCalendarPart(
     input: Parameters<typeof downloadStalwartCalendarPart>[2],
   ) {
