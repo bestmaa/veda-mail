@@ -1,4 +1,4 @@
-import { Keyboard, Menu, RefreshCw, Search, Settings, X } from "lucide-react";
+import { Bookmark, Keyboard, Menu, RefreshCw, Search, Settings, Trash2, X } from "lucide-react";
 
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
 import { BrandMarkView } from "@/presentation/shared/branding/ui/brand-mark.view";
@@ -89,6 +89,75 @@ export const MailHeaderView = ({
         </button>
       ) : null}
     </form>
+
+    <details className="group relative">
+      <summary
+        aria-label="Manage saved searches"
+        className="grid size-10 cursor-pointer list-none place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 [&::-webkit-details-marker]:hidden"
+        title="Saved searches"
+      >
+        <Bookmark aria-hidden size={18} />
+      </summary>
+      <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+        <h2 className="text-sm font-extrabold text-slate-900">Saved searches</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-600">
+          Save the active search, then replay it on this mail account.
+        </p>
+        <div className="mt-3 flex gap-2">
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Saved search name</span>
+            <input
+              className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              disabled={search.saved.isSaving}
+              maxLength={80}
+              onChange={(event) => search.saved.onNameChange(event.target.value)}
+              placeholder="Name this search"
+              type="text"
+              value={search.saved.name}
+            />
+          </label>
+          <button
+            className="h-10 rounded-xl bg-indigo-600 px-3 text-xs font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!search.saved.canSave}
+            onClick={search.saved.onSave}
+            type="button"
+          >
+            Save
+          </button>
+        </div>
+        {search.saved.error ? <p className="mt-2 text-xs font-semibold text-red-700" role="alert">{search.saved.error}</p> : null}
+        {search.saved.isLoading ? <p className="mt-3 text-xs text-slate-600" role="status">Loading saved searches…</p> : null}
+        {!search.saved.isLoading && search.saved.items.length === 0 ? (
+          <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">No saved searches yet.</p>
+        ) : null}
+        {search.saved.items.length ? (
+          <ul aria-label="Saved searches" className="mt-3 max-h-64 space-y-1 overflow-y-auto">
+            {search.saved.items.map((item) => (
+              <li className="flex items-center gap-1" key={item.id}>
+                <button
+                  className="min-w-0 flex-1 rounded-xl px-3 py-2 text-left hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-indigo-600"
+                  onClick={item.onApply}
+                  title={item.query}
+                  type="button"
+                >
+                  <span className="block truncate text-sm font-bold text-slate-800">{item.name}</span>
+                  <span className="block truncate text-xs text-slate-500">{item.query}</span>
+                </button>
+                <button
+                  aria-label={`Delete saved search ${item.name}`}
+                  className="grid size-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-700"
+                  disabled={search.saved.isSaving}
+                  onClick={item.onDelete}
+                  type="button"
+                >
+                  <Trash2 aria-hidden size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </details>
 
     <div className="flex items-center gap-1.5">
       <button

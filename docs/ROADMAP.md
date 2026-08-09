@@ -440,11 +440,22 @@ recreation, and the public `/api/health` endpoint returned HTTP 200.
   unread, starred, mailbox, and exact phrases
 - [x] Search suggestions, recent searches, clear active-filter chips, and
   shareable URL state without leaking credentials
-- [ ] Saved searches or virtual mailboxes
+- [x] Saved searches or virtual mailboxes
 - [ ] Print-friendly message/conversation view
 
 Acceptance: thread membership and search semantics have provider contract tests;
 unsupported predicates are reported rather than silently ignored.
+
+Saved searches are provider-neutral canonical queries rather than stored
+provider identifiers. The member API reparses every query server-side, applies
+bounded name/query/book/request limits, enforces same-origin and live browser
+session scope, and uses optimistic revisions to reject stale-tab overwrites.
+Books are isolated by provider and account identity, encrypted at rest with
+AES-256-GCM keys derived from the installation secret, authenticated with an
+owner-bound AAD value, and fail closed on tampering. The accessible header
+manager saves, reloads, replays through the existing typed JMAP/IMAP search
+contract, and deletes searches. Unit, route, client, full coverage, production
+build, dependency audit, and browser save/reload/replay/delete regressions pass.
 
 The conversation vertical slice is locally complete. Stalwart resolves the
 authenticated anchor before using exact `Thread/get` membership. IMAP prefers

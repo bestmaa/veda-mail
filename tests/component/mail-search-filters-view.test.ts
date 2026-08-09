@@ -14,6 +14,9 @@ describe("mail search filters view", () => {
           label: "from:ada@example.com",
           onRemove: vi.fn(),
         }],
+        saved: { canSave: false, error: null, isLoading: false,
+          isSaving: false, items: [], name: "", onNameChange: vi.fn(),
+          onSave: vi.fn() },
         suggestions: [],
       },
     }));

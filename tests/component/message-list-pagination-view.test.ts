@@ -134,11 +134,11 @@ const props = {
   search: {
     error: null,
     filters: [],
+    saved: { canSave: false, error: null, isLoading: false, isSaving: false,
+      items: [], name: "", onNameChange: vi.fn(), onSave: vi.fn() },
     suggestions: [],
-  },
-  total: 2,
+  }, total: 2,
 } as const;
-
 describe("message list pagination view", () => {
   it("offers an accessible cursor pagination control", () => {
     const html = renderToStaticMarkup(createElement(MessageListView, props));

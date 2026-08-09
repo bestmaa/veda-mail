@@ -163,8 +163,9 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ],
   ["@/server/calendar/event-store", new Set(["calendarEventStore"])],
   ["@/server/contacts/contact-schema", new Set(["parseContactPutOperation"])],
-  ["@/server/contacts/contact-store", new Set(["contactStore"])],
-  ["@/server/contacts/contact-owner", new Set(["contactOwnerForConnection"])],
+  ["@/server/contacts/contact-store", new Set(["contactStore"])], ["@/server/contacts/contact-owner", new Set(["contactOwnerForConnection"])],
+  ["@/server/saved-searches/saved-search-schema", new Set(["parseSavedSearchPutOperation"])],
+  ["@/server/saved-searches/saved-search-store", new Set(["savedSearchStore"])], ["@/server/saved-searches/saved-search-owner", new Set(["savedSearchOwnerForConnection"])],
   [
     "@/server/contacts/contact-vcard",
     new Set(["exportVCards", "importVCards", "VCARD_LIMITS"]),
@@ -240,7 +241,6 @@ export const isAuthWrapperModule = (moduleName) =>
 export const isRequestUtilityModule = (moduleName) =>
   REQUEST_UTILITY_EXPORTS.has(moduleName) ||
   REVIEWED_HELPER_EXPORTS.has(moduleName);
-
 export const knownAuthWrapperName = (exportName) =>
   [...AUTH_WRAPPER_EXPORTS.values()].some((names) => names.has(exportName));
 
