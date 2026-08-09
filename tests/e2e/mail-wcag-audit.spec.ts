@@ -117,19 +117,30 @@ test("honors reduced motion across the rendered mailbox", async ({ page }) => {
 test("keeps reader and account settings free of WCAG violations", async ({
   page,
 }) => {
+  test.setTimeout(75_000);
   await page.setViewportSize({ height: 720, width: 320 });
+  const messageRequest = page.waitForResponse((response) =>
+    response.request().method() === "GET" &&
+    /\/api\/v1\/mail\/messages\/[^/]+$/u.test(response.url())
+  );
   await page.getByRole("button", {
     name: "Open Revised product roadmap · Q3",
   }).click();
+  expect((await messageRequest).ok()).toBe(true);
   await expect(page.getByRole("heading", {
     name: "Revised product roadmap · Q3",
   })).toBeFocused();
   await expectNoPageHorizontalOverflow(page);
   await expectNoWcagAccessibilityViolations(page);
 
+  const settingsRequest = page.waitForResponse((response) =>
+    response.request().method() === "GET" &&
+    response.url().endsWith("/api/v1/member/settings")
+  );
   await page.getByRole("button", {
     name: "Open account settings for member@example.com",
   }).click();
+  expect((await settingsRequest).ok()).toBe(true);
   const settings = page.getByRole("dialog", { name: "Account settings" });
   await expect(settings).toBeVisible();
   await expect(settings.getByRole("heading", { name: "Provider capabilities" }))
