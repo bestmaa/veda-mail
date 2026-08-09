@@ -18,3 +18,6 @@ docs
 tests
 scripts/*
 !scripts/admin-recovery.mjs
+!scripts/manage-sieve-live-acceptance.mjs
+!scripts/manage-sieve-live/
+!scripts/manage-sieve-live/**
