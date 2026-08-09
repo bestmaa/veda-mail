@@ -1,6 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
 const MAX_ERROR_BODY = 2_048;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export const invariant = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -19,6 +20,34 @@ export const fetchJson = async (url, options = {}, statuses = [200]) => {
   });
   if (!statuses.includes(response.status)) throw await responseFailure(response);
   return { payload: await response.json(), response };
+};
+
+export const fetchSameOriginJson = async (
+  initialUrl,
+  expectedOrigin,
+  options = {},
+  statuses = [200],
+) => {
+  let url = new URL(initialUrl, expectedOrigin);
+  for (let count = 0; count <= 3; count += 1) {
+    invariant(
+      url.origin === expectedOrigin && !url.username && !url.password,
+      "The management endpoint changed origin.",
+    );
+    const response = await fetch(url, {
+      ...options,
+      redirect: "manual",
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!REDIRECT_STATUSES.has(response.status)) {
+      if (!statuses.includes(response.status)) throw await responseFailure(response);
+      return { payload: await response.json(), response };
+    }
+    const location = response.headers.get("location");
+    invariant(location && count < 3, "The management redirect is invalid.");
+    url = new URL(location, url);
+  }
+  throw new Error("The management endpoint redirected too many times.");
 };
 
 export const cookieValue = (response, name) => {

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { fetchJson, invariant } from "./http.mjs";
+import { fetchSameOriginJson, invariant } from "./http.mjs";
 
 const CORE = "urn:ietf:params:jmap:core";
 const STALWART = "urn:stalwart:jmap";
@@ -16,7 +16,7 @@ const safeOrigin = (value) => {
 };
 
 const call = async (client, methodCalls) => {
-  const { payload } = await fetchJson(client.apiUrl, {
+  const { payload } = await fetchSameOriginJson(client.apiUrl, client.origin, {
     body: JSON.stringify({ methodCalls, using: [CORE, STALWART] }),
     headers: {
       Accept: "application/json",
@@ -39,9 +39,13 @@ const result = (responses, callId, method) => {
 export const openManagement = async (origin, apiKey) => {
   const expectedOrigin = safeOrigin(origin);
   invariant(apiKey && apiKey.length <= 4_096, "Management API key is unavailable.");
-  const { payload } = await fetchJson(`${expectedOrigin}/.well-known/jmap`, {
+  const { payload } = await fetchSameOriginJson(
+    `${expectedOrigin}/.well-known/jmap`,
+    expectedOrigin,
+    {
     headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
-  });
+    },
+  );
   const apiUrl = new URL(payload.apiUrl, expectedOrigin);
   invariant(apiUrl.origin === expectedOrigin, "Management API changed origin.");
   return { apiKey, apiUrl: apiUrl.href, origin: expectedOrigin };
