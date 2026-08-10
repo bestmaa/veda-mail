@@ -3,6 +3,7 @@ import "server-only";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { MailRulePutOperation } from "@/domain/mail/rule";
 import type { ProviderConnection } from "@/domain/provider/provider";
+import { ManageSieveError } from "@/infrastructure/providers/imap-smtp/manage-sieve-errors";
 import { resolveGateway } from "@/server/mail/gateway-cache";
 import { ruleOwnerForConnection } from "@/server/rules/rule-owner";
 import type {
@@ -19,9 +20,12 @@ interface CodedError {
 const providerFailure = (error: unknown) => {
   const code = (error as CodedError)?.code;
   if (code === "RULE_PROVIDER_CONFLICT") {
+    const message = error instanceof ManageSieveError
+      ? error.message
+      : "Another provider rule script is active. It was left unchanged.";
     return {
       api: new ApiError(
-        "Another provider rule script is active. It was left unchanged.",
+        message,
         "MAIL_RULE_PROVIDER_CONFLICT",
         409,
       ),

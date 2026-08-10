@@ -23,6 +23,7 @@ vi.mock("@/server/rules/rule-store", () => ({
 
 import type { MailRulePutOperation } from "@/domain/mail/rule";
 import { id } from "@/domain/shared/brand";
+import { ManageSieveError } from "@/infrastructure/providers/imap-smtp/manage-sieve-errors";
 import { mutateAndDeployRules } from "@/server/rules/rule-deployment.service";
 
 const connection = {
@@ -100,10 +101,29 @@ describe("rule deployment transaction", () => {
       new Error("secret provider detail"), { code: "RULE_PROVIDER_CONFLICT" },
     ));
     await expect(mutateAndDeployRules(connection, operation)).rejects
-      .toMatchObject({ code: "MAIL_RULE_PROVIDER_CONFLICT", status: 409 });
+      .toMatchObject({
+        code: "MAIL_RULE_PROVIDER_CONFLICT",
+        message: "Another provider rule script is active. It was left unchanged.",
+        status: 409,
+      });
     expect(mocks.put).toHaveBeenLastCalledWith(expect.anything(),
       expect.objectContaining({ result: {
         errorCode: "RULE_PROVIDER_CONFLICT", status: "conflict",
       } }));
+  });
+
+  it("preserves a trusted fail-closed ManageSieve conflict reason", async () => {
+    mocks.put.mockResolvedValueOnce(desired).mockResolvedValueOnce(pending);
+    mocks.deployRules.mockRejectedValue(new ManageSieveError(
+      "RULE_PROVIDER_CONFLICT",
+      "Rules changed at the provider. Reload before saving.",
+    ));
+
+    await expect(mutateAndDeployRules(connection, operation)).rejects
+      .toMatchObject({
+        code: "MAIL_RULE_PROVIDER_CONFLICT",
+        message: "Rules changed at the provider. Reload before saving.",
+        status: 409,
+      });
   });
 });

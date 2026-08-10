@@ -1080,7 +1080,10 @@ operator monitoring.
   it never performs unsigned whitespace normalization. A foreign script with
   the same name, any foreign active/vacation script, ambiguous script state,
   unsupported extension, or provider-state mismatch fails closed without
-  deactivation or overwrite.
+  deactivation or overwrite. Conflict responses preserve only the bounded
+  reason from the typed ManageSieve adapter; arbitrary provider exceptions are
+  replaced by the generic conflict text so credentials and payloads cannot
+  cross the HTTP boundary.
 - Stalwart deployment uploads a bounded script, validates it, uses provider
   state compare-and-swap for create/update plus activation, and post-verifies
   the exact blob and active script. A retry after a lost activation response is
