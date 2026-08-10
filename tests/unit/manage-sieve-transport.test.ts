@@ -31,8 +31,8 @@ const baseConfig: ImapSmtpMemberConfig = {
   smtpSecurity: "tls",
   username: "member@example.test",
 };
-
 class FakeSocket extends EventEmitter {
+  public autoAcknowledgeLogout = true;
   public destroyed = false;
   public readonly writes: Buffer[] = [];
   private timeoutHandler: (() => void) | null = null;
@@ -46,14 +46,12 @@ class FakeSocket extends EventEmitter {
     this.emit("close");
     return this;
   }
-
   public fireTimeout(): void { this.timeoutHandler?.(); }
   public respond(...chunks: string[]): void {
     for (const chunk of chunks) {
       queueMicrotask(() => this.emit("data", Buffer.from(chunk, "utf8")));
     }
   }
-
   public setTimeout(_milliseconds: number, handler: () => void): this {
     this.timeoutHandler = handler;
     return this;
@@ -63,6 +61,8 @@ class FakeSocket extends EventEmitter {
     const bytes = Buffer.from(value);
     this.writes.push(bytes);
     this.onWrite(bytes, this);
+    if (this.autoAcknowledgeLogout && bytes.toString() === "LOGOUT\r\n")
+      this.respond("OK logout complete\r\n");
     return true;
   }
 }
@@ -80,7 +80,6 @@ const connect = (
 
 const asSocket = (socket: FakeSocket): Socket => socket as unknown as Socket;
 const asTlsSocket = (socket: FakeSocket): TLSSocket => socket as unknown as TLSSocket;
-
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.lookup.mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
@@ -108,7 +107,9 @@ describe("ManageSieve transport", () => {
       rejectUnauthorized: true,
       servername: "localhost",
     }));
-    await session.close();
+    const closing = session.close();
+    expect(socket.destroyed).toBe(false);
+    await closing;
     expect(socket.writes.at(-1)?.toString()).toBe("LOGOUT\r\n");
     expect(socket.destroyed).toBe(true);
   });
