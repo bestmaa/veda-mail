@@ -166,11 +166,23 @@ export class ManageSieveRuleAdapter {
     } catch {
       return manageSieveConflict("The existing Veda rules script could not be verified safely.");
     }
-    const owned = (() => {
-      try { return this.compiler.verifyOwnership(exactText(bytes)); }
+    const content = exactText(bytes);
+    const owned = (candidate: string) => {
+      try { return this.compiler.verifyOwnership(candidate); }
       catch { return false; }
-    })();
-    if (!owned) manageSieveConflict("The provider script named for Veda Mail is not owned by this installation.");
-    return bytes;
+    };
+    if (owned(content)) return bytes;
+
+    // Stalwart can expose the command-framing CRLF as part of a GETSCRIPT
+    // literal even though its JMAP blob preserves the uploaded bytes. Accept
+    // only one removed CRLF and only when the installation HMAC then verifies;
+    // broader normalization would weaken the ownership boundary.
+    if (content.endsWith("\r\n")) {
+      const canonical = content.slice(0, -2);
+      if (owned(canonical)) return new TextEncoder().encode(canonical);
+    }
+    return manageSieveConflict(
+      "The provider script named for Veda Mail is not owned by this installation.",
+    );
   }
 }

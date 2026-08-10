@@ -1074,10 +1074,13 @@ operator monitoring.
   action that would allow later rules to continue.
 - One deterministic `Veda Mail Rules` script is protected by an
   installation-key HMAC over its exact canonical body. Veda Mail downloads and
-  verifies that marker before updating. A foreign script with the same name,
-  any foreign active/vacation script, ambiguous script state, unsupported
-  extension, or provider-state mismatch fails closed without deactivation or
-  overwrite.
+  verifies that marker before updating. When a provider exposes one additional
+  command-framing CRLF in a `GETSCRIPT` literal, Veda Mail removes exactly that
+  one pair only if the resulting canonical body passes the installation HMAC;
+  it never performs unsigned whitespace normalization. A foreign script with
+  the same name, any foreign active/vacation script, ambiguous script state,
+  unsupported extension, or provider-state mismatch fails closed without
+  deactivation or overwrite.
 - Stalwart deployment uploads a bounded script, validates it, uses provider
   state compare-and-swap for create/update plus activation, and post-verifies
   the exact blob and active script. A retry after a lost activation response is
