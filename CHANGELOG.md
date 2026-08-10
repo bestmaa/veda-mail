@@ -9,6 +9,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Standard IMAP/SMTP Rules now consume the RFC 5804 capability greeting that a
+  ManageSieve server reissues after STARTTLS before sending the first command.
+  This prevents every authenticated response from being associated with the
+  preceding command, which previously made a rejected operation look
+  successful and caused the next rule save to report a false provider conflict.
 - Recipient-field Enter no longer falls through to the composer form and opens
   send confirmation before the message is ready. Explicit draft saves used by
   Undo Send now wait for any in-flight autosave, adopt its provider revision,

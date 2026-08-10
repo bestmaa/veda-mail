@@ -149,7 +149,6 @@ describe("ManageSieve transport", () => {
       "Invalid ManageSieve command",
     );
   });
-
   it("upgrades STARTTLS before post-TLS capability discovery", async () => {
     const plain = new FakeSocket((value, current) => {
       if (value.toString() === "STARTTLS\r\n") current.respond("OK\r\n");
@@ -158,23 +157,24 @@ describe("ManageSieve transport", () => {
       if (value.toString() === "CAPABILITY\r\n") {
         current.respond("\"SASL\" \"PLAIN\"\r\nOK\r\n");
       }
+      if (value.toString() === "NOOP\r\n")
+        current.respond("NO deliberate alignment probe\r\n");
     });
     mocks.connectTcp.mockImplementation(() => {
       connect(plain, "connect", "\"STARTTLS\"\r\nOK\r\n");
       return asSocket(plain);
     });
     mocks.connectTls.mockImplementation(() => {
-      connect(secure, "secureConnect");
+      connect(secure, "secureConnect", '"SASL" "PLAIN"\r\nOK post-TLS greeting\r\n');
       return asTlsSocket(secure);
     });
-
     const session = await openManageSieveSession({
       ...baseConfig,
       manageSieveSecurity: "starttls",
     });
-
     expect(plain.writes.map((item) => item.toString())).toContain("STARTTLS\r\n");
     expect(secure.writes.map((item) => item.toString())).toContain("CAPABILITY\r\n");
+    await expect(session.command("NOOP")).resolves.toMatchObject({ status: "NO" });
     expect(mocks.connectTls).toHaveBeenCalledWith(expect.objectContaining({
       rejectUnauthorized: true,
       servername: "localhost",

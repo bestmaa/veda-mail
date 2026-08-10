@@ -572,6 +572,15 @@ Transport hardening now directly covers fragmented lines/literals, direct TLS,
 STARTTLS, certificate/setup failure cleanup, timeouts, response limits, command
 injection, unsafe DNS answers, capability failure, missing extensions, provider
 drift, ambiguous active scripts, and rejected CHECK/PUT/activation operations.
+An isolated Stalwart 0.16.15 wire acceptance on 2026-08-10 then reproduced the
+remaining consecutive-save conflict: Stalwart correctly reissued its capability
+greeting after STARTTLS, but the client left that greeting queued and shifted
+every subsequent response by one command. The transport now consumes and
+validates that RFC 5804 greeting before discovery. A regression proves the next
+deliberately rejected command remains aligned, and two isolated authenticated
+connections read the installed script with the same byte length and SHA-256.
+The checkboxes remain open until the patched image passes the full generic
+ManageSieve rule/delivery acceptance against the dedicated production provider.
 
 The provider-managed vacation-response slice is implemented for providers that
 advertise RFC 8621 `urn:ietf:params:jmap:vacationresponse` on the writable
