@@ -21,10 +21,11 @@ export interface ManageSieveResponse {
 }
 
 export interface ManageSieveSession {
-  command(command: string, literal?: Uint8Array): Promise<ManageSieveResponse>;
+  command(command: string, literal?: Uint8Array,
+    options?: { readonly appendCommandTerminator?: boolean },
+  ): Promise<ManageSieveResponse>;
   close(): Promise<void>;
 }
-
 class SocketReader {
   private buffer = Buffer.alloc(0);
   private ended = false;
@@ -107,7 +108,11 @@ class NodeManageSieveSession implements ManageSieveSession {
     private readonly reader: SocketReader,
   ) {}
 
-  public async command(command: string, literal?: Uint8Array) {
+  public async command(
+    command: string,
+    literal?: Uint8Array,
+    options?: { readonly appendCommandTerminator?: boolean },
+  ) {
     if (/[^\x20-\x7e]/u.test(command)) throw new Error("Invalid ManageSieve command.");
     if (literal && literal.byteLength > MAX_RESPONSE_BYTES) {
       throw new Error("ManageSieve command literal is too large.");
@@ -123,10 +128,13 @@ class NodeManageSieveSession implements ManageSieveSession {
     this.socket.write(`${command} {${literal.byteLength}}\r\n`);
     const continuation = await this.response();
     if (continuation.status !== "OK") return continuation;
-    // A literal is length-delimited and completes the command by itself. An
-    // extra CRLF after its bytes is a second, empty command on Stalwart. That
-    // produces an extra OK response and shifts every later response by one.
-    this.socket.write(literal);
+    // Stalwart finalizes CHECKSCRIPT at the literal boundary and treats a
+    // following CRLF as an empty command, but waits for the command terminator
+    // after a PUTSCRIPT literal. Keep that provider behavior explicit at the
+    // call site so neither response stream can become misaligned.
+    this.socket.write(options?.appendCommandTerminator
+      ? Buffer.concat([Buffer.from(literal), Buffer.from("\r\n")])
+      : literal);
     return this.response();
   }
 

@@ -102,7 +102,11 @@ export class ManageSieveClient {
   }
 
   public async put(session: ManageSieveSession, name: string, content: Uint8Array) {
-    requireOk(await session.command(`PUTSCRIPT ${quoted(name)}`, content));
+    requireOk(await session.command(
+      `PUTSCRIPT ${quoted(name)}`,
+      content,
+      { appendCommandTerminator: true },
+    ));
   }
 
   public async activate(session: ManageSieveSession, name: string) {
