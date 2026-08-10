@@ -1066,7 +1066,9 @@ operator monitoring.
   CRLF as a second empty command, while it waits for the command terminator
   after a `PUTSCRIPT` literal. Those two endings are selected explicitly and
   regression-tested so neither response stream can desynchronize activation
-  or ownership verification.
+  or ownership verification. Session teardown sends `LOGOUT` and waits for the
+  provider acknowledgement before destroying TLS, preventing an accepted
+  script update from appearing stale to the next connection.
 - The route accepts at most 50 ordered rules, ten conditions per rule, and
   eight actions per rule. Strict schemas normalize NFKC, reject control and
   bidi characters, enforce header-token syntax and byte limits, and reject

@@ -139,11 +139,12 @@ class NodeManageSieveSession implements ManageSieveSession {
   }
 
   public async greeting() { return this.response(); }
-
   public async close(): Promise<void> {
     if (!this.socket.destroyed) {
-      this.socket.write("LOGOUT\r\n");
-      this.socket.destroy();
+      try {
+        // Acknowledged LOGOUT keeps the next connection from seeing stale state.
+        await this.command("LOGOUT");
+      } finally { this.socket.destroy(); }
     }
   }
 
