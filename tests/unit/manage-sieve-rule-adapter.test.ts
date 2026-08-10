@@ -139,11 +139,16 @@ describe("ManageSieve rules adapter", () => {
   });
 
   it("installs, activates, and verifies an owned script", async () => {
-    const { adapter, commands } = harness();
+    const { adapter, commands, session } = harness();
     const result = await adapter.deploy(input());
     expect(result).toMatchObject({ scriptId: "Veda Mail Rules", status: "deployed" });
     expect(commands).toContain("CHECKSCRIPT");
     expect(commands).toContain('PUTSCRIPT "Veda Mail Rules"');
+    expect(session.command).toHaveBeenCalledWith(
+      'PUTSCRIPT "Veda Mail Rules"',
+      expect.any(Uint8Array),
+      { appendCommandTerminator: true },
+    );
     expect(commands).toContain('SETACTIVE "Veda Mail Rules"');
     expect(commands.at(-1)).toBe('GETSCRIPT "Veda Mail Rules"');
   });
