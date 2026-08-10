@@ -194,7 +194,6 @@ const tlsOptions = (host: string, address: string) => ({
   rejectUnauthorized: true,
   servername: host,
 });
-
 export const openManageSieveSession = async (
   config: ImapSmtpMemberConfig,
 ): Promise<ManageSieveSession> => {
@@ -222,7 +221,6 @@ export const openManageSieveSession = async (
       throw error;
     }
   }
-
   const plain = connectTcp({ host: resolved.address, family: resolved.family, port });
   let socket: Socket | TLSSocket = plain;
   try {
@@ -237,9 +235,11 @@ export const openManageSieveSession = async (
     socket = connectTls({ rejectUnauthorized: true, servername: host, socket: plain });
     await connected(socket, "secureConnect");
     const session = new NodeManageSieveSession(socket, new SocketReader(socket));
-    if ((await session.command("CAPABILITY")).status !== "OK") {
+    // Consume RFC 5804's fresh post-STARTTLS greeting or later responses shift.
+    if ((await session.greeting()).status !== "OK")
+      throw new Error("ManageSieve post-TLS greeting was rejected.");
+    if ((await session.command("CAPABILITY")).status !== "OK")
       throw new Error("ManageSieve discovery failed.");
-    }
     return session;
   } catch (error) {
     socket.destroy();
