@@ -98,7 +98,11 @@ export class ManageSieveClient {
   }
 
   public async check(session: ManageSieveSession, content: Uint8Array): Promise<void> {
-    requireOk(await session.command("CHECKSCRIPT", content));
+    requireOk(await session.command(
+      "CHECKSCRIPT",
+      content,
+      { appendCommandTerminator: true },
+    ));
   }
 
   public async put(session: ManageSieveSession, name: string, content: Uint8Array) {

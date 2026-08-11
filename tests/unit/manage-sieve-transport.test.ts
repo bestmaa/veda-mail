@@ -119,9 +119,8 @@ describe("ManageSieve transport", () => {
       if (value.toString() === "CHECKSCRIPT {5}\r\n") {
         current.respond("OK Ready for 5 bytes.\r\n");
       }
-      if (value.toString() === "keep;") current.respond("OK script accepted\r\n");
       if (value.toString() === "keep;\r\n") {
-        current.respond("OK script accepted\r\n", "OK empty command\r\n");
+        current.respond("OK script accepted\r\n");
       }
       if (value.toString() === "LISTSCRIPTS\r\n") {
         current.respond('"Veda Mail Rules"\r\nOK\r\n');
@@ -136,13 +135,14 @@ describe("ManageSieve transport", () => {
     await expect(session.command(
       "CHECKSCRIPT",
       new TextEncoder().encode("keep;"),
+      { appendCommandTerminator: true },
     )).resolves.toMatchObject({ status: "OK" });
     await expect(session.command("LISTSCRIPTS")).resolves.toMatchObject({
       lines: ['"Veda Mail Rules"'],
       status: "OK",
     });
     expect(socket.writes.slice(-2).map((item) => item.toString())).toEqual([
-      "keep;",
+      "keep;\r\n",
       "LISTSCRIPTS\r\n",
     ]);
     await expect(session.command("NOOP\r\nLOGOUT")).rejects.toThrow(

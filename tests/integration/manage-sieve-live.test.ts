@@ -57,7 +57,7 @@ describe("live ManageSieve protocol", () => {
       }
     };
     const session = await step("connect", () => openManageSieveSession(config));
-    let uploaded = false;
+    let uploadAttempted = false;
     try {
       const capability = await step("CAPABILITY", () => session.command("CAPABILITY"));
       requireOk("CAPABILITY", capability);
@@ -72,16 +72,24 @@ describe("live ManageSieve protocol", () => {
       expect(initial.lines).toEqual([]);
       requireOk("CHECKSCRIPT", await step(
         "CHECKSCRIPT",
-        () => session.command("CHECKSCRIPT", SCRIPT),
+        () => session.command(
+          "CHECKSCRIPT",
+          SCRIPT,
+          { appendCommandTerminator: true },
+        ),
       ));
+      uploadAttempted = true;
       requireOk(
         "PUTSCRIPT",
         await step(
           "PUTSCRIPT",
-          () => session.command(`PUTSCRIPT ${quoted(SCRIPT_NAME)}`, SCRIPT),
+          () => session.command(
+            `PUTSCRIPT ${quoted(SCRIPT_NAME)}`,
+            SCRIPT,
+            { appendCommandTerminator: true },
+          ),
         ),
       );
-      uploaded = true;
       requireOk("SETACTIVE", await step(
         "SETACTIVE",
         () => session.command(`SETACTIVE ${quoted(SCRIPT_NAME)}`),
@@ -96,7 +104,7 @@ describe("live ManageSieve protocol", () => {
       requireOk("GETSCRIPT", stored);
       expect(stored.literal).toEqual(SCRIPT);
     } finally {
-      if (uploaded) {
+      if (uploadAttempted) {
         await session.command('SETACTIVE ""').catch(() => undefined);
         await session.command(`DELETESCRIPT ${quoted(SCRIPT_NAME)}`).catch(() => undefined);
       }
