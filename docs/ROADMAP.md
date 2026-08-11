@@ -534,9 +534,9 @@ search](./ADVANCED-SEARCH.md).
 
 ## M6 — Rules and productivity
 
-- [ ] Server-side filters/rules: match sender, recipient, subject, headers,
+- [x] Server-side filters/rules: match sender, recipient, subject, headers,
   size, or attachment; then move, label, star, mark read, or discard
-- [ ] Rule ordering, enable/disable, dry-run preview, conflict handling, and
+- [x] Rule ordering, enable/disable, dry-run preview, conflict handling, and
   audit history
 - [ ] Scheduled send using an encrypted durable queue, retry policy,
   cancellation, clock/time-zone handling, and idempotency keys
@@ -562,8 +562,7 @@ security gates. PR #86 fixed Stalwart's canonical post-activation Sieve blob
 confirmation and was squash-merged as
 `0c22a7f75baef98296c1c69b42d6b6bb72a4fb77`. Production deployed that revision;
 authenticated JMAP evidence confirmed reconcile, deployment, a server-side
-mark-as-read delivery, and safe removal of the test rule on 2026-08-05. The two
-rules checkboxes remain open only until generic ManageSieve evidence is recorded.
+mark-as-read delivery, and safe removal of the test rule on 2026-08-05.
 On 2026-08-09 the deployed Stalwart container was independently confirmed to
 listen on 4190 and advertise STARTTLS plus the required Sieve extensions, while
 the compose contract also published `4190:4190`. The public TCP path remained
@@ -579,8 +578,17 @@ every subsequent response by one command. The transport now consumes and
 validates that RFC 5804 greeting before discovery. A regression proves the next
 deliberately rejected command remains aligned, and two isolated authenticated
 connections read the installed script with the same byte length and SHA-256.
-The checkboxes remain open until the patched image passes the full generic
-ManageSieve rule/delivery acceptance against the dedicated production provider.
+On 2026-08-11 a source-IP-restricted provider path exposed a second wire-level
+gap: synchronizing `CHECKSCRIPT` literals did not include the RFC 5804 command
+terminator, so the real server waited until timeout. A transport regression now
+requires that terminator. An isolated temporary Standard IMAP/SMTP account then
+passed real STARTTLS capability/authentication, script check, upload, activation,
+exact readback, and removal. The full Veda Mail acceptance also passed independent
+SMTP delivery with server-side mark-read and star effects, ordering, disable and
+enable, stale-revision conflict, bounded dry-run, redacted audit history, and exact
+rule cleanup. The isolated account and its messages were deleted after verification;
+no production user script or mailbox was changed. This closes both rules rows for
+JMAP and generic ManageSieve providers within their advertised capabilities.
 
 The provider-managed vacation-response slice is implemented for providers that
 advertise RFC 8621 `urn:ietf:params:jmap:vacationresponse` on the writable

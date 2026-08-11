@@ -143,6 +143,11 @@ describe("ManageSieve rules adapter", () => {
     const result = await adapter.deploy(input());
     expect(result).toMatchObject({ scriptId: "Veda Mail Rules", status: "deployed" });
     expect(commands).toContain("CHECKSCRIPT");
+    expect(session.command).toHaveBeenCalledWith(
+      "CHECKSCRIPT",
+      expect.any(Uint8Array),
+      { appendCommandTerminator: true },
+    );
     expect(commands).toContain('PUTSCRIPT "Veda Mail Rules"');
     expect(session.command).toHaveBeenCalledWith(
       'PUTSCRIPT "Veda Mail Rules"',

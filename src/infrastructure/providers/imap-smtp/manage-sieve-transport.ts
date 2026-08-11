@@ -128,10 +128,9 @@ class NodeManageSieveSession implements ManageSieveSession {
     this.socket.write(`${command} {${literal.byteLength}}\r\n`);
     const continuation = await this.response();
     if (continuation.status !== "OK") return continuation;
-    // Stalwart finalizes CHECKSCRIPT at the literal boundary and treats a
-    // following CRLF as an empty command, but waits for the command terminator
-    // after a PUTSCRIPT literal. Keep that provider behavior explicit at the
-    // call site so neither response stream can become misaligned.
+    // RFC 5804 commands end in CRLF after their final string argument. Keep the
+    // terminator explicit at call sites so a server cannot wait indefinitely
+    // for an incomplete CHECKSCRIPT or PUTSCRIPT command.
     this.socket.write(options?.appendCommandTerminator
       ? Buffer.concat([Buffer.from(literal), Buffer.from("\r\n")])
       : literal);
