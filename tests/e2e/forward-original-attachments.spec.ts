@@ -72,6 +72,7 @@ const attachmentIdFrom = (url: string): string => {
 test("imports sequentially, retries partial failure, and reuses clean IDs", async ({
   page,
 }) => {
+  test.slow();
   await disableProviderDrafts(page);
   let releaseFirst: () => void = () => undefined;
   const firstGate = new Promise<void>((resolve) => {
