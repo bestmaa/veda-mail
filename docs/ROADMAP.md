@@ -538,7 +538,7 @@ search](./ADVANCED-SEARCH.md).
   size, or attachment; then move, label, star, mark read, or discard
 - [x] Rule ordering, enable/disable, dry-run preview, conflict handling, and
   audit history
-- [ ] Scheduled send using an encrypted durable queue, retry policy,
+- [x] Scheduled send using an encrypted durable queue, retry policy,
   cancellation, clock/time-zone handling, and idempotency keys
 - [ ] Snooze with durable wake-up scheduling and mailbox restoration
 - [ ] Contacts, recent-recipient ranking, autocomplete, groups, and vCard
@@ -641,11 +641,22 @@ and
 `sha256:96428ff91f54f8d15ee03ea62076caf4450d164b0354844a4ff802da233b0be5`.
 Production now has the external scheduled-job key and canonical public URL,
 and the implementation is deployed in release
-`e4261652eb81bf346902f41fee62fc089e6bd4c7`. The checkbox remains open until
-live JMAP plus IMAP/SMTP schedule/cancel/restart evidence is recorded. The
-earlier NXDOMAIN note used incorrect `wovvtec.site` hostnames; the canonical
-panel is `panel.wovvtech.site` and public webmail is
-`webmail.vedaconcepts.com`.
+`e4261652eb81bf346902f41fee62fc089e6bd4c7`. On 2026-08-11 the dedicated test
+mailbox passed authenticated production JMAP cancellation and restart
+acceptance. A queued self-delivery survived an application-container restart,
+left the encrypted queue after recovery, and appeared exactly once in both
+Inbox and Sent. A separate cancelled job reopened its provider draft without
+delivery. The same mailbox then passed the equivalent Standard IMAP/SMTP flow
+through an isolated production build with a separate installation, data
+directory, and job key: the process was stopped completely, restarted against
+the same encrypted store, and delivered exactly one SMTP/IMAP copy after the
+scheduled instant. Both provider queues drained, all exact synthetic messages
+were permanently removed, no acceptance job or draft remained, and the
+isolated installation was destroyed. Together with the existing retry,
+dead-letter, uncertainty, clock/time-zone, idempotency, route, component, and
+provider-path tests, this closes scheduled send. The earlier NXDOMAIN note used
+incorrect `wovvtec.site` hostnames; the canonical panel is
+`panel.wovvtech.site` and public webmail is `webmail.vedaconcepts.com`.
 
 The provider-independent Contacts slice is released and deployed. Each authenticated
 JMAP or IMAP/SMTP identity receives an encrypted, owner-isolated address book
