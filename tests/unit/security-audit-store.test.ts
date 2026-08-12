@@ -15,8 +15,10 @@ import {
 } from "@/server/security-audit/security-audit-record";
 import {
   appendSecurityAuditFile,
+  retainSecurityAuditFile,
   securityAuditStore,
 } from "@/server/security-audit/security-audit.store";
+import { assertSecurityAuditIntegrity } from "@/server/security-audit/security-audit-integrity";
 
 const originalDirectory = process.env["VEDA_MAIL_DATA_DIR"];
 const originalKey = process.env["VEDA_MAIL_JOB_KEY"];
@@ -112,6 +114,42 @@ describe("security audit store", () => {
     const result = await securityAuditStore.list();
     expect(result.droppedCount).toBe(2);
     expect(result.entries.map(({ sequence }) => sequence)).toEqual([5, 4, 3]);
+  });
+
+  it("expires records by age while preserving an independently verifiable anchor", () => {
+    const actorId = securityAuditSubjectId("actor", "member:test");
+    let file = emptySecurityAuditFile();
+    for (const date of ["2026-01-01", "2026-01-10", "2026-01-20"]) {
+      file = appendSecurityAuditFile(file, event(actorId), 10_000, new Date(`${date}T00:00:00.000Z`));
+    }
+    const retained = retainSecurityAuditFile(
+      file,
+      { securityAuditMaxAgeDays: 20, securityAuditMaxEntries: 10_000 },
+      new Date("2026-02-01T00:00:00.000Z"),
+    );
+    expect(retained.droppedCount).toBe(2);
+    expect(retained.entries.map(({ sequence }) => sequence)).toEqual([3]);
+    expect(() => assertSecurityAuditIntegrity(retained)).not.toThrow();
+  });
+
+  it("checkpoints a fully expired chain for rollback-safe later append", () => {
+    const actorId = securityAuditSubjectId("actor", "member:test");
+    const original = appendSecurityAuditFile(
+      emptySecurityAuditFile(), event(actorId), 10_000,
+      new Date("2025-01-01T00:00:00.000Z"),
+    );
+    const checkpointed = retainSecurityAuditFile(
+      original, { securityAuditMaxAgeDays: 1, securityAuditMaxEntries: 100 },
+      new Date("2026-01-01T00:00:00.000Z"),
+    );
+    expect(checkpointed.droppedCount).toBe(1);
+    expect(checkpointed.entries).toEqual([expect.objectContaining({
+      action: "system.retention.checkpointed", count: 1, sequence: 2,
+    })]);
+    expect(() => assertSecurityAuditIntegrity(checkpointed)).not.toThrow();
+    const appended = appendSecurityAuditFile(checkpointed, event(actorId));
+    expect(appended.entries.at(-1)?.sequence).toBe(3);
+    expect(() => assertSecurityAuditIntegrity(appended)).not.toThrow();
   });
 
   it("rejects malformed non-pristine empty stores", async () => {

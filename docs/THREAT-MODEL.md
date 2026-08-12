@@ -1419,6 +1419,23 @@ access control, encryption, bounded retention, reverse-proxy redaction, metric
 token rotation, per-replica scraping, and alert thresholds. The supported
 single-writable-replica boundary is unchanged.
 
+Security-audit retention is a separate strict mode-0600 policy with defaults of
+365 days and 10,000 records. Administrator writes require same origin, admin
+authentication, bounded strict JSON, request/subject throttles, and audit their
+own attempt/outcome. Append, read, and policy update apply the stricter age or
+count limit under the audit write queue. Expiration authenticates the last
+removed digest as the new anchor and preserves sequence/dropped-count checks.
+If every event expires, a pseudonymous system checkpoint preserves the chain
+and the prior file schema for rollback. It cannot detect or erase an older backup;
+operators must align backup/log rotation with the privacy notice.
+
+The offline backup drill accepts only an explicit source and empty output
+directory outside it. It rejects symlinks, devices and size/count excesses,
+uses argument-vector `tar` execution without a shell, restores into the output
+tree, and compares paths, modes, sizes and SHA-256 digests. It never proves
+provider-side rollback or key availability, so isolated application login and
+provider reconciliation remain mandatory operator steps.
+
 ## Original-message export
 
 RFC 5322 source is active, attacker-controlled content even when delivered as

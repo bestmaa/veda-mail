@@ -854,7 +854,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
   throttling, and distributed rate-limit option
 - [ ] Encrypted shared session and job repositories for multi-replica operation
 - [x] Export/import of settings, contacts, rules, and mail in standard formats
-- [ ] Backup/restore drill, data-retention controls, privacy documentation,
+- [x] Backup/restore drill, data-retention controls, privacy documentation,
   threat model, SBOM, provenance, dependency policy, and release checklist
 
 Acceptance: a clean installation, upgrade, rollback, backup restore, replica
@@ -871,6 +871,20 @@ standard roles, bounded folder paths, and label names that are resolved
 fail-closed in the destination account before the ordinary provider CAS
 deployment. Contacts use vCard 4.0. Together these close the standard-format
 portability checkbox without claiming an unbounded whole-account migration.
+
+The trust and recovery slice adds an administrator-enforced security-audit
+retention policy (365 days/10,000 records by default, bounded to 1â€“3,650 days
+and 100â€“10,000 records), applies the stricter age/count limit immediately, and
+preserves a verifiable rollback-readable checkpoint even when every prior event
+expires. A runnable offline backup drill rejects unsafe entries, creates and
+isolates a normalized archive restore, and proves paths, modes, sizes, and
+SHA-256 bytes before emitting a versioned evidence report. The privacy lifecycle
+now enumerates every local/provider/browser/external data boundary and deletion
+limitation; the release checklist ties recovery, retention, locked dependencies,
+full tests, scans, SBOM, provenance, immutable promotion, and rollback evidence
+together. Existing CI already publishes per-platform SBOM/provenance, pins the
+dependency graph, and runs Dependabot, CodeQL, secret/configuration, image,
+sidecar, audit, build, header, coverage, and browser gates.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

@@ -29,6 +29,8 @@ the supplied Compose deployment.
   deletion progress, and tombstones encrypted in `mail-label-catalog.json`
 - Organization and product branding
 - Organization member self-service policy in `organization-policy.json`
+- Administrator-configured security-audit age/count retention in
+  `data-retention-policy.json`
 - Organization message, attachment, extension, and detected-MIME policy in
   `mail-content-policy.json`
 - Optional normalized WebP logo
@@ -140,6 +142,30 @@ administrator credentials.
 Dokploy users should schedule backups for the volume mounted at `/data` and
 periodically test restoration to a separate non-production service.
 
+## Automated offline byte-verification drill
+
+After taking an operator-verified offline copy or atomic snapshot, exercise the
+archive path without touching the live volume:
+
+```bash
+mkdir -m 700 /var/tmp/veda-mail-restore-drill
+npm run backup:drill -- \
+  --source /path/to/offline-data-copy \
+  --work-dir /var/tmp/veda-mail-restore-drill
+```
+
+The output directory must be empty and outside the source. The drill rejects
+symlinks/special files, more than 20,000 entries, or more than 4 GiB; creates a
+normalized `veda-mail-data.tar.gz`; restores it into an isolated directory;
+and compares every relative path, regular-file mode, byte length, and SHA-256
+digest. `drill-report.json` records archive and manifest hashes for the recovery
+record. A mismatch fails without deleting the source or output evidence.
+
+This byte drill does not prove application/provider behavior. Continue with the
+isolated service checks below, using the exact deployment secrets—including
+`VEDA_MAIL_JOB_KEY`—and never point the drill instance at production workers or
+outbound delivery unless the dedicated test account is isolated.
+
 ## Bind-mount backup
 
 If `/data` is a bind mount, stop the service and copy the entire directory with
@@ -228,6 +254,10 @@ At least quarterly:
    autocomplete.
 8. Export the restored contacts as vCard and import them into a clean dedicated
    test identity; verify names, addresses, and category-derived groups.
-9. Delete the isolated environment after recording the result.
+9. Run the offline byte-verification drill and retain its report/checksums with
+   the rehearsal record.
+10. Confirm the configured audit retention, external-log retention, and backup
+    rotation match the published privacy notice.
+11. Delete the isolated environment after recording the result.
 
 Never test a restore by overwriting the only production volume.

@@ -1,4 +1,5 @@
 import { fetchData } from "@/transport/client/api-request";
+import type { DataRetentionPolicy } from "@/domain/installation/data-retention-policy";
 
 export interface AdminSecurityAuditEntry {
   readonly action: string;
@@ -22,6 +23,11 @@ export interface AdminSecurityAuditPage {
 }
 
 export const adminSecurityAuditApi = {
+  getRetention() {
+    return fetchData<{ readonly policy: DataRetentionPolicy }>(
+      "/api/v1/admin/retention", { cache: "no-store" },
+    );
+  },
   list(input: { readonly beforeSequence?: number; readonly limit?: number } = {}) {
     const query = new URLSearchParams();
     if (input.beforeSequence) query.set("beforeSequence", String(input.beforeSequence));
@@ -30,6 +36,12 @@ export const adminSecurityAuditApi = {
     return fetchData<AdminSecurityAuditPage>(
       `/api/v1/admin/audit${suffix}`,
       { cache: "no-store" },
+    );
+  },
+  saveRetention(policy: DataRetentionPolicy) {
+    return fetchData<{ readonly policy: DataRetentionPolicy }>(
+      "/api/v1/admin/retention",
+      { body: JSON.stringify(policy), method: "PUT" },
     );
   },
 };
