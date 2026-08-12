@@ -45,7 +45,7 @@ export const storedSavedSearchBookSchema = z.object({
   }
 });
 
-const encryptedRecordSchema = z.object({
+export const encryptedSavedSearchBookSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
   ciphertext: z.string().min(1).max(2 * 1024 * 1024),
   iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
@@ -53,7 +53,7 @@ const encryptedRecordSchema = z.object({
 }).strict();
 
 export const savedSearchFileSchema = z.object({
-  owners: z.record(z.string().regex(/^[A-Za-z0-9_-]{43}$/u), encryptedRecordSchema),
+  owners: z.record(z.string().regex(/^[A-Za-z0-9_-]{43}$/u), encryptedSavedSearchBookSchema),
   updatedAt: timestampSchema,
   version: z.literal(1),
 }).strict().refine((file) => Object.keys(file.owners).length <= MAX_SAVED_SEARCH_OWNERS,

@@ -9,12 +9,15 @@ import {
 } from "@/server/shared-state/shared-state-redis";
 import { ApiError } from "@/transport/http/api-error";
 
-export type SharedOwnerKind = "message-list-preferences";
+export type SharedOwnerKind = "message-list-preferences" | "saved-searches";
 
 const LOCK_TTL_MS = 60_000;
 const LOCK_WAIT_MS = 5_000;
 const MAX_OWNERS = 10_000;
-const MAX_RECORD_BYTES = 512 * 1_024;
+const MAX_RECORD_BYTES: Readonly<Record<SharedOwnerKind, number>> = {
+  "message-list-preferences": 512 * 1_024,
+  "saved-searches": (2 * 1_024 * 1_024) + 1_024,
+};
 const OWNER_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const RELEASE_SCRIPT = `
 if redis.call('GET', KEYS[1]) == ARGV[1] then
@@ -27,6 +30,26 @@ if redis.call('GET', KEYS[1]) == ARGV[1] then
   return redis.call('PEXPIRE', KEYS[1], ARGV[2])
 end
 return 0
+`;
+const COMPARE_AND_SET_SCRIPT = `
+local current = redis.call('GET', KEYS[1])
+if ARGV[1] == 'missing' then
+  if current then return 0 end
+elseif current ~= ARGV[2] then
+  return 0
+end
+if ARGV[3] == 'delete' then
+  redis.call('DEL', KEYS[1])
+  redis.call('SREM', KEYS[2], ARGV[4])
+  return 1
+end
+if not current and redis.call('SISMEMBER', KEYS[2], ARGV[4]) == 0 and
+    redis.call('SCARD', KEYS[2]) >= tonumber(ARGV[5]) then
+  return -1
+end
+redis.call('SET', KEYS[1], ARGV[6])
+redis.call('SADD', KEYS[2], ARGV[4])
+return 1
 `;
 
 const unavailable = (): never => {
@@ -51,9 +74,11 @@ const recordKey = (kind: SharedOwnerKind, owner: string) =>
 const migrationKey = (kind: SharedOwnerKind) => `${prefix(kind)}:migrated`;
 const lockKey = (kind: SharedOwnerKind) => `${prefix(kind)}:lock`;
 
-const assertRecord = (owner: string, value: string): void => {
+const assertRecord = (
+  kind: SharedOwnerKind, owner: string, value: string,
+): void => {
   if (!OWNER_PATTERN.test(owner) ||
-    Buffer.byteLength(value, "utf8") > MAX_RECORD_BYTES) unavailable();
+    Buffer.byteLength(value, "utf8") > MAX_RECORD_BYTES[kind]) unavailable();
 };
 
 const run = async <T>(task: Parameters<typeof runSharedStateRedis<T>>[0]) => {
@@ -114,7 +139,7 @@ export const sharedOwnerRepository = {
       }
       if (Object.keys(records).length > MAX_OWNERS) unavailable();
       Object.entries(records).forEach(([owner, value]) =>
-        assertRecord(owner, value));
+        assertRecord(kind, owner, value));
       await run(async (client) => {
         const transaction = client.multi();
         for (const [owner, value] of Object.entries(records)) {
@@ -139,7 +164,7 @@ export const sharedOwnerRepository = {
     owner: string,
     value: string,
   ): Promise<void> {
-    assertRecord(owner, value);
+    assertRecord(kind, owner, value);
     await withLock(kind, async () => {
       const exists = Number(await run((client) =>
         client.sIsMember(ownersKey(kind), owner)));
@@ -150,5 +175,32 @@ export const sharedOwnerRepository = {
           .sAdd(ownersKey(kind), owner).exec();
       });
     });
+  },
+
+  async compareAndSet(
+    kind: SharedOwnerKind,
+    owner: string,
+    expected: string | null,
+    value: string | null,
+  ): Promise<boolean> {
+    if (!OWNER_PATTERN.test(owner)) unavailable();
+    if (expected !== null) assertRecord(kind, owner, expected);
+    if (value !== null) assertRecord(kind, owner, value);
+    const result = Number(await run((client) => client.eval(
+      COMPARE_AND_SET_SCRIPT,
+      {
+        arguments: [
+          expected === null ? "missing" : "present",
+          expected ?? "",
+          value === null ? "delete" : "replace",
+          owner,
+          String(MAX_OWNERS),
+          value ?? "",
+        ],
+        keys: [recordKey(kind, owner), ownersKey(kind)],
+      },
+    )));
+    if (result === -1) unavailable();
+    return result === 1;
   },
 };

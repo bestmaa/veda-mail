@@ -915,8 +915,10 @@ and lifecycle transitions allow upload on one replica and claim/read/consume
 on another; tamper, missing chunks, or backend failure fail closed. The first
 mutable owner store is also shared: encrypted message-list preferences migrate
 once from `/data`, retain their HMAC-opaque owner indexes, and use a renewable
-cross-replica write lock. The checkbox remains open until the other writable
-`/data` boundaries close.
+cross-replica write lock. Encrypted saved-search books now migrate through the
+same boundary, with exact-record Redis compare-and-set preserving revision
+conflicts and atomically deleting empty books. The checkbox remains open until
+the other writable `/data` boundaries close.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

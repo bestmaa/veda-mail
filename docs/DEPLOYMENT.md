@@ -210,6 +210,15 @@ All replicas must retain the same installation session secret and Redis prefix.
 An unavailable backend, invalid ciphertext, or a local file reappearing after
 migration fails preferences closed. No Stalwart or provider migration is needed.
 
+Saved searches follow the same one-replica migration procedure for
+`/data/saved-searches.json`. Redis receives only the existing authenticated
+ciphertext behind the HMAC-opaque owner key and the local file is archived as
+`.migrated-to-redis`. Updates and final-book deletion use an atomic
+compare-and-set against the exact encrypted record read by the replica; a lost
+race returns the normal saved-search revision conflict. Preserve the
+installation session secret and include the Redis prefix in backup and rollback
+planning.
+
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
 record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
@@ -458,8 +467,8 @@ claims do not apply to that sidecar.
 Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
-shared Redis repository; message-list preferences migrate there on first
-access, and request limits may use their separate backend. The encrypted
+shared Redis repository; message-list preferences and saved searches migrate
+there on first access, and request limits may use their separate backend. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized

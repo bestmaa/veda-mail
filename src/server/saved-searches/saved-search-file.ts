@@ -47,3 +47,14 @@ export const writeSavedSearchFile = async (value: SavedSearchFile): Promise<void
     await handle?.close().catch(() => undefined); await unlink(/* turbopackIgnore: true */ temporary).catch(() => undefined); throw error;
   }
 };
+
+export const archiveMigratedSavedSearchFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ savedSearchFilePath(),
+      /* turbopackIgnore: true */ `${savedSearchFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

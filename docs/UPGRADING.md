@@ -90,6 +90,13 @@ newest-first order, previews enabled, confirmation off, and immediate send.
 Mailbox shortcuts remain off until the member explicitly enables them; no
 provider, Stalwart, environment, port, or data-file migration is required.
 
+Saved searches now migrate from `/data/saved-searches.json` to shared-state
+Redis on first access when that backend is configured. Start one upgraded
+replica, verify the file was archived as `.migrated-to-redis`, back up Redis,
+and only then scale out. The encrypted records retain their installation-secret
+binding. Drain writes before rollback; an older image requires restoring the
+archived filename and cannot see newer Redis revisions.
+
 Conversation views require no environment variable, provider configuration,
 mailbox migration, database/schema change, or new port. They add bounded
 provider reads when a message is opened: 25 results per browser page and no
@@ -342,7 +349,9 @@ administrator/member records only when every process keeps the exact same
 prefix and `VEDA_MAIL_JOB_KEY`. Enabling it does not migrate already-active
 local sessions; disabling it does not decrypt/migrate Redis sessions. It does
 migrate scheduled-send and snooze books on first access and renames their local
-files with `.migrated-to-redis`. Start one new replica, verify the Redis backup,
+files with `.migrated-to-redis`. Message-list preferences and saved-search books
+use the same guarded migration, while saved-search writes retain atomic revision
+conflicts across replicas. Start one new replica, verify the Redis backup,
 then scale out. Older images cannot process Redis queues; restoring the archived
 filenames may replay jobs. Immediate-send claims and replay receipts are also
 Redis-backed; drain active sends before rollback or duplicate protection can be
