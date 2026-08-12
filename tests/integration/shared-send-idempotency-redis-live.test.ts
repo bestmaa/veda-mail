@@ -106,10 +106,14 @@ describe.skipIf(!redisUrl)("live shared send idempotency", () => {
 
     const tampered = await createConnection();
     const tamperedDraft = id.draft("44444444-4444-4444-8444-444444444444");
+    const beforeKeys = new Set(await inspector.keys(
+      `${prefix}:job:send-idempotency:owner:*`));
     await sharedSendIdempotencyStore.begin(tampered.id, tamperedDraft,
       "e".repeat(64), Date.now() + 60_000);
-    const [recordKey] = await inspector.keys(
-      `${prefix}:job:send-idempotency:owner:*`);
+    const recordKey = (await inspector.keys(
+      `${prefix}:job:send-idempotency:owner:*`))
+      .find((key) => !beforeKeys.has(key));
+    expect(recordKey).toBeDefined();
     const envelope = JSON.parse((await inspector.get(recordKey!))!);
     envelope.tag = `${envelope.tag.slice(0, -1)}${envelope.tag.endsWith("A") ? "B" : "A"}`;
     await inspector.set(recordKey!, JSON.stringify(envelope), { PX: 60_000 });
