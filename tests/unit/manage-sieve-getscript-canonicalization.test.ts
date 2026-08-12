@@ -10,7 +10,7 @@ import type {
   ManageSieveSession,
 } from "@/infrastructure/providers/imap-smtp/manage-sieve-transport";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
-import type { StalwartSieveCompiler } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-content";
+import type { ManageSieveCompiler } from "@/infrastructure/providers/imap-smtp/manage-sieve-compiler";
 
 const marker = "# owned\r\n";
 const canonical = `${marker}old;\r\n`;
@@ -33,8 +33,14 @@ const config: ImapSmtpMemberConfig = {
   smtpSecurity: "tls",
   username: "member@example.com",
 };
-const compiler: StalwartSieveCompiler = {
-  compile: vi.fn(() => ({ content: desired, requiredExtensions: [] })),
+const revision = (content: string | null): string => createHash("sha256")
+  .update(content ?? "", "utf8").digest("base64url");
+const compiler: ManageSieveCompiler = {
+  compileRules: vi.fn(() => ({ content: desired, requiredExtensions: [] })),
+  compileVacation: vi.fn(() => ({ content: desired, requiredExtensions: [] })),
+  readVacation: vi.fn(() => ({ fromDate: null, htmlBody: null, isEnabled: false,
+    revision: revision(null), subject: null, textBody: null, toDate: null })),
+  rulesRevision: vi.fn(revision),
   verifyOwnership: vi.fn((content: string) =>
     content === canonical || content === desired),
 };

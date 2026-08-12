@@ -7,7 +7,9 @@ import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/
 import { ManageSieveClient } from "@/infrastructure/providers/imap-smtp/manage-sieve-client";
 import { manageSieveUnsupported } from "@/infrastructure/providers/imap-smtp/manage-sieve-errors";
 import { ManageSieveRuleAdapter } from "@/infrastructure/providers/imap-smtp/manage-sieve-rule-adapter";
-import { createOwnedSieveCompiler } from "@/infrastructure/providers/sieve/sieve-owned-compiler";
+import { createManageSieveCompiler } from "@/infrastructure/providers/imap-smtp/manage-sieve-compiler";
+import { ManageSieveVacationAdapter } from "@/infrastructure/providers/imap-smtp/manage-sieve-vacation-adapter";
+import type { VacationResponseUpdate } from "@/domain/mail/vacation";
 import { sieveDeliveryMailboxNames } from "@/infrastructure/providers/sieve/sieve-mailbox-names";
 
 const configured = (config: ImapSmtpMemberConfig): boolean => Boolean(
@@ -19,7 +21,7 @@ const adapter = (
   mailboxNames: Readonly<Record<string, string>>,
 ) => new ManageSieveRuleAdapter(
   new ManageSieveClient(config),
-  createOwnedSieveCompiler(mailboxNames),
+  createManageSieveCompiler(mailboxNames),
 );
 
 export const getImapRuleCapability = async (config: ImapSmtpMemberConfig) => {
@@ -48,4 +50,35 @@ export const deployImapRules = (
     parentId: null,
   })));
   return adapter(config, names).deploy(input);
+};
+
+const vacationAdapter = (config: ImapSmtpMemberConfig) =>
+  new ManageSieveVacationAdapter(
+    new ManageSieveClient(config),
+    createManageSieveCompiler({}),
+  );
+
+export const getImapVacationCapability = async (config: ImapSmtpMemberConfig) => {
+  if (!configured(config)) return {
+    reason: "ManageSieve is not configured for this account.",
+    supported: false,
+  } as const;
+  return vacationAdapter(config).getCapability();
+};
+
+export const getImapVacationResponse = (config: ImapSmtpMemberConfig) => {
+  if (!configured(config)) {
+    return Promise.reject(new Error("Vacation responses require ManageSieve."));
+  }
+  return vacationAdapter(config).get();
+};
+
+export const updateImapVacationResponse = (
+  config: ImapSmtpMemberConfig,
+  input: VacationResponseUpdate,
+) => {
+  if (!configured(config)) {
+    return Promise.reject(new Error("Vacation responses require ManageSieve."));
+  }
+  return vacationAdapter(config).set(input);
 };

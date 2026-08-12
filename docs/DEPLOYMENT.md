@@ -237,11 +237,13 @@ node scripts/manage-sieve-live-acceptance.mjs
 The runner creates a uniquely prefixed temporary mailbox, starts a second Veda
 Mail process on an unexposed loopback port with a fresh temporary data
 directory and job key, and configures that process for TLS IMAP/SMTP plus
-STARTTLS ManageSieve. It verifies capability discovery, optimistic conflicts,
-ordering, disable/enable, bounded dry-run results, redacted audit history, and
-independent SMTP delivery that is marked read and starred by the active Sieve
-rules. Its `finally` path stops the isolated process, removes the temporary data
-directory, and destroys only the exact account created by that run.
+STARTTLS ManageSieve. It verifies rule and vacation capability discovery,
+independent optimistic conflicts, ordering, rule disable/enable, a dated HTML
+vacation enable/reload/disable round trip that preserves the rules, bounded
+dry-run results, redacted audit history, and independent SMTP delivery that is
+marked read and starred by the active Sieve rules. Its `finally` path stops the
+isolated process, removes the temporary data directory, and destroys only the
+exact account created by that run.
 
 If the configured management key is intentionally read-only, an operator may
 instead supply a freshly created mailbox through

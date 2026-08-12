@@ -790,6 +790,18 @@ download and verify it before update. A same-name foreign script or any foreign
 active script is a visible conflict and remains unchanged. This protects
 vacation and scripts installed by another client or Veda Mail installation.
 
+The Standard IMAP vacation adapter composes one signed script rather than
+installing a competing active program. A signed vacation block carries bounded
+canonical metadata, the Sieve `vacation` action, and optional `currentdate`
+guards. Plaintext uses a dot-stuffed Sieve text literal; HTML uses deterministic
+base64 multipart MIME. Rule and vacation revisions hash their respective
+logical portions so one settings screen does not create a false stale write in
+the other, while a separate complete-script snapshot detects cross-feature
+provider drift between validation and upload. Missing `vacation`, `date`, or
+`relational`, foreign ownership, ambiguous active state, invalid UTF-8,
+oversize composition, failed `CHECKSCRIPT`, or non-exact readback all fail
+closed.
+
 ## Attachment upload boundary
 
 Attachment bytes never pass through JSON and provider blob identifiers never

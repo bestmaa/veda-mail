@@ -201,6 +201,16 @@ features. Provider-native Sieve performs delivery-time actions even while Veda
 Mail is offline; Veda Mail does not retain mailbox credentials for background
 rule execution.
 
+When Standard IMAP ManageSieve also advertises `vacation`, `date`, and
+`relational`, the same owned script can contain the provider-managed automatic
+reply. Veda Mail signs the complete composite program and embeds signed,
+chunked metadata for exact UI reloads. Rules updates preserve the exact
+vacation block, while vacation updates preserve the exact rules program and
+its delivery mailbox names. Their optimistic revisions are independent, but
+every mutation also snapshots the complete provider script before `PUTSCRIPT`
+so a concurrent change to either half fails closed. HTML replies are emitted
+as deterministic base64 multipart MIME rather than executable Sieve text.
+
 Both adapters expose a runtime-gated manual draft workflow. Veda Mail can
 create, open, update, discard, and send provider-backed drafts in the
 account's provider Drafts mailbox. For JMAP, a stable compose UUID and
