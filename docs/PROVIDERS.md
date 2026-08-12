@@ -19,6 +19,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Plain and safe rich-text send, To/CC/BCC      | Yes             | Yes                  |
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Local contacts, groups, autocomplete, vCard   | Yes             | Yes                  |
+| Settings/rules portable JSON transfer         | Yes             | Yes                  |
 | RFC 5545 invite display/RSVP/local ICS         | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Bounded bulk actions and permanent delete    | Yes             | Yes                  |

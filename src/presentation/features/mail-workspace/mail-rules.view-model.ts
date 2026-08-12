@@ -49,6 +49,7 @@ export interface MailRulesViewModel {
   readonly onDelete: (ruleId: string) => void;
   readonly onEdit: (rule: MailRule) => void;
   readonly onMove: (ruleId: string, direction: -1 | 1) => void;
+  readonly reload: () => void;
   readonly preview: {
     readonly error: string | null;
     readonly hasRun: boolean;

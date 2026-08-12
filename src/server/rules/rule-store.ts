@@ -4,7 +4,6 @@ import {
   MAX_MAIL_RULES,
   type MailRule,
   type MailRulePutOperation,
-  type RuleDeploymentResult,
 } from "@/domain/mail/rule";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { appendRuleAudit, type RuleAuditOperation } from "@/server/rules/rule-audit";
@@ -23,22 +22,12 @@ import {
   type StoredRuleBook,
 } from "@/server/rules/rule-record";
 import { parseMailRule } from "@/server/rules/rule-schema";
+import { createImportedRuleBook } from "@/server/rules/rule-import";
+import type {
+  RuleDeploymentOperation,
+  RuleStoreOperation,
+} from "@/server/rules/rule-store-operation";
 import { ApiError } from "@/transport/http/api-error";
-
-export type RuleDeploymentFinalize =
-  | RuleDeploymentResult
-  | { readonly errorCode: string; readonly status: "conflict" | "failed" };
-
-export type RuleStoreOperation = MailRulePutOperation | {
-  readonly connection: ProviderConnection;
-  readonly expectedRevision: string;
-  readonly operation: "persist-deployment-intent";
-} | {
-  readonly expectedRevision: string;
-  readonly intentId: string;
-  readonly operation: "finalize-deployment";
-  readonly result: RuleDeploymentFinalize;
-};
 
 const globalState = globalThis as typeof globalThis & {
   __vedaMailRuleQueue?: Promise<void>;
@@ -146,7 +135,7 @@ const desiredMutation = (
 
 const deploymentMutation = (
   current: StoredRuleBook,
-  operation: Exclude<RuleStoreOperation, MailRulePutOperation>,
+  operation: RuleDeploymentOperation,
   now: string,
 ): StoredRuleBook => {
   if (operation.operation === "persist-deployment-intent") {
@@ -233,11 +222,14 @@ export const ruleStore = {
     return serialized(async () => {
       const current = await load(owner);
       assertRevision(current.book, operation.expectedRevision);
-      if (!current.book && operation.operation !== "create") fail(
+      if (!current.book && operation.operation !== "create" &&
+          operation.operation !== "replace-from-import") fail(
         "The mail-rule book was not found.", "MAIL_RULE_NOT_FOUND", 404,
       );
       const now = new Date().toISOString();
-      const updated = operation.operation === "persist-deployment-intent" ||
+      const updated = operation.operation === "replace-from-import"
+        ? createImportedRuleBook(current.book, operation.definitions, now)
+        : operation.operation === "persist-deployment-intent" ||
         operation.operation === "finalize-deployment"
         ? deploymentMutation(current.book!, operation, now)
         : desiredMutation(current.book, operation, now);

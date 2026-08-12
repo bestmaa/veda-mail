@@ -8,6 +8,7 @@ import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/
 import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 import type { MemberSessionsViewModel } from "@/presentation/features/mail-workspace/member-sessions.view-model";
 import type { VacationSettingsViewModel } from "@/presentation/features/mail-workspace/vacation-settings.view-model";
+import type { SettingsPortabilityViewModel } from "@/presentation/features/mail-workspace/settings-portability.view-model";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
@@ -46,6 +47,7 @@ export interface AccountSettingsViewModel {
   };
   readonly profilePolicyRestricted: boolean;
   readonly profileName: string | null;
+  readonly portability: SettingsPortabilityViewModel;
   readonly providerFeatures: readonly {
     readonly detail: string;
     readonly label: string;

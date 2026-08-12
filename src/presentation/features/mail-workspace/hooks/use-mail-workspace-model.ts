@@ -89,7 +89,7 @@ export const useMailWorkspaceModel = ({
   });
   const settings = useAccountSettingsModel(
     accountEmail, workspaceAccountName, signatureSettings, sessionScope, rules,
-    mail.notifications, mail.handleSessionFailure,
+    mail.notifications, mail.refresh, mail.handleSessionFailure,
   );
   const mailboxManagement = useMailboxWorkspaceManagement(mail);
   const labelManagement = useLabelManagement({

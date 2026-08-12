@@ -860,13 +860,15 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 Acceptance: a clean installation, upgrade, rollback, backup restore, replica
 restart, and provider outage are exercised from documented runbooks.
 
-Mail portability now includes a bounded, audited single-message RFC 5322
-`.eml` export for both JMAP and standard IMAP/SMTP accounts. The server pins
-the opaque message identity, retrieves the exact provider source behind the
-authenticated session, and returns fixed-name, non-cacheable, sandboxed
-download headers without exposing provider blob identifiers or URLs. Bulk mail
-export/import plus settings and rules portability remain required before the
-M8 checkbox can close.
+Mail portability includes a bounded, audited single-message RFC 5322 `.eml`
+export for both JMAP and standard IMAP/SMTP accounts. Settings/rule portability
+now exports and explicitly replaces a strict 128-KiB versioned JSON file:
+preferences remain provider-neutral, while rule mailbox/label IDs become
+standard roles, bounded folder paths, and label names that are resolved
+fail-closed in the destination account before the ordinary provider CAS
+deployment. Contacts already use vCard 4.0. Bulk mailbox export/import, plus
+the remaining member data classes, are still required before the M8 checkbox
+can close.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

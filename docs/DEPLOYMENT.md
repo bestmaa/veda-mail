@@ -466,6 +466,11 @@ Verify:
   history. Export the address book, import it into a clean dedicated identity,
   and verify names, addresses, and category-derived groups through one JMAP and
   one IMAP/SMTP session.
+- A member can download `veda-mail-settings.json`, select it in another
+  dedicated identity, review the explicit replacement warning, and import it.
+  Verify preferences reload, rules use the destination mailbox/label IDs,
+  missing or ambiguous targets fail without mutation, and the security audit
+  records both export and import without file contents.
 - A small known-clean attachment uploads, sends, and arrives byte-identically.
 - The received attachment downloads byte-identically, is not cached by the
   proxy, and is served with attachment disposition and `nosniff`.

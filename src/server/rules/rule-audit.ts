@@ -11,6 +11,7 @@ export const ruleAuditOperationSchema = z.enum([
   "deployment-deployed",
   "deployment-failed",
   "deployment-intent",
+  "import",
   "reorder",
   "toggle",
   "update",

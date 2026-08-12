@@ -24,7 +24,10 @@ vi.mock("@/server/rules/rule-store", () => ({
 import type { MailRulePutOperation } from "@/domain/mail/rule";
 import { id } from "@/domain/shared/brand";
 import { ManageSieveError } from "@/infrastructure/providers/imap-smtp/manage-sieve-errors";
-import { mutateAndDeployRules } from "@/server/rules/rule-deployment.service";
+import {
+  mutateAndDeployRules,
+  replaceAndDeployRules,
+} from "@/server/rules/rule-deployment.service";
 
 const connection = {
   config: { secret: "private" }, createdAt: "2026-08-04T00:00:00.000Z",
@@ -125,5 +128,26 @@ describe("rule deployment transaction", () => {
         message: "Rules changed at the provider. Reload before saving.",
         status: 409,
       });
+  });
+
+  it("replaces an imported book once before the normal deployment transaction", async () => {
+    const completed = { ...pending, deployment: { status: "deployed" } };
+    mocks.get.mockReset();
+    mocks.get.mockResolvedValueOnce(desired).mockResolvedValueOnce(pending);
+    mocks.put.mockResolvedValueOnce(desired).mockResolvedValueOnce(completed);
+    mocks.deployRules.mockResolvedValue({
+      providerState: "next", scriptHash: "a".repeat(43),
+      scriptId: "script", status: "deployed",
+    });
+    await expect(replaceAndDeployRules(
+      connection,
+      [operation.definition],
+    )).resolves.toEqual(completed);
+    expect(mocks.put).toHaveBeenNthCalledWith(1, expect.anything(), {
+      definitions: [operation.definition],
+      expectedRevision: desiredRevision,
+      operation: "replace-from-import",
+    });
+    expect(mocks.deployRules).toHaveBeenCalledOnce();
   });
 });

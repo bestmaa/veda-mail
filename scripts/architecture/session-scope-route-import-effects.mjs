@@ -1,5 +1,4 @@
-const AUTH_WRAPPER_EXPORTS = new Map([
-  ["@/server/mail/mail-service", new Set(["getMailService"])]]);
+const AUTH_WRAPPER_EXPORTS = new Map([["@/server/mail/mail-service", new Set(["getMailService"])]]);
 const REQUEST_UTILITY_EXPORTS = new Map([
   ["@/server/installation/request-origin", new Set(["assertSameOrigin"])],
   ["@/server/security/rate-limit", new Set(["assertRequestRateLimit"])],
@@ -72,6 +71,8 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     new Set(["messageListPreferencesStore"]),
   ],
   ["@/server/mailboxes/mailbox-empty.service", new Set(["emptyMailboxBatch"])],
+  ["@/server/portability/settings-portability.service", new Set(["exportPortableSettings", "importPortableSettings"])],
+  ["@/server/portability/settings-portability", new Set(["parseSettingsPortabilityBundle"])],
   [
     "@/server/messages/message-move.service",
     new Set([

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { MailGateway } from "@/application/ports/mail-provider.port";
-import type { MailRulePutOperation } from "@/domain/mail/rule";
+import type { MailRuleDefinition, MailRulePutOperation } from "@/domain/mail/rule";
 import type { ProviderConnection } from "@/domain/provider/provider";
 import { ManageSieveError } from "@/infrastructure/providers/imap-smtp/manage-sieve-errors";
 import { resolveGateway } from "@/server/mail/gateway-cache";
@@ -139,4 +139,19 @@ export const reconcileRules = async (
     );
   }
   return deploy(connection, gateway, owner, current);
+};
+
+export const replaceAndDeployRules = async (
+  connection: ProviderConnection,
+  definitions: readonly MailRuleDefinition[],
+) => {
+  const gateway = await resolveGateway(connection);
+  const owner = await ruleOwnerForConnection(connection, gateway);
+  const current = await ruleStore.get(owner);
+  const desired = await ruleStore.put(owner, {
+    definitions,
+    expectedRevision: current.revision,
+    operation: "replace-from-import",
+  });
+  return deploy(connection, gateway, owner, desired);
 };
