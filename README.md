@@ -314,6 +314,8 @@ Back up `/data` before every upgrade. See the
 - [Mail providers and compatibility](docs/PROVIDERS.md)
 - [Member authenticator 2FA](docs/MEMBER-2FA.md)
 - [Backup, restore, and recovery](docs/BACKUP-AND-RECOVERY.md)
+- [Privacy and data lifecycle](docs/PRIVACY.md)
+- [Release checklist](docs/RELEASE-CHECKLIST.md)
 - [Upgrading](docs/UPGRADING.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Adding a provider](docs/ADDING-A-PROVIDER.md)

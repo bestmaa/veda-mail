@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { DEFAULT_DATA_RETENTION_POLICY } from "@/domain/installation/data-retention-policy";
 
 import type {
   AdminSecurityAuditItem,
@@ -42,6 +43,9 @@ export const useAdminSecurityAuditModel = (): AdminSecurityAuditViewProps => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retention, setRetention] = useState(DEFAULT_DATA_RETENTION_POLICY);
+  const [isSavingRetention, setSavingRetention] = useState(false);
+  const [retentionSuccess, setRetentionSuccess] = useState<string | null>(null);
 
   const fail = useCallback((caught: unknown) => {
     if (caught instanceof ApiClientError && caught.status === 401) {
@@ -54,9 +58,13 @@ export const useAdminSecurityAuditModel = (): AdminSecurityAuditViewProps => {
   const load = useCallback(async () => {
     setIsLoading(true); setError(null);
     try {
-      const page = await adminSecurityAuditApi.list({ limit: 100 });
+      const [page, retentionSnapshot] = await Promise.all([
+        adminSecurityAuditApi.list({ limit: 100 }),
+        adminSecurityAuditApi.getRetention(),
+      ]);
       setEntries(page.entries); setDroppedCount(page.droppedCount);
       setNextCursor(page.nextCursor); setVerifiedAt(page.verifiedAt);
+      setRetention(retentionSnapshot.policy);
     } catch (caught) { fail(caught); }
     finally { setIsLoading(false); }
   }, [fail]);
@@ -76,9 +84,27 @@ export const useAdminSecurityAuditModel = (): AdminSecurityAuditViewProps => {
     finally { setIsLoadingMore(false); }
   }, [fail, isLoadingMore, nextCursor]);
 
+  const saveRetention = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setError(null); setRetentionSuccess(null); setSavingRetention(true);
+    try {
+      const saved = await adminSecurityAuditApi.saveRetention(retention);
+      setRetention(saved.policy); setRetentionSuccess("Data-retention policy saved.");
+      await load();
+    } catch (caught) { fail(caught); }
+    finally { setSavingRetention(false); }
+  }, [fail, load, retention]);
+
   return {
-    droppedCount, error, isLoading, isLoadingMore,
+    droppedCount, error, isLoading, isLoadingMore, isSavingRetention,
     items: entries.map(item), nextCursor,
-    onLoadMore: () => void loadMore(), onRetry: () => void load(), verifiedAt,
+    onLoadMore: () => void loadMore(), onRetry: () => void load(),
+    onSaveRetention: (event) => void saveRetention(event),
+    retention: {
+      maxAgeDays: retention.securityAuditMaxAgeDays,
+      maxEntries: retention.securityAuditMaxEntries,
+      onMaxAgeDays: (value) => setRetention((current) => ({ ...current, securityAuditMaxAgeDays: value })),
+      onMaxEntries: (value) => setRetention((current) => ({ ...current, securityAuditMaxEntries: value })),
+    },
+    retentionSuccess, verifiedAt,
   };
 };

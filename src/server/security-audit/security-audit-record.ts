@@ -15,6 +15,7 @@ export const securityAuditActionSchema = z.enum([
   "admin.mail-service.updated",
   "admin.mail-user.created",
   "admin.organization.updated",
+  "admin.retention.updated",
   "admin.session.revoked",
   "admin.two-factor.disabled",
   "admin.two-factor.enrolled",
@@ -48,6 +49,7 @@ export const securityAuditActionSchema = z.enum([
   "member.vacation.updated",
   "messages.destroyed",
   "setup.completed",
+  "system.retention.checkpointed",
 ]);
 
 const digestSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
@@ -76,6 +78,7 @@ export const securityAuditEntrySchema = z.object({
     "mailbox",
     "messages",
     "organization",
+    "retention",
     "rule",
     "session",
     "settings",

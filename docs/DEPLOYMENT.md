@@ -180,6 +180,11 @@ writer uses atomic replacement but is process-serialized; keep one Veda Mail
 writer per mounted `/data` volume. No Stalwart setting, provider-profile
 migration, database/schema migration, or additional network port is required.
 
+Audit retention creates `/data/data-retention-policy.json` only after the
+administrator changes its 365-day/10,000-record defaults. The strict mode-0600
+record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
+immediately after policy updates; it requires no worker or provider change.
+
 Contacts create `/data/member-contacts.json` lazily on the first contact,
 group, or confirmed recent-recipient write. The file contains only HMAC-indexed,
 AES-256-GCM-encrypted owner books and must stay with the matching
@@ -509,3 +514,5 @@ Before upgrades:
 
 For restoration and administrator-access limitations, read
 [backup and recovery](BACKUP-AND-RECOVERY.md).
+Before promotion, complete the [release checklist](RELEASE-CHECKLIST.md) and
+review the deployment-specific [privacy lifecycle](PRIVACY.md).

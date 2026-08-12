@@ -45,6 +45,15 @@ metadata: protect exports, screenshots, and backups.
 
 ## Integrity and retention
 
+Administrators configure live audit retention in the Audit log: 1 to 3,650
+days and 100 to 10,000 records. The stricter limit wins; defaults are 365 days
+and 10,000 records. A reduction is applied immediately. Expired entries advance
+the authenticated anchor and `droppedCount`. If every prior event expires, a
+pseudonymous system checkpoint keeps the chain non-empty and appendable,
+so later appends and the retained suffix remain independently verifiable.
+Retention changes themselves produce attempt/success or failure/partial audit
+events. Backups can still contain expired events and need matching rotation.
+
 Every entry authenticates its fixed-order fields and the previous entry digest
 with HMAC-SHA-256. The complete strict version-1 file has a separate HMAC. Reads
 verify the deployment-key check, whole-file MAC, chain links, and monotonic

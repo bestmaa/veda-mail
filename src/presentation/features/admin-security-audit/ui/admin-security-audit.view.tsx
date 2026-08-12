@@ -1,4 +1,4 @@
-import { FileClock, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { FileClock, LoaderCircle, RefreshCw, Save, ShieldCheck } from "lucide-react";
 
 import type { AdminSecurityAuditViewProps } from "@/presentation/features/admin-security-audit/admin-security-audit.view-model";
 
@@ -7,6 +7,16 @@ export const AdminSecurityAuditView = (model: AdminSecurityAuditViewProps) => (
     <p className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#b7331b]">Security evidence</p>
     <h2 className="mt-1 text-3xl font-extrabold tracking-[-0.05em] sm:text-4xl" id="security-audit-title">Audit log</h2>
     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Tamper-evident, privacy-bounded records for authentication, administrator changes, exports, rules, and destructive mail actions.</p>
+    <form className="mt-6 rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm" onSubmit={model.onSaveRetention}>
+      <h3 className="font-extrabold text-slate-900">Audit retention</h3>
+      <p className="mt-1 text-xs leading-5 text-slate-500">The stricter age or entry limit wins. Expiration preserves a verifiable chain anchor and cannot be undone without a backup.</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="text-xs font-bold text-slate-700">Maximum age (days)<input className="mt-1 block h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" max={3650} min={1} onChange={(event) => model.retention.onMaxAgeDays(event.currentTarget.valueAsNumber)} required type="number" value={model.retention.maxAgeDays} /></label>
+        <label className="text-xs font-bold text-slate-700">Maximum records<input className="mt-1 block h-10 w-full rounded-xl border border-slate-200 px-3 text-sm" max={10000} min={100} onChange={(event) => model.retention.onMaxEntries(event.currentTarget.valueAsNumber)} required type="number" value={model.retention.maxEntries} /></label>
+      </div>
+      <button className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white disabled:opacity-60" disabled={model.isLoading || model.isSavingRetention} type="submit">{model.isSavingRetention ? <LoaderCircle aria-hidden className="animate-spin" size={14} /> : <Save aria-hidden size={14} />}Save retention</button>
+      {model.retentionSuccess ? <p className="mt-3 text-xs font-semibold text-emerald-700" role="status">{model.retentionSuccess}</p> : null}
+    </form>
     {model.error ? <p className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">{model.error}</p> : null}
     <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
       <ShieldCheck aria-hidden size={17} />

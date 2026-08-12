@@ -37,6 +37,7 @@
     "build": "next build",
     "start": "next start",
     "admin:recover": "node scripts/admin-recovery.mjs",
+    "backup:drill": "node scripts/backup-restore-drill.mjs",
     "accept:managesieve-live": "node scripts/manage-sieve-live-acceptance.mjs",
     "provider:create": "node scripts/create-provider.mjs",
     "setup:token": "node scripts/generate-setup-token.mjs",
