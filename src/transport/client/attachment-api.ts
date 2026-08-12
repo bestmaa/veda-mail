@@ -1,5 +1,8 @@
 import type { UploadedAttachment } from "@/domain/mail/mail";
-import { MAX_MESSAGE_SOURCE_DOWNLOAD_BYTES } from "@/domain/mail/message-source";
+import {
+  MAX_MESSAGE_SOURCE_ARCHIVE_BYTES,
+  MAX_MESSAGE_SOURCE_DOWNLOAD_BYTES,
+} from "@/domain/mail/message-source";
 import type {
   AttachmentId,
   AttachmentUploadId,
@@ -88,6 +91,33 @@ export const attachmentApi = {
       response,
       "message.eml",
       MAX_MESSAGE_SOURCE_DOWNLOAD_BYTES,
+    );
+  },
+
+  async downloadMessageSourceArchive(
+    messageIds: readonly MessageId[],
+    sessionScope: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const response = await fetch("/api/v1/mail/messages/export", {
+      body: JSON.stringify({ messageIds }),
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: mailSessionScopeHeaders(sessionScope),
+      method: "POST",
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+      ...(signal ? { signal } : {}),
+    });
+    await assertOk(response);
+    if (response.headers.get("content-type") !== "application/zip") {
+      void response.body?.cancel().catch(() => undefined);
+      throw new Error("The message archive returned an invalid response.");
+    }
+    await saveAttachmentResponse(
+      response,
+      "veda-mail-messages.zip",
+      MAX_MESSAGE_SOURCE_ARCHIVE_BYTES,
     );
   },
 

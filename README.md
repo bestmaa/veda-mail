@@ -52,6 +52,8 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Encrypted per-identity contacts and groups with keyboard-accessible To/CC/BCC
   autocomplete, delivery-confirmed recent-recipient ranking, and bounded vCard
   3.0/4.0 import plus deterministic vCard 4.0 export
+- Provider-independent mail portability with exact single-message `.eml`
+  download, bounded selected-message ZIP export, and sequential `.eml` import
 - Provider-independent scheduled send backed by an encrypted durable queue,
   provider-saved drafts, absolute UTC times, reschedule/cancel controls,
   bounded retry/dead-letter handling, and duplicate-safe uncertain recovery

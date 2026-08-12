@@ -2,6 +2,7 @@ import {
   Archive,
   Clock3,
   FolderInput,
+  Download,
   Tag,
   Mail,
   MailOpen,
@@ -64,6 +65,13 @@ export const BulkActionsToolbarView = ({
       <span className="shrink-0 px-1 text-xs font-bold text-indigo-900">
         {bulk.selectedCount} selected
       </span>
+      {bulk.onExport ? <ActionButton
+          disabled={bulk.isBusy || !bulk.canExport}
+          label={bulk.canExport ? "Export selected messages as EML files" : "Select no more than 20 messages to export"}
+          onClick={bulk.onExport}
+        >
+          <Download aria-hidden size={18} />
+        </ActionButton> : null}
       {bulk.isBusy ? (
         <ActionButton
           disabled={!bulk.canStop}

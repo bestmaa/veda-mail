@@ -9,6 +9,7 @@ import type { NewMailNotificationViewModel } from "@/presentation/features/mail-
 import type { MemberSessionsViewModel } from "@/presentation/features/mail-workspace/member-sessions.view-model";
 import type { VacationSettingsViewModel } from "@/presentation/features/mail-workspace/vacation-settings.view-model";
 import type { SettingsPortabilityViewModel } from "@/presentation/features/mail-workspace/settings-portability.view-model";
+import type { MailImportViewModel } from "@/presentation/features/mail-workspace/mail-import.view-model";
 
 export interface AccountSettingsViewModel {
   readonly canChangePassword: boolean;
@@ -19,6 +20,7 @@ export interface AccountSettingsViewModel {
   readonly email: string;
   readonly isLoading: boolean;
   readonly isOpen: boolean;
+  readonly mailImport: MailImportViewModel;
   readonly notifications: NewMailNotificationViewModel;
   readonly open: () => void;
   readonly rules: MailRulesViewModel;

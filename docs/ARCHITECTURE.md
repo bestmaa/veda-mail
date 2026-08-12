@@ -681,8 +681,8 @@ the existing provider capability, deployment-intent, compare-and-swap, exact
 post-verification, and failure-reconciliation path. Preferences are written
 only after rule deployment succeeds. A file with no source or destination
 rules can still move preferences to a provider without server-side filtering.
-Contacts remain vCard 4.0 and mail remains RFC 5322 `.eml`; bulk mail transfer
-is intentionally outside this bounded settings endpoint.
+Contacts remain vCard 4.0 and mail remains RFC 5322 `.eml`; mail transfer uses
+its own bounded source routes rather than expanding this settings endpoint.
 
 ## Calendar invitation and local event boundary
 
@@ -1318,11 +1318,20 @@ a mandatory production hostname allowlist, DNS resolution checks, and
 private-address rejection. The same policy is checked when configuration is
 saved and before provider requests.
 
-Original-message export follows the same provider boundary. JMAP resolves an
+Original-message transfer follows the same provider boundary. JMAP export resolves an
 exact `Email/get` blob behind the server-side authenticated download template;
 IMAP decodes the account-scoped opaque reference and pins mailbox UIDVALIDITY
 plus UID before fetching source bytes. Both paths reject oversized, truncated,
 stale, or mismatched results and expose only a fixed `message.eml` download to
-the browser.
+the browser. Bulk export preflights the first source, then fetches at most 20
+sources sequentially into deterministic STORE ZIP entries without buffering
+the archive server-side; the payload and generated archive are capped at 250
+MiB and the lease is released on EOF, cancellation, timeout, or failure.
+
+Import accepts the exact browser bytes of one `message/rfc822` file per
+transaction. The browser sequences at most 20 files and reports committed and
+failed counts. JMAP uploads the source then uses `Email/import`; IMAP uses
+`APPEND` and requires `APPENDUID` so the returned message identity is exact.
+The route authoritatively rechecks the destination mailbox and add-item right.
 Rate-limit window keys contain keyed hashes of account, verified-session, or
 trusted-source identifiers rather than their raw values.

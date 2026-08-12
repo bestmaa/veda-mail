@@ -11,7 +11,7 @@ import type {
   ProviderMailWorkspace,
   SendMessageInput,
 } from "@/domain/mail/mail";
-import type { MessageSourceDownloadInput } from "@/domain/mail/message-source";
+import type { MessageSourceDownloadInput, MessageSourceImportInput } from "@/domain/mail/message-source";
 import type { MessageListSort } from "@/domain/mail/message-list-preferences";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import type {
@@ -94,6 +94,10 @@ export class MailApplicationService {
 
   public downloadMessageSource(input: MessageSourceDownloadInput) {
     return this.gateway.downloadMessageSource(input);
+  }
+
+  public importMessageSource(input: MessageSourceImportInput) {
+    return this.gateway.importMessageSource(input);
   }
 
   public listCalendarParts(input: CalendarPartListInput) {

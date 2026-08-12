@@ -1115,6 +1115,18 @@ operator monitoring.
   path names. Reject traversal and symlink entries.
 - Exports require recent authentication, least-privilege scope, streaming, and
   privacy-safe audit records.
+- Bulk mail export accepts 1â€“20 unique opaque message IDs, preflights before
+  committing headers, fetches provider sources sequentially, and emits fixed
+  root-only `.eml` names in a STORE ZIP. Per-message source is capped at 50 MiB,
+  aggregate payload/output at 250 MiB, and execution at ten minutes. Provider
+  byte-count mismatches fail the stream; cancellation releases the shared
+  download lease.
+- Mail import accepts only `message/rfc822` with a required trustworthy length
+  and caps each source at 18 MiB. The route rechecks same origin, exact session
+  scope, destination existence and write rights. JMAP requires an exact
+  account-scoped `Email/import` result; IMAP requires `APPENDUID`. Each file is
+  a separate transaction, so partial completion is explicit and never rolled
+  back or silently retried.
 - Settings export is a 128-KiB strict JSON attachment with no connection,
   provider mailbox, label, message, session, or credential identifier. Rule
   targets become standard mailbox roles, bounded folder paths, or label names.
@@ -1416,8 +1428,9 @@ sandboxed with a fixed filename. Provider URLs, credentials, mailbox names,
 and JMAP blob identifiers never cross into browser state or audit records.
 JMAP metadata must match the requested account and message; IMAP references
 must match the configured account scope, mailbox UIDVALIDITY, UID, declared
-size, and returned byte count. Import and bulk-archive parsing are separate
-future trust boundaries and are not implied by this single-message export.
+size, and returned byte count. Import and bulk archive are separate bounded
+trust boundaries: neither parses or renders message content, and ZIP generation
+never accepts entry names from the provider or browser.
 
 ## Supply-chain and release controls
 

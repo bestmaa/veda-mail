@@ -188,6 +188,11 @@ variable, Stalwart/IMAP setting, provider migration, CardDAV service, scheduled
 worker, or new port is required. Writes are atomic but process-serialized, so
 keep one Veda Mail writer for the mounted `/data` volume.
 
+RFC 5322 mail export/import needs no new storage, port, worker, or environment
+variable. Export streams provider sources through the application; import sends
+each source directly to JMAP `Email/import` or IMAP `APPEND`. Standard IMAP
+servers must advertise UIDPLUS so Veda Mail can return an exact imported UID.
+
 Mail rules create `/data/member-rules.json` lazily on the first rule mutation.
 Keep that file with the matching external `VEDA_MAIL_JOB_KEY`: owner indexes,
 rule books, deployment state, redacted audit entries, and the short-lived

@@ -1,13 +1,15 @@
 import type { MailWorkspace } from "@/domain/mail/mail";
-import { id, type MailboxId } from "@/domain/shared/brand";
+import { id, type MailboxId, type MessageId } from "@/domain/shared/brand";
 import type { useMailBulkSelection } from "@/presentation/features/mail-workspace/hooks/use-mail-bulk-selection";
 import { messageMoveTargets } from "@/presentation/features/mail-workspace/message-move-policy";
 import type { MailSnoozeViewModel } from "@/presentation/features/mail-workspace/mail-snooze.view-model";
+import { MAX_MESSAGE_SOURCE_ARCHIVE_ENTRIES } from "@/domain/mail/message-source";
 
 export interface BulkActionsViewModel {
   readonly allLoadedSelected: boolean;
   readonly canArchive: boolean;
   readonly canDestroy: boolean;
+  readonly canExport?: boolean;
   readonly canRestore: boolean;
   readonly canSpam: boolean;
   readonly canSnooze?: boolean;
@@ -29,6 +31,7 @@ export interface BulkActionsViewModel {
   readonly onArchive: () => void;
   readonly onApplyLabel: (labelId: string) => void;
   readonly onClear: () => void;
+  readonly onExport?: () => void;
   readonly onMarkRead: () => void;
   readonly onMarkUnread: () => void;
   readonly onMove: (mailboxId: string) => void;
@@ -59,12 +62,14 @@ interface BulkActionsOptions {
   };
   readonly workspace: MailWorkspace | null;
   readonly snooze?: MailSnoozeViewModel;
+  readonly sourceArchive?: { readonly download: (ids: readonly MessageId[]) => void; readonly error: string | null; readonly isDownloading: boolean };
 }
 
 export const createBulkActionsViewModel = ({
   activeMailboxId,
   bulk,
   destroyConfirmation,
+  sourceArchive,
   snooze,
   workspace,
 }: BulkActionsOptions): BulkActionsViewModel => {
@@ -78,6 +83,11 @@ export const createBulkActionsViewModel = ({
   const spamTarget = targetFor("spam");
   const trashTarget = targetFor("trash");
   const disabled = activeMailbox?.role === "drafts";
+  const sourceExport = sourceArchive ?? {
+    download: () => undefined,
+    error: null,
+    isDownloading: false,
+  };
   const lifecycleMailbox =
     activeMailbox?.role === "spam" || activeMailbox?.role === "trash";
   const deletingLabelIds = new Set(
@@ -91,6 +101,7 @@ export const createBulkActionsViewModel = ({
     canDestroy:
       activeMailbox?.rights.mayRemoveItems === true &&
       (activeMailbox.role === "spam" || activeMailbox.role === "trash"),
+    canExport: !disabled && bulk.selectedIds.size <= MAX_MESSAGE_SOURCE_ARCHIVE_ENTRIES,
     canRestore:
       Boolean(inboxTarget) &&
       (activeMailbox?.role === "spam" || activeMailbox?.role === "trash"),
@@ -104,8 +115,8 @@ export const createBulkActionsViewModel = ({
       onCancel: destroyConfirmation.onCancel,
       onConfirm: destroyConfirmation.onConfirm,
     },
-    error: bulk.error,
-    isBusy: bulk.isBusy,
+    error: bulk.error ?? sourceExport.error,
+    isBusy: bulk.isBusy || sourceExport.isDownloading,
     labels: workspace?.labelCapability === "supported"
       ? workspace.labels.filter(({ id: labelId }) =>
           !deletingLabelIds.has(labelId),
@@ -119,6 +130,7 @@ export const createBulkActionsViewModel = ({
     onApplyLabel: (labelId: string) =>
       void bulk.mutate({ labelId: id.label(labelId), type: "set-label", value: true }),
     onClear: bulk.clear,
+    onExport: () => void sourceExport.download([...bulk.selectedIds]),
     onMarkRead: () =>
       void bulk.mutate({ type: "set-read", value: true }),
     onMarkUnread: () =>
@@ -157,6 +169,8 @@ export const createBulkActionsViewModel = ({
       ? "Mark selected messages as not spam"
       : "Restore selected messages from Trash to Inbox",
     spamLabel: "Move selected messages to Spam",
-    status: bulk.status,
+    status: sourceExport.isDownloading
+      ? `Exporting ${bulk.selectedIds.size} selected messages…`
+      : bulk.status,
   };
 };

@@ -9,6 +9,7 @@ const bulk = (overrides: Partial<BulkActionsViewModel> = {}) => ({
   allLoadedSelected: false,
   canArchive: true,
   canDestroy: false,
+  canExport: true,
   canRestore: false,
   canSpam: true,
   canStop: false,
@@ -26,6 +27,7 @@ const bulk = (overrides: Partial<BulkActionsViewModel> = {}) => ({
   onArchive: vi.fn(),
   onApplyLabel: vi.fn(),
   onClear: vi.fn(),
+  onExport: vi.fn(),
   onMarkRead: vi.fn(),
   onMarkUnread: vi.fn(),
   onMove: vi.fn(),
@@ -57,6 +59,7 @@ describe("message list bulk action toolbar", () => {
     expect(html).toContain('aria-label="Mark selected messages as unread"');
     expect(html).toContain('aria-label="Star selected messages"');
     expect(html).toContain('aria-label="Archive selected messages"');
+    expect(html).toContain('aria-label="Export selected messages as EML files"');
     expect(html).toContain('aria-label="Move selected messages to Spam"');
     expect(html).toContain('aria-label="Move selected messages"');
     expect(html).toContain("2 selected");

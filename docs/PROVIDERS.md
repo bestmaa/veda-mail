@@ -20,6 +20,7 @@ today, not every feature the upstream server protocol could eventually supply.
 | Per-identity email signatures                 | Yes             | Yes                  |
 | Local contacts, groups, autocomplete, vCard   | Yes             | Yes                  |
 | Settings/rules portable JSON transfer         | Yes             | Yes                  |
+| RFC 5322 EML import / selected-message ZIP     | Yes             | Yes, UIDPLUS required for import |
 | RFC 5545 invite display/RSVP/local ICS         | Yes             | Yes                  |
 | Read/star/archive/move/trash                  | Yes             | Yes                  |
 | Bounded bulk actions and permanent delete    | Yes             | Yes                  |

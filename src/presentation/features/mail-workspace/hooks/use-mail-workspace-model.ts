@@ -26,7 +26,7 @@ import { DEFAULT_MESSAGE_LIST_PREFERENCES } from "@/domain/mail/message-list-pre
 import { useMessageListPreferencesModel } from "@/presentation/features/mail-workspace/hooks/use-message-list-preferences-model";
 import { useScheduledSendManager } from "@/presentation/features/mail-workspace/hooks/use-scheduled-send-manager";
 import { useWorkspaceKeyboardShortcuts } from "@/presentation/features/mail-workspace/hooks/use-workspace-keyboard-shortcuts";
-import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model"; import { useMessagePrint } from "@/presentation/features/mail-workspace/hooks/use-message-print"; import { useMessageSourceDownload } from "@/presentation/features/mail-workspace/hooks/use-message-source-download";
+import { useMessageConversationViewModel } from "@/presentation/features/mail-workspace/hooks/use-message-conversation-view-model"; import { useSavedSearchesModel } from "@/presentation/features/mail-workspace/hooks/use-saved-searches-model"; import { useMessagePrint } from "@/presentation/features/mail-workspace/hooks/use-message-print"; import { useMessageSourceDownload } from "@/presentation/features/mail-workspace/hooks/use-message-source-download"; import { useMessageSourceArchiveDownload } from "@/presentation/features/mail-workspace/hooks/use-message-source-archive-download";
 import { resolveReaderMailbox } from "@/presentation/features/mail-workspace/reader-mailbox";
 import { useContactsModel } from "@/presentation/features/mail-workspace/hooks/use-contacts-model"; import { useRecipientSuggestionsModel } from "@/presentation/features/mail-workspace/hooks/use-recipient-suggestions-model"; import { useContactManagement } from "@/presentation/features/mail-workspace/hooks/use-contact-management"; import { useMailLocalization } from "@/presentation/features/mail-workspace/hooks/use-mail-localization";
 interface MailWorkspaceModelOptions { readonly branding: BrandingInput; readonly canSignOut: boolean; readonly initialSessionScope: string; readonly maxAttachmentBytes: number | null; readonly providerLabel: string; readonly signOutPath: string }
@@ -48,7 +48,7 @@ export const useMailWorkspaceModel = ({
   const partialDelivery = usePartialDeliveryNotice(mail.refresh, sessionScope, mail.handleSessionFailure); const navigation = useMobileNavigationModel();
   const archiveDownload = useAttachmentArchiveDownload(sessionScope, mail.handleSessionFailure); const attachmentDownload = useAttachmentDownload(sessionScope, mail.handleSessionFailure);
   const attachmentPreview = useAttachmentPreview(sessionScope, mail.handleSessionFailure); const messageSourceDownload = useMessageSourceDownload(sessionScope, mail.handleSessionFailure);
-  const closeAttachmentPreview = attachmentPreview.close; const brandingView = createBrandingViewModel(branding);
+  const messageSourceArchive = useMessageSourceArchiveDownload(sessionScope, mail.handleSessionFailure); const closeAttachmentPreview = attachmentPreview.close; const brandingView = createBrandingViewModel(branding);
   const workspaceAccountName = mail.workspace?.account.name ?? brandingView.productName;
   const accountEmail = mail.workspace?.account.email ?? "";
   const emailSignatures = useEmailSignaturesModel(sessionScope, mail.handleSessionFailure); const emailTemplates = useEmailTemplatesModel(sessionScope, mail.handleSessionFailure); const scheduled = useScheduledSendManager(sessionScope, mail.handleSessionFailure, localization.timeZone, localization.locale); const contacts = useContactsModel(sessionScope, mail.handleSessionFailure);
@@ -142,7 +142,7 @@ export const useMailWorkspaceModel = ({
   ), () => readerMailbox && mail.destroy(readerMailbox.id));
   const bulkActions = createBulkActionsViewModel({
     activeMailboxId: mail.activeMailboxId, bulk: mail.bulk,
-    destroyConfirmation, snooze, workspace,
+    destroyConfirmation, snooze, sourceArchive: messageSourceArchive, workspace,
   });
   const mailboxLifecycle = useMailboxLifecycle({
     activeMailboxId: mail.activeMailboxId, activeRole: mailList.activeRole,

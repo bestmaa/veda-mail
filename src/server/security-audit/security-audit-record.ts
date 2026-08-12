@@ -29,6 +29,7 @@ export const securityAuditActionSchema = z.enum([
   "member.contacts.exported",
   "member.contacts.imported",
   "member.message.exported",
+  "member.message.imported",
   "member.settings.exported",
   "member.settings.imported",
   "member.delegation.created",
