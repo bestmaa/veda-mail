@@ -132,7 +132,7 @@ export const storedContactBookSchema = z.object({
   }
 });
 
-const encryptedRecordSchema = z.object({
+export const encryptedContactBookSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
   ciphertext: z.string().min(1).max(16 * 1024 * 1024),
   iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
@@ -142,7 +142,7 @@ const encryptedRecordSchema = z.object({
 export const contactFileSchema = z.object({
   owners: z.record(
     z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-    encryptedRecordSchema,
+    encryptedContactBookSchema,
   ),
   updatedAt: timestampSchema,
   version: z.literal(1),

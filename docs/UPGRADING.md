@@ -113,6 +113,12 @@ Redis on first access. Verify the `.migrated-to-redis` archive and Redis backup
 on one upgraded replica before scaling. Preserve the installation session secret
 and prefix, and drain template writes before restoring the archive for rollback.
 
+Contacts now migrate from `/data/member-contacts.json` to shared-state Redis on
+first access. Verify the `.migrated-to-redis` archive and Redis backup on one
+upgraded replica before scaling. Preserve the installation session secret and
+prefix, and drain contact and send activity before restoring the archive for
+rollback because recipient history is also shared.
+
 Conversation views require no environment variable, provider configuration,
 mailbox migration, database/schema change, or new port. They add bounded
 provider reads when a message is opened: 25 results per browser page and no

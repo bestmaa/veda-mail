@@ -87,3 +87,14 @@ export const writeContactFile = async (value: ContactFile): Promise<void> => {
     throw error;
   }
 };
+
+export const archiveMigratedContactFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ contactFilePath(),
+      /* turbopackIgnore: true */ `${contactFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
