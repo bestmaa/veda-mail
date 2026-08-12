@@ -459,6 +459,12 @@ metadata.
   account identities remain absent from Redis plaintext. Concurrent revisions
   admit one writer; tamper, migration conflict, and backend failure fail closed,
   while deleting the final template removes the shared owner record.
+- Contact books migrate only authenticated ciphertext behind HMAC-opaque owner
+  keys. Exact-envelope CAS admits one manual revision and preserves HTTP 409
+  conflicts across replicas. Automatic recent-recipient writes use bounded CAS
+  retry to retain concurrent contacts and groups. Names, addresses, groups, and
+  history remain absent from Redis plaintext; tamper and backend failure fail
+  closed, and empty books remove their shared owner record.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients

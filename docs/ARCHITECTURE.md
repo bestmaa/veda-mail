@@ -1359,9 +1359,9 @@ npm run check:lines
   configured shared sessions survive while Redis and the matching key remain.
 - A multi-replica deployment still needs transactional replacements for the
   remaining process-serialized mutable files. Message-list preferences,
-  revisioned saved-search/signature/template books, and mailbox appearance are
-  already shared owner records; revisioned/read-modify-write stores use Redis
-  CAS so replicas cannot silently overwrite one another.
+  revisioned saved-search/signature/template/contact books, and mailbox
+  appearance are already shared owner records; revisioned/read-modify-write
+  stores use Redis CAS so replicas cannot silently overwrite one another.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

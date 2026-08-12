@@ -25,12 +25,18 @@ import {
   MAX_CONTACT_OWNERS,
   type StoredContactBook,
 } from "@/server/contacts/contact-record";
+import {
+  ensureContactsMigrated,
+  replaceSharedContactBook,
+  sharedContactBook,
+} from "@/server/contacts/contact-shared-store";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalState = globalThis as typeof globalThis & {
   __vedaMailContactQueue?: Promise<void>;
 };
 globalState.__vedaMailContactQueue ??= Promise.resolve();
+const SHARED_RETRY_LIMIT = 5;
 
 const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
   const result = globalState.__vedaMailContactQueue!.then(task, task);
@@ -72,6 +78,11 @@ const conflict = (): never => {
     "CONTACT_BOOK_CONFLICT",
     409,
   );
+};
+
+const sharedMode = async (): Promise<boolean> => {
+  try { return await ensureContactsMigrated(); }
+  catch { return unavailable(); }
 };
 
 const currentBook = async (owner: ContactOwner, sessionSecret: string) => {
@@ -146,7 +157,13 @@ const persist = async (
 export const contactStore = {
   async get(owner: ContactOwner): Promise<ContactBook> {
     const sessionSecret = await secret();
-    return (await currentBook(owner, sessionSecret)).book;
+    try {
+      return await sharedMode()
+        ? (await sharedContactBook(owner, sessionSecret)).book
+        : (await currentBook(owner, sessionSecret)).book;
+    } catch {
+      return unavailable();
+    }
   },
 
   async put(
@@ -155,6 +172,26 @@ export const contactStore = {
   ): Promise<ContactBook> {
     return serialized(async () => {
       const sessionSecret = await secret();
+      if (await sharedMode()) {
+        let current;
+        try { current = await sharedContactBook(owner, sessionSecret); }
+        catch { return unavailable(); }
+        assertRevision(current.book, operation.expectedRevision);
+        let updated: StoredContactBook;
+        try { updated = updateContactBook(current.book, operation); }
+        catch (error) {
+          if (error instanceof ApiError) throw error;
+          return unavailable();
+        }
+        let replaced;
+        try {
+          replaced = await replaceSharedContactBook(
+            current, updated, sessionSecret, isEmpty(updated),
+          );
+        } catch { return unavailable(); }
+        if (!replaced) conflict();
+        return isEmpty(updated) ? emptyContactBook() : updated;
+      }
       const current = await currentBook(owner, sessionSecret);
       assertRevision(current.book, operation.expectedRevision);
       assertOwnerCapacity(current.file.owners, current.ownerKey);
@@ -176,6 +213,22 @@ export const contactStore = {
     if (recipients.length === 0) return contactStore.get(owner);
     return serialized(async () => {
       const sessionSecret = await secret();
+      if (await sharedMode()) {
+        for (let attempt = 0; attempt < SHARED_RETRY_LIMIT; attempt += 1) {
+          let current;
+          try { current = await sharedContactBook(owner, sessionSecret); }
+          catch { return unavailable(); }
+          let updated: StoredContactBook;
+          try { updated = addRecentRecipients(current.book, recipients); }
+          catch { return unavailable(); }
+          try {
+            if (await replaceSharedContactBook(
+              current, updated, sessionSecret, isEmpty(updated),
+            )) return isEmpty(updated) ? emptyContactBook() : updated;
+          } catch { return unavailable(); }
+        }
+        return unavailable();
+      }
       const current = await currentBook(owner, sessionSecret);
       assertOwnerCapacity(current.file.owners, current.ownerKey);
       let updated: StoredContactBook;

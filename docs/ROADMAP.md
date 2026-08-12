@@ -923,8 +923,10 @@ folders and deletes empty owner records. Email-signature books use the same
 guarded migration and exact-record CAS, preserving their revision conflict and
 deleting the owner record with the final signature. Encrypted email-template
 books now follow the same ciphertext-only migration and CAS contract, deleting
-the shared owner record with the final template. The checkbox remains open until
-the other writable `/data` boundaries close.
+the shared owner record with the final template. Encrypted contact books also
+migrate with exact-record CAS; bounded retry reapplies automatic recipient
+history after concurrent manual edits. The checkbox remains open until the other
+writable `/data` boundaries close.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

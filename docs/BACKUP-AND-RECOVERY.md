@@ -56,11 +56,12 @@ not part of `/data`. Scheduled-send and snooze books also move to authenticated
 Redis ciphertext on first use; include Redis persistence and a consistent Redis
 backup in every recovery drill. `.migrated-to-redis` files are rollback guards,
 not the current queues. Message-list preference, saved-search, signature,
-template, and mailbox-color owner records also move as their existing
+template, contact, and mailbox-color owner records also move as their existing
 authenticated ciphertext; Redis, not their archived local files, is current
-after migration. Saved-search, signature, and template revisions plus
+after migration. Saved-search, signature, template, and contact revisions plus
 mailbox-color read-modify-write operations remain atomic in Redis, and an empty
-book deletes its shared record. Short-lived
+book deletes its shared record. Contact recipient-history writes retry bounded
+CAS conflicts so they do not erase simultaneous manual changes. Short-lived
 immediate-send claim and replay records are also Redis-only; losing them can
 remove duplicate-send protection for provider I/O that already happened, so
 restore Redis before accepting sends. The deliberate job exception for provider
