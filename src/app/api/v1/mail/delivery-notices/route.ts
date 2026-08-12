@@ -3,7 +3,6 @@ import { assertMailSessionScope } from "@/server/connections/mail-session-scope"
 import { connectionStore } from "@/server/connections/connection-store";
 import {
   DELIVERY_NOTICE_OVERFLOW_MESSAGE,
-  deliveryNoticeStore,
 } from "@/server/mail/delivery-notice-store";
 import {
   assertRequestRateLimit,
@@ -30,7 +29,7 @@ export const GET = async (request: Request) => {
       120,
       60 * 1000,
     );
-    const notices = deliveryNoticeStore.list(connection.id);
+    const notices = await connectionStore.listDeliveryNoticesAsync(connection.id);
     return apiSuccess({
       notices: (await connectionStore.hasDeliveryNoticeCapacityWarningAsync(connection))
         ? [

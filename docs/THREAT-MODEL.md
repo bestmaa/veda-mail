@@ -90,11 +90,11 @@ URLs, analytics, or client-readable cookies.
   token is not accepted by an HTTP route.
 
 Residual risk: default sessions and all non-login rate limits remain
-memory-local. Shared Redis sessions survive a process restart, but delivery
-notices, send idempotency, quarantine, jobs, and mutable repositories are not
-made multi-replica safe by that option. Redis availability and the external key
-become session-availability dependencies; traffic analysis exposes ciphertext
-sizes and access timing.
+memory-local. Shared Redis sessions survive a process restart and the same
+repository coordinates encrypted jobs, send idempotency, and delivery notices;
+quarantine and mutable repositories are not made multi-replica safe. Redis
+availability and the external key become availability dependencies; traffic
+analysis exposes ciphertext sizes and access timing.
 
 ### Stalwart mailbox provisioning
 
@@ -1475,12 +1475,12 @@ never accepts entry names from the provider or browser.
 
 ## Supported deployment boundary
 
-Veda Mail currently supports one general writable application replica. The encrypted
-shared-session, shared-job, and shared send-idempotency repositories remove key
-boundaries, but operators must not load-balance writable replicas as if quarantine,
-delivery notices, mutable files, and every rate limit were shared. Horizontal
-scaling is supported only after those remaining coordinators are implemented
-and tested.
+Veda Mail currently supports one general writable application replica. The
+encrypted shared-session, shared-job, send-idempotency, and delivery-notice
+repositories remove key boundaries, but operators must not load-balance
+writable replicas as if quarantine, mutable files, and every rate limit were
+shared. Horizontal scaling is supported only after those remaining
+coordinators are implemented and tested.
 
 ## Review triggers
 

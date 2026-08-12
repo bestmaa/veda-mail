@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import { getCurrentConnection } from "@/server/connections/connection-session";
 import { assertMailSessionScope } from "@/server/connections/mail-session-scope";
+import { connectionStore } from "@/server/connections/connection-store";
 import { assertSameOrigin } from "@/server/installation/request-origin";
-import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
 import {
   assertRequestRateLimit,
   assertSubjectRateLimit,
@@ -40,7 +40,7 @@ export const DELETE = async (
       60 * 1000,
     );
     const { deliveryNoticeId } = await route.params;
-    deliveryNoticeStore.dismiss(
+    await connectionStore.dismissDeliveryNoticeAsync(
       connection.id,
       deliveryNoticeIdSchema.parse(deliveryNoticeId),
     );

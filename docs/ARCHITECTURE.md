@@ -1328,13 +1328,15 @@ npm run check:lines
   Provider gateway objects are not retained in the process cache in this mode,
   so remote revocation cannot leave a reusable credential-bearing gateway on
   another replica.
+  Partial/uncertain delivery notices and immediate-send claims are stored in
+  separate encrypted, HMAC-indexed connection buckets with global count/byte
+  limits and remote-revocation cleanup.
   Explicit scheduled jobs carry a separate bounded encrypted credential copy.
 - Restarting the process signs every member out in the default local mode;
   configured shared sessions survive while Redis and the matching key remain.
-- A multi-replica deployment additionally needs coordinated rate limiting and
-  transactional replacements for the
-  process-serialized signature, template, and scheduled-job files, behind the
-  existing server boundary.
+- A multi-replica deployment additionally needs coordinated non-login rate
+  limiting, shared attachment quarantine, and transactional replacements for
+  the remaining process-serialized mutable files.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

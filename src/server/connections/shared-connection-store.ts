@@ -16,7 +16,10 @@ import {
   type StoredConnection,
 } from "@/server/connections/connection-session-record";
 import { clearGateway } from "@/server/mail/gateway-cache";
-import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
+import { markSharedConnectionDeliveryNoticeCapacity } from
+  "@/server/connections/shared-connection-delivery-notice";
+import { sharedDeliveryNoticeStore } from
+  "@/server/mail/shared-delivery-notice-store";
 import {
   type SendIdempotencyBegin,
 } from "@/server/mail/send-idempotency-store";
@@ -46,6 +49,7 @@ const remove = async (connectionId: ConnectionId, ownerKey?: string): Promise<bo
     ...(ownerKey ? { ownerIndex: sharedSessionOwnerIndex(ownerKey) } : {}),
   });
   clearConnectionResources(connectionId);
+  await sharedDeliveryNoticeStore.clear(connectionId);
   await sharedSendIdempotencyStore.clear(connectionId);
   return removed ?? false;
 };
@@ -152,10 +156,21 @@ export const sharedConnectionStore = {
       await remove(connection.id, stored.ownerKey);
       return false;
     }
-    const admitted = deliveryNoticeStore.append(connection.id, receipt, expiresAt);
-    if (!admitted) await replace(connection.id, (value) => ({
-      ...value, deliveryNoticeCapacityWarning: true,
-    }));
+    const admitted = await sharedDeliveryNoticeStore.append(
+      connection.id,
+      receipt,
+      expiresAt,
+    );
+    const remainsActive = admitted
+      ? await read(connection.id, false).then((latest) => Boolean(
+        latest && latest.connection.createdAt === connection.createdAt &&
+        latest.connection.providerId === connection.providerId,
+      ))
+      : await markSharedConnectionDeliveryNoticeCapacity(connection);
+    if (!remainsActive) {
+      await sharedDeliveryNoticeStore.clear(connection.id);
+      return false;
+    }
     return admitted;
   },
 
@@ -225,6 +240,7 @@ export const sharedConnectionStore = {
     await sharedSessionRepository.clear("member");
     for (const stored of records) {
       clearConnectionResources(stored.connection.id);
+      await sharedDeliveryNoticeStore.clear(stored.connection.id);
       await sharedSendIdempotencyStore.clear(stored.connection.id);
     }
   },

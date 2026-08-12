@@ -344,7 +344,9 @@ files with `.migrated-to-redis`. Start one new replica, verify the Redis backup,
 then scale out. Older images cannot process Redis queues; restoring the archived
 filenames may replay jobs. Immediate-send claims and replay receipts are also
 Redis-backed; drain active sends before rollback or duplicate protection can be
-lost. Older images ignore the session variables and sign
+lost. Delivery notices are Redis-backed in shared-state mode; older images will
+not display them and rollback can strand their ciphertext until re-upgrade.
+Older images ignore the session variables and sign
 users out. Encrypted jobs continue when the exact key is preserved. Warn users before
 maintenance and check the queue for review-only interrupted sends after an
 ungraceful stop.

@@ -2,7 +2,6 @@ import "server-only";
 
 import { Buffer } from "node:buffer";
 
-import type { ConnectionId } from "@/domain/shared/brand";
 import {
   asOverflowNotice,
   deliveryNoticeBytes,
@@ -18,7 +17,7 @@ export interface DeliveryNoticeBucket {
 const BUCKET_OVERHEAD_BYTES = 256;
 
 const bucketBytes = (
-  connectionId: ConnectionId,
+  connectionId: string,
   bucket: DeliveryNoticeBucket,
 ): number =>
   bucket.notices.reduce(
@@ -31,7 +30,7 @@ const bucketBytes = (
   );
 
 const usage = (
-  buckets: ReadonlyMap<ConnectionId, DeliveryNoticeBucket>,
+  buckets: ReadonlyMap<string, DeliveryNoticeBucket>,
 ): { readonly bytes: number; readonly notices: number } => {
   let bytes = 0;
   let notices = 0;
@@ -43,10 +42,10 @@ const usage = (
 };
 
 const oldestConnection = (
-  buckets: ReadonlyMap<ConnectionId, DeliveryNoticeBucket>,
+  buckets: ReadonlyMap<string, DeliveryNoticeBucket>,
   predicate: (bucket: DeliveryNoticeBucket) => boolean = () => true,
-): ConnectionId | null => {
-  let oldest: readonly [ConnectionId, DeliveryNoticeBucket] | null = null;
+): string | null => {
+  let oldest: readonly [string, DeliveryNoticeBucket] | null = null;
   for (const entry of buckets) {
     if (!predicate(entry[1])) continue;
     if (
@@ -61,8 +60,8 @@ const oldestConnection = (
 };
 
 const compressToOverflow = (
-  buckets: Map<ConnectionId, DeliveryNoticeBucket>,
-  connectionId: ConnectionId,
+  buckets: Map<string, DeliveryNoticeBucket>,
+  connectionId: string,
 ): void => {
   const bucket = buckets.get(connectionId);
   if (!bucket || bucket.notices.length === 0) return;
@@ -76,7 +75,7 @@ const compressToOverflow = (
 };
 
 export const enforceDeliveryNoticeBudget = (
-  buckets: Map<ConnectionId, DeliveryNoticeBucket>,
+  buckets: Map<string, DeliveryNoticeBucket>,
   maxNotices: number,
   maxBytes: number,
 ): void => {

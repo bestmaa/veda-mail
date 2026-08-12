@@ -7,6 +7,9 @@ import type { ConnectionSessionMetadata } from
   "@/server/connections/connection-session-record";
 import { localConnectionStore } from "@/server/connections/local-connection-store";
 import { sharedConnectionStore } from "@/server/connections/shared-connection-store";
+import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
+import { sharedDeliveryNoticeStore } from
+  "@/server/mail/shared-delivery-notice-store";
 import { sharedStateRedisConfigured } from "@/server/shared-state/shared-state-redis";
 
 export type {
@@ -105,6 +108,21 @@ export const connectionStore = {
     return sharedStateRedisConfigured()
       ? sharedConnectionStore.hasDeliveryNoticeCapacityWarning(connection)
       : localConnectionStore.hasDeliveryNoticeCapacityWarning(connection);
+  },
+  async dismissDeliveryNoticeAsync(
+    connectionId: ConnectionId,
+    deliveryNoticeId: string,
+  ) {
+    if (sharedStateRedisConfigured()) {
+      await sharedDeliveryNoticeStore.dismiss(connectionId, deliveryNoticeId);
+    } else {
+      deliveryNoticeStore.dismiss(connectionId, deliveryNoticeId);
+    }
+  },
+  async listDeliveryNoticesAsync(connectionId: ConnectionId) {
+    return sharedStateRedisConfigured()
+      ? sharedDeliveryNoticeStore.list(connectionId)
+      : deliveryNoticeStore.list(connectionId);
   },
   async isActiveAsync(connection: ProviderConnection) {
     return sharedStateRedisConfigured()

@@ -297,9 +297,9 @@ cannot be replayed as cookies. Member provider credentials are process-memory
 only except for the minimum
 encrypted copy in an explicitly scheduled job. A restart signs members out but
 the background queue continues. Optional shared-state Redis provides encrypted
-sessions, immediate-send idempotency, and transactional scheduled-send/snooze
-books, but run one general
-writable replica until the remaining mutable and temporary stores are shared.
+sessions, delivery notices, immediate-send idempotency, and transactional
+scheduled-send/snooze books, but run one general writable replica until the
+remaining mutable and temporary stores are shared.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

@@ -9,7 +9,11 @@ import {
 } from "@/server/shared-state/shared-state-redis";
 import { ApiError } from "@/transport/http/api-error";
 
-export type SharedJobKind = "scheduled-send" | "send-idempotency" | "snooze";
+export type SharedJobKind =
+  | "delivery-notice"
+  | "scheduled-send"
+  | "send-idempotency"
+  | "snooze";
 
 const LOCK_TTL_MS = 60_000;
 const LOCK_WAIT_MS = 5_000;
@@ -172,6 +176,37 @@ export const sharedJobRepository = {
           transaction.sRem(ownersKey(kind), owner);
         } else {
           const ttl = expiresAt === undefined ? undefined : Math.ceil(expiresAt - Date.now());
+          if (ttl !== undefined && ttl <= 0) unavailable();
+          if (ttl === undefined) transaction.set(ownerKey(kind, owner), serialized);
+          else transaction.set(ownerKey(kind, owner), serialized, { PX: ttl });
+          transaction.sAdd(ownersKey(kind), owner);
+        }
+        await transaction.exec();
+      });
+    });
+  },
+
+  async replaceMany(
+    kind: SharedJobKind,
+    records: readonly {
+      readonly expiresAt?: number;
+      readonly owner: string;
+      readonly serialized: string | null;
+    }[],
+  ): Promise<void> {
+    if (records.length === 0) return;
+    await translateFailure(async () => {
+      await runSharedStateRedis(async (client) => {
+        const transaction = client.multi();
+        for (const { expiresAt, owner, serialized } of records) {
+          if (serialized === null) {
+            transaction.del(ownerKey(kind, owner));
+            transaction.sRem(ownersKey(kind), owner);
+            continue;
+          }
+          const ttl = expiresAt === undefined
+            ? undefined
+            : Math.ceil(expiresAt - Date.now());
           if (ttl !== undefined && ttl <= 0) unavailable();
           if (ttl === undefined) transaction.set(ownerKey(kind, owner), serialized);
           else transaction.set(ownerKey(kind, owner), serialized, { PX: ttl });

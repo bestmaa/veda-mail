@@ -115,7 +115,9 @@ describe.skipIf(!redisUrl)("live shared send idempotency", () => {
       .find((key) => !beforeKeys.has(key));
     expect(recordKey).toBeDefined();
     const envelope = JSON.parse((await inspector.get(recordKey!))!);
-    envelope.tag = `${envelope.tag.slice(0, -1)}${envelope.tag.endsWith("A") ? "B" : "A"}`;
+    envelope.tag = `${envelope.tag.startsWith("A") ? "B" : "A"}${
+      envelope.tag.slice(1)
+    }`;
     await inspector.set(recordKey!, JSON.stringify(envelope), { PX: 60_000 });
     resetSharedStateRedisClientForTests();
     await expect(sharedSendIdempotencyStore.begin(tampered.id, tamperedDraft,
