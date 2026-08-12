@@ -541,7 +541,7 @@ search](./ADVANCED-SEARCH.md).
 - [x] Scheduled send using an encrypted durable queue, retry policy,
   cancellation, clock/time-zone handling, and idempotency keys
 - [x] Snooze with durable wake-up scheduling and mailbox restoration
-- [ ] Contacts, recent-recipient ranking, autocomplete, groups, and vCard
+- [x] Contacts, recent-recipient ranking, autocomplete, groups, and vCard
   import/export
 - [ ] RFC 5545 calendar invitation display, accept/maybe/decline, and `.ics`
   import/export; CalDAV integration remains capability-gated
@@ -677,9 +677,19 @@ address-book persistence failure never changes a provider-confirmed send into a
 retry. Strict route, store-tamper, mutation, ranking, component, session-scope,
 and hostile-vCard tests cover the implementation. It merged in PR #81 and is
 deployed in production commit `12d748a2e9e4f6efdcb051fd84238a2be701b3bf`.
-Its checkbox remains open until live create/reload/autocomplete, confirmed-send
-ranking, group, import, and export evidence is recorded through dedicated JMAP
-and IMAP/SMTP mailboxes.
+On 2026-08-12 the dedicated production JMAP mailbox and a separate isolated
+Standard IMAP/SMTP installation completed the remaining live acceptance. In
+each provider mode, a unique contact and one-member group survived a full page
+reload and appeared through accessible compose autocomplete. A hostile-input
+boundary-safe vCard 4.0 fixture imported a second contact and group, and the
+downloaded export contained both exact contacts, their email addresses, group
+categories, and generated UIDs. A uniquely named self-delivery then completed
+successfully and appeared in Recents with the exact recipient identity and
+confirmed-use count. All exact contact, group, recent-recipient, mailbox-message,
+download, and upload fixtures were removed afterward; the isolated installation
+and data directory were destroyed. Together with the existing strict route,
+store-tamper, mutation, ranking, component, session-scope, provider-path, and
+hostile-vCard tests, this closes Contacts.
 
 The provider-independent RFC 5545 calendar slice is released and deployed. JMAP and
 IMAP discover bounded `text/calendar` body parts without exposing provider blob,
