@@ -31,8 +31,9 @@ describe("data retention policy store", () => {
     const policy = { securityAuditMaxAgeDays: 90, securityAuditMaxEntries: 2_000 };
     await dataRetentionPolicyStore.put(policy);
     const target = path.join(directory, "data-retention-policy.json");
+    const record = JSON.parse(await readFile(target, "utf8"));
     expect((await stat(target)).mode & 0o777).toBe(0o600);
-    expect(JSON.parse(await readFile(target, "utf8"))).toMatchObject({ policy, version: 1 });
+    expect(record).toMatchObject({ policy, version: 1 });
     await expect(dataRetentionPolicyStore.get()).resolves.toEqual(policy);
   });
 
