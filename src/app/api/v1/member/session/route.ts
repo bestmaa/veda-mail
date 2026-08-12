@@ -61,7 +61,7 @@ export const GET = async () => {
     const connection = await getCurrentConnection();
     const account = await (await resolveGateway(connection)).getAccount();
     const profile = await activeProfile();
-    if (!connectionStore.isActive(connection)) {
+    if (!(await connectionStore.isActiveAsync(connection))) {
       throw new ApiError(
         "This mail connection expired. Connect the account again.",
         "MEMBER_SESSION_EXPIRED",
@@ -189,7 +189,7 @@ export const POST = async (request: Request) => {
     }
     const previous = await getCurrentConnection().catch(() => null);
     await authenticationAudit.succeed(credentials.email, profile.providerId);
-    const connection = connectionStore.create(
+    const connection = await connectionStore.createAsync(
       {
         config,
         displayName: profile.displayName,
@@ -202,7 +202,7 @@ export const POST = async (request: Request) => {
       },
     );
     if (previous) {
-      connectionStore.remove(previous.id);
+      await connectionStore.removeAsync(previous.id);
     }
     const response = apiSuccess(memberSessionResponse(account, profile), {
       status: 201,
@@ -234,7 +234,7 @@ export const DELETE = async (request: Request) => {
         });
       } finally {
         twoFactorEnrollmentStore.remove(connection.id);
-        connectionStore.remove(connection.id);
+        await connectionStore.removeAsync(connection.id);
       }
     }
     const response = new NextResponse(null, { status: 204 });

@@ -153,14 +153,25 @@ per container; multi-replica operation requires a shared encrypted quarantine,
 session store, and coordinated rate limiter.
 
 Interactive sessions idle-expire after 30 minutes and have a non-extendable
-12-hour absolute lifetime. They are individually revocable but remain
-process-local; a restart signs everyone out. An optional Redis-compatible
-backend coordinates only admin/member login global, trusted-source, and
+12-hour absolute lifetime. They are individually revocable and process-local by
+default, so a restart signs everyone out. Configure
+`VEDA_MAIL_STATE_REDIS_URL`, `VEDA_MAIL_STATE_REDIS_PREFIX`, and the same
+`VEDA_MAIL_JOB_KEY` on every process to keep AES-256-GCM-encrypted sessions in
+an atomic Redis repository. Raw bearer IDs, owners, addresses, and provider
+credentials never appear in Redis keys or plaintext values. Use `rediss://`, a
+no-eviction policy, persistence/backups, least-privilege credentials, and
+monitoring; a configured outage or invalid ciphertext fails access closed.
+`/api/ready` reports the configured session store as a bounded dependency and
+returns 503 while it cannot answer `PING`.
+
+A separate optional Redis-compatible backend coordinates only admin/member
+login global, trusted-source, and
 subject windows across processes. Configure `VEDA_MAIL_RATE_LIMIT_REDIS_URL`
 with a secret-managed `rediss://` URL and an optional deployment-specific
 `VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
-configured backend fails login closed. This does not remove the one-replica
-requirement because provider sessions and mutable stores are not yet shared.
+configured backend fails login closed. Shared sessions still do not remove the
+one-replica requirement because durable jobs, send idempotency, quarantine,
+notices, non-login limits, and mutable stores are not yet shared.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool
 with the same 512 MiB/1,000-record process ceiling and random mode-0600 files in
@@ -424,15 +435,16 @@ official init process currently starts as root before dropping to ClamAV
 service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
-Keep one replica. Administrator/member provider sessions, non-login rate
-limits, delivery notices, and the send
-idempotency ledger are process-local. The encrypted
+Keep one replica. Administrator/member provider sessions may optionally use the
+encrypted shared Redis repository; non-login rate limits, delivery notices, the
+send idempotency ledger, attachment quarantine, and durable job coordinators
+remain process-local. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
-lose updates. Scaling requires a shared encrypted session repository, atomic
-shared send ledger, and transactional replacement
+lose updates. Scaling still requires atomic shared job/send ledgers and
+transactional replacement
 for all per-member metadata stores.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup

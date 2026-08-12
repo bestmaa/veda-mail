@@ -56,6 +56,8 @@ VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
+VEDA_MAIL_STATE_REDIS_URL=optional-rediss-url
+VEDA_MAIL_STATE_REDIS_PREFIX=veda-mail:state:v1
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 ```
 
@@ -69,6 +71,12 @@ and must use HTTPS without a trailing slash.
 store it in the deployment secret manager, never in `/data`, and preserve it
 across restarts and restores. Do not quote values or commit
 `.env`.
+
+The optional state Redis URL enables encrypted shared administrator/member
+sessions. Use `rediss://` outside a trusted private network and preserve the
+same `VEDA_MAIL_JOB_KEY` and deployment-unique prefix. This does not yet permit
+multiple writable application replicas because durable jobs and mutable stores
+retain separate single-writer boundaries.
 
 Start the service:
 

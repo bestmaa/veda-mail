@@ -36,7 +36,7 @@ export const GET = async (request: Request) => {
   try {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    const stored = connectionStore.get(connection.id);
+    const stored = await connectionStore.getAsync(connection.id);
     if (!stored) {
       throw new ApiError("This mail connection expired.", "MEMBER_SESSION_EXPIRED", 401);
     }
@@ -47,7 +47,7 @@ export const GET = async (request: Request) => {
         absoluteTtlSeconds: MEMBER_CONNECTION_TTL_SECONDS,
         idleTtlSeconds: MEMBER_CONNECTION_IDLE_TTL_MS / 1_000,
       },
-      sessions: connectionStore.listForOwner(stored.ownerKey).map((candidate) => ({
+      sessions: (await connectionStore.listForOwnerAsync(stored.ownerKey)).map((candidate) => ({
         clientLabel: candidate.clientLabel,
         createdAt: candidate.connection.createdAt,
         current: candidate.connection.id === connection.id,
@@ -66,14 +66,14 @@ export const DELETE = async (request: Request) => {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    const stored = connectionStore.get(connection.id);
+    const stored = await connectionStore.getAsync(connection.id);
     if (!stored) {
       throw new ApiError("This mail connection expired.", "MEMBER_SESSION_EXPIRED", 401);
     }
     assertRequestRateLimit(request, "member-session-management", 10_000, 240, 60_000);
     assertSubjectRateLimit("member-session-management", connection.id, 120, 60_000);
     const input = revokeSchema.parse(await readJsonBody(request, 4 * 1_024));
-    const target = connectionStore.listForOwner(stored.ownerKey).find((candidate) =>
+    const target = (await connectionStore.listForOwnerAsync(stored.ownerKey)).find((candidate) =>
       sessionManagementId("member", candidate.connection.id) === input.id,
     );
     if (!target) {
@@ -89,7 +89,7 @@ export const DELETE = async (request: Request) => {
         targetType: "session",
       });
     } finally {
-      connectionStore.remove(target.connection.id);
+      await connectionStore.removeAsync(target.connection.id);
     }
     const response = apiSuccess({ revoked: true, revokedCurrent });
     if (revokedCurrent) {

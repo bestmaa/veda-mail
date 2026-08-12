@@ -22,7 +22,7 @@ export const getCurrentConnection = async (): Promise<ProviderConnection> => {
     );
   }
   const typedId = id.connection(connectionId);
-  const stored = connectionStore.get(typedId);
+  const stored = await connectionStore.getAsync(typedId);
   if (!stored) {
     throw new ApiError(
       "This mail connection expired. Connect the account again.",
@@ -35,7 +35,7 @@ export const getCurrentConnection = async (): Promise<ProviderConnection> => {
     !profile ||
     stored.profileRevision !== mailServiceProfileRevision(profile)
   ) {
-    connectionStore.remove(typedId);
+    await connectionStore.removeAsync(typedId);
     throw new ApiError(
       "Mail-service settings changed. Sign in again.",
       "MEMBER_SESSION_EXPIRED",

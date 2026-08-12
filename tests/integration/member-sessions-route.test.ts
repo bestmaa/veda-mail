@@ -19,9 +19,9 @@ vi.mock("@/server/connections/connection-session", () => ({
 }));
 vi.mock("@/server/connections/connection-store", () => ({
   connectionStore: {
-    get: mocks.getStored,
-    listForOwner: mocks.listForOwner,
-    remove: mocks.remove,
+    getAsync: mocks.getStored,
+    listForOwnerAsync: mocks.listForOwner,
+    removeAsync: mocks.remove,
   },
 }));
 vi.mock("@/server/security/rate-limit", () => ({

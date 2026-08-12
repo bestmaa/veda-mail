@@ -75,7 +75,13 @@ URLs, analytics, or client-readable cookies.
 - Administrator and member sessions are server-registered, individually
   inventoryable/revocable, idle-expire after 30 minutes, and have a
   non-extendable 12-hour lifetime. Browser APIs receive HMAC management handles,
-  never replayable raw bearer IDs. A restart intentionally invalidates them.
+  never replayable raw bearer IDs. They are process-local by default. The
+  optional Redis repository derives separate index/encryption subkeys from
+  `VEDA_MAIL_JOB_KEY`, stores strict AES-256-GCM envelopes behind opaque HMAC
+  keys, and atomically CAS-touches/revokes records with expiry-scored indexes.
+  Configured backend failure, tamper, or key mismatch denies access. Shared mode
+  disables the process gateway cache so a remote revoke cannot leave a reusable
+  credential-bearing provider gateway on another process.
 - Login throttles always use process-local global, trusted-source, and
   normalized-subject windows. Operators may configure Redis for equivalent
   cross-replica atomic windows; identifiers are HMAC-pseudonymized and a
@@ -83,9 +89,12 @@ URLs, analytics, or client-readable cookies.
 - Administrator recovery is an interactive container command; the recovery
   token is not accepted by an HTTP route.
 
-Residual risk: sessions and non-login rate limits remain memory-local. A restart
-signs administrators and members out, and multiple replicas cannot share
-provider sessions. The Redis option coordinates login throttles only.
+Residual risk: default sessions and all non-login rate limits remain
+memory-local. Shared Redis sessions survive a process restart, but delivery
+notices, send idempotency, quarantine, jobs, and mutable repositories are not
+made multi-replica safe by that option. Redis availability and the external key
+become session-availability dependencies; traffic analysis exposes ciphertext
+sizes and access timing.
 
 ### Stalwart mailbox provisioning
 
@@ -1466,11 +1475,12 @@ never accepts entry names from the provider or browser.
 
 ## Supported deployment boundary
 
-Veda Mail currently supports one application replica. Operators must not
-load-balance multiple replicas as if sessions and rate limits were shared.
-Horizontal scaling is supported only after an encrypted shared session store,
-distributed rate limiter, and durable job coordination are implemented and
-tested.
+Veda Mail currently supports one writable application replica. The encrypted
+shared-session repository removes one boundary, but operators must not
+load-balance writable replicas as if job leases, send idempotency, quarantine,
+delivery notices, mutable files, and every rate limit were shared. Horizontal
+scaling is supported only after those remaining coordinators are implemented
+and tested.
 
 ## Review triggers
 

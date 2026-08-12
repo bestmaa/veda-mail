@@ -32,7 +32,7 @@ export const GET = async (request: Request) => {
     );
     const notices = deliveryNoticeStore.list(connection.id);
     return apiSuccess({
-      notices: connectionStore.hasDeliveryNoticeCapacityWarning(connection)
+      notices: (await connectionStore.hasDeliveryNoticeCapacityWarningAsync(connection))
         ? [
             ...notices,
             {

@@ -23,8 +23,8 @@ export const waitForMailUpdate = (
   const pending = resolveGateway(connection)
     .then((gateway) => gateway.waitForMailUpdate())
     .then(normalize)
-    .then((result) => {
-      if (!connectionStore.isActive(connection)) {
+    .then(async (result) => {
+      if (!(await connectionStore.isActiveAsync(connection))) {
         throw new ApiError(
           "This mail connection expired. Connect the account again.",
           "MEMBER_SESSION_EXPIRED",

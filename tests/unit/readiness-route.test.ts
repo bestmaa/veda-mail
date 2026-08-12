@@ -15,6 +15,7 @@ const snapshot = (status: "degraded" | "ready") => ({
       name: "scanner" as const,
       status: status === "ready" ? ("ok" as const) : ("failed" as const),
     },
+    { name: "session-store" as const, status: "ok" as const },
   ],
   durationMs: 1,
   service: "veda-mail",

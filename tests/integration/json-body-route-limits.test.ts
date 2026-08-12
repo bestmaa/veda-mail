@@ -64,9 +64,9 @@ vi.mock("@/server/connections/connection-session", () => ({
 
 vi.mock("@/server/connections/connection-store", () => ({
   connectionStore: {
-    create: mocks.connectionCreate,
-    isActive: mocks.connectionIsActive,
-    remove: mocks.connectionRemove,
+    createAsync: mocks.connectionCreate,
+    isActiveAsync: mocks.connectionIsActive,
+    removeAsync: mocks.connectionRemove,
   },
 }));
 

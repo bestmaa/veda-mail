@@ -126,7 +126,7 @@ export const GET = async (request: Request) => {
       labelDeletionCatalogStore.list(owner).catch(() => []),
       mailboxEmptyOperationStore.list(owner).catch(() => []),
     ]);
-    if (!connectionStore.isActive(connection)) {
+    if (!(await connectionStore.isActiveAsync(connection))) {
       throw new ApiError(
         "This mail connection expired. Connect the account again.",
         "MEMBER_SESSION_EXPIRED",

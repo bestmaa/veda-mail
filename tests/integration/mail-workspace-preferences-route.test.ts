@@ -14,7 +14,7 @@ vi.mock("@/server/connections/connection-session", () => ({
   getCurrentConnection: mocks.getCurrentConnection,
 }));
 vi.mock("@/server/connections/connection-store", () => ({
-  connectionStore: { isActive: () => true },
+  connectionStore: { isActiveAsync: () => true },
 }));
 vi.mock("@/server/mail/mail-service", () => ({
   getMailService: mocks.getMailService,

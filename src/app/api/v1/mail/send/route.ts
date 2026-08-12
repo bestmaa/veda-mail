@@ -212,7 +212,7 @@ export const POST = async (request: Request) => {
       }
       try {
         if (receipt.deliveryStatus !== "accepted") {
-          connectionStore.appendDeliveryNoticeIfActive(connection, receipt);
+          await connectionStore.appendDeliveryNoticeIfActiveAsync(connection, receipt);
         }
       } catch {
         observabilityLog.logError("mail.delivery_notice_persistence_failed", {

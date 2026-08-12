@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/server/connections/connection-store", () => ({
-  connectionStore: { isActive: mocks.isActive },
+  connectionStore: { isActiveAsync: mocks.isActive },
 }));
 vi.mock("@/server/mail/gateway-cache", () => ({
   resolveGateway: mocks.resolveGateway,

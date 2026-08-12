@@ -58,7 +58,7 @@ export const GET = async (request: Request) => {
     const current = await installation();
     const currentSessionId = await getCurrentAdminSessionId();
     return apiSuccess({
-      administrator: adminSessionStore.list(current.owner.authVersion).map((session) => ({
+      administrator: (await adminSessionStore.listAsync(current.owner.authVersion)).map((session) => ({
         createdAt: session.createdAt,
         current: session.id === currentSessionId,
         expiresAt: new Date(Math.min(
@@ -68,7 +68,7 @@ export const GET = async (request: Request) => {
         id: sessionManagementId("administrator", session.id),
         lastSeenAt: session.lastSeenAt,
       })),
-      member: connectionStore.listAll().map((stored) => ({
+      member: (await connectionStore.listAllAsync()).map((stored) => ({
         clientLabel: stored.clientLabel,
         createdAt: stored.connection.createdAt,
         expiresAt: new Date(storedConnectionExpiresAt(stored)!).toISOString(),
@@ -98,22 +98,22 @@ export const DELETE = async (request: Request) => {
     const input = revokeSchema.parse(await readJsonBody(request, 4 * 1_024));
     let revokedCurrent = false;
     if (input.kind === "administrator") {
-      const target = adminSessionStore.list(current.owner.authVersion).find((session) =>
+      const target = (await adminSessionStore.listAsync(current.owner.authVersion)).find((session) =>
         sessionManagementId("administrator", session.id) === input.id,
       );
       if (!target) {
         throw new ApiError("That session is no longer active.", "SESSION_NOT_FOUND", 404);
       }
       revokedCurrent = target.id === currentSessionId;
-      adminSessionStore.remove(target.id);
+      await adminSessionStore.removeAsync(target.id);
     } else {
-      const target = connectionStore.listAll().find((stored) =>
+      const target = (await connectionStore.listAllAsync()).find((stored) =>
         sessionManagementId("member", stored.connection.id) === input.id,
       );
       if (!target) {
         throw new ApiError("That session is no longer active.", "SESSION_NOT_FOUND", 404);
       }
-      connectionStore.remove(target.connection.id);
+      await connectionStore.removeAsync(target.connection.id);
     }
     await appendSecurityAudit({
       action: "admin.session.revoked",

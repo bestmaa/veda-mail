@@ -81,7 +81,7 @@ describe("attachment send retry", () => {
     mocks.sendMessage.mockReturnValue(provider.promise);
     const first = sendDraft(draftId, attachmentId);
     await vi.waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledOnce());
-    const begin = vi.spyOn(connectionStore, "beginSendIfActive");
+    const begin = vi.spyOn(connectionStore, "beginSendIfActiveAsync");
     const second = sendDraft(draftId, attachmentId);
     await vi.waitFor(() => expect(begin).toHaveBeenCalledOnce());
     provider.resolve({

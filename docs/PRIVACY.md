@@ -12,8 +12,9 @@ The browser talks only to Veda Mail. Veda Mail authenticates to the configured
 JMAP or IMAP/SMTP provider and returns bounded presentation data. It does not
 contain advertising, analytics SDKs, or upstream Veda telemetry. Remote images
 in messages are blocked. A provider, reverse proxy, DNS resolver, malware
-scanner, Redis rate limiter, container platform, backup service, and operator
-log system may still process data under the operator's configuration.
+scanner, optional Redis rate/session stores, container platform, backup
+service, and operator log system may still process data under the operator's
+configuration.
 
 Mailbox messages and provider folders stay on the mail provider. Veda Mail
 handles message headers, bodies, search terms, recipients, attachments, drafts,
@@ -39,7 +40,7 @@ material, and traffic/log metadata can identify a mailbox.
 
 | Data class | Default lifetime | Available control |
 | --- | --- | --- |
-| Member/admin browser sessions | Idle/absolute session limit; member sessions also end on process restart | Sign out or revoke from session inventory |
+| Member/admin browser sessions | 30-minute idle/12-hour absolute limit; process restart in local mode, or encrypted Redis TTL when shared state is configured | Sign out or revoke from session inventory; Redis operator lifecycle |
 | Interrupted compose recovery | Exact browser session only | Discard, sign out, or clear site data |
 | Pending upload/scan files | 15â€“30 minute bounded spool lifetime | Automatic EOF/cancel/failure/expiry cleanup |
 | Signatures, templates, contacts, groups, saved searches, imported events, labels and preferences | Until the member deletes/replaces them or `/data` is removed | Corresponding member settings controls and whole-volume lifecycle |
