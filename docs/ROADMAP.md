@@ -901,7 +901,11 @@ Immediate-send idempotency is also shared: encrypted connection buckets admit
 one provider-I/O owner, poll/replay canonical receipts across replicas, retain
 unconfirmed claims after request timeout, reject changed intents/stale tokens,
 and clear with remote session revocation while preserving all count/byte caps.
-The checkbox remains open until the remaining writable, quarantine, notice, and
+Delivery notices now use their own authenticated connection buckets: concurrent
+replicas share append/list/dismiss state, global count/byte compression is
+lock-serialized, raw connection/recipient/notice values stay out of Redis
+plaintext, tampering fails closed, and remote revocation deletes the bucket.
+The checkbox remains open until the remaining writable, quarantine, and
 non-login limiter boundaries are closed.
 
 The administration capability matrix and organization policy controls shipped

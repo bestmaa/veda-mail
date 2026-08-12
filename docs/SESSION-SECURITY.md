@@ -48,6 +48,9 @@ and snooze books. It never stores their provider credentials or message content
 as plaintext; queue migration and backup guidance is in the deployment runbook.
 Immediate-send fingerprints, random claims, and bounded canonical receipts are
 kept in separate connection-bound ciphertext so retries coalesce across replicas.
+Partial/uncertain delivery notices use another connection-bound ciphertext
+bucket; global budgets, dismissal, expiry, and revocation cleanup are locked
+across replicas.
 
 Use a dedicated least-privilege Redis database, TLS across untrusted networks,
 network allowlisting, authentication, persistence, backups, memory limits with
@@ -58,11 +61,10 @@ Disabling the backend does not migrate active ciphertext into process memory.
 The readiness endpoint probes a configured repository and degrades while it is
 unavailable, without exposing its URL or Redis error text.
 
-This delivers the shared-session half of the multi-replica roadmap item. Do not
-enable multiple writable Veda Mail replicas yet: scheduled-send/snooze leases,
-send idempotency, attachment quarantine, delivery notices, non-login limits,
-and mutable `/data` repositories still need their documented shared or
-single-writer replacements.
+This advances the multi-replica roadmap item. Do not enable multiple writable
+Veda Mail replicas yet: attachment quarantine, non-login limits, and mutable
+`/data` repositories still need their documented shared or single-writer
+replacements.
 
 ## Optional Redis login limiter
 
@@ -86,6 +88,5 @@ shared control. Existing process-local limits remain in front of Redis.
 This limiter option coordinates authentication throttling only and is separate
 from `VEDA_MAIL_STATE_REDIS_URL`. Operators may use one appropriately isolated
 Redis service with distinct prefixes/credentials, but should grant only the
-commands each database needs. Other request limits, delivery notices, send
-idempotency, attachment quarantine, jobs, and mutable member repositories retain
-the documented single-replica boundary.
+commands each database needs. Other request limits, attachment quarantine, and
+mutable member repositories retain the documented single-replica boundary.

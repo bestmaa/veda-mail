@@ -58,6 +58,8 @@ also Redis-only; losing them can remove duplicate-send protection for provider
 I/O that already happened, so restore Redis before accepting sends. The deliberate job exception for provider credentials is
 an encrypted, bounded scheduled or Undo Send job; it is deleted after confirmed
 delivery or cancellation.
+Bounded partial/uncertain delivery notices are Redis-only in shared-state mode;
+losing Redis may remove those UI warnings before members review them.
 
 `VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
 deployment secret manager. A `/data` backup without that exact key cannot

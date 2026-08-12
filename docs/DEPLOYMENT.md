@@ -167,6 +167,9 @@ renames them with `.migrated-to-redis`; back up Redis before scaling out.
 It also stores connection-scoped immediate-send claims and bounded replay
 receipts as ciphertext. Exactly one replica owns provider I/O; peers poll and
 replay the result, while a configured Redis outage fails send state closed.
+Partial and uncertain delivery notices use separate encrypted, HMAC-opaque
+connection buckets. Append, list, dismissal, expiry, global capacity
+compression, and remote-session cleanup are serialized across replicas.
 `/api/ready` reports the configured shared state store as a bounded dependency and
 returns 503 while it cannot answer `PING`.
 
@@ -175,9 +178,9 @@ login global, trusted-source, and
 subject windows across processes. Configure `VEDA_MAIL_RATE_LIMIT_REDIS_URL`
 with a secret-managed `rediss://` URL and an optional deployment-specific
 `VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
-configured backend fails login closed. Shared sessions and jobs still do not
-remove the general one-replica requirement because quarantine,
-notices, non-login limits, and mutable stores are not yet shared.
+configured backend fails login closed. Shared sessions, jobs, send claims, and
+notices still do not remove the general one-replica requirement because
+quarantine, non-login limits, and mutable stores are not yet shared.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool
 with the same 512 MiB/1,000-record process ceiling and random mode-0600 files in
@@ -441,10 +444,10 @@ official init process currently starts as root before dropping to ClamAV
 service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
-Keep one replica. Administrator/member provider sessions may optionally use the
-encrypted shared Redis repository; non-login rate limits, delivery notices, the
-send idempotency ledger, attachment quarantine, and durable job coordinators
-remain process-local. The encrypted
+Keep one replica. Administrator/member provider sessions, delivery notices,
+send idempotency, and durable job coordinators may use the encrypted shared
+Redis repository; non-login rate limits and attachment quarantine remain
+process-local. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
