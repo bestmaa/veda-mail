@@ -219,6 +219,13 @@ race returns the normal saved-search revision conflict. Preserve the
 installation session secret and include the Redis prefix in backup and rollback
 planning.
 
+Mailbox colors follow the same guarded migration for
+`/data/mailbox-appearance.json`. Exact-record compare-and-set plus bounded retry
+preserves concurrent updates to different folders, and removing the final color
+deletes the owner record. Redis contains only the existing authenticated
+ciphertext behind the HMAC-opaque owner key. Use the same one-replica rollout,
+backup, session-secret, and rollback precautions as saved searches.
+
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
 record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
@@ -467,10 +474,11 @@ claims do not apply to that sidecar.
 Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
-shared Redis repository; message-list preferences and saved searches migrate
-there on first access, and request limits may use their separate backend. The encrypted
+shared Redis repository; message-list preferences, saved searches, and mailbox
+appearance migrate there on first access, and request limits may use their
+separate backend. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
-`/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
+`/data/member-contacts.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
 lose updates. Scaling still requires transactional replacement for all

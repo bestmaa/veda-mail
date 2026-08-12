@@ -78,3 +78,14 @@ export const writeMailboxAppearanceFile = async (
     throw error;
   }
 };
+
+export const archiveMigratedMailboxAppearanceFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ mailboxAppearanceFilePath(),
+      /* turbopackIgnore: true */ `${mailboxAppearanceFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
