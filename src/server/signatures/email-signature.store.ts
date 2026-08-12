@@ -15,19 +15,24 @@ import {
 } from "@/server/signatures/email-signature-crypto";
 import { canonicalizeEmailSignatureContent } from "@/server/signatures/email-signature-content";
 import {
+  archiveMigratedEmailSignatureFile,
   readEmailSignatureFile,
   writeEmailSignatureFile,
 } from "@/server/signatures/email-signature-file";
 import {
   emptyEmailSignatureBook,
+  encryptedEmailSignatureBookSchema,
   type StoredEmailSignatureBook,
 } from "@/server/signatures/email-signature-record";
+import { sharedOwnerRepository } from
+  "@/server/shared-state/shared-owner-repository";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalState = globalThis as typeof globalThis & {
   __vedaMailEmailSignatureQueue?: Promise<void>;
 };
 globalState.__vedaMailEmailSignatureQueue ??= Promise.resolve();
+let migrationPromise: Promise<boolean> | undefined;
 
 const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
   const result = globalState.__vedaMailEmailSignatureQueue!.then(task, task);
@@ -91,6 +96,39 @@ const currentBook = async (
   }
 };
 
+const ensureMigrated = (): Promise<boolean> => {
+  if (!sharedOwnerRepository.configured()) return Promise.resolve(false);
+  migrationPromise ??= sharedOwnerRepository.ensureMigrated(
+    "email-signatures",
+    async () => {
+      const file = await readEmailSignatureFile();
+      return Object.fromEntries(Object.entries(file.owners)
+        .map(([owner, value]) => [owner, JSON.stringify(value)]));
+    },
+    archiveMigratedEmailSignatureFile,
+  );
+  return migrationPromise;
+};
+
+const sharedCurrentBook = async (
+  owner: EmailSignatureOwner, sessionSecret: string,
+) => {
+  const ownerKey = emailSignatureOwnerKey(owner, sessionSecret);
+  const serializedRecord = await sharedOwnerRepository.get(
+    "email-signatures", ownerKey,
+  );
+  const encrypted = serializedRecord
+    ? encryptedEmailSignatureBookSchema.parse(JSON.parse(serializedRecord))
+    : undefined;
+  return {
+    book: encrypted
+      ? decryptEmailSignatureBook(encrypted, ownerKey, sessionSecret)
+      : emptyEmailSignatureBook(),
+    ownerKey,
+    serializedRecord,
+  };
+};
+
 const assertRevision = (
   book: EmailSignatureBook,
   expected: string | null,
@@ -108,7 +146,13 @@ const canonicalContent = (
 export const emailSignatureStore = {
   async get(owner: EmailSignatureOwner): Promise<EmailSignatureBook> {
     const sessionSecret = await secret();
-    return (await currentBook(owner, sessionSecret)).book;
+    try {
+      return await ensureMigrated()
+        ? (await sharedCurrentBook(owner, sessionSecret)).book
+        : (await currentBook(owner, sessionSecret)).book;
+    } catch {
+      return storeUnavailable();
+    }
   },
 
   async put(
@@ -118,6 +162,35 @@ export const emailSignatureStore = {
     const content = canonicalContent(operation);
     return serialized(async () => {
       const sessionSecret = await secret();
+      if (await ensureMigrated()) {
+        let current;
+        try { current = await sharedCurrentBook(owner, sessionSecret); }
+        catch { return storeUnavailable(); }
+        assertRevision(current.book, operation.expectedRevision);
+        let updated: StoredEmailSignatureBook;
+        try {
+          updated = updateEmailSignatureBook(current.book, operation, content);
+        } catch (error) {
+          if (error instanceof ApiError) throw error;
+          return storeUnavailable();
+        }
+        const encrypted = updated.signatures.length === 0
+          ? null
+          : JSON.stringify(encryptEmailSignatureBook(
+            updated, current.ownerKey, sessionSecret,
+          ));
+        let replaced;
+        try {
+          replaced = await sharedOwnerRepository.compareAndSet(
+            "email-signatures", current.ownerKey,
+            current.serializedRecord, encrypted,
+          );
+        } catch { return storeUnavailable(); }
+        if (!replaced) conflict();
+        return updated.signatures.length === 0
+          ? emptyEmailSignatureBook()
+          : updated;
+      }
       const current = await currentBook(owner, sessionSecret);
       assertRevision(current.book, operation.expectedRevision);
       let updated: StoredEmailSignatureBook;

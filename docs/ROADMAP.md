@@ -919,8 +919,10 @@ cross-replica write lock. Encrypted saved-search books now migrate through the
 same boundary, with exact-record Redis compare-and-set preserving revision
 conflicts and atomically deleting empty books. Encrypted mailbox-color books
 also migrate; bounded CAS retry preserves concurrent updates to different
-folders and deletes empty owner records. The checkbox remains open until the
-other writable `/data` boundaries close.
+folders and deletes empty owner records. Email-signature books use the same
+guarded migration and exact-record CAS, preserving their revision conflict and
+deleting the owner record with the final signature. The checkbox remains open
+until the other writable `/data` boundaries close.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

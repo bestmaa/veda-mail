@@ -102,3 +102,14 @@ export const writeEmailSignatureFile = async (
     throw error;
   }
 };
+
+export const archiveMigratedEmailSignatureFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ emailSignatureFilePath(),
+      /* turbopackIgnore: true */ `${emailSignatureFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

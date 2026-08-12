@@ -425,6 +425,12 @@ set/remove operation to the winning record, so concurrent changes to different
 folders converge instead of losing one replica's update. Removing the final
 custom color atomically deletes the shared record and owner index.
 
+Email-signature books also preserve their existing HMAC owner index and
+AES-256-GCM envelope during migration. The exact encrypted record is the Redis
+CAS token, so the existing revision check remains authoritative across replicas:
+one competing writer commits and peers receive HTTP 409. Deleting the final
+signature removes the shared record and returns the canonical empty book.
+
 The workspace response carries the effective server preference. A later list
 query may echo sort and preview context, but the route returns HTTP 409
 `MESSAGE_LIST_PREFERENCES_CHANGED` if either differs from persisted state. A
@@ -1353,9 +1359,9 @@ npm run check:lines
   configured shared sessions survive while Redis and the matching key remain.
 - A multi-replica deployment still needs transactional replacements for the
   remaining process-serialized mutable files. Message-list preferences,
-  revisioned saved-search books, and mailbox appearance are already shared
-  owner records; read-modify-write stores use Redis CAS so replicas cannot
-  silently overwrite one another.
+  revisioned saved-search/signature books, and mailbox appearance are already
+  shared owner records; revisioned/read-modify-write stores use Redis CAS so
+  replicas cannot silently overwrite one another.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,
