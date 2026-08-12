@@ -25,6 +25,8 @@ the supplied Compose deployment.
   delay preferences encrypted in `message-list-preferences.json`
 - Per-provider/mailbox custom folder colors encrypted in
   `mailbox-appearance.json`
+- Per-provider/mailbox saved-search names, canonical queries, and revisions
+  encrypted in `saved-searches.json`
 - Per-provider/mailbox portable label names, colors, opaque IDs, resumable
   deletion progress, and tombstones encrypted in `mail-label-catalog.json`
 - Organization and product branding
@@ -53,13 +55,15 @@ only as authenticated ciphertext in that separately operated service and are
 not part of `/data`. Scheduled-send and snooze books also move to authenticated
 Redis ciphertext on first use; include Redis persistence and a consistent Redis
 backup in every recovery drill. `.migrated-to-redis` files are rollback guards,
-not the current queues. Message-list preference owner records also move as
-their existing authenticated ciphertext; Redis, not the archived local file,
-is current after migration. Short-lived immediate-send claim and replay records are
-also Redis-only; losing them can remove duplicate-send protection for provider
-I/O that already happened, so restore Redis before accepting sends. The deliberate job exception for provider credentials is
-an encrypted, bounded scheduled or Undo Send job; it is deleted after confirmed
-delivery or cancellation.
+not the current queues. Message-list preference and saved-search owner records
+also move as their existing authenticated ciphertext; Redis, not either
+archived local file, is current after migration. Saved-search revisions remain
+atomic in Redis and an empty book deletes its shared record. Short-lived
+immediate-send claim and replay records are also Redis-only; losing them can
+remove duplicate-send protection for provider I/O that already happened, so
+restore Redis before accepting sends. The deliberate job exception for provider
+credentials is an encrypted, bounded scheduled or Undo Send job; it is deleted
+after confirmed delivery or cancellation.
 Bounded partial/uncertain delivery notices are Redis-only in shared-state mode;
 losing Redis may remove those UI warnings before members review them.
 

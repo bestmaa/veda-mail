@@ -42,4 +42,22 @@ describe("shared owner repository failures", () => {
     )).resolves.toBe(false);
     expect(mocks.run).not.toHaveBeenCalled();
   });
+
+  it("applies record limits per owner-store kind", async () => {
+    const evalCommand = vi.fn().mockResolvedValue(1);
+    mocks.run.mockImplementation(async (operation) => operation({
+      eval: evalCommand,
+    }));
+    const owner = "a".repeat(43);
+    const largeSavedSearchBook = "x".repeat((512 * 1_024) + 1);
+    await expect(sharedOwnerRepository.compareAndSet(
+      "saved-searches", owner, null, largeSavedSearchBook,
+    )).resolves.toBe(true);
+    await expect(sharedOwnerRepository.compareAndSet(
+      "message-list-preferences", owner, null, largeSavedSearchBook,
+    )).rejects.toMatchObject({
+      code: "SHARED_OWNER_BACKEND_UNAVAILABLE", status: 503,
+    });
+    expect(evalCommand).toHaveBeenCalledTimes(1);
+  });
 });

@@ -437,6 +437,12 @@ metadata.
   keeps raw owners/preferences out of Redis, caps owners at 10,000, and
   serializes replacement and migration across replicas. Backend failure,
   ciphertext tamper, or post-migration local-data conflict fails closed.
+- Saved-search books retain their HMAC-derived owner indexes and AES-256-GCM
+  envelopes in shared mode. Migration copies ciphertext only and archives the
+  local file. Redis atomically compares the previously read envelope before
+  replacement or deletion, so simultaneous replicas produce one winner and a
+  revision conflict instead of a lost update. Raw names, queries, and account
+  identities never appear in Redis plaintext.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients
