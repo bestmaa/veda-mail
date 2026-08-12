@@ -58,7 +58,7 @@ export const storedMessageListPreferencesSchema = z
   })
   .strict();
 
-const encryptedRecordSchema = z
+export const encryptedMessageListPreferencesSchema = z
   .object({
     algorithm: z.literal("aes-256-gcm"),
     ciphertext: z.string().min(1).max(4_096),
@@ -71,7 +71,7 @@ export const messageListPreferencesFileSchema = z
   .object({
     owners: z.record(
       z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-      encryptedRecordSchema,
+      encryptedMessageListPreferencesSchema,
     ),
     updatedAt: z.string().datetime(),
     version: z.literal(1),

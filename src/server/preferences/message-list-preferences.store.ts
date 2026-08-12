@@ -15,14 +15,18 @@ import {
 } from "@/domain/mail/message-list-preferences";
 import { installationStore } from "@/server/installation/installation.store";
 import {
+  archiveMigratedMessageListPreferencesFile,
   readMessageListPreferencesFile,
   writeMessageListPreferencesFile,
 } from "@/server/preferences/message-list-preferences-file";
 import {
   type EncryptedMessageListPreferences,
+  encryptedMessageListPreferencesSchema,
   storedMessageListPreferencesSchema,
 } from "@/server/preferences/message-list-preferences-record";
 import { ApiError } from "@/transport/http/api-error";
+import { sharedOwnerRepository } from
+  "@/server/shared-state/shared-owner-repository";
 import { messageListPreferencesSchema } from "@/transport/http/message-list-preferences.schema";
 
 const OWNER_CONTEXT = "veda-mail/message-list-preferences/owner/v1";
@@ -31,6 +35,7 @@ const globalState = globalThis as typeof globalThis & {
   __vedaMailMessageListPreferencesQueue?: Promise<void>;
 };
 globalState.__vedaMailMessageListPreferencesQueue ??= Promise.resolve();
+let migrationPromise: Promise<boolean> | undefined;
 
 const unavailable = (): never => {
   throw new ApiError(
@@ -118,12 +123,39 @@ const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
   return result;
 };
 
+const ensureMigrated = (): Promise<boolean> => {
+  if (!sharedOwnerRepository.configured()) return Promise.resolve(false);
+  migrationPromise ??= sharedOwnerRepository.ensureMigrated(
+    "message-list-preferences",
+    async () => {
+      const file = await readMessageListPreferencesFile();
+      return Object.fromEntries(Object.entries(file.owners)
+        .map(([owner, value]) => [owner, JSON.stringify(value)]));
+    },
+    archiveMigratedMessageListPreferencesFile,
+  );
+  return migrationPromise;
+};
+
+const sharedEncrypted = async (
+  ownerKey: string,
+): Promise<EncryptedMessageListPreferences | undefined> => {
+  const value = await sharedOwnerRepository.get(
+    "message-list-preferences", ownerKey,
+  );
+  return value
+    ? encryptedMessageListPreferencesSchema.parse(JSON.parse(value))
+    : undefined;
+};
+
 export const messageListPreferencesStore = {
   async get(owner: MessageListPreferencesOwner): Promise<MessageListPreferences> {
     try {
       const secret = await sessionSecret();
       const ownerKey = messageListPreferencesOwnerKey(owner, secret);
-      const encrypted = (await readMessageListPreferencesFile()).owners[ownerKey];
+      const encrypted = await ensureMigrated()
+        ? await sharedEncrypted(ownerKey)
+        : (await readMessageListPreferencesFile()).owners[ownerKey];
       return encrypted
         ? decrypt(encrypted, ownerKey, secret)
         : { ...DEFAULT_MESSAGE_LIST_PREFERENCES };
@@ -137,8 +169,16 @@ export const messageListPreferencesStore = {
     return serialized(async () => {
       const secret = await sessionSecret();
       try {
-        const file = await readMessageListPreferencesFile();
         const ownerKey = messageListPreferencesOwnerKey(owner, secret);
+        if (await ensureMigrated()) {
+          await sharedOwnerRepository.replace(
+            "message-list-preferences",
+            ownerKey,
+            JSON.stringify(encrypt(preferences, ownerKey, secret)),
+          );
+          return preferences;
+        }
+        const file = await readMessageListPreferencesFile();
         const updatedAt = new Date().toISOString();
         await writeMessageListPreferencesFile({
           ...file,

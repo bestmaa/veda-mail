@@ -203,10 +203,12 @@ longer alive; neither plaintext nor ciphertext is included in backups.
 Message-list preferences create
 `/data/message-list-preferences.json` on first save. Keep it on the same durable
 volume as `installation.json`: its AES-256-GCM key derives from that
-installation's session secret, so neither file is portable by itself. The
-writer uses atomic replacement but is process-serialized; keep one Veda Mail
-writer per mounted `/data` volume. No Stalwart setting, provider-profile
-migration, database/schema migration, or additional network port is required.
+installation's session secret, so neither file is portable by itself. With
+shared-state Redis, first access atomically copies encrypted owner buckets and
+renames the local file with `.migrated-to-redis`; back up Redis before scaling.
+All replicas must retain the same installation session secret and Redis prefix.
+An unavailable backend, invalid ciphertext, or a local file reappearing after
+migration fails preferences closed. No Stalwart or provider migration is needed.
 
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
@@ -456,8 +458,8 @@ claims do not apply to that sidecar.
 Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
-shared Redis repository, and request limits may use their separate backend. The
-encrypted
+shared Redis repository; message-list preferences migrate there on first
+access, and request limits may use their separate backend. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized

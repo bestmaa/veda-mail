@@ -912,8 +912,11 @@ fail-closed backend, weighted limits preserve cost, and readiness probes it.
 Attachment quarantine now shares AES-GCM-authenticated metadata and bounded
 encrypted ciphertext chunks through the state Redis repository. Atomic quotas
 and lifecycle transitions allow upload on one replica and claim/read/consume
-on another; tamper, missing chunks, or backend failure fail closed. The
-checkbox remains open until the remaining writable `/data` boundaries close.
+on another; tamper, missing chunks, or backend failure fail closed. The first
+mutable owner store is also shared: encrypted message-list preferences migrate
+once from `/data`, retain their HMAC-opaque owner indexes, and use a renewable
+cross-replica write lock. The checkbox remains open until the other writable
+`/data` boundaries close.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

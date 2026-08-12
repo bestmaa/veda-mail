@@ -53,7 +53,9 @@ only as authenticated ciphertext in that separately operated service and are
 not part of `/data`. Scheduled-send and snooze books also move to authenticated
 Redis ciphertext on first use; include Redis persistence and a consistent Redis
 backup in every recovery drill. `.migrated-to-redis` files are rollback guards,
-not the current queues. Short-lived immediate-send claim and replay records are
+not the current queues. Message-list preference owner records also move as
+their existing authenticated ciphertext; Redis, not the archived local file,
+is current after migration. Short-lived immediate-send claim and replay records are
 also Redis-only; losing them can remove duplicate-send protection for provider
 I/O that already happened, so restore Redis before accepting sends. The deliberate job exception for provider credentials is
 an encrypted, bounded scheduled or Undo Send job; it is deleted after confirmed

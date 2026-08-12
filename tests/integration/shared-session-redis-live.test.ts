@@ -123,8 +123,8 @@ describe.skipIf(!redisUrl)("live encrypted shared session repository", () => {
     const [recordKey] = await inspector.keys(`${prefix}:session:administrator:record:*`);
     expect(recordKey).toBeDefined();
     const envelope = JSON.parse((await inspector.get(recordKey!))!);
-    const replacement = envelope.ciphertext.endsWith("A") ? "B" : "A";
-    envelope.ciphertext = `${envelope.ciphertext.slice(0, -1)}${replacement}`;
+    const replacement = envelope.ciphertext.startsWith("A") ? "B" : "A";
+    envelope.ciphertext = `${replacement}${envelope.ciphertext.slice(1)}`;
     await inspector.set(recordKey!, JSON.stringify(envelope), { PX: 60_000 });
     resetSharedStateRedisClientForTests();
     await expect(adminSessionStore.getAsync(sessionId, 9)).rejects.toThrow();

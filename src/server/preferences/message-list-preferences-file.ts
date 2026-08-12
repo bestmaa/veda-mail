@@ -18,6 +18,17 @@ const dataDirectory = (): string =>
 export const messageListPreferencesFilePath = (): string =>
   path.join(/* turbopackIgnore: true */ dataDirectory(), FILE_NAME);
 
+export const archiveMigratedMessageListPreferencesFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ messageListPreferencesFilePath(),
+      /* turbopackIgnore: true */ `${messageListPreferencesFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
+
 const emptyFile = (): MessageListPreferencesFile => ({
   owners: {},
   updatedAt: new Date(0).toISOString(),

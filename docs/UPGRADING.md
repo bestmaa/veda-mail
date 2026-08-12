@@ -80,10 +80,12 @@ shortcuts off. Records already carrying sending preferences also migrate with
 shortcuts off, then persist the new shape on the next save. Back it up
 together with `installation.json`, because its key derives from that
 installation's session secret; do not copy either file independently. The
-process-serialized writer has the same single-replica writable-volume
-requirement as other Veda Mail preference stores. Older rollback images ignore
-the file. No environment variable, provider migration, Stalwart change, or new
-port is required. Existing accounts default to comfortable density,
+With shared-state Redis enabled, first access migrates these encrypted records
+and archives the file as `.migrated-to-redis`. Back up Redis first and start one
+new replica before scaling. Drain writes before rollback: older images ignore
+Redis and require restoring the archived filename, which can lose newer shared
+updates. No provider migration, Stalwart change, or new port is required.
+Existing accounts default to comfortable density,
 newest-first order, previews enabled, confirmation off, and immediate send.
 Mailbox shortcuts remain off until the member explicitly enables them; no
 provider, Stalwart, environment, port, or data-file migration is required.
