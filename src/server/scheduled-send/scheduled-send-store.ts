@@ -31,6 +31,7 @@ import {
   scheduledSendUnavailable,
 } from "@/server/scheduled-send/scheduled-send-store-errors";
 import type { ScheduledJob } from "@/server/scheduled-send/scheduled-send-record";
+import { sharedJobRepository } from "@/server/shared-state/shared-job-repository";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalState = globalThis as typeof globalThis & {
@@ -41,7 +42,8 @@ globalState.__vedaMailScheduledJobQueue ??= Promise.resolve();
 export const serializeScheduledJobStore = async <T>(
   task: () => Promise<T>,
 ): Promise<T> => {
-  const result = globalState.__vedaMailScheduledJobQueue!.then(task, task);
+  const locked = () => sharedJobRepository.withLock("scheduled-send", task);
+  const result = globalState.__vedaMailScheduledJobQueue!.then(locked, locked);
   globalState.__vedaMailScheduledJobQueue = result.then(
     () => undefined,
     () => undefined,
@@ -100,6 +102,7 @@ const createJob = (input: ScheduleMessageInput): ScheduledJob => {
     createdAt: now,
     id: randomUUID(),
     lastError: null,
+    leaseExpiresAt: null,
     leaseId: null,
     nextAttemptAt: input.scheduledAt,
     purpose: input.purpose ?? "scheduled",
@@ -150,7 +153,7 @@ export const scheduledSendStore = {
       }
       if (
         current.book === null &&
-        Object.keys(current.file.owners).length >= MAX_SCHEDULED_MESSAGE_OWNERS
+        current.ownerCount >= MAX_SCHEDULED_MESSAGE_OWNERS
       ) {
         return scheduledMessageCapacity();
       }
@@ -191,6 +194,7 @@ export const scheduledSendStore = {
             attemptCount: 0,
             ...(connection ? { connection } : {}),
             lastError: null,
+            leaseExpiresAt: null,
             leaseId: null,
             nextAttemptAt: scheduledAt,
             scheduledAt,

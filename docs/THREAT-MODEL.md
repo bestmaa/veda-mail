@@ -1475,9 +1475,9 @@ never accepts entry names from the provider or browser.
 
 ## Supported deployment boundary
 
-Veda Mail currently supports one writable application replica. The encrypted
-shared-session repository removes one boundary, but operators must not
-load-balance writable replicas as if job leases, send idempotency, quarantine,
+Veda Mail currently supports one general writable application replica. The encrypted
+shared-session and shared-job repositories remove two boundaries, but operators must not
+load-balance writable replicas as if send idempotency, quarantine,
 delivery notices, mutable files, and every rate limit were shared. Horizontal
 scaling is supported only after those remaining coordinators are implemented
 and tested.

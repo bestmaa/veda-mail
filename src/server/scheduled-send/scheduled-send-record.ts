@@ -44,6 +44,7 @@ export const scheduledJobSchema = z
     createdAt: z.string().datetime(),
     id: z.string().uuid(),
     lastError: z.string().max(200).nullable(),
+    leaseExpiresAt: z.string().datetime().nullable().default(null),
     leaseId: z.string().min(32).max(100).nullable(),
     nextAttemptAt: z.string().datetime(),
     purpose: z.enum(["scheduled", "undo"]).default("scheduled"),
@@ -63,7 +64,7 @@ export const scheduledJobBookSchema = z
   })
   .strict();
 
-const encryptedBookSchema = z
+export const encryptedScheduledJobBookSchema = z
   .object({
     algorithm: z.literal("aes-256-gcm"),
     ciphertext: z.string().min(1).max(64 * 1024 * 1024),
@@ -77,7 +78,7 @@ export const scheduledJobFileSchema = z
     keyCheck: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
     owners: z.record(
       z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-      encryptedBookSchema,
+      encryptedScheduledJobBookSchema,
     ),
     updatedAt: z.string().datetime(),
     version: z.literal(1),

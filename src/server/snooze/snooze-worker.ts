@@ -77,6 +77,7 @@ export const processSnoozeJobs = async (
   port: SnoozeOperationPort,
   now = new Date(),
 ): Promise<number> => {
+  await recoverInterruptedSnoozes(now);
   let processed = 0;
   while (processed < MAX_JOBS_PER_TICK) {
     const claim = await claimNextSnoozeJob(now);

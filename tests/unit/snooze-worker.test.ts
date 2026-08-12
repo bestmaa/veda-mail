@@ -24,6 +24,7 @@ const claim = (): SnoozeClaim => ({
     id: "11111111-1111-4111-8111-111111111111", providerId: "mock" },
     createdAt: "2026-08-04T00:00:00.000Z", from: [],
     id: "22222222-2222-4222-8222-222222222222", lastError: null,
+    leaseExpiresAt: null,
     leaseId: "x".repeat(43), messageId: "message", nextAttemptAt: "2026-08-04T00:00:00.000Z",
     phase: "hide", plan, sourceMailboxId: "inbox", state: "hiding",
     subject: "Subject", updatedAt: "2026-08-04T00:00:00.000Z", version: 1,

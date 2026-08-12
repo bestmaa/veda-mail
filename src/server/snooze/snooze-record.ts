@@ -54,6 +54,7 @@ export const snoozeJobSchema = z.object({
   connection: connectionSchema.nullable(), createdAt: z.string().datetime(),
   from: z.array(z.string().min(1).max(998)).max(100), id: z.string().uuid(),
   lastError: z.string().max(200).nullable(), leaseId: bounded(100).nullable(),
+  leaseExpiresAt: z.string().datetime().nullable().default(null),
   messageId: bounded(2_048), nextAttemptAt: z.string().datetime(),
   phase: z.enum(["hide", "wake"]),
   plan: snoozeProviderPlanSchema, sourceMailboxId: bounded(1_024),
@@ -66,7 +67,7 @@ export const snoozeJobBookSchema = z.object({
   jobs: z.array(snoozeJobSchema).max(MAX_SNOOZED_MESSAGES_PER_OWNER),
   mailbox: ownedMailboxSchema.nullable(), revision: bounded(200), version: z.literal(1),
 }).strict();
-const encryptedSchema = z.object({
+export const encryptedSnoozeJobBookSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
   ciphertext: bounded(64 * 1024 * 1024),
   iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
@@ -74,7 +75,7 @@ const encryptedSchema = z.object({
 }).strict();
 export const snoozeJobFileSchema = z.object({
   keyCheck: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-  owners: z.record(z.string().regex(/^[A-Za-z0-9_-]{43}$/u), encryptedSchema),
+  owners: z.record(z.string().regex(/^[A-Za-z0-9_-]{43}$/u), encryptedSnoozeJobBookSchema),
   updatedAt: z.string().datetime(), version: z.literal(1),
 }).strict().refine((file) => Object.keys(file.owners).length <= MAX_SNOOZE_OWNERS);
 

@@ -50,7 +50,10 @@ It does not contain mailbox messages. Messages remain on the configured mail
 server. Active member sessions disappear on restart in the default local mode.
 When the optional shared Redis repository is configured, active sessions remain
 only as authenticated ciphertext in that separately operated service and are
-not part of `/data`. The deliberate job exception for provider credentials is
+not part of `/data`. Scheduled-send and snooze books also move to authenticated
+Redis ciphertext on first use; include Redis persistence and a consistent Redis
+backup in every recovery drill. `.migrated-to-redis` files are rollback guards,
+not the current queues. The deliberate job exception for provider credentials is
 an encrypted, bounded scheduled or Undo Send job; it is deleted after confirmed
 delivery or cancellation.
 

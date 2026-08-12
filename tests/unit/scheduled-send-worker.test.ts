@@ -22,6 +22,7 @@ const claim = (): ScheduledJobClaim => ({
     createdAt: "2026-08-02T00:00:00.000Z",
     id: "22222222-2222-4222-8222-222222222222",
     lastError: null,
+    leaseExpiresAt: null,
     leaseId: "x".repeat(43),
     nextAttemptAt: "2026-08-02T01:00:00.000Z",
     purpose: "scheduled",

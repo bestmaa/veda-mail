@@ -43,6 +43,10 @@ VEDA_MAIL_STATE_REDIS_PREFIX=veda-mail:state:v1
 VEDA_MAIL_JOB_KEY=<the same base64-encoded 32-byte key on every replica>
 ```
 
+This shared-state repository also carries owner-bound encrypted scheduled-send
+and snooze books. It never stores their provider credentials or message content
+as plaintext; queue migration and backup guidance is in the deployment runbook.
+
 Use a dedicated least-privilege Redis database, TLS across untrusted networks,
 network allowlisting, authentication, persistence, backups, memory limits with
 a no-eviction policy, and availability monitoring. Redis never receives raw
