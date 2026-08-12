@@ -334,10 +334,15 @@ Do not run old and new versions concurrently against the same `/data` volume.
 
 ## Session impact
 
-Deployments and restarts sign out members because provider credentials are
-normally kept only in process memory. Encrypted scheduled jobs continue when
-the exact `VEDA_MAIL_JOB_KEY` is preserved. Warn users before maintenance and
-check the queue for review-only interrupted sends after an ungraceful stop.
+Deployments and restarts sign out members in the default local-session mode.
+The optional `VEDA_MAIL_STATE_REDIS_URL` repository preserves strict encrypted
+administrator/member records only when every process keeps the exact same
+prefix and `VEDA_MAIL_JOB_KEY`. Enabling it does not migrate already-active
+local sessions; disabling it does not decrypt/migrate Redis sessions. Older
+images ignore the new variables and therefore sign users out. Encrypted
+scheduled jobs continue when the exact key is preserved. Warn users before
+maintenance and check the queue for review-only interrupted sends after an
+ungraceful stop.
 
 ## Development verification
 

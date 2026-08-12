@@ -8,11 +8,13 @@ describe("readiness snapshot", () => {
       readinessSnapshot({
         checkData: vi.fn().mockResolvedValue(undefined),
         checkScanner: vi.fn().mockResolvedValue(undefined),
+        checkSessionStore: vi.fn().mockResolvedValue(undefined),
       }),
     ).resolves.toMatchObject({
       checks: [
         { name: "data", status: "ok" },
         { name: "scanner", status: "ok" },
+        { name: "session-store", status: "ok" },
       ],
       service: "veda-mail",
       status: "ready",
@@ -23,11 +25,13 @@ describe("readiness snapshot", () => {
     const snapshot = await readinessSnapshot({
       checkData: vi.fn().mockResolvedValue(undefined),
       checkScanner: vi.fn().mockRejectedValue(new Error("private host")),
+      checkSessionStore: vi.fn().mockResolvedValue(undefined),
     });
     expect(snapshot).toMatchObject({
       checks: [
         { name: "data", status: "ok" },
         { name: "scanner", status: "failed" },
+        { name: "session-store", status: "ok" },
       ],
       status: "degraded",
     });

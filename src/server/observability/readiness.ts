@@ -5,9 +5,11 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 
 import { probeClamAv } from "@/server/observability/clamav-probe";
+import { probeSharedStateRedis } from
+  "@/server/shared-state/shared-state-redis";
 
 export interface ReadinessCheck {
-  readonly name: "data" | "scanner";
+  readonly name: "data" | "scanner" | "session-store";
   readonly status: "failed" | "ok";
 }
 
@@ -19,6 +21,7 @@ export const readinessSnapshot = async (
   dependencies: {
     readonly checkData?: () => Promise<void>;
     readonly checkScanner?: () => Promise<void>;
+    readonly checkSessionStore?: () => Promise<void>;
   } = {},
 ) => {
   const startedAt = performance.now();
@@ -30,12 +33,17 @@ export const readinessSnapshot = async (
           constants.R_OK | constants.W_OK | constants.X_OK,
         )))(),
     (dependencies.checkScanner ?? probeClamAv)(),
+    (dependencies.checkSessionStore ?? probeSharedStateRedis)(),
   ]);
   const checks: readonly ReadinessCheck[] = [
     { name: "data", status: results[0]?.status === "fulfilled" ? "ok" : "failed" },
     {
       name: "scanner",
       status: results[1]?.status === "fulfilled" ? "ok" : "failed",
+    },
+    {
+      name: "session-store",
+      status: results[2]?.status === "fulfilled" ? "ok" : "failed",
     },
   ];
   const ready = checks.every((check) => check.status === "ok");

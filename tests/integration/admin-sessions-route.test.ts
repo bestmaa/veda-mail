@@ -21,13 +21,13 @@ vi.mock("@/server/auth/admin-session", () => ({
 }));
 vi.mock("@/server/auth/admin-session-store", () => ({
   ADMIN_SESSION_IDLE_TTL_SECONDS: 1_800,
-  adminSessionStore: { list: mocks.adminList, remove: mocks.adminRemove },
+  adminSessionStore: { listAsync: mocks.adminList, removeAsync: mocks.adminRemove },
 }));
 vi.mock("@/server/auth/session-management", () => ({
   sessionManagementId: (_kind: string, id: string) => id === "admin-current" || id === "member-a" ? handle : "b".repeat(43),
 }));
 vi.mock("@/server/connections/connection-store", () => ({
-  connectionStore: { listAll: mocks.memberList, remove: mocks.memberRemove },
+  connectionStore: { listAllAsync: mocks.memberList, removeAsync: mocks.memberRemove },
 }));
 vi.mock("@/server/installation/installation.store", () => ({
   installationStore: { get: mocks.installationGet },

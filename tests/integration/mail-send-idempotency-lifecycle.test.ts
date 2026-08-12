@@ -111,7 +111,7 @@ describe("mail send idempotency lifecycle", () => {
     const draftId = crypto.randomUUID();
     const owner = POST(request(draftId));
     await vi.waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledOnce());
-    const begin = vi.spyOn(connectionStore, "beginSendIfActive");
+    const begin = vi.spyOn(connectionStore, "beginSendIfActiveAsync");
     const waiter = POST(request(draftId));
     await vi.waitFor(() => expect(begin).toHaveBeenCalledOnce());
 

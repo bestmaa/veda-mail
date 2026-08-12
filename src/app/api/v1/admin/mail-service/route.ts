@@ -79,7 +79,7 @@ export const PUT = async (request: Request) => {
       ...input,
       config,
     });
-    connectionStore.clearAll();
+    await connectionStore.clearAllAsync();
     audit.applied();
     await audit.success();
     return apiSuccess({

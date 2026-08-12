@@ -63,7 +63,7 @@ export const issueAdminToken = async (
     expiresAt,
     nonce,
   ].join(".");
-  adminSessionStore.create({
+  await adminSessionStore.createAsync({
     authVersion: current.owner.authVersion,
     expiresAt: expiresAtNumber * 1_000,
     id: nonce,
@@ -104,7 +104,7 @@ export const verifyAdminToken = async (
     signature(payload, current.sessionSecret),
   );
   return validSignature && Boolean(
-    adminSessionStore.get(nonce, current.owner.authVersion),
+    await adminSessionStore.getAsync(nonce, current.owner.authVersion),
   );
 };
 
@@ -113,7 +113,7 @@ export const revokeAdminToken = async (
 ): Promise<boolean> => {
   if (!(await verifyAdminToken(token))) return false;
   const nonce = token?.split(".")[2];
-  return nonce ? adminSessionStore.remove(nonce) : false;
+  return nonce ? adminSessionStore.removeAsync(nonce) : false;
 };
 
 export const getCurrentAdminSessionId = async (): Promise<string | null> => {

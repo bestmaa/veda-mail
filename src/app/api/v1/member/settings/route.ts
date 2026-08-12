@@ -160,10 +160,10 @@ export const PUT = async (request: Request) => {
       ...(input.otpCode ? { otpCode: input.otpCode } : {}),
     });
     if (authentication.status === "authenticated") {
-      connectionStore.updateConfig(connection.id, authentication.config);
+      await connectionStore.updateConfigAsync(connection.id, authentication.config);
       return apiSuccess({ changed: true, sessionActive: true });
     }
-    connectionStore.remove(connection.id);
+    await connectionStore.removeAsync(connection.id);
     return apiSuccess({ changed: true, sessionActive: false });
   } catch (error) {
     return apiFailure(error, "Unable to change the mailbox password.");

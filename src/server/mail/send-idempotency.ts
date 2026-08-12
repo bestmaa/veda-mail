@@ -62,7 +62,7 @@ export const prepareIdempotentSend = async (
   draftId: DraftId,
   intent: CanonicalSendIntent,
 ): Promise<PreparedSend> => {
-  const begun = connectionStore.beginSendIfActive(
+  const begun = await connectionStore.beginSendIfActiveAsync(
     connection,
     draftId,
     sendIntentFingerprint(intent),

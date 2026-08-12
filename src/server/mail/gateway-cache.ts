@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import { getProviderRegistry } from "@/bootstrap/provider-registry";
 import type { ProviderConnection } from "@/domain/provider/provider";
@@ -11,22 +13,34 @@ import {
   logWarn,
   safeErrorType,
 } from "@/server/observability/structured-log";
+import { sharedStateRedisConfigured } from
+  "@/server/shared-state/shared-state-redis";
 
 const globalCache = globalThis as typeof globalThis & {
-  __vedaMailGateways?: Map<ConnectionId, Promise<MailGateway>>;
+  __vedaMailGateways?: Map<ConnectionId, {
+    readonly fingerprint: string;
+    readonly gateway: Promise<MailGateway>;
+  }>;
 };
 
 const gateways =
-  globalCache.__vedaMailGateways ?? new Map<ConnectionId, Promise<MailGateway>>();
+  globalCache.__vedaMailGateways ?? new Map();
 
 globalCache.__vedaMailGateways = gateways;
 
 export const resolveGateway = (
   connection: ProviderConnection,
 ): Promise<MailGateway> => {
-  const existing = gateways.get(connection.id);
-  if (existing) {
-    return existing;
+  const cacheEnabled = !sharedStateRedisConfigured();
+  const fingerprint = createHash("sha256").update(JSON.stringify({
+    config: Object.entries(connection.config).toSorted(([left], [right]) =>
+      left.localeCompare(right)),
+    createdAt: connection.createdAt,
+    providerId: connection.providerId,
+  })).digest("base64url");
+  const existing = cacheEnabled ? gateways.get(connection.id) : undefined;
+  if (existing?.fingerprint === fingerprint) {
+    return existing.gateway;
   }
   const providerModule = getProviderRegistry().get(connection.providerId);
   const startedAt = performance.now();
@@ -42,7 +56,9 @@ export const resolveGateway = (
       return observeMailGateway(created, connection.providerId);
     })
     .catch(async (error: unknown) => {
-      gateways.delete(connection.id);
+      if (gateways.get(connection.id)?.gateway === gateway) {
+        gateways.delete(connection.id);
+      }
       const durationMs = performance.now() - startedAt;
       const requestId = await currentRequestId();
       observeProviderOperation(
@@ -61,7 +77,7 @@ export const resolveGateway = (
       });
       throw error;
     });
-  gateways.set(connection.id, gateway);
+  if (cacheEnabled) gateways.set(connection.id, { fingerprint, gateway });
   return gateway;
 };
 

@@ -48,10 +48,10 @@ vi.mock("@/server/connections/connection-session", () => ({
 }));
 vi.mock("@/server/connections/connection-store", () => ({
   connectionStore: {
-    create: mocks.connectionCreate,
-    isActive: mocks.connectionIsActive,
-    remove: mocks.connectionRemove,
-    updateConfig: mocks.connectionUpdate,
+    createAsync: mocks.connectionCreate,
+    isActiveAsync: mocks.connectionIsActive,
+    removeAsync: mocks.connectionRemove,
+    updateConfigAsync: mocks.connectionUpdate,
   },
 }));
 vi.mock("@/server/mail/attachment-service", () => ({

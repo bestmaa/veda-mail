@@ -222,9 +222,10 @@ preserve it, while sign-out, connection expiry, or full reset clears it. Every
 notice bucket expires within 12 hours. This queue is deliberately not durable
 across process restarts or independent replicas.
 
-The idempotency ledger is also process-local. A restart signs out the member,
-and independent replicas must not be used as interchangeable send targets
-without a shared encrypted session and atomic idempotency implementation.
+The idempotency ledger is also process-local. The optional encrypted Redis
+session repository can preserve the member session across a restart, but
+independent replicas must not be used as interchangeable send targets until
+the send ledger is also atomic and shared.
 
 ## Provider draft boundary
 
@@ -1304,11 +1305,17 @@ npm run check:lines
   request, and production startup removes bounded orphan quarantine
   directories. They are not mailbox storage or backup content.
 - Member connections and ordinary gateway credentials are memory-only for 12
-  hours. Explicit scheduled jobs carry a bounded encrypted credential copy as
-  described above.
-- Restarting the process intentionally signs every member out.
-- A multi-replica deployment needs a shared encrypted session repository and
-  coordinated rate limiter, plus transactional replacements for the
+  hours by default. When `VEDA_MAIL_STATE_REDIS_URL` is configured, strict
+  session records are AES-256-GCM encrypted under `VEDA_MAIL_JOB_KEY`, stored
+  behind HMAC-opaque indexes, and atomically idle-touched/revoked in Redis.
+  Provider gateway objects are not retained in the process cache in this mode,
+  so remote revocation cannot leave a reusable credential-bearing gateway on
+  another replica.
+  Explicit scheduled jobs carry a separate bounded encrypted credential copy.
+- Restarting the process signs every member out in the default local mode;
+  configured shared sessions survive while Redis and the matching key remain.
+- A multi-replica deployment additionally needs coordinated rate limiting and
+  transactional replacements for the
   process-serialized signature, template, and scheduled-job files, behind the
   existing server boundary.
 

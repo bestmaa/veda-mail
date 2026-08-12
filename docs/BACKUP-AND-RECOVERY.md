@@ -47,10 +47,12 @@ the supplied Compose deployment.
   `security-audit.json`
 
 It does not contain mailbox messages. Messages remain on the configured mail
-server. Active member sessions are process-memory only and disappear on
-restart. The deliberate exception for provider credentials is an encrypted,
-bounded scheduled or Undo Send job; it is deleted after confirmed delivery or
-cancellation.
+server. Active member sessions disappear on restart in the default local mode.
+When the optional shared Redis repository is configured, active sessions remain
+only as authenticated ciphertext in that separately operated service and are
+not part of `/data`. The deliberate job exception for provider credentials is
+an encrypted, bounded scheduled or Undo Send job; it is deleted after confirmed
+delivery or cancellation.
 
 `VEDA_MAIL_JOB_KEY` is deliberately separate from `/data`. Back it up in the
 deployment secret manager. A `/data` backup without that exact key cannot
@@ -202,7 +204,10 @@ complete.
 Restoring an older backup also restores its administrator credentials,
 branding, provider profile, setup lock, signature books/defaults, reusable
 templates, contacts, groups, and recent-recipient history as of that snapshot.
-Existing member sessions are not restored. Do not restore
+Existing local member sessions are not restored. Shared Redis sessions follow
+the Redis backup/TTL lifecycle and require the exact `VEDA_MAIL_JOB_KEY`; isolate
+or flush the test prefix before a restore drill so it cannot reach production
+sessions. Do not restore
 `member-signatures.json`, `member-templates.json`, or `member-contacts.json`
 without the matching `installation.json`; an authentication or decryption
 failure is intentionally reported as an unavailable store rather than falling

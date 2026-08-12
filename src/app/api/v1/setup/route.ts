@@ -94,7 +94,7 @@ export const POST = async (request: Request) => {
         owner: { password, username: parsed.adminUsername },
       };
     });
-    connectionStore.clearAll();
+    await connectionStore.clearAllAsync();
     audit.applied();
     await audit.success();
     const response = apiSuccess(

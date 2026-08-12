@@ -138,7 +138,7 @@ export const PUT = async (request: Request) => {
     audit.applied();
     await audit.success();
     twoFactorEnrollmentStore.remove(current.connection.id);
-    connectionStore.updateConfig(current.connection.id, config);
+    await connectionStore.updateConfigAsync(current.connection.id, config);
     return apiSuccess({
       enabled: true,
       recoveryCodes,
@@ -190,7 +190,7 @@ export const DELETE = async (request: Request) => {
     audit.applied();
     await audit.success();
     twoFactorEnrollmentStore.remove(current.connection.id);
-    connectionStore.updateConfig(current.connection.id, config);
+    await connectionStore.updateConfigAsync(current.connection.id, config);
     return apiSuccess({ enabled: false, sessionActive: true });
   } catch (error) {
     await audit?.failureIfPending();

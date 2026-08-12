@@ -1,249 +1,130 @@
 import "server-only";
-import { createHash } from "node:crypto";
-import type { ConnectionInput, ProviderConnection } from "@/domain/provider/provider";
+
 import type { SendReceipt } from "@/domain/mail/mail";
+import type { ConnectionInput, ProviderConnection } from "@/domain/provider/provider";
 import type { ConnectionId, DraftId } from "@/domain/shared/brand";
-import { id } from "@/domain/shared/brand";
-import { twoFactorEnrollmentStore } from "@/server/auth/two-factor-enrollment";
-import {
-  storedConnectionExpiresAt,
-  touchStoredConnection,
-  type ConnectionSessionMetadata,
-  type StoredConnection,
-} from "@/server/connections/connection-session-record";
-import { connectionState as state } from "@/server/connections/connection-store-state";
-import { clearGateway } from "@/server/mail/gateway-cache";
-import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
-import {
-  sendIdempotencyStore,
-  type SendIdempotencyBegin,
-} from "@/server/mail/send-idempotency-store";
+import type { ConnectionSessionMetadata } from
+  "@/server/connections/connection-session-record";
+import { localConnectionStore } from "@/server/connections/local-connection-store";
+import { sharedConnectionStore } from "@/server/connections/shared-connection-store";
+import { sharedStateRedisConfigured } from "@/server/shared-state/shared-state-redis";
+
 export type {
   ConnectionSessionMetadata,
   StoredConnection,
 } from "@/server/connections/connection-session-record";
 
-const clearConnectionResources = (connectionId: ConnectionId): void => {
-  clearGateway(connectionId);
-  deliveryNoticeStore.clear(connectionId);
-  sendIdempotencyStore.clear(connectionId);
-  twoFactorEnrollmentStore.remove(connectionId);
-};
-
-const removeStoredConnection = (
-  connectionId: ConnectionId,
-  expectedCreatedAt?: string,
-): boolean => {
-  const stored = state.connections.get(connectionId);
-  if (!stored) {
-    if (expectedCreatedAt) return false;
-    const timer = state.expiryTimers.get(connectionId);
-    if (timer) clearTimeout(timer);
-    state.expiryTimers.delete(connectionId);
-    clearConnectionResources(connectionId);
-    return false;
-  }
-  if (expectedCreatedAt && stored.connection.createdAt !== expectedCreatedAt) {
-    return false;
-  }
-  state.connections.delete(connectionId);
-  const timer = state.expiryTimers.get(connectionId);
-  if (timer) clearTimeout(timer);
-  state.expiryTimers.delete(connectionId);
-  clearConnectionResources(connectionId);
-  return true;
-};
-
-const scheduleExpiry = (stored: StoredConnection): void => {
-  const { connection } = stored;
-  const existingTimer = state.expiryTimers.get(connection.id);
-  if (existingTimer) clearTimeout(existingTimer);
-  state.expiryTimers.delete(connection.id);
-  const expiresAt = storedConnectionExpiresAt(stored);
-  const remaining = expiresAt === null ? 0 : expiresAt - Date.now();
-  if (remaining <= 0) {
-    removeStoredConnection(connection.id, connection.createdAt);
-    return;
-  }
-  const timer = setTimeout(() => {
-    removeStoredConnection(connection.id, connection.createdAt);
-  }, remaining);
-  timer.unref();
-  state.expiryTimers.set(connection.id, timer);
-};
-
-const pruneExpiredConnections = (): void => {
-  for (const [connectionId, stored] of state.connections) {
-    const expiresAt = storedConnectionExpiresAt(stored);
-    if (expiresAt === null || expiresAt <= Date.now()) {
-      removeStoredConnection(connectionId, stored.connection.createdAt);
-    }
+const assertLocal = (): void => {
+  if (sharedStateRedisConfigured()) {
+    throw new Error("Use the asynchronous connection-store API with shared state.");
   }
 };
-
-for (const stored of state.connections.values()) {
-  scheduleExpiry(stored);
-}
 
 export const connectionStore = {
   beginSendIfActive(
     connection: ProviderConnection,
     draftId: DraftId,
     fingerprint: string,
-  ): SendIdempotencyBegin | { readonly kind: "inactive" } {
-    pruneExpiredConnections();
-    const stored = state.connections.get(connection.id);
-    const current = stored?.connection;
-    if (
-      !current ||
-      current.createdAt !== connection.createdAt ||
-      current.providerId !== connection.providerId
-    ) {
-      return { kind: "inactive" };
-    }
-    const expiresAt = stored ? storedConnectionExpiresAt(stored) : null;
-    if (expiresAt === null || expiresAt <= Date.now()) {
-      removeStoredConnection(connection.id, current.createdAt);
-      return { kind: "inactive" };
-    }
-    return sendIdempotencyStore.begin(
-      connection.id,
-      draftId,
-      fingerprint,
-      expiresAt,
-    );
+  ) {
+    assertLocal();
+    return localConnectionStore.beginSendIfActive(connection, draftId, fingerprint);
   },
-
-  appendDeliveryNoticeIfActive(
-    connection: ProviderConnection,
-    receipt: SendReceipt,
-  ): boolean {
-    pruneExpiredConnections();
-    const stored = state.connections.get(connection.id);
-    const current = stored?.connection;
-    if (
-      !current ||
-      current.createdAt !== connection.createdAt ||
-      current.providerId !== connection.providerId
-    ) {
-      return false;
-    }
-    const expiresAt = stored ? storedConnectionExpiresAt(stored) : null;
-    if (expiresAt === null || expiresAt <= Date.now()) {
-      removeStoredConnection(connection.id, current.createdAt);
-      return false;
-    }
-    const admitted = deliveryNoticeStore.append(
-      connection.id,
-      receipt,
-      expiresAt,
-    );
-    if (!admitted && stored) {
-      state.connections.set(connection.id, {
-        ...stored,
-        deliveryNoticeCapacityWarning: true,
-      });
-    }
-    return admitted;
+  appendDeliveryNoticeIfActive(connection: ProviderConnection, receipt: SendReceipt) {
+    assertLocal();
+    return localConnectionStore.appendDeliveryNoticeIfActive(connection, receipt);
   },
-
   create(
     input: ConnectionInput,
     profileRevision: string,
     metadata?: ConnectionSessionMetadata,
-  ): ProviderConnection {
-    pruneExpiredConnections();
-    const connection: ProviderConnection = {
-      ...input,
-      createdAt: new Date().toISOString(),
-      id: id.connection(crypto.randomUUID()),
-    };
-    const stored: StoredConnection = {
-      clientLabel: metadata?.clientLabel ?? "Unknown client",
-      connection,
-      deliveryNoticeCapacityWarning: false,
-      lastSeenAt: connection.createdAt,
-      ownerKey: metadata?.ownerKey ?? createHash("sha256")
-        .update(connection.id).digest("base64url"),
-      profileRevision,
-    };
-    state.connections.set(connection.id, stored);
-    scheduleExpiry(stored);
-    return connection;
+  ) {
+    assertLocal();
+    return localConnectionStore.create(input, profileRevision, metadata);
   },
-
-  get(connectionId: ConnectionId): StoredConnection | null {
-    pruneExpiredConnections();
-    const stored = state.connections.get(connectionId);
-    if (!stored) return null;
-    const updated = touchStoredConnection(stored);
-    state.connections.set(connectionId, updated);
-    scheduleExpiry(updated);
-    return updated;
+  get(connectionId: ConnectionId) { assertLocal(); return localConnectionStore.get(connectionId); },
+  listAll() { assertLocal(); return localConnectionStore.listAll(); },
+  listForOwner(ownerKey: string) {
+    assertLocal();
+    return localConnectionStore.listForOwner(ownerKey);
   },
-
-  listAll(): readonly StoredConnection[] {
-    pruneExpiredConnections();
-    return [...state.connections.values()].toSorted((left, right) =>
-      right.lastSeenAt.localeCompare(left.lastSeenAt),
-    );
+  hasDeliveryNoticeCapacityWarning(connection: ProviderConnection) {
+    assertLocal();
+    return localConnectionStore.hasDeliveryNoticeCapacityWarning(connection);
   },
-
-  listForOwner(ownerKey: string): readonly StoredConnection[] {
-    return this.listAll().filter((stored) => stored.ownerKey === ownerKey);
+  isActive(connection: ProviderConnection) {
+    assertLocal();
+    return localConnectionStore.isActive(connection);
   },
-
-  hasDeliveryNoticeCapacityWarning(connection: ProviderConnection): boolean {
-    pruneExpiredConnections();
-    const stored = state.connections.get(connection.id);
-    const current = stored?.connection;
-    return Boolean(
-      stored?.deliveryNoticeCapacityWarning &&
-        current?.createdAt === connection.createdAt &&
-        current.providerId === connection.providerId,
-    );
+  remove(connectionId: ConnectionId) { assertLocal(); localConnectionStore.remove(connectionId); },
+  updateConfig(connectionId: ConnectionId, config: Readonly<Record<string, string>>) {
+    assertLocal();
+    return localConnectionStore.updateConfig(connectionId, config);
   },
+  clearAll() { assertLocal(); localConnectionStore.clearAll(); },
 
-  isActive(connection: ProviderConnection): boolean {
-    pruneExpiredConnections();
-    const current = state.connections.get(connection.id)?.connection;
-    return Boolean(
-      current &&
-        current.createdAt === connection.createdAt &&
-        current.providerId === connection.providerId,
-    );
+  async beginSendIfActiveAsync(
+    connection: ProviderConnection,
+    draftId: DraftId,
+    fingerprint: string,
+  ) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.beginSendIfActive(connection, draftId, fingerprint)
+      : localConnectionStore.beginSendIfActive(connection, draftId, fingerprint);
   },
-
-  remove(connectionId: ConnectionId): void {
-    removeStoredConnection(connectionId);
+  async appendDeliveryNoticeIfActiveAsync(
+    connection: ProviderConnection,
+    receipt: SendReceipt,
+  ) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.appendDeliveryNoticeIfActive(connection, receipt)
+      : localConnectionStore.appendDeliveryNoticeIfActive(connection, receipt);
   },
-
-  updateConfig(
+  async createAsync(
+    input: ConnectionInput,
+    profileRevision: string,
+    metadata?: ConnectionSessionMetadata,
+  ) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.create(input, profileRevision, metadata)
+      : localConnectionStore.create(input, profileRevision, metadata);
+  },
+  async getAsync(connectionId: ConnectionId) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.get(connectionId) : localConnectionStore.get(connectionId);
+  },
+  async listAllAsync() {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.listAll() : localConnectionStore.listAll();
+  },
+  async listForOwnerAsync(ownerKey: string) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.listForOwner(ownerKey)
+      : localConnectionStore.listForOwner(ownerKey);
+  },
+  async hasDeliveryNoticeCapacityWarningAsync(connection: ProviderConnection) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.hasDeliveryNoticeCapacityWarning(connection)
+      : localConnectionStore.hasDeliveryNoticeCapacityWarning(connection);
+  },
+  async isActiveAsync(connection: ProviderConnection) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.isActive(connection)
+      : localConnectionStore.isActive(connection);
+  },
+  async removeAsync(connectionId: ConnectionId) {
+    if (sharedStateRedisConfigured()) await sharedConnectionStore.remove(connectionId);
+    else localConnectionStore.remove(connectionId);
+  },
+  async updateConfigAsync(
     connectionId: ConnectionId,
     config: Readonly<Record<string, string>>,
-  ): ProviderConnection {
-    pruneExpiredConnections();
-    const stored = state.connections.get(connectionId);
-    if (!stored) {
-      throw new Error("Mail connection was not found.");
-    }
-    const connection = { ...stored.connection, config };
-    state.connections.set(connectionId, { ...stored, connection });
-    clearGateway(connectionId);
-    return connection;
+  ) {
+    return sharedStateRedisConfigured()
+      ? sharedConnectionStore.updateConfig(connectionId, config)
+      : localConnectionStore.updateConfig(connectionId, config);
   },
-
-  clearAll(): void {
-    for (const timer of state.expiryTimers.values()) {
-      clearTimeout(timer);
-    }
-    state.expiryTimers.clear();
-    for (const connectionId of state.connections.keys()) {
-      clearGateway(connectionId);
-      twoFactorEnrollmentStore.remove(connectionId);
-    }
-    state.connections.clear();
-    deliveryNoticeStore.clearAll();
-    sendIdempotencyStore.clearAll();
+  async clearAllAsync() {
+    if (sharedStateRedisConfigured()) await sharedConnectionStore.clearAll();
+    else localConnectionStore.clearAll();
   },
 };
