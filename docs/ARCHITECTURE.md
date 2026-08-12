@@ -662,6 +662,28 @@ cards with more than the domain's five-email limit. `PHOTO`, `LOGO`, `KEY`,
 Export emits deterministic vCard 4.0 with escaped values and UTF-8-safe 75-octet
 CRLF folding through a private, no-store, `nosniff` attachment response.
 
+## Member settings portability boundary
+
+`GET /api/v1/member/portability/settings` exports a strict versioned RFC 8259
+JSON document containing message-list preferences and rule definitions. The
+document never carries provider message, mailbox, label, account, or connection
+identifiers. Move actions use a standard mailbox role when one exists and an
+NFKC-normalized bounded folder path otherwise; label actions use the label name.
+The response is same-origin/session-scoped, rate-limited, audited, private
+no-store, `nosniff`, sandboxed, and fixed to `veda-mail-settings.json`.
+
+Import caps the request at 128 KiB and validates the complete strict document
+before mutation. Mailbox roles, folder paths, and label names are resolved
+against the authenticated destination account; missing, duplicate, cyclic,
+over-deep, or non-writable targets fail closed. Imported rules receive fresh
+local IDs/timestamps, replace the desired rule book in one revision, and enter
+the existing provider capability, deployment-intent, compare-and-swap, exact
+post-verification, and failure-reconciliation path. Preferences are written
+only after rule deployment succeeds. A file with no source or destination
+rules can still move preferences to a provider without server-side filtering.
+Contacts remain vCard 4.0 and mail remains RFC 5322 `.eml`; bulk mail transfer
+is intentionally outside this bounded settings endpoint.
+
 ## Calendar invitation and local event boundary
 
 `MailGateway.listCalendarParts` and `downloadCalendarPart` are the only provider

@@ -8,16 +8,10 @@ import type { EmailSignatureSettingsViewModel } from "@/presentation/features/ma
 import type { MailRulesViewModel } from "@/presentation/features/mail-workspace/mail-rules.view-model"; import type { NewMailNotificationViewModel } from "@/presentation/features/mail-workspace/new-mail-notification.view-model";
 import { useTwoFactorSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-two-factor-settings-model";
 import { useMemberSessionsModel } from "@/presentation/features/mail-workspace/hooks/use-member-sessions-model";
-import { useVacationSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-vacation-settings-model";
-import {
-  ignoreMailSessionFailure,
-  type MailSessionFailureHandler,
-} from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
+import { useVacationSettingsModel } from "@/presentation/features/mail-workspace/hooks/use-vacation-settings-model"; import { useSettingsPortabilityModel } from "@/presentation/features/mail-workspace/hooks/use-settings-portability-model";
+import { ignoreMailSessionFailure, type MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useModalDialogFocus } from "@/presentation/shared/hooks/use-modal-dialog-focus";
-import {
-  memberSettingsApi,
-  type MemberSettingsSnapshot,
-} from "@/transport/client/api-client";
+import { memberSettingsApi, type MemberSettingsSnapshot } from "@/transport/client/api-client";
 export const useAccountSettingsModel = (
   fallbackEmail: string,
   fallbackName: string,
@@ -25,11 +19,11 @@ export const useAccountSettingsModel = (
   sessionScope: string,
   rules: MailRulesViewModel,
   notifications: NewMailNotificationViewModel,
+  refreshWorkspace: () => void,
   handleSessionFailure: MailSessionFailureHandler = ignoreMailSessionFailure,
 ): AccountSettingsViewModel => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] =
-    useState(false);
+  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<MemberSettingsSnapshot | null>(null);
   const [displayName, setDisplayName] = useState(fallbackName);
@@ -48,6 +42,8 @@ export const useAccountSettingsModel = (
     useTwoFactorSettingsModel(sessionScope, handleSessionFailure);
   const { load: loadMemberSessions, reset: resetMemberSessions, view: memberSessions
   } = useMemberSessionsModel(sessionScope, handleSessionFailure); const vacation = useVacationSettingsModel(sessionScope, handleSessionFailure);
+  const refreshImportedSettings = useCallback(() => { rules.reload(); refreshWorkspace(); }, [refreshWorkspace, rules]);
+  const portability = useSettingsPortabilityModel(sessionScope, refreshImportedSettings, handleSessionFailure);
   useLayoutEffect(() => {
     scopeRef.current = sessionScope;
     setIsOpen(false);
@@ -234,6 +230,7 @@ export const useAccountSettingsModel = (
     },
     profilePolicyRestricted: policyView.profileRestricted,
     profileName: snapshot?.profile.displayName ?? null,
+    portability,
     providerFeatures: createProviderFeatures(
       capabilities,
       snapshot?.attachmentCapability.status,

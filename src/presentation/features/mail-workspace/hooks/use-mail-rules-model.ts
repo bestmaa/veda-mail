@@ -219,6 +219,7 @@ export const useMailRulesModel = (
       }).finally(() => { if (isCurrentMailRuleRequest(scopeRef.current, sessionScope)) setIsBusy(false); });
     },
     onRetry: () => void load(),
+    reload: () => void load(),
     onToggle: (ruleId, enabled) => void mutate({ enabled, expectedRevision: revision, operation: "toggle", ruleId }, enabled ? "Rule enabled." : "Rule disabled."),
     rules, success,
     ...(localization ? { timeZone: localization.timeZone } : {}),

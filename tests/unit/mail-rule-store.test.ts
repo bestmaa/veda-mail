@@ -127,4 +127,31 @@ describe("mail rule store", () => {
       operation: "create",
     })).rejects.toMatchObject({ code: "MAIL_RULE_LIMIT_REACHED", status: 422 });
   });
+
+  it("atomically replaces imported definitions with fresh local identity", async () => {
+    const created = await ruleStore.put(owner, {
+      definition: definition("Old"), expectedRevision: null, operation: "create",
+    });
+    const oldId = created.rules[0]!.id;
+    const imported = await ruleStore.put(owner, {
+      definitions: [definition("Imported first"), definition("Imported second")],
+      expectedRevision: created.revision,
+      operation: "replace-from-import",
+    });
+    expect(imported.rules.map(({ name }) => name)).toEqual([
+      "Imported first", "Imported second",
+    ]);
+    expect(imported.rules.map(({ id: ruleId }) => ruleId)).not.toContain(oldId);
+    expect(imported.audit.at(-1)).toMatchObject({
+      operation: "import", ruleId: null,
+    });
+    expect(imported.deployment).toMatchObject({
+      desiredRevision: imported.revision,
+      status: "undeployed",
+    });
+    await expect(ruleStore.put(owner, {
+      definitions: [], expectedRevision: created.revision,
+      operation: "replace-from-import",
+    })).rejects.toMatchObject({ code: "MAIL_RULE_BOOK_CONFLICT" });
+  });
 });

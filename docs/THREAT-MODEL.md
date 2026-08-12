@@ -1115,6 +1115,20 @@ operator monitoring.
   path names. Reject traversal and symlink entries.
 - Exports require recent authentication, least-privilege scope, streaming, and
   privacy-safe audit records.
+- Settings export is a 128-KiB strict JSON attachment with no connection,
+  provider mailbox, label, message, session, or credential identifier. Rule
+  targets become standard mailbox roles, bounded folder paths, or label names.
+- Settings import requires same origin plus the exact mailbox-session scope,
+  request/identity rate limits, strict version/unknown-key rejection, and a
+  deliberate browser confirmation. It validates every rule and resolves every
+  target before mutation; missing, ambiguous, cyclic, over-deep, or unwritable
+  targets fail closed instead of guessing. Imported rules receive fresh local
+  identifiers and use the normal capability gate and provider CAS deployment.
+- The current settings transfer excludes passwords, TOTP material, recovery
+  codes, sessions, provider credentials, messages, contacts, signatures, and
+  templates. Contacts use the separately bounded vCard path; mail source uses
+  the separately bounded RFC 5322 path. Expanding the bundle requires a new
+  format version and an explicit threat-model review.
 
 ### Scheduled send, snooze, and durable jobs
 
