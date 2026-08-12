@@ -540,7 +540,7 @@ search](./ADVANCED-SEARCH.md).
   audit history
 - [x] Scheduled send using an encrypted durable queue, retry policy,
   cancellation, clock/time-zone handling, and idempotency keys
-- [ ] Snooze with durable wake-up scheduling and mailbox restoration
+- [x] Snooze with durable wake-up scheduling and mailbox restoration
 - [ ] Contacts, recent-recipient ranking, autocomplete, groups, and vCard
   import/export
 - [ ] RFC 5545 calendar invitation display, accept/maybe/decline, and `.ics`
@@ -603,14 +603,13 @@ acceptance are still required before this checkbox can close. Current Stalwart
 sharing documentation advertises calendar, address-book, and file sharing, not
 mail delegation, so delegation is not invented or over-advertised.
 
-The provider-independent Snooze slice is released and deployed. Authenticated
-JMAP evidence is recorded; Standard IMAP plus restart/wake evidence remains. It
-persists a unique owned
-mailbox intent before provider mutation, encrypts owner-scoped jobs and current
-provider credentials beneath `VEDA_MAIL_JOB_KEY`, commits durable random leases,
-and reconciles interrupted hide/wake operations without delivery-style
-`uncertain`. JMAP preserves unrelated mailbox memberships and keywords through
-state-conditioned patches. Standard IMAP requires MOVE, UIDPLUS, verified
+The provider-independent Snooze slice is released and deployed. It persists a
+unique owned mailbox intent before provider mutation, encrypts owner-scoped jobs
+and current provider credentials beneath `VEDA_MAIL_JOB_KEY`, commits durable
+random leases, and reconciles interrupted hide/wake operations without
+delivery-style `uncertain`. JMAP preserves unrelated mailbox memberships and
+keywords through state-conditioned patches. Standard IMAP requires MOVE,
+UIDPLUS, verified
 wildcard keywords, UIDVALIDITY, and a unique recovery marker; ambiguous source,
 target, or lost-response state fails closed. Owner keys include a stable
 provider-account scope, terminal/authentication outcomes erase credentials, and
@@ -622,9 +621,19 @@ published the scanned, attested amd64/arm64 image index
 Dokploy deployed that exact Git revision from `main`, then aligned
 `VEDA_MAIL_IMAGE` to the immutable SHA tag and completed a second deployment.
 Both the Veda Mail and ClamAV containers reported healthy on 2026-08-04, and
-the public `/api/health` endpoint returned HTTP 200 with `status: ok`. The
-Snooze checkbox remains open until Standard IMAP, restart, and wake evidence is
-recorded.
+the public `/api/health` endpoint returned HTTP 200 with `status: ok`. On
+2026-08-11 the dedicated mailbox completed the remaining Standard IMAP/SMTP
+acceptance through an isolated production build, installation, data directory,
+and job key. A unique self-delivered message moved from INBOX into the owned
+Snoozed mailbox, and its encrypted job plus exact 18:00 Asia/Calcutta return
+time survived a full application-process stop and restart. Before the deadline
+the message remained absent from INBOX; after it, refresh produced one restored
+INBOX copy, the durable manager reported no snoozed messages, and the owned
+Snoozed mailbox was empty. The exact INBOX and Sent fixtures were then moved to
+Trash, permanently deleted, and verified absent; the isolated installation was
+destroyed. Together with the existing JMAP evidence and automated duplicate,
+reconciliation, outage, time-zone, route, component, and provider-path tests,
+this closes Snooze.
 
 The provider-independent scheduled-send implementation is released:
 exact-revision provider drafts, encrypted credential/content envelopes under an
