@@ -93,7 +93,7 @@ export const storedEmailTemplateBookSchema = z
     }
   });
 
-const encryptedRecordSchema = z
+export const encryptedEmailTemplateBookSchema = z
   .object({
     algorithm: z.literal("aes-256-gcm"),
     ciphertext: z.string().min(1).max(8 * 1024 * 1024),
@@ -106,7 +106,7 @@ export const emailTemplateFileSchema = z
   .object({
     owners: z.record(
       z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-      encryptedRecordSchema,
+      encryptedEmailTemplateBookSchema,
     ),
     updatedAt: z.string().datetime(),
     version: z.literal(1),
