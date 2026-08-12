@@ -10,6 +10,7 @@ import {
 import { ApiError } from "@/transport/http/api-error";
 
 export type SharedOwnerKind =
+  | "email-signatures"
   | "mailbox-appearance"
   | "message-list-preferences"
   | "saved-searches";
@@ -18,6 +19,7 @@ const LOCK_TTL_MS = 60_000;
 const LOCK_WAIT_MS = 5_000;
 const MAX_OWNERS = 10_000;
 const MAX_RECORD_BYTES: Readonly<Record<SharedOwnerKind, number>> = {
+  "email-signatures": (2 * 1_024 * 1_024) + 1_024,
   "mailbox-appearance": (2 * 1_024 * 1_024) + 1_024,
   "message-list-preferences": 512 * 1_024,
   "saved-searches": (2 * 1_024 * 1_024) + 1_024,

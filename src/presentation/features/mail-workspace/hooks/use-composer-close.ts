@@ -8,9 +8,16 @@ import type { useComposerAttachments } from "@/presentation/features/mail-worksp
 import type { useComposerDraft } from "@/presentation/features/mail-workspace/hooks/use-composer-draft";
 import type { useComposerReturnFocus } from "@/presentation/features/mail-workspace/hooks/use-composer-focus";
 
-const focusById = (elementId: string) => {
+const focusById = (elementId: string, attempts = 60) => {
   if (typeof window === "undefined") return;
-  window.requestAnimationFrame(() => document.getElementById(elementId)?.focus());
+  window.requestAnimationFrame(() => {
+    const element = document.getElementById(elementId);
+    if (element && !(element instanceof HTMLButtonElement && element.disabled)) {
+      element.focus();
+    } else if (attempts > 1) {
+      focusById(elementId, attempts - 1);
+    }
+  });
 };
 
 export const useComposerClose = ({

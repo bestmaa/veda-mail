@@ -103,6 +103,11 @@ Redis backup on one upgraded replica before scaling. Preserve the installation
 session secret and Redis prefix. Drain color writes before rollback because an
 older image cannot see newer shared owner records.
 
+Email signatures now migrate from `/data/member-signatures.json` to shared-state
+Redis on first access. Verify the `.migrated-to-redis` archive and Redis backup
+on one upgraded replica before scaling. Preserve the installation session secret
+and prefix, and drain signature writes before restoring the archive for rollback.
+
 Conversation views require no environment variable, provider configuration,
 mailbox migration, database/schema change, or new port. They add bounded
 provider reads when a message is opened: 25 results per browser page and no
@@ -355,9 +360,9 @@ administrator/member records only when every process keeps the exact same
 prefix and `VEDA_MAIL_JOB_KEY`. Enabling it does not migrate already-active
 local sessions; disabling it does not decrypt/migrate Redis sessions. It does
 migrate scheduled-send and snooze books on first access and renames their local
-files with `.migrated-to-redis`. Message-list preferences, saved-search books,
-and mailbox appearance use the same guarded migration. Saved-search and
-mailbox-color writes retain atomic conflict protection across replicas. Start
+files with `.migrated-to-redis`. Message-list preferences, saved-search and
+signature books, and mailbox appearance use the same guarded migration.
+Revisioned and mailbox-color writes retain atomic conflict protection. Start
 one new replica, verify the Redis backup,
 then scale out. Older images cannot process Redis queues; restoring the archived
 filenames may replay jobs. Immediate-send claims and replay receipts are also

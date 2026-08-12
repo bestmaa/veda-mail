@@ -449,6 +449,11 @@ metadata.
   account identities in Redis plaintext. Empty books remove their shared owner
   record; tamper, migration conflict, retry exhaustion, and backend failure
   fail closed.
+- Email-signature books migrate as existing authenticated ciphertext behind
+  HMAC-opaque owner keys. Exact-envelope Redis CAS admits one writer for a
+  revision and preserves the HTTP 409 stale-write response across replicas.
+  Signature names, bodies, HTML, defaults, and account identities never appear
+  in Redis plaintext; tamper and backend failure fail closed.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients

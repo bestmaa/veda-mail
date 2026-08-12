@@ -226,6 +226,13 @@ deletes the owner record. Redis contains only the existing authenticated
 ciphertext behind the HMAC-opaque owner key. Use the same one-replica rollout,
 backup, session-secret, and rollback precautions as saved searches.
 
+Email signatures follow the same guarded migration for
+`/data/member-signatures.json`. Their existing encrypted owner books move to
+Redis unchanged; exact-record CAS preserves the public revision-conflict
+contract across replicas, and deleting the final signature removes the owner
+record. Verify the archive and Redis backup with one upgraded replica before
+scaling or rolling back.
+
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
 record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
@@ -474,11 +481,10 @@ claims do not apply to that sidecar.
 Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
-shared Redis repository; message-list preferences, saved searches, and mailbox
-appearance migrate there on first access, and request limits may use their
+shared Redis repository; message-list preferences, saved searches, signatures,
+and mailbox appearance migrate there on first access, and request limits may use their
 separate backend. The encrypted
-`/data/member-signatures.json`, `/data/member-templates.json`,
-`/data/member-contacts.json`, and
+`/data/member-templates.json`, `/data/member-contacts.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
 lose updates. Scaling still requires transactional replacement for all
