@@ -443,6 +443,12 @@ metadata.
   replacement or deletion, so simultaneous replicas produce one winner and a
   revision conflict instead of a lost update. Raw names, queries, and account
   identities never appear in Redis plaintext.
+- Mailbox appearance uses encrypted owner books and exact-record Redis CAS.
+  Bounded retries reapply folder set/remove mutations after a competing write,
+  preventing silent lost updates without exposing mailbox IDs, colors, or
+  account identities in Redis plaintext. Empty books remove their shared owner
+  record; tamper, migration conflict, retry exhaustion, and backend failure
+  fail closed.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients

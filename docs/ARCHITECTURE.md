@@ -419,6 +419,12 @@ deleting it, so the public revision contract remains a cross-replica CAS rather
 than a process-local check. A competing writer receives the existing HTTP 409
 conflict and must reload. Empty books remove both the record and owner index.
 
+Mailbox appearance uses the same migration and exact-record CAS primitive for
+its encrypted folder-color book. A bounded retry reapplies each requested
+set/remove operation to the winning record, so concurrent changes to different
+folders converge instead of losing one replica's update. Removing the final
+custom color atomically deletes the shared record and owner index.
+
 The workspace response carries the effective server preference. A later list
 query may echo sort and preview context, but the route returns HTTP 409
 `MESSAGE_LIST_PREFERENCES_CHANGED` if either differs from persisted state. A
@@ -1346,9 +1352,10 @@ npm run check:lines
 - Restarting the process signs every member out in the default local mode;
   configured shared sessions survive while Redis and the matching key remain.
 - A multi-replica deployment still needs transactional replacements for the
-  remaining process-serialized mutable files. Message-list preferences and
-  revisioned saved-search books are already shared owner records; saved-search
-  writes use Redis CAS so replicas cannot silently overwrite one another.
+  remaining process-serialized mutable files. Message-list preferences,
+  revisioned saved-search books, and mailbox appearance are already shared
+  owner records; read-modify-write stores use Redis CAS so replicas cannot
+  silently overwrite one another.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

@@ -15,7 +15,7 @@ export const storedMailboxAppearanceBookSchema = z
   .strict()
   .refine((book) => Object.keys(book.colors).length <= 512);
 
-const encryptedRecordSchema = z
+export const encryptedMailboxAppearanceBookSchema = z
   .object({
     algorithm: z.literal("aes-256-gcm"),
     ciphertext: z.string().min(1).max(2 * 1_024 * 1_024),
@@ -28,7 +28,7 @@ export const mailboxAppearanceFileSchema = z
   .object({
     owners: z.record(
       z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-      encryptedRecordSchema,
+      encryptedMailboxAppearanceBookSchema,
     ),
     updatedAt: z.string().datetime(),
     version: z.literal(1),

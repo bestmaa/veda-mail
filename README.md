@@ -299,10 +299,10 @@ the background queue continues. Optional shared-state Redis provides encrypted
 sessions, delivery notices, immediate-send idempotency, transactional
 scheduled-send/snooze books, and encrypted attachment quarantine. Shared
 quarantine requires the same independent `VEDA_MAIL_ATTACHMENT_KEY` on every
-replica. Encrypted message-list preferences and revisioned saved-search books
-migrate to the same repository on first access; saved-search writes use atomic
-compare-and-set across replicas. Run one general writable replica until the
-remaining mutable `/data` stores are transactional.
+replica. Encrypted message-list preferences, revisioned saved-search books, and
+mailbox-color books migrate to the same repository on first access. Saved-search
+and mailbox-color writes use atomic compare-and-set across replicas. Run one
+general writable replica until the remaining mutable `/data` stores are transactional.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

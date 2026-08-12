@@ -13,19 +13,25 @@ import {
   mailboxAppearanceOwnerKey,
 } from "@/server/mailboxes/mailbox-appearance-crypto";
 import {
+  archiveMigratedMailboxAppearanceFile,
   readMailboxAppearanceFile,
   writeMailboxAppearanceFile,
 } from "@/server/mailboxes/mailbox-appearance-file";
 import {
   emptyMailboxAppearanceBook,
+  encryptedMailboxAppearanceBookSchema,
   type StoredMailboxAppearanceBook,
 } from "@/server/mailboxes/mailbox-appearance-record";
+import { sharedOwnerRepository } from
+  "@/server/shared-state/shared-owner-repository";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalState = globalThis as typeof globalThis & {
   __vedaMailMailboxAppearanceQueue?: Promise<void>;
 };
 globalState.__vedaMailMailboxAppearanceQueue ??= Promise.resolve();
+let migrationPromise: Promise<boolean> | undefined;
+const SHARED_WRITE_ATTEMPTS = 5;
 
 const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
   const result = globalState.__vedaMailMailboxAppearanceQueue!.then(task, task);
@@ -70,11 +76,73 @@ const current = async (owner: MailboxAppearanceOwner, secret: string) => {
   }
 };
 
+const ensureMigrated = (): Promise<boolean> => {
+  if (!sharedOwnerRepository.configured()) return Promise.resolve(false);
+  migrationPromise ??= sharedOwnerRepository.ensureMigrated(
+    "mailbox-appearance",
+    async () => {
+      const file = await readMailboxAppearanceFile();
+      return Object.fromEntries(Object.entries(file.owners)
+        .map(([owner, value]) => [owner, JSON.stringify(value)]));
+    },
+    archiveMigratedMailboxAppearanceFile,
+  );
+  return migrationPromise;
+};
+
+const sharedCurrent = async (
+  owner: MailboxAppearanceOwner, secret: string,
+) => {
+  const ownerKey = mailboxAppearanceOwnerKey(owner, secret);
+  const serializedRecord = await sharedOwnerRepository.get(
+    "mailbox-appearance", ownerKey,
+  );
+  const encrypted = serializedRecord
+    ? encryptedMailboxAppearanceBookSchema.parse(JSON.parse(serializedRecord))
+    : undefined;
+  return {
+    book: encrypted
+      ? decryptMailboxAppearanceBook(encrypted, ownerKey, secret)
+      : emptyMailboxAppearanceBook(),
+    ownerKey,
+    serializedRecord,
+  };
+};
+
+const writeShared = async (
+  owner: MailboxAppearanceOwner,
+  secret: string,
+  update: (book: StoredMailboxAppearanceBook) => Readonly<Record<string, MailboxColor>>,
+): Promise<void> => {
+  for (let attempt = 0; attempt < SHARED_WRITE_ATTEMPTS; attempt += 1) {
+    const value = await sharedCurrent(owner, secret);
+    const updated: StoredMailboxAppearanceBook = {
+      colors: update(value.book),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+    };
+    const encrypted = Object.keys(updated.colors).length === 0
+      ? null
+      : JSON.stringify(encryptMailboxAppearanceBook(
+        updated, value.ownerKey, secret,
+      ));
+    if (await sharedOwnerRepository.compareAndSet(
+      "mailbox-appearance", value.ownerKey, value.serializedRecord, encrypted,
+    )) return;
+  }
+  unavailable();
+};
+
 const write = async (
   owner: MailboxAppearanceOwner,
   update: (book: StoredMailboxAppearanceBook) => Readonly<Record<string, MailboxColor>>,
 ): Promise<void> => serialized(async () => {
   const secret = await sessionSecret();
+  try {
+    if (await ensureMigrated()) return await writeShared(owner, secret, update);
+  } catch {
+    unavailable();
+  }
   const value = await current(owner, secret);
   const updated: StoredMailboxAppearanceBook = {
     colors: update(value.book),
@@ -101,7 +169,14 @@ export const mailboxAppearanceStore = {
     mailboxes: readonly Mailbox[],
   ): Promise<readonly Mailbox[]> {
     const secret = await sessionSecret();
-    const { book } = await current(owner, secret);
+    let book;
+    try {
+      book = await ensureMigrated()
+        ? (await sharedCurrent(owner, secret)).book
+        : (await current(owner, secret)).book;
+    } catch {
+      return unavailable();
+    }
     return mailboxes.map((mailbox) => ({
       ...mailbox,
       color: book.colors[mailbox.id] ?? mailbox.color,
