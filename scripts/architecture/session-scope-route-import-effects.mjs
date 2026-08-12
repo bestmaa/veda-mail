@@ -1,6 +1,5 @@
 const AUTH_WRAPPER_EXPORTS = new Map([["@/server/mail/mail-service", new Set(["getMailService"])]]);
-const REQUEST_UTILITY_EXPORTS = new Map([
-  ["@/server/installation/request-origin", new Set(["assertSameOrigin"])],
+const REQUEST_UTILITY_EXPORTS = new Map([["@/server/installation/request-origin", new Set(["assertSameOrigin"])],
   ["@/server/security/rate-limit", new Set(["assertRequestRateLimit"])],
   ["@/transport/http/api-response", new Set(["apiFailure", "apiSuccess"])],
   ["@/transport/http/read-json-body", new Set(["readJsonBody"])],
@@ -73,6 +72,8 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/mailboxes/mailbox-empty.service", new Set(["emptyMailboxBatch"])],
   ["@/server/portability/settings-portability.service", new Set(["exportPortableSettings", "importPortableSettings"])],
   ["@/server/portability/settings-portability", new Set(["parseSettingsPortabilityBundle"])],
+  ["@/server/mail/message-source-import-http", new Set(["asMessageSourceImportApiError", "parseMessageSourceImportMailbox", "readMessageSourceImportBody"])],
+  ["@/server/mail/message-source-archive", new Set(["prepareMessageSourceArchive"])], ["@/server/mail/message-source-archive-http", new Set(["parseMessageSourceArchiveRequest"])],
   [
     "@/server/messages/message-move.service",
     new Set([
@@ -226,8 +227,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ],
   ["@/transport/http/api-error", new Set(["ApiError"])],
 ]);
-const hasExport = (registry, moduleName, exportName) =>
-  registry.get(moduleName)?.has(exportName) ||
+const hasExport = (registry, moduleName, exportName) => registry.get(moduleName)?.has(exportName) ||
   registry.get(moduleName)?.has("*") ||
   false;
 export const isAuthWrapperExport = (moduleName, exportName) =>

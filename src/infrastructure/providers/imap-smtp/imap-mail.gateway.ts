@@ -46,6 +46,7 @@ import {
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 import { ImapSnoozeAdapter } from "@/infrastructure/providers/imap-smtp/imap-snooze-adapter";
 import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
+import { importImapMessageSource } from "@/infrastructure/providers/imap-smtp/imap-message-source-import";
 import {
   downloadImapCalendarPart,
   listImapCalendarParts,
@@ -149,6 +150,7 @@ export class ImapSmtpMailGateway implements MailGateway {
     return this.reader.downloadAttachment(input);
   }
   public downloadMessageSource(input: Parameters<ImapMailReader["downloadMessageSource"]>[0]) { return this.reader.downloadMessageSource(input); }
+  public importMessageSource(input: Parameters<typeof importImapMessageSource>[1]) { return importImapMessageSource(this.config, input); }
   public downloadCalendarPart(
     input: Parameters<typeof downloadImapCalendarPart>[1],
   ) {
@@ -234,14 +236,12 @@ export class ImapSmtpMailGateway implements MailGateway {
   }
 
   public async testConnection(): Promise<void> { await this.reader.listMailboxes(); }
-
   public async updateMemberProfile(
     _input: MemberProfileUpdate,
   ): Promise<never> {
     void _input;
     return unsupported("Profile changes");
   }
-
   public async updateTwoFactor(_input: MemberTwoFactorUpdate): Promise<void> {
     void _input;
     unsupported("Provider-managed two-factor authentication");

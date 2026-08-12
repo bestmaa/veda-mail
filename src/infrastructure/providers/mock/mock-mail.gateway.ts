@@ -1,5 +1,4 @@
-import "server-only";
-import { createHash } from "node:crypto";
+import "server-only"; import { createHash } from "node:crypto";
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { AttachmentDownloadInput,
   Mailbox, MailboxMutation,
@@ -101,6 +100,7 @@ export class MockMailGateway implements MailGateway {
     );
   }
   public async downloadMessageSource(input: Parameters<typeof downloadMockMessageSource>[1]) { return downloadMockMessageSource(this.messages, input); }
+  public async importMessageSource(input: Parameters<MailGateway["importMessageSource"]>[0]) { if (!input.source.byteLength) throw new Error("Message source is empty."); return { messageId: id.message(`mock-import-${crypto.randomUUID()}`) }; }
   public async downloadCalendarPart(input: CalendarPartDownloadInput): Promise<never> {
     void input;
     throw new AttachmentDownloadError("not_found", "Calendar invitation not found.");

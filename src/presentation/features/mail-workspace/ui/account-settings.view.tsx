@@ -16,6 +16,7 @@ import { NewMailNotificationSettingsView } from "@/presentation/features/mail-wo
 import { MemberSessionsView } from "@/presentation/features/mail-workspace/ui/member-sessions.view";
 import { VacationSettingsView } from "@/presentation/features/mail-workspace/ui/vacation-settings.view";
 import { SettingsPortabilityView } from "@/presentation/features/mail-workspace/ui/settings-portability.view";
+import { MailImportView } from "@/presentation/features/mail-workspace/ui/mail-import.view";
 
 const status = (error: string | null, success: string | null) =>
   error ? (
@@ -168,6 +169,8 @@ export const AccountSettingsView = ({
               <VacationSettingsView settings={settings.vacation} />
 
               <SettingsPortabilityView portability={settings.portability} />
+
+              <MailImportView mailImport={settings.mailImport} />
 
               <TwoFactorSettingsView settings={settings.twoFactor} />
 

@@ -1,6 +1,5 @@
 import "server-only";
 import { createHash } from "node:crypto";
-
 import type { MailGateway } from "@/application/ports/mail-provider.port";
 import type { ConversationQuery } from "@/domain/mail/conversation";
 import type {
@@ -20,6 +19,7 @@ import type {
 import { StalwartAccountManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-account-manager";
 import { StalwartJmapClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-jmap.client";
 import { maximumJmapUploadBytes } from "@/infrastructure/providers/stalwart-jmap/jmap-outgoing-attachment";
+import { importStalwartMessageSource } from "@/infrastructure/providers/stalwart-jmap/stalwart-message-source-import";
 import { StalwartMailReader } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.reader";
 import { StalwartMailWriter } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail.writer";
 import { StalwartMailboxManager } from "@/infrastructure/providers/stalwart-jmap/stalwart-mailbox.manager";
@@ -148,6 +148,8 @@ export class StalwartMailGateway implements MailGateway {
     return this.reader.downloadAttachment(input);
   }
   public downloadMessageSource(input: Parameters<StalwartMailReader["downloadMessageSource"]>[0]) { return this.reader.downloadMessageSource(input); }
+  public async importMessageSource(input: Parameters<typeof importStalwartMessageSource>[3]) { return importStalwartMessageSource(
+    this.client, this.config, await this.reader.getAccountId(), input); }
   public async downloadCalendarPart(
     input: Parameters<typeof downloadStalwartCalendarPart>[2],
   ) {
@@ -236,9 +238,7 @@ export class StalwartMailGateway implements MailGateway {
   public async testConnection(): Promise<void> { await this.reader.listMailboxes(); }
   public updateMemberProfile(input: MemberProfileUpdate) {
     return this.accountManager.updateProfile(input); }
-  public updateTwoFactor(input: MemberTwoFactorUpdate) {
-    return this.accountManager.updateTwoFactor(input); }
-
+  public updateTwoFactor(input: MemberTwoFactorUpdate) { return this.accountManager.updateTwoFactor(input); }
   private ruleAdapter(mailboxNames: Readonly<Record<string, string>>) {
     return new StalwartRuleAdapter(
       this.client,

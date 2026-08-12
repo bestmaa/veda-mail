@@ -853,22 +853,24 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
 - [x] Session inventory/revocation, idle/absolute expiry, CSRF review, login
   throttling, and distributed rate-limit option
 - [ ] Encrypted shared session and job repositories for multi-replica operation
-- [ ] Export/import of settings, contacts, rules, and mail in standard formats
+- [x] Export/import of settings, contacts, rules, and mail in standard formats
 - [ ] Backup/restore drill, data-retention controls, privacy documentation,
   threat model, SBOM, provenance, dependency policy, and release checklist
 
 Acceptance: a clean installation, upgrade, rollback, backup restore, replica
 restart, and provider outage are exercised from documented runbooks.
 
-Mail portability includes a bounded, audited single-message RFC 5322 `.eml`
-export for both JMAP and standard IMAP/SMTP accounts. Settings/rule portability
+Mail portability includes bounded, audited RFC 5322 `.eml` transfer for both
+JMAP and standard IMAP/SMTP accounts: members can download one exact source,
+export up to 20 selected messages in a 250-MiB streaming ZIP, and sequentially
+import up to 20 hostile `.eml` files of at most 18 MiB each into an authorized
+mailbox with explicit partial-completion counts. Settings/rule portability
 now exports and explicitly replaces a strict 128-KiB versioned JSON file:
 preferences remain provider-neutral, while rule mailbox/label IDs become
 standard roles, bounded folder paths, and label names that are resolved
 fail-closed in the destination account before the ordinary provider CAS
-deployment. Contacts already use vCard 4.0. Bulk mailbox export/import, plus
-the remaining member data classes, are still required before the M8 checkbox
-can close.
+deployment. Contacts use vCard 4.0. Together these close the standard-format
+portability checkbox without claiming an unbounded whole-account migration.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

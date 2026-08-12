@@ -14,7 +14,7 @@ import type {
   SendReceipt,
   SendMessageInput,
 } from "@/domain/mail/mail";
-import type { MessageSourceDownload, MessageSourceDownloadInput } from "@/domain/mail/message-source";
+import type { MessageSourceDownload, MessageSourceDownloadInput, MessageSourceImportInput, MessageSourceImportResult } from "@/domain/mail/message-source";
 import type {
   ConversationPage,
   ConversationQuery,
@@ -93,6 +93,9 @@ export interface MailGateway {
   downloadMessageSource(
     input: MessageSourceDownloadInput,
   ): Promise<MessageSourceDownload>;
+  importMessageSource(
+    input: MessageSourceImportInput,
+  ): Promise<MessageSourceImportResult>;
   downloadCalendarPart(
     input: CalendarPartDownloadInput,
   ): Promise<CalendarPartDownload>;
