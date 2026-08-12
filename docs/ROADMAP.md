@@ -543,7 +543,7 @@ search](./ADVANCED-SEARCH.md).
 - [x] Snooze with durable wake-up scheduling and mailbox restoration
 - [x] Contacts, recent-recipient ranking, autocomplete, groups, and vCard
   import/export
-- [ ] RFC 5545 calendar invitation display, accept/maybe/decline, and `.ics`
+- [x] RFC 5545 calendar invitation display, accept/maybe/decline, and `.ics`
   import/export; CalDAV integration remains capability-gated
 - [ ] Vacation responder and delegation only where the provider advertises them
 
@@ -703,9 +703,20 @@ single-event import and deterministic whole-book `.ics` export. Parser,
 serializer, store-tamper, route, provider, MIME, and accessible component tests
 cover the slice. CalDAV remains capability-gated and no remote calendar URI is
 fetched. It merged in PR #82 and is deployed in production commit
-`6a1bfd9c8247514e1ab4057375e6340fe647e499`. The checkbox remains open until
-live REQUEST/display/response/import/export evidence is recorded through both a
-JMAP and an IMAP/SMTP test mailbox.
+`6a1bfd9c8247514e1ab4057375e6340fe647e499`. On 2026-08-12 separate isolated
+Veda installations connected the dedicated real-provider mailbox through
+Stalwart JMAP and Standard IMAP/SMTP and completed the remaining live
+acceptance. In each mode, a canonical self-addressed `METHOD:REQUEST` rendered
+the exact sequence, UTC interval, location, organizer, and invited-attendee
+actions; Accept emitted a provider-delivered response that appeared in Inbox
+and Sent, and Add to calendar persisted the exact event. The downloaded
+whole-book `.ics` export preserved the unique UID, summary, sequence, interval,
+description, location, organizer, and attendee. All exact request, response,
+temporary draft, upload, download, and calendar fixtures were permanently
+removed afterward, both isolated processes were stopped, and both data
+directories were destroyed. Together with the parser, serializer, encrypted
+store, route, provider, MIME, component, and browser suites, this closes the RFC
+5545 invitation slice; CalDAV remains capability-gated.
 
 ## M7 — Notifications, offline resilience, and accessibility
 
