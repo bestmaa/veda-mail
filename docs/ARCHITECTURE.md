@@ -401,14 +401,15 @@ owner. The strict same-origin, session-scoped PATCH route accepts only those
 three fields at `PATCH /api/v1/mail/preferences`, with a 1 KiB body and separate
 request/subject rate limits.
 
-`/data/message-list-preferences.json` stores an HMAC-derived account index and
-AES-256-GCM-encrypted preference value. Its key is derived from the installation
-session secret with HKDF, and the owner index is authenticated as additional
-data. Writes use a mode-0600 temporary file, fsync, and atomic rename inside a
-mode-0700 data directory. The bounded store accepts at most 10,000 owners and a
-16 MiB file; missing or unreadable account state falls back to comfortable,
-newest, preview-on defaults. The writer is process-serialized, so a writable
-data volume remains single-replica.
+The preference value is AES-256-GCM encrypted under an HKDF key derived from
+the installation session secret; its HMAC-derived owner index is authenticated
+as additional data. Local mode stores at most 10,000 owners in the bounded
+mode-0600 `/data/message-list-preferences.json` file. Shared-state mode migrates
+those already-encrypted owner records once, archives the file as
+`.migrated-to-redis`, and uses a deployment-wide renewable lock plus atomic
+record/index replacement. Missing owner state keeps the comfortable, newest,
+preview-on defaults. Raw owner identities and preference values never appear
+in Redis plaintext.
 
 The workspace response carries the effective server preference. A later list
 query may echo sort and preview context, but the route returns HTTP 409

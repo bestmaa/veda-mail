@@ -430,11 +430,13 @@ metadata.
   email and provider ID; the request cannot supply an owner. Same-origin,
   session-scope, strict-schema, 1 KiB request-size, and independent global and
   subject rate-limit checks protect `PATCH /api/v1/mail/preferences`.
-- `/data/message-list-preferences.json` uses an HMAC-derived account index and
-  AES-256-GCM values. The encryption key is HKDF-derived from the installation
-  session secret, and the owner index is authenticated as additional data.
-  File size and owner count are bounded; writes are mode-restricted, fsynced,
-  atomically renamed, and serialized within one process.
+- Message-list preferences use an HMAC-derived account index and AES-256-GCM
+  values. The encryption key is HKDF-derived from the installation session
+  secret, and the owner index is authenticated as additional data. Local file
+  size and owner count are bounded. Shared mode migrates ciphertext only,
+  keeps raw owners/preferences out of Redis, caps owners at 10,000, and
+  serializes replacement and migration across replicas. Backend failure,
+  ciphertext tamper, or post-migration local-data conflict fails closed.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients
