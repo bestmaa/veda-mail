@@ -16,10 +16,10 @@ export const runtime = "nodejs";
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-rule-preview", 5_000, 60, 60_000);
+    await assertRequestRateLimit(request, "member-rule-preview", 5_000, 60, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("member-rule-preview", connection.id, 20, 15 * 60_000);
+    await assertSubjectRateLimit("member-rule-preview", connection.id, 20, 15 * 60_000);
     const input = parseMailRulePreviewInput(
       await readJsonBody(request, MAX_MAIL_RULE_REQUEST_BYTES),
     );

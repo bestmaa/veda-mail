@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-calendar-event-export",
       10_000,
@@ -29,7 +29,7 @@ export const GET = async (request: Request) => {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-calendar-event-export",
       connection.id,
       20,

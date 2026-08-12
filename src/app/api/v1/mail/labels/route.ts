@@ -24,10 +24,10 @@ const MAX_REQUEST_BYTES = 16 * 1_024;
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "label-catalog", 5_000, 300, 60 * 1_000);
+    await assertRequestRateLimit(request, "label-catalog", 5_000, 300, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("label-catalog", connection.id, 30, 15 * 60 * 1_000);
+    await assertSubjectRateLimit("label-catalog", connection.id, 30, 15 * 60 * 1_000);
     const owner = await mailboxOwner(await getMailService(connection));
     const payload = createLabelSchema.parse(
       await readJsonBody(request, MAX_REQUEST_BYTES),
@@ -43,10 +43,10 @@ export const POST = async (request: Request) => {
 export const PATCH = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "label-catalog", 5_000, 300, 60 * 1_000);
+    await assertRequestRateLimit(request, "label-catalog", 5_000, 300, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("label-catalog", connection.id, 30, 15 * 60 * 1_000);
+    await assertSubjectRateLimit("label-catalog", connection.id, 30, 15 * 60 * 1_000);
     const owner = await mailboxOwner(await getMailService(connection));
     const payload = updateLabelSchema.parse(
       await readJsonBody(request, MAX_REQUEST_BYTES),
@@ -65,10 +65,10 @@ export const PATCH = async (request: Request) => {
 export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "label-deletion", 10_000, 600, 60 * 1_000);
+    await assertRequestRateLimit(request, "label-deletion", 10_000, 600, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("label-deletion", connection.id, 600, 15 * 60 * 1_000);
+    await assertSubjectRateLimit("label-deletion", connection.id, 600, 15 * 60 * 1_000);
     const service = await getMailService(connection);
     const owner = await mailboxOwner(service);
     const payload = deleteLabelSchema.parse(

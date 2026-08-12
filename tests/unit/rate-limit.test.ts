@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  assertRequestRateLimit,
-  assertSubjectRateLimit,
+  assertLocalRequestRateLimit as assertRequestRateLimit,
+  assertLocalSubjectRateLimit as assertSubjectRateLimit,
 } from "@/server/security/rate-limit";
 
 const originalTrust = process.env["VEDA_MAIL_TRUST_PROXY_HEADERS"];

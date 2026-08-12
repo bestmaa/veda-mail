@@ -5,11 +5,13 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 
 import { probeClamAv } from "@/server/observability/clamav-probe";
+import { probeDistributedRateLimit } from
+  "@/server/security/distributed-rate-limit";
 import { probeSharedStateRedis } from
   "@/server/shared-state/shared-state-redis";
 
 export interface ReadinessCheck {
-  readonly name: "data" | "scanner" | "session-store";
+  readonly name: "data" | "rate-limit-store" | "scanner" | "session-store";
   readonly status: "failed" | "ok";
 }
 
@@ -20,6 +22,7 @@ const dataDirectory = (): string =>
 export const readinessSnapshot = async (
   dependencies: {
     readonly checkData?: () => Promise<void>;
+    readonly checkRateLimitStore?: () => Promise<void>;
     readonly checkScanner?: () => Promise<void>;
     readonly checkSessionStore?: () => Promise<void>;
   } = {},
@@ -34,6 +37,7 @@ export const readinessSnapshot = async (
         )))(),
     (dependencies.checkScanner ?? probeClamAv)(),
     (dependencies.checkSessionStore ?? probeSharedStateRedis)(),
+    (dependencies.checkRateLimitStore ?? probeDistributedRateLimit)(),
   ]);
   const checks: readonly ReadinessCheck[] = [
     { name: "data", status: results[0]?.status === "fulfilled" ? "ok" : "failed" },
@@ -44,6 +48,10 @@ export const readinessSnapshot = async (
     {
       name: "session-store",
       status: results[2]?.status === "fulfilled" ? "ok" : "failed",
+    },
+    {
+      name: "rate-limit-store",
+      status: results[3]?.status === "fulfilled" ? "ok" : "failed",
     },
   ];
   const ready = checks.every((check) => check.status === "ok");

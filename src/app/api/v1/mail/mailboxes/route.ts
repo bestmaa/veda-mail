@@ -46,10 +46,10 @@ const setAppearanceSafely = async (
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "mailbox-mutation", 5_000, 300, 60 * 1_000);
+    await assertRequestRateLimit(request, "mailbox-mutation", 5_000, 300, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("mailbox-mutation", connection.id, 30, 15 * 60 * 1_000);
+    await assertSubjectRateLimit("mailbox-mutation", connection.id, 30, 15 * 60 * 1_000);
     const service = await getMailService(connection);
     const owner = await mailboxOwner(service);
     const payload = createMailboxSchema.parse(
@@ -79,10 +79,10 @@ export const POST = async (request: Request) => {
 export const PATCH = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "mailbox-mutation", 5_000, 300, 60 * 1_000);
+    await assertRequestRateLimit(request, "mailbox-mutation", 5_000, 300, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("mailbox-mutation", connection.id, 30, 15 * 60 * 1_000);
+    await assertSubjectRateLimit("mailbox-mutation", connection.id, 30, 15 * 60 * 1_000);
     const service = await getMailService(connection);
     const owner = await mailboxOwner(service);
     const payload = updateMailboxSchema.parse(
@@ -129,10 +129,10 @@ export const PATCH = async (request: Request) => {
 export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "mailbox-mutation", 5_000, 300, 60 * 1_000);
+    await assertRequestRateLimit(request, "mailbox-mutation", 5_000, 300, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("mailbox-mutation", connection.id, 30, 15 * 60 * 1_000);
+    await assertSubjectRateLimit("mailbox-mutation", connection.id, 30, 15 * 60 * 1_000);
     const service = await getMailService(connection);
     const owner = await mailboxOwner(service);
     const payload = deleteMailboxSchema.parse(

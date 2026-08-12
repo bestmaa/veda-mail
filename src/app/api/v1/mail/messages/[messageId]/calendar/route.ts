@@ -38,7 +38,7 @@ const canRespond = (
 
 export const GET = async (request: Request, context: RouteContext) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "calendar-invitation-read",
       5_000,
@@ -47,7 +47,7 @@ export const GET = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "calendar-invitation-read",
       connection.id,
       60,

@@ -11,10 +11,10 @@ export const runtime = "nodejs";
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(request, "mail-updates", 10_000, 1_000, 60_000);
+    await assertRequestRateLimit(request, "mail-updates", 10_000, 1_000, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("mail-updates", connection.id, 120, 60 * 60_000);
+    await assertSubjectRateLimit("mail-updates", connection.id, 120, 60 * 60_000);
     const result = await waitForMailUpdate(connection);
     return apiSuccess(result);
   } catch (error) {

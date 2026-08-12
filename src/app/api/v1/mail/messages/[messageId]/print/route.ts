@@ -20,10 +20,10 @@ interface RouteContext {
 export const POST = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "mail-print", 500, 10, 60 * 1_000);
+    await assertRequestRateLimit(request, "mail-print", 500, 10, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("mail-print", connection.id, 4, 60 * 1_000);
+    await assertSubjectRateLimit("mail-print", connection.id, 4, 60 * 1_000);
     const { messageId } = await context.params;
     const anchorMessageId = replyMessageIdSchema.parse(messageId);
     const input = messagePrintRequestSchema.parse(

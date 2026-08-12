@@ -47,7 +47,7 @@ export const GET = async (request: Request, context: RouteContext) => {
   let lease: AttachmentDownloadLease | undefined;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "attachment-download",
       2_000,
@@ -56,7 +56,7 @@ export const GET = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "attachment-download",
       connection.id,
       60,

@@ -7,6 +7,7 @@ describe("readiness snapshot", () => {
     await expect(
       readinessSnapshot({
         checkData: vi.fn().mockResolvedValue(undefined),
+        checkRateLimitStore: vi.fn().mockResolvedValue(undefined),
         checkScanner: vi.fn().mockResolvedValue(undefined),
         checkSessionStore: vi.fn().mockResolvedValue(undefined),
       }),
@@ -15,6 +16,7 @@ describe("readiness snapshot", () => {
         { name: "data", status: "ok" },
         { name: "scanner", status: "ok" },
         { name: "session-store", status: "ok" },
+        { name: "rate-limit-store", status: "ok" },
       ],
       service: "veda-mail",
       status: "ready",
@@ -24,6 +26,7 @@ describe("readiness snapshot", () => {
   it("fails closed without exposing dependency errors", async () => {
     const snapshot = await readinessSnapshot({
       checkData: vi.fn().mockResolvedValue(undefined),
+      checkRateLimitStore: vi.fn().mockResolvedValue(undefined),
       checkScanner: vi.fn().mockRejectedValue(new Error("private host")),
       checkSessionStore: vi.fn().mockResolvedValue(undefined),
     });
@@ -32,6 +35,7 @@ describe("readiness snapshot", () => {
         { name: "data", status: "ok" },
         { name: "scanner", status: "failed" },
         { name: "session-store", status: "ok" },
+        { name: "rate-limit-store", status: "ok" },
       ],
       status: "degraded",
     });

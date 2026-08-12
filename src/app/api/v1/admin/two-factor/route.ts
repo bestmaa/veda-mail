@@ -52,7 +52,7 @@ export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const installation = await currentInstallation();
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-two-factor-start",
       String(installation.owner.authVersion),
       3,
@@ -88,7 +88,7 @@ export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const installation = await currentInstallation();
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-two-factor-confirm",
       String(installation.owner.authVersion),
       8,
@@ -163,7 +163,7 @@ export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
     const installation = await currentInstallation();
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-two-factor-disable",
       String(installation.owner.authVersion),
       5,

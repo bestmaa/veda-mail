@@ -10,7 +10,7 @@ export const GET = async (request: Request) => {
   try {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "attachment-capability",
       connection.id,
       60,

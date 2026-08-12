@@ -22,12 +22,12 @@ interface RouteContext {
 
 export const GET = async (request: Request, context: RouteContext) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request, "mail-conversation", 2_000, 120, 60 * 1_000,
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-conversation", connection.id, 30, 60 * 1_000,
     );
     const { messageId } = await context.params;

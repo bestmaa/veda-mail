@@ -30,16 +30,30 @@ const contextFor = async (request: Request, context: RouteContext) => {
   };
 };
 
-const limit = (request: Request, connectionId: string): void => {
-  assertRequestRateLimit(request, "scheduled-send-write", 5_000, 300, 60_000);
-  assertSubjectRateLimit("scheduled-send-write", connectionId, 30, 60_000);
+const limit = async (
+  request: Request,
+  connectionId: string,
+): Promise<void> => {
+  await assertRequestRateLimit(
+    request,
+    "scheduled-send-write",
+    5_000,
+    300,
+    60_000,
+  );
+  await assertSubjectRateLimit(
+    "scheduled-send-write",
+    connectionId,
+    30,
+    60_000,
+  );
 };
 
 export const PATCH = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
     const current = await contextFor(request, context);
-    limit(request, current.connection.id);
+    await limit(request, current.connection.id);
     const input = rescheduleMessageSchema.parse(await readJsonBody(request));
     return apiSuccess(await scheduledSendStore.reschedule(
       current.owner, current.messageId, input.scheduledAt, current.connection,
@@ -53,7 +67,7 @@ export const DELETE = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
     const current = await contextFor(request, context);
-    limit(request, current.connection.id);
+    await limit(request, current.connection.id);
     await scheduledSendStore.cancel(current.owner, current.messageId);
     return new Response(null, {
       headers: { "Cache-Control": "private, no-store" },

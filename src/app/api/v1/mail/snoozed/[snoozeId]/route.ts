@@ -14,10 +14,10 @@ interface RouteContext { readonly params: Promise<{ readonly snoozeId: string }>
 export const PATCH = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "snooze-write", 5_000, 100, 60_000);
+    await assertRequestRateLimit(request, "snooze-write", 5_000, 100, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("snooze-write", connection.id, 30, 15 * 60_000);
+    await assertSubjectRateLimit("snooze-write", connection.id, 30, 15 * 60_000);
     const snoozeId = snoozeIdSchema.parse((await context.params).snoozeId);
     const input = snoozePatchSchema.parse(
       await readJsonBody(request, MAX_SNOOZE_REQUEST_BYTES),

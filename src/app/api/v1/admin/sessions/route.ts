@@ -46,15 +46,26 @@ const installation = async () => {
   return current;
 };
 
-const limits = (request: Request): void => {
-  assertRequestRateLimit(request, "admin-session-management", 5_000, 120, 60_000);
-  assertSubjectRateLimit("admin-session-management", "administrator", 120, 60_000);
+const limits = async (request: Request): Promise<void> => {
+  await assertRequestRateLimit(
+    request,
+    "admin-session-management",
+    5_000,
+    120,
+    60_000,
+  );
+  await assertSubjectRateLimit(
+    "admin-session-management",
+    "administrator",
+    120,
+    60_000,
+  );
 };
 
 export const GET = async (request: Request) => {
   try {
     await assertAdminAccess();
-    limits(request);
+    await limits(request);
     const current = await installation();
     const currentSessionId = await getCurrentAdminSessionId();
     return apiSuccess({
@@ -92,7 +103,7 @@ export const DELETE = async (request: Request) => {
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
-    limits(request);
+    await limits(request);
     const current = await installation();
     const currentSessionId = await getCurrentAdminSessionId();
     const input = revokeSchema.parse(await readJsonBody(request, 4 * 1_024));

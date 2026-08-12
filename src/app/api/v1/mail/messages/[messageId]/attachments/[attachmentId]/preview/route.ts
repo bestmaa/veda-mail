@@ -56,7 +56,7 @@ const rejectRangeRequest = (request: Request): void => {
 export const POST = async (request: Request, context: RouteContext) => {
   try {
     assertExplicitSameOriginRequest(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "attachment-preview",
       2_000,
@@ -65,7 +65,7 @@ export const POST = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "attachment-preview",
       connection.id,
       10,

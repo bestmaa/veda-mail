@@ -89,6 +89,8 @@ vi.mock("@/server/mail-service/mail-service-profile.store", () => ({
 }));
 
 vi.mock("@/server/security/rate-limit", () => ({
+  assertLocalRequestRateLimit: mocks.assertRequestRateLimit,
+  assertLocalSubjectRateLimit: mocks.assertSubjectRateLimit,
   assertRequestRateLimit: mocks.assertRequestRateLimit,
   assertSubjectRateLimit: mocks.assertSubjectRateLimit,
   rateLimitSourceFor: mocks.rateLimitSourceFor,

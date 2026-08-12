@@ -27,7 +27,7 @@ interface RouteContext {
 export const POST = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "attachment-import",
       1_000,
@@ -36,7 +36,7 @@ export const POST = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("attachment-import", connection.id, 20, 60 * 1_000);
+    await assertSubjectRateLimit("attachment-import", connection.id, 20, 60 * 1_000);
     const input = attachmentImportSchema.parse(
       await readJsonBody(request, 4 * 1_024),
     );

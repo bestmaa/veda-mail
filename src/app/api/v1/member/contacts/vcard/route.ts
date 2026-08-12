@@ -27,11 +27,11 @@ export const runtime = "nodejs";
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(request, "member-contact-vcard-export", 10_000, 60, 60 * 1000);
+    await assertRequestRateLimit(request, "member-contact-vcard-export", 10_000, 60, 60 * 1000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit("member-contact-vcard-export", connection.id, 20, 15 * 60 * 1000);
+    await assertSubjectRateLimit("member-contact-vcard-export", connection.id, 20, 15 * 60 * 1000);
     const book = await contactStore.get(await contactOwnerForConnection(connection));
     const cards = book.contacts.map((contact) => ({
       categories: book.groups.filter(({ contactIds }) => contactIds.includes(contact.id))
@@ -68,11 +68,11 @@ export const POST = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-contact-vcard-import", 5_000, 30, 60 * 1000);
+    await assertRequestRateLimit(request, "member-contact-vcard-import", 5_000, 30, 60 * 1000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit("member-contact-vcard-import", connection.id, 5, 15 * 60 * 1000);
+    await assertSubjectRateLimit("member-contact-vcard-import", connection.id, 5, 15 * 60 * 1000);
     audit = securityAuditOperation({
       action: "member.contacts.imported",
       actor: auditActor,

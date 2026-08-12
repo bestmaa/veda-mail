@@ -50,14 +50,14 @@ const refreshAdminSession = async (
 export const GET = async (request: Request) => {
   try {
     await assertAdminAccess();
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "admin-mail-users-read",
       5_000,
       300,
       60 * 1_000,
     );
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-mail-users-read",
       "administrator",
       300,
@@ -84,14 +84,14 @@ export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "admin-mail-user-create",
       200,
       20,
       15 * 60 * 1_000,
     );
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-mail-user-create",
       "administrator",
       10,

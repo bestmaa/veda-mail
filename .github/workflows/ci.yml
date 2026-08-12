@@ -274,7 +274,7 @@ jobs:
           skip-setup-trivy: "true"
           vuln-type: os,library
 
-      - name: Scan pinned Redis login-limiter sidecar
+      - name: Scan pinned Redis request-limiter sidecar
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           exit-code: "1"

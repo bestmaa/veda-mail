@@ -27,11 +27,11 @@ export const POST = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-rule-reconcile", 5_000, 60, 60_000);
+    await assertRequestRateLimit(request, "member-rule-reconcile", 5_000, 60, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit("member-rule-reconcile", connection.id, 20, 15 * 60_000);
+    await assertSubjectRateLimit("member-rule-reconcile", connection.id, 20, 15 * 60_000);
     const input = inputSchema.parse(
       await readJsonBody(request, MAX_MAIL_RULE_REQUEST_BYTES),
     );

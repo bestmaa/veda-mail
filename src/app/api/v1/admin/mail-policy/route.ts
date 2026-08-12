@@ -25,8 +25,8 @@ export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
-    assertRequestRateLimit(request, "admin-mail-policy", 1_000, 100, 10 * 60 * 1_000);
-    assertSubjectRateLimit("admin-mail-policy", "administrator", 20, 10 * 60 * 1_000);
+    await assertRequestRateLimit(request, "admin-mail-policy", 1_000, 100, 10 * 60 * 1_000);
+    await assertSubjectRateLimit("admin-mail-policy", "administrator", 20, 10 * 60 * 1_000);
     const policy = mailContentPolicySchema.parse(
       await readJsonBody(request, MAX_POLICY_BODY_BYTES),
     );

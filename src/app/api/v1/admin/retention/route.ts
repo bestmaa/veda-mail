@@ -25,8 +25,8 @@ export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
-    assertRequestRateLimit(request, "admin-retention", 1_000, 60, 10 * 60_000);
-    assertSubjectRateLimit("admin-retention", "administrator", 10, 10 * 60_000);
+    await assertRequestRateLimit(request, "admin-retention", 1_000, 60, 10 * 60_000);
+    await assertSubjectRateLimit("admin-retention", "administrator", 10, 10 * 60_000);
     const policy = dataRetentionPolicySchema.parse(await readJsonBody(request, 4_096));
     audit = securityAuditOperation({
       action: "admin.retention.updated",

@@ -69,7 +69,7 @@ export const POST = async (request: Request) => {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-two-factor-start",
       connection.id,
       3,
@@ -102,7 +102,7 @@ export const PUT = async (request: Request) => {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-two-factor-confirm",
       connection.id,
       5,
@@ -157,7 +157,7 @@ export const DELETE = async (request: Request) => {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-two-factor-disable",
       connection.id,
       5,

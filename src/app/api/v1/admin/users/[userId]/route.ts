@@ -20,14 +20,14 @@ interface RouteContext {
 export const GET = async (request: Request, context: RouteContext) => {
   try {
     await assertAdminAccess();
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "admin-mail-user-detail",
       5_000,
       300,
       60 * 1_000,
     );
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-mail-user-detail",
       "administrator",
       300,

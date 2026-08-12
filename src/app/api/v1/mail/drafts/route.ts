@@ -23,7 +23,7 @@ const MAX_DRAFT_REQUEST_BYTES = 1024 * 1024;
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-draft-write",
       10_000,
@@ -32,7 +32,7 @@ export const POST = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-draft-write",
       connection.id,
       240,

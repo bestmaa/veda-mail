@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-delivery-notice-read",
       10_000,
@@ -23,7 +23,7 @@ export const GET = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-delivery-notice-read",
       connection.id,
       120,

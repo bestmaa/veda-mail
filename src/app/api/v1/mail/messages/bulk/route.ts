@@ -109,7 +109,7 @@ export const PATCH = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-bulk-mutation",
       5_000,
@@ -118,7 +118,7 @@ export const PATCH = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-bulk-mutation",
       connection.id,
       20,

@@ -25,7 +25,7 @@ interface RouteContext {
 export const POST = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "calendar-invitation-response",
       5_000,
@@ -34,7 +34,7 @@ export const POST = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "calendar-invitation-response",
       connection.id,
       20,

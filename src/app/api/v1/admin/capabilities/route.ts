@@ -30,14 +30,14 @@ export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
     await assertAdminAccess();
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "admin-capabilities",
       1_000,
       100,
       10 * 60 * 1_000,
     );
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "admin-capabilities",
       "administrator",
       20,

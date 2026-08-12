@@ -24,7 +24,7 @@ export const DELETE = async (
 ) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-delivery-notice-dismiss",
       5_000,
@@ -33,7 +33,7 @@ export const DELETE = async (
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-delivery-notice-dismiss",
       connection.id,
       120,

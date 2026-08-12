@@ -33,10 +33,10 @@ const ruleAuditAction = (operation: MailRulePutOperation["operation"]) => {
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(request, "member-rule-read", 10_000, 300, 60_000);
+    await assertRequestRateLimit(request, "member-rule-read", 10_000, 300, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("member-rule-read", connection.id, 120, 60_000);
+    await assertSubjectRateLimit("member-rule-read", connection.id, 120, 60_000);
     return apiSuccess(await readRuleWorkspace(connection));
   } catch (error) {
     return apiFailure(error, "Unable to load mail rules.");
@@ -47,11 +47,11 @@ export const PUT = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-rule-write", 5_000, 120, 60_000);
+    await assertRequestRateLimit(request, "member-rule-write", 5_000, 120, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit("member-rule-write", connection.id, 30, 15 * 60_000);
+    await assertSubjectRateLimit("member-rule-write", connection.id, 30, 15 * 60_000);
     const operation = parseMailRulePutOperation(
       await readJsonBody(request, MAX_MAIL_RULE_REQUEST_BYTES),
     );

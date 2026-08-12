@@ -51,7 +51,7 @@ export const POST = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "first-run-setup",
       200,
@@ -66,7 +66,7 @@ export const POST = async (request: Request) => {
       );
     }
     const parsed = await parseSetupForm(await readMultipartFormData(request));
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "first-run-setup",
       parsed.setupToken,
       8,

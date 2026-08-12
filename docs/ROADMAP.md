@@ -905,8 +905,12 @@ Delivery notices now use their own authenticated connection buckets: concurrent
 replicas share append/list/dismiss state, global count/byte compression is
 lock-serialized, raw connection/recipient/notice values stay out of Redis
 plaintext, tampering fails closed, and remote revocation deletes the bucket.
-The checkbox remains open until the remaining writable, quarantine, and
-non-login limiter boundaries are closed.
+All route-specific global, trusted-source, and subject windows now retain their
+local front-line cap and also consume HMAC-opaque atomic Redis windows when the
+shared limiter is configured. Calls are statically required to await the
+fail-closed backend, weighted limits preserve cost, and readiness probes it.
+The checkbox remains open until the remaining writable and quarantine
+boundaries are closed.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

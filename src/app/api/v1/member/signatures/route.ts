@@ -25,7 +25,7 @@ const ownerFor = async (
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-signature-read",
       10_000,
@@ -34,7 +34,7 @@ export const GET = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-signature-read",
       connection.id,
       120,
@@ -51,7 +51,7 @@ export const GET = async (request: Request) => {
 export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-signature-write",
       5_000,
@@ -60,7 +60,7 @@ export const PUT = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-signature-write",
       connection.id,
       20,

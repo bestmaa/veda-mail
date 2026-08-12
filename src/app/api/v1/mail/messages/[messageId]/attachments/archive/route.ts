@@ -41,7 +41,7 @@ export const GET = async (request: Request, context: RouteContext) => {
   let body: ReadableStream<Uint8Array> | undefined;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "attachment-archive",
       200,
@@ -50,7 +50,7 @@ export const GET = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     await assertAttachmentArchiveRequest(request, ARCHIVE_TICKET_QUERY);
-    assertSubjectRateLimit("attachment-archive", connection.id, 5, 60 * 1_000);
+    await assertSubjectRateLimit("attachment-archive", connection.id, 5, 60 * 1_000);
     const params = parseAttachmentArchiveRouteParams(await context.params);
     const ticket = new URL(request.url).searchParams.get(ARCHIVE_TICKET_QUERY);
     if (!ticket) {
@@ -89,7 +89,7 @@ export const POST = async (request: Request, context: RouteContext) => {
   let lease: AttachmentDownloadLease | undefined;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "attachment-archive-preflight",
       300,
@@ -98,7 +98,7 @@ export const POST = async (request: Request, context: RouteContext) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "attachment-archive-preflight",
       connection.id,
       10,

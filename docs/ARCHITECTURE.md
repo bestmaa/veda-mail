@@ -1334,9 +1334,9 @@ npm run check:lines
   Explicit scheduled jobs carry a separate bounded encrypted credential copy.
 - Restarting the process signs every member out in the default local mode;
   configured shared sessions survive while Redis and the matching key remain.
-- A multi-replica deployment additionally needs coordinated non-login rate
-  limiting, shared attachment quarantine, and transactional replacements for
-  the remaining process-serialized mutable files.
+- A multi-replica deployment additionally needs shared attachment quarantine
+  and transactional replacements for the remaining process-serialized mutable
+  files.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

@@ -27,10 +27,10 @@ export const GET = async (request: Request, context: RouteContext) => {
   let lease: AttachmentDownloadLease | undefined;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "message-source-export", 5_000, 60, 60_000);
+    await assertRequestRateLimit(request, "message-source-export", 5_000, 60, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("message-source-export", connection.id, 20, 15 * 60_000);
+    await assertSubjectRateLimit("message-source-export", connection.id, 20, 15 * 60_000);
     if (request.headers.has("range")) {
       throw new ApiError("Message byte ranges are not supported.", "MESSAGE_RANGE_NOT_SATISFIABLE", 416);
     }
