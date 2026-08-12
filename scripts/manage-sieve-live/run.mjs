@@ -20,6 +20,7 @@ import {
   deleteTemporaryAccount,
   openManagement,
 } from "./stalwart.mjs";
+import { exerciseVacation } from "./vacation.mjs";
 
 const freePort = async () => new Promise((resolve, reject) => {
   const server = net.createServer();
@@ -85,7 +86,6 @@ const putRule = async (baseUrl, session, body, statuses = [200]) =>
   memberRequest(baseUrl, "/api/v1/member/rules", {
     ...session, body, method: "PUT", statuses,
   });
-
 const exerciseRules = async (baseUrl, session, account) => {
   const initial = await memberRequest(baseUrl, "/api/v1/member/rules", session);
   const capability = initial.payload.data.capability;
@@ -99,7 +99,6 @@ const exerciseRules = async (baseUrl, session, account) => {
   }
   invariant(initial.payload.data.book.rules.length === 0,
     "The temporary mailbox unexpectedly contains Veda rules.");
-
   const token = `veda-live-${randomBytes(8).toString("hex")}`;
   const first = await putRule(baseUrl, session, {
     definition: definition("Live mark read", token, "mark-read"),
@@ -159,6 +158,7 @@ const exerciseRules = async (baseUrl, session, account) => {
   const matched = preview.payload.data.find((item) => item.subject === subject);
   invariant(matched?.evaluation.matchedRuleIds.length === 2,
     "The bounded live dry-run did not match both rules.");
+  const vacation = await exerciseVacation(baseUrl, session, 2);
 
   const workspace = await memberRequest(baseUrl, "/api/v1/member/rules", session);
   const operations = workspace.payload.data.book.audit.map((entry) => entry.operation);
@@ -174,7 +174,7 @@ const exerciseRules = async (baseUrl, session, account) => {
   }
   invariant(current.payload.data.rules.length === 0,
     "The isolated rules were not removed.");
-  return { actions: ["mark-read", "star"], conflict: true, dryRun: true };
+  return { actions: ["mark-read", "star"], conflict: true, dryRun: true, vacation };
 };
 
 export const runManageSieveAcceptance = async () => {
@@ -237,7 +237,7 @@ export const runManageSieveAcceptance = async () => {
     await setup(baseUrl, setupToken, domain, providerHost);
     report("member-login");
     const session = await login(baseUrl, account);
-    report("rules-and-delivery");
+    report("rules-vacation-and-delivery");
     const evidence = await exerciseRules(baseUrl, session, account);
     return { evidence, provider: "imap-smtp", status: "passed" };
   } finally {

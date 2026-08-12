@@ -1337,12 +1337,22 @@ the UI writes plaintext with `htmlBody: null`.
 
 Veda Mail does not claim mail delegation merely because a provider supports
 calendar, address-book, or file sharing. Delegation remains visibly unavailable
-until a provider advertises a reviewed mail-delegation contract. Generic
-ManageSieve vacation is also fail-closed for now: installing a second active
-script could disable the signed Veda rules program. It requires one ownership-
-verified composed script and conflict-safe deployment before it may be exposed.
+until a provider advertises a reviewed mail-delegation contract.
 
-The generic rules live-acceptance runner is an operator-only release tool, not
+Generic ManageSieve vacation is exposed only when `vacation`, `date`, and
+`relational` are all advertised. It never installs a second active script:
+rules and vacation are composed inside the one installation-HMAC-owned program.
+Vacation metadata is included inside that signature, strictly decoded, and
+bounded by the same domain limits as JMAP. The compiler quotes header-like
+values, dot-stuffs plaintext literals, and base64-encodes HTML MIME parts so
+member content cannot become Sieve commands. Rules and vacation use independent
+logical revisions, while the adapter also compares a complete-script snapshot
+after `CHECKSCRIPT`; concurrent cross-feature drift, foreign or ambiguous
+scripts, missing extensions, oversize output, failed validation, and non-exact
+readback fail closed without replacing the active foreign program.
+
+The generic rules and vacation live-acceptance runner is an operator-only
+release tool, not
 an HTTP capability. It reads management credentials only from the container
 environment, creates a random `veda-accept-*` mailbox, and starts the tested
 application on an unexposed loopback port with a new data directory and key.

@@ -42,22 +42,25 @@ const safeEqual = (left: string, right: string): boolean => {
     timingSafeEqual(leftBytes, rightBytes);
 };
 
-const ownedContent = (body: string): string => {
+export const encodeOwnedSieveBody = (body: string): string => {
   const hash = bodyHash(body);
   return `${MARKER}${hash}.${signature(hash)}\r\n${body}`;
 };
 
-const verifyOwnedContent = (content: string): boolean => {
+export const decodeOwnedSieveBody = (content: string): string | null => {
   const separator = content.indexOf("\r\n");
-  if (separator < 0 || !content.startsWith(MARKER)) return false;
+  if (separator < 0 || !content.startsWith(MARKER)) return null;
   const marker = content.slice(MARKER.length, separator);
   const match = /^([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{43})$/u.exec(marker);
-  if (!match) return false;
+  if (!match) return null;
   const body = content.slice(separator + 2);
   const actualHash = bodyHash(body);
   return safeEqual(match[1]!, actualHash) &&
-    safeEqual(match[2]!, signature(actualHash));
+    safeEqual(match[2]!, signature(actualHash)) ? body : null;
 };
+
+const verifyOwnedContent = (content: string): boolean =>
+  decodeOwnedSieveBody(content) !== null;
 
 export const createOwnedSieveCompiler = (
   mailboxNames: Readonly<Record<string, string>>,
@@ -71,7 +74,7 @@ export const createOwnedSieveCompiler = (
       mailboxNames,
       rules,
     });
-    const content = ownedContent(program.content);
+    const content = encodeOwnedSieveBody(program.content);
     if (Buffer.byteLength(content, "utf8") > MAX_SCRIPT_BYTES) {
       throw new Error("The generated Sieve script is too large.");
     }

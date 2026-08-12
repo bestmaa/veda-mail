@@ -8,7 +8,7 @@ import {
   type RuleDeploymentInput,
   type RuleDeploymentResult,
 } from "@/domain/mail/rule";
-import type { StalwartSieveCompiler } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-content";
+import type { ManageSieveCompiler } from "@/infrastructure/providers/imap-smtp/manage-sieve-compiler";
 import {
   VEDA_MANAGE_SIEVE_SCRIPT,
 } from "@/infrastructure/providers/imap-smtp/manage-sieve-client";
@@ -69,7 +69,7 @@ const exactText = (bytes: Uint8Array): string => {
 export class ManageSieveRuleAdapter {
   public constructor(
     private readonly client: ManageSieveClient,
-    private readonly compiler: StalwartSieveCompiler,
+    private readonly compiler: ManageSieveCompiler,
   ) {}
 
   public async getCapability(): Promise<RuleCapability> {
@@ -85,18 +85,14 @@ export class ManageSieveRuleAdapter {
     if (input.rules.length > MAX_MAIL_RULES) manageSieveRejected();
     try {
       return await this.client.use(async (session, discovered) => {
-        const compiled = this.compiler.compile(input.rules);
-        if (!this.compiler.verifyOwnership(compiled.content)) manageSieveRejected();
-        const missing = compiled.requiredExtensions.find(
+        const preliminary = this.compiler.compileRules(input.rules, null);
+        if (!this.compiler.verifyOwnership(preliminary.content)) manageSieveRejected();
+        const preliminaryMissing = preliminary.requiredExtensions.find(
           (item) => !discovered.extensions.has(item.toLowerCase()),
         );
-        if (missing) manageSieveUnsupported(
+        if (preliminaryMissing) manageSieveUnsupported(
           "The provider lacks an extension required by these rules.",
         );
-        const bytes = new TextEncoder().encode(compiled.content);
-        if (bytes.byteLength < 1 || bytes.byteLength > MAX_SCRIPT_BYTES) {
-          manageSieveUnsupported("The compiled rules script exceeds the provider limit.");
-        }
         const scripts = await this.client.list(session);
         const active = scripts.filter(({ active: isActive }) => isActive);
         const named = scripts.filter(({ name }) => name === VEDA_MANAGE_SIEVE_SCRIPT);
@@ -107,12 +103,28 @@ export class ManageSieveRuleAdapter {
         if (active[0] && active[0].name !== VEDA_MANAGE_SIEVE_SCRIPT) {
           manageSieveConflict("Another provider script is active. Veda Mail left it unchanged.");
         }
-        const providerState = existing ? hash(existing) : hash(new Uint8Array());
+        const existingText = existing ? exactText(existing) : null;
+        const compiled = this.compiler.compileRules(input.rules, existingText);
+        const missing = compiled.requiredExtensions.find(
+          (item) => !discovered.extensions.has(item.toLowerCase()),
+        );
+        if (missing) manageSieveUnsupported(
+          "The provider lacks an extension required by these rules or the active vacation response.",
+        );
+        const bytes = new TextEncoder().encode(compiled.content);
+        if (bytes.byteLength < 1 || bytes.byteLength > MAX_SCRIPT_BYTES) {
+          manageSieveUnsupported("The compiled rules script exceeds the provider limit.");
+        }
+        const providerState = existingText
+          ? this.compiler.rulesRevision(existingText)
+          : this.compiler.rulesRevision(null);
+        const legacyProviderState = existing ? hash(existing) : hash(new Uint8Array());
         if (existing && active[0] && Buffer.from(existing).equals(Buffer.from(bytes))) {
           return this.result(bytes, providerState);
         }
         if (input.expectedProviderState !== null &&
-          input.expectedProviderState !== providerState) {
+          input.expectedProviderState !== providerState &&
+          input.expectedProviderState !== legacyProviderState) {
           manageSieveConflict("Rules changed at the provider. Reload before saving.");
         }
         await this.client.check(session, bytes);
@@ -127,7 +139,7 @@ export class ManageSieveRuleAdapter {
           manageSieveConflict("Provider rules changed during deployment. Nothing was activated.");
         }
         const latest = preflightNamed[0] ? await this.owned(session) : null;
-        if ((latest ? hash(latest) : hash(new Uint8Array())) !== providerState) {
+        if ((latest ? hash(latest) : hash(new Uint8Array())) !== legacyProviderState) {
           manageSieveConflict("Provider rules changed during deployment. Reload before saving.");
         }
         await this.client.put(session, VEDA_MANAGE_SIEVE_SCRIPT, bytes);
@@ -142,7 +154,7 @@ export class ManageSieveRuleAdapter {
           isActive && name === VEDA_MANAGE_SIEVE_SCRIPT)) manageSieveRejected();
         const confirmed = await this.owned(session);
         if (!Buffer.from(confirmed).equals(Buffer.from(bytes))) manageSieveRejected();
-        return this.result(bytes, hash(confirmed));
+        return this.result(bytes, this.compiler.rulesRevision(exactText(confirmed)));
       });
     } catch (error) {
       if (error instanceof ManageSieveError) throw error;

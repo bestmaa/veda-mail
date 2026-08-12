@@ -592,16 +592,27 @@ JMAP and generic ManageSieve providers within their advertised capabilities.
 
 The provider-managed vacation-response slice is implemented for providers that
 advertise RFC 8621 `urn:ietf:params:jmap:vacationresponse` on the writable
-primary mail account. The strict member route uses exact mailbox-session scope,
+primary mail account, or Standard IMAP providers whose configured ManageSieve
+endpoint advertises `vacation`, `date`, and `relational`. The strict member
+route uses exact mailbox-session scope,
 same-origin writes, bounded UTC dates and bodies, provider-state concurrency,
 subject rate limits, and metadata-only security audit events. Account settings
 show the automatic-reply form only when supported and explicitly explain when
-vacation response or mail delegation is unavailable. Standard IMAP/SMTP remains
-fail-closed because a separate ManageSieve vacation script would replace the
-single active Veda-owned rules script; safe script composition and live provider
-acceptance are still required before this checkbox can close. Current Stalwart
-sharing documentation advertises calendar, address-book, and file sharing, not
-mail delegation, so delegation is not invented or over-advertised.
+vacation response or mail delegation is unavailable. Standard IMAP composes
+rules and vacation inside the single HMAC-owned script, preserves each half
+across updates to the other, uses independent logical revisions plus a complete
+script drift snapshot, validates with `CHECKSCRIPT`, and requires exact
+post-activation readback. Signed chunked metadata enables exact reloads; dated
+guards and deterministic base64 multipart HTML remain injection-safe. On
+2026-08-12 a disposable pinned Stalwart 0.16.15 server and temporary account
+advertised the required extensions and accepted a real STARTTLS ManageSieve
+dated HTML composite through `CHECKSCRIPT`, upload, activation, exact reload,
+and disable. The account, active script, container, and exact named volumes were
+then removed. The source-IP-restricted production runner now covers the same
+vacation round trip alongside rules and remains the deployment acceptance gate.
+Current Stalwart sharing documentation advertises calendar, address-book, and
+file sharing, not mail delegation, so delegation is not invented or
+over-advertised and keeps this combined checkbox open.
 
 The provider-independent Snooze slice is released and deployed. It persists a
 unique owned mailbox intent before provider mutation, encrypts owner-scoped jobs

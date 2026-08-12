@@ -1,5 +1,5 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-
 import type { RuleDeploymentInput } from "@/domain/mail/rule";
 import { ManageSieveClient } from "@/infrastructure/providers/imap-smtp/manage-sieve-client";
 import type { ManageSieveError } from "@/infrastructure/providers/imap-smtp/manage-sieve-errors";
@@ -9,13 +9,11 @@ import type {
   ManageSieveSession,
 } from "@/infrastructure/providers/imap-smtp/manage-sieve-transport";
 import type { ImapSmtpMemberConfig } from "@/infrastructure/providers/imap-smtp/imap-smtp.types";
-import type { StalwartSieveCompiler } from "@/infrastructure/providers/stalwart-jmap/stalwart-sieve-content";
-
+import type { ManageSieveCompiler } from "@/infrastructure/providers/imap-smtp/manage-sieve-compiler";
 const marker = "# owned\r\n";
 const config: ImapSmtpMemberConfig = {
   imapHost: "imap.example.com",
-  imapPort: "993",
-  imapSecurity: "tls",
+  imapPort: "993", imapSecurity: "tls",
   manageSieveHost: "sieve.example.com",
   manageSievePort: "4190",
   manageSieveSecurity: "tls",
@@ -33,11 +31,16 @@ const input = (expectedProviderState: string | null = null): RuleDeploymentInput
   expectedProviderState,
   rules: [],
 });
-const compiler: StalwartSieveCompiler = {
-  compile: vi.fn(() => ({ content: `${marker}keep;\r\n`, requiredExtensions: [] })),
+const revision = (content: string | null): string => createHash("sha256")
+  .update(content ?? "", "utf8").digest("base64url");
+const compiler: ManageSieveCompiler = {
+  compileRules: vi.fn(() => ({ content: `${marker}keep;\r\n`, requiredExtensions: [] })),
+  compileVacation: vi.fn(() => ({ content: `${marker}keep;\r\n`, requiredExtensions: [] })),
+  readVacation: vi.fn(() => ({ fromDate: null, htmlBody: null, isEnabled: false,
+    revision: revision(null), subject: null, textBody: null, toDate: null })),
+  rulesRevision: vi.fn(revision),
   verifyOwnership: vi.fn((content: string) => content.startsWith(marker)),
 };
-
 const harness = (initial: {
   active?: string;
   content?: string;
@@ -90,9 +93,9 @@ const harness = (initial: {
     }),
   };
   const client = new ManageSieveClient(config, async () => session);
-  const configuredCompiler: StalwartSieveCompiler = {
+  const configuredCompiler: ManageSieveCompiler = {
     ...compiler,
-    compile: vi.fn(() => ({
+    compileRules: vi.fn(() => ({
       content: `${marker}keep;\r\n`,
       requiredExtensions: initial.requiredExtensions ?? [],
     })),
@@ -103,7 +106,6 @@ const harness = (initial: {
     session,
   };
 };
-
 describe("ManageSieve rules adapter", () => {
   it("discovers only actions backed by advertised extensions", async () => {
     const { adapter } = harness();

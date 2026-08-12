@@ -39,6 +39,9 @@ import { previewImapRules } from "@/infrastructure/providers/imap-smtp/imap-rule
 import {
   deployImapRules,
   getImapRuleCapability,
+  getImapVacationCapability,
+  getImapVacationResponse,
+  updateImapVacationResponse,
 } from "@/infrastructure/providers/imap-smtp/manage-sieve-gateway";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 import { ImapSnoozeAdapter } from "@/infrastructure/providers/imap-smtp/imap-snooze-adapter";
@@ -92,7 +95,6 @@ export class ImapSmtpMailGateway implements MailGateway {
   public getAccount() {
     return this.reader.getAccount();
   }
-
   public async getMailUpdateMode() { return "poll" as const; }
   public async waitForMailUpdate() { return { mode: "poll" as const,
     retryAfterMs: 60_000, shouldRefresh: true }; }
@@ -114,17 +116,15 @@ export class ImapSmtpMailGateway implements MailGateway {
     const mailboxes = await this.reader.listMailboxes();
     return deployImapRules(this.config, mailboxes, input);
   }
-
   public previewRules(input: RulePreviewInput) {
     return previewImapRules(this.config, input);
   }
   public getSnoozeCapability() { return this.snooze.getCapability(); }
-  public async getVacationCapability() { return { reason:
-    "Vacation responses are unavailable until this IMAP account advertises a safely composable provider capability.",
-    supported: false } as const; }
-  public async getVacationResponse(): Promise<never> { return unsupported("Vacation responses"); }
-  public async updateVacationResponse(_input: VacationResponseUpdate): Promise<never> {
-    void _input; return unsupported("Vacation responses"); }
+  public getVacationCapability() { return getImapVacationCapability(this.config); }
+  public getVacationResponse() { return getImapVacationResponse(this.config); }
+  public updateVacationResponse(input: VacationResponseUpdate) {
+    return updateImapVacationResponse(this.config, input);
+  }
   public getSnoozeAccountScope() { return this.snooze.getAccountScope(); }
   public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
   public preflightSnooze(input: SnoozePreflightInput) {
