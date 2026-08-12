@@ -233,6 +233,12 @@ contract across replicas, and deleting the final signature removes the owner
 record. Verify the archive and Redis backup with one upgraded replica before
 scaling or rolling back.
 
+Email templates use the same ciphertext-only migration and exact-record CAS for
+`/data/member-templates.json`. Concurrent replicas retain the existing revision
+conflict contract, and deleting the final template removes the shared owner
+record. Verify the archive and Redis backup on one upgraded replica before
+scaling; preserve the installation session secret and Redis prefix for recovery.
+
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
 record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
@@ -482,7 +488,7 @@ Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
 shared Redis repository; message-list preferences, saved searches, signatures,
-and mailbox appearance migrate there on first access, and request limits may use their
+templates, and mailbox appearance migrate there on first access, and request limits may use their
 separate backend. The encrypted
 `/data/member-templates.json`, `/data/member-contacts.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized

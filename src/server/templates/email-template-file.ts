@@ -92,3 +92,14 @@ export const writeEmailTemplateFile = async (
     throw error;
   }
 };
+
+export const archiveMigratedEmailTemplateFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ emailTemplateFilePath(),
+      /* turbopackIgnore: true */ `${emailTemplateFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

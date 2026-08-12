@@ -454,6 +454,11 @@ metadata.
   revision and preserves the HTTP 409 stale-write response across replicas.
   Signature names, bodies, HTML, defaults, and account identities never appear
   in Redis plaintext; tamper and backend failure fail closed.
+- Email-template books use the same ciphertext-only migration, HMAC-opaque owner
+  index, and exact-envelope CAS. Template names, subjects, bodies, HTML, and
+  account identities remain absent from Redis plaintext. Concurrent revisions
+  admit one writer; tamper, migration conflict, and backend failure fail closed,
+  while deleting the final template removes the shared owner record.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients
