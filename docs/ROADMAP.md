@@ -897,8 +897,12 @@ raw bearer IDs/addresses/passwords, and fail-closed tamper handling. Job
 mutations use renewable distributed locks and expiring leases while preserving
 scheduled-send uncertainty and snooze reconciliation. Local encrypted books
 migrate without plaintext exposure and are archived against rollback replay.
-The checkbox remains open until the remaining writable, idempotency, quarantine,
-and notice boundaries are closed.
+Immediate-send idempotency is also shared: encrypted connection buckets admit
+one provider-I/O owner, poll/replay canonical receipts across replicas, retain
+unconfirmed claims after request timeout, reject changed intents/stale tokens,
+and clear with remote session revocation while preserving all count/byte caps.
+The checkbox remains open until the remaining writable, quarantine, notice, and
+non-login limiter boundaries are closed.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

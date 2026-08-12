@@ -127,9 +127,9 @@ export const respondToCalendarInvitation = async (
         id: id.message(`calendar-receipt-${randomUUID()}`),
         submittedAt: new Date().toISOString(),
       });
-      receipt = completeIdempotentSend(input.connection, prepared.owner, receipt);
+      receipt = await completeIdempotentSend(input.connection, prepared.owner, receipt);
     } catch (error) {
-      failIdempotentSend(input.connection, prepared.owner, error);
+      await failIdempotentSend(input.connection, prepared.owner, error);
       throw error;
     }
   }

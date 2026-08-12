@@ -164,6 +164,9 @@ monitoring; a configured outage or invalid ciphertext fails access closed.
 The same repository stores scheduled-send and snooze owner books as ciphertext.
 Enable it first with one replica: first access migrates the local JSON books and
 renames them with `.migrated-to-redis`; back up Redis before scaling out.
+It also stores connection-scoped immediate-send claims and bounded replay
+receipts as ciphertext. Exactly one replica owns provider I/O; peers poll and
+replay the result, while a configured Redis outage fails send state closed.
 `/api/ready` reports the configured shared state store as a bounded dependency and
 returns 503 while it cannot answer `PING`.
 
@@ -173,7 +176,7 @@ subject windows across processes. Configure `VEDA_MAIL_RATE_LIMIT_REDIS_URL`
 with a secret-managed `rediss://` URL and an optional deployment-specific
 `VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
 configured backend fails login closed. Shared sessions and jobs still do not
-remove the general one-replica requirement because send idempotency, quarantine,
+remove the general one-replica requirement because quarantine,
 notices, non-login limits, and mutable stores are not yet shared.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool

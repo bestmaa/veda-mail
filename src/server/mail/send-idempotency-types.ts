@@ -4,6 +4,7 @@ import type { ConnectionId, DraftId } from "@/domain/shared/brand";
 export type SendIdempotencyOutcome =
   | { readonly kind: "completed"; readonly receipt: SendReceipt }
   | { readonly error: unknown; readonly kind: "failed" }
+  | { readonly kind: "in-progress" }
   | { readonly kind: "orphaned" };
 
 export type SendIdempotencyBegin =

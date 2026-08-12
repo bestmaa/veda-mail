@@ -18,9 +18,10 @@ import {
 import { clearGateway } from "@/server/mail/gateway-cache";
 import { deliveryNoticeStore } from "@/server/mail/delivery-notice-store";
 import {
-  sendIdempotencyStore,
   type SendIdempotencyBegin,
 } from "@/server/mail/send-idempotency-store";
+import { sharedSendIdempotencyStore } from
+  "@/server/mail/shared-send-idempotency-store";
 import {
   decryptSharedSession,
   encryptSharedSession,
@@ -45,6 +46,7 @@ const remove = async (connectionId: ConnectionId, ownerKey?: string): Promise<bo
     ...(ownerKey ? { ownerIndex: sharedSessionOwnerIndex(ownerKey) } : {}),
   });
   clearConnectionResources(connectionId);
+  await sharedSendIdempotencyStore.clear(connectionId);
   return removed ?? false;
 };
 
@@ -134,7 +136,7 @@ export const sharedConnectionStore = {
       await remove(connection.id, stored.ownerKey);
       return { kind: "inactive" };
     }
-    return sendIdempotencyStore.begin(connection.id, draftId, fingerprint, expiresAt);
+    return sharedSendIdempotencyStore.begin(connection.id, draftId, fingerprint, expiresAt);
   },
 
   async appendDeliveryNoticeIfActive(
@@ -221,6 +223,9 @@ export const sharedConnectionStore = {
   async clearAll(): Promise<void> {
     const records = await list();
     await sharedSessionRepository.clear("member");
-    for (const stored of records) clearConnectionResources(stored.connection.id);
+    for (const stored of records) {
+      clearConnectionResources(stored.connection.id);
+      await sharedSendIdempotencyStore.clear(stored.connection.id);
+    }
   },
 };
