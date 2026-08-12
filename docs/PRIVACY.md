@@ -12,7 +12,7 @@ The browser talks only to Veda Mail. Veda Mail authenticates to the configured
 JMAP or IMAP/SMTP provider and returns bounded presentation data. It does not
 contain advertising, analytics SDKs, or upstream Veda telemetry. Remote images
 in messages are blocked. A provider, reverse proxy, DNS resolver, malware
-scanner, optional Redis rate/session stores, container platform, backup
+scanner, optional Redis rate/shared-state stores, container platform, backup
 service, and operator log system may still process data under the operator's
 configuration.
 

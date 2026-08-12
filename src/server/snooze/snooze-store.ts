@@ -23,6 +23,7 @@ import {
   readOwnerSnoozes,
   writeOwnerSnoozes,
 } from "@/server/snooze/snooze-store-access";
+import { sharedJobRepository } from "@/server/shared-state/shared-job-repository";
 import { ApiError } from "@/transport/http/api-error";
 
 const globalState = globalThis as typeof globalThis & {
@@ -30,7 +31,8 @@ const globalState = globalThis as typeof globalThis & {
 };
 globalState.__vedaMailSnoozeStoreQueue ??= Promise.resolve();
 export const serializeSnoozeStore = async <T>(task: () => Promise<T>): Promise<T> => {
-  const result = globalState.__vedaMailSnoozeStoreQueue!.then(task, task);
+  const locked = () => sharedJobRepository.withLock("snooze", task);
+  const result = globalState.__vedaMailSnoozeStoreQueue!.then(locked, locked);
   globalState.__vedaMailSnoozeStoreQueue = result.then(() => undefined, () => undefined);
   return result;
 };
@@ -62,7 +64,7 @@ export const snoozeStore = {
     return serializeSnoozeStore(async () => {
       const current = await readOwnerSnoozes(owner);
       const book = current.book ?? emptySnoozeBook();
-      if (!current.book && Object.keys(current.file.owners).length >= MAX_SNOOZE_OWNERS) {
+      if (!current.book && current.ownerCount >= MAX_SNOOZE_OWNERS) {
         throw new ApiError("Snooze capacity has been reached.", "SNOOZE_CAPACITY", 409);
       }
       if (book.mailbox && JSON.stringify(book.mailbox) !== JSON.stringify(mailbox)) {
@@ -82,7 +84,7 @@ export const snoozeStore = {
       const current = await readOwnerSnoozes(input.owner);
       const book = current.book ?? emptySnoozeBook();
       if (book.jobs.length >= MAX_SNOOZED_MESSAGES_PER_OWNER ||
-        (!current.book && Object.keys(current.file.owners).length >= MAX_SNOOZE_OWNERS)) {
+        (!current.book && current.ownerCount >= MAX_SNOOZE_OWNERS)) {
         throw new ApiError("Snooze capacity has been reached.", "SNOOZE_CAPACITY", 409);
       }
       if (book.jobs.some((job) => job.messageId === input.item.messageId)) {
@@ -92,7 +94,8 @@ export const snoozeStore = {
       const job: SnoozeJob = {
         attemptCount: 0, connection: input.connection, createdAt: now,
         from: [...input.preflight.from], id: input.operationId, lastError: null,
-        leaseId: null, messageId: input.item.messageId, nextAttemptAt: now,
+        leaseExpiresAt: null, leaseId: null, messageId: input.item.messageId,
+        nextAttemptAt: now,
         phase: "hide",
         plan: input.preflight.plan, sourceMailboxId: input.item.sourceMailboxId,
         state: "hiding", subject: input.preflight.subject, updatedAt: now,

@@ -15,6 +15,14 @@ const dataDirectory = () => process.env["VEDA_MAIL_DATA_DIR"] ??
   path.join(/* turbopackIgnore: true */ process.cwd(), "data");
 export const snoozeFilePath = () =>
   path.join(/* turbopackIgnore: true */ dataDirectory(), FILE_NAME);
+export const archiveMigratedSnoozeFile = async (): Promise<void> => {
+  try {
+    await rename(/* turbopackIgnore: true */ snoozeFilePath(),
+      /* turbopackIgnore: true */ `${snoozeFilePath()}.migrated-to-redis`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
 const emptyFile = (): SnoozeJobFile => ({
   keyCheck: snoozeKeyCheck(), owners: {}, updatedAt: new Date(0).toISOString(), version: 1,
 });

@@ -736,15 +736,19 @@ connection, absolute UTC time, bounded retry state, and lease, all inside an
 AES-256-GCM envelope. Owner indexing and encryption use distinct HKDF contexts
 from the external `VEDA_MAIL_JOB_KEY`; a keyed file verifier detects an incorrect
 restore key. No scheduled content or provider secret appears outside ciphertext.
+With `VEDA_MAIL_STATE_REDIS_URL`, the same owner-bound envelope is stored in
+Redis under renewable distributed mutation locks and ten-minute worker leases.
+Existing local books migrate once and are renamed with `.migrated-to-redis`.
 
 The Node instrumentation worker scans at a bounded interval and durably changes
 one due job to `sending` before provider I/O. Accepted delivery removes it;
 definite or exhausted failure remains visible; transient failure uses bounded
 backoff; ambiguous delivery and interrupted leases become review-only
-`uncertain`. This at-most-once recovery rule avoids duplicate SMTP delivery when
+`uncertain`. Shared mode recovers only expired leases, so one replica cannot
+invalidate another live worker. This at-most-once recovery rule avoids duplicate SMTP delivery when
 portable exact-once proof is impossible. The encrypted credential exception is
 limited to explicitly scheduled jobs and deleted with the job. One application
-replica remains the supported boundary.
+replica remains the default boundary; shared Redis removes this queue-local limit.
 
 Undo Send reuses this queue with a distinct `undo` purpose and a server-bounded
 short deadline. The composer first saves the exact provider draft, receives the
@@ -771,8 +775,10 @@ Interrupted work becomes `retry-hide` or `retry-wake`, never delivery-style
 `uncertain`. Manual restoration and deletion complete safely; authentication or
 terminal failure clears the connection, while authenticated retry supplies the
 current connection. Owned-mailbox metadata remains after the last job. The file
-store and lease coordinator support one application process per `/data` volume;
-multi-replica deployment requires a shared transactional store.
+store and lease coordinator support one application process per `/data` volume.
+Shared state Redis instead uses encrypted owner books, renewable distributed
+mutations, and expiring worker leases; expired work reconciles without disturbing
+another replica's live claim.
 
 ## Provider-native mail-rules boundary
 

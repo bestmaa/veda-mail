@@ -74,6 +74,7 @@ export const processScheduledJobs = async (
   deliver?: ScheduledDeliveryPort,
   now = new Date(),
 ): Promise<number> => {
+  await recoverInterruptedScheduledJobs(now);
   let processed = 0;
   while (processed < MAX_JOBS_PER_TICK) {
     const claim = await claimNextScheduledJob(now);

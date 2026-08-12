@@ -7,16 +7,18 @@ import type {
   SnoozeProviderPlan,
 } from "@/domain/mail/snooze";
 import {
-  decryptSnoozeJobBook,
   encryptSnoozeJobBook,
 } from "@/server/snooze/snooze-crypto";
-import { readSnoozeFile, writeSnoozeFile } from "@/server/snooze/snooze-file";
+import { writeSnoozeFile } from "@/server/snooze/snooze-file";
 import type { SnoozeJob, SnoozeJobBook } from "@/server/snooze/snooze-record";
 import {
   readAllSnoozeBooks,
   writeOwnerSnoozes,
 } from "@/server/snooze/snooze-store-access";
 import { serializeSnoozeStore, snoozeLeaseId } from "@/server/snooze/snooze-store";
+import { sharedJobRepository } from "@/server/shared-state/shared-job-repository";
+
+export const SNOOZE_JOB_LEASE_MS = 10 * 60_000;
 
 export interface SnoozeClaim {
   readonly job: SnoozeJob;
@@ -31,10 +33,11 @@ const nextBook = (
   mailbox = book.mailbox,
 ): SnoozeJobBook => ({ jobs: [...jobs], mailbox, revision: randomUUID(), version: 1 });
 const phaseFor = (job: SnoozeJob, now: number): "hide" | "wake" | null => {
-  if (["hiding", "retry-hide"].includes(job.state) &&
+  if (!job.leaseId && ["hiding", "retry-hide"].includes(job.state) &&
     Date.parse(job.nextAttemptAt) <= now) return "hide";
-  if ((job.state === "retry-wake" && Date.parse(job.nextAttemptAt) <= now) ||
-    (job.state === "snoozed" && Date.parse(job.wakeAt) <= now)) return "wake";
+  if (!job.leaseId && ((job.state === "retry-wake" &&
+    Date.parse(job.nextAttemptAt) <= now) ||
+    (job.state === "snoozed" && Date.parse(job.wakeAt) <= now))) return "wake";
   return null;
 };
 
@@ -52,6 +55,7 @@ export const claimNextSnoozeJob = (now = new Date()): Promise<SnoozeClaim | null
     const leaseId = snoozeLeaseId();
     const claimed: SnoozeJob = { ...due.job,
       attemptCount: due.job.attemptCount + 1, leaseId,
+      leaseExpiresAt: new Date(now.getTime() + SNOOZE_JOB_LEASE_MS).toISOString(),
       phase: due.phase,
       state: due.phase === "hide" ? "hiding" : "waking",
       updatedAt: now.toISOString() };
@@ -79,10 +83,9 @@ export const settleSnoozeJob = (
   claim: SnoozeClaim,
   outcome: SnoozeSettlement,
 ): Promise<boolean> => serializeSnoozeStore(async () => {
-  const file = await readSnoozeFile();
-  const encrypted = file.owners[claim.ownerKey];
-  if (!encrypted) return false;
-  const book = decryptSnoozeJobBook(encrypted, claim.ownerKey);
+  const { books, file } = await readAllSnoozeBooks();
+  const book = books.get(claim.ownerKey);
+  if (!book) return false;
   const current = book.jobs.find(({ id }) => id === claim.job.id);
   if (!current || current.leaseId !== claim.leaseId ||
     !["hiding", "waking"].includes(current.state)) return false;
@@ -94,6 +97,7 @@ export const settleSnoozeJob = (
       connection: outcome.kind === "failed" || outcome.kind === "needs-auth"
         ? null : job.connection,
       lastError: outcome.kind === "snoozed" ? null : outcome.error,
+      leaseExpiresAt: null,
       leaseId: null,
       nextAttemptAt: outcome.kind === "retry" ? outcome.retryAt : job.wakeAt,
       state: outcome.kind === "snoozed" ? "snoozed" as const
@@ -107,24 +111,28 @@ export const settleSnoozeJob = (
   return true;
 });
 
-export const recoverInterruptedSnoozes = (): Promise<number> =>
+export const recoverInterruptedSnoozes = (now = new Date()): Promise<number> =>
   serializeSnoozeStore(async () => {
     const { books, file } = await readAllSnoozeBooks();
-    const owners = { ...file.owners }; let recovered = 0;
+    const owners = file ? { ...file.owners } : null; let recovered = 0;
     for (const [ownerKey, book] of books) {
       const jobs = book.jobs.map((job) => {
-        if (!job.leaseId || !["hiding", "waking"].includes(job.state)) return job;
+        if (!job.leaseId || !["hiding", "waking"].includes(job.state) ||
+          (sharedJobRepository.configured() && job.leaseExpiresAt &&
+            Date.parse(job.leaseExpiresAt) > now.getTime())) return job;
         recovered += 1;
         return { ...job, lastError: "Interrupted operation will be reconciled.",
-          leaseId: null, nextAttemptAt: new Date().toISOString(),
+          leaseExpiresAt: null, leaseId: null, nextAttemptAt: now.toISOString(),
           state: job.state === "hiding" ? "retry-hide" as const : "retry-wake" as const,
           updatedAt: new Date().toISOString() };
       });
       if (jobs.some((job, index) => job !== book.jobs[index])) {
-        owners[ownerKey] = encryptSnoozeJobBook(nextBook(book, jobs), ownerKey);
+        const updated = nextBook(book, jobs);
+        if (owners) owners[ownerKey] = encryptSnoozeJobBook(updated, ownerKey);
+        else await writeOwnerSnoozes(null, ownerKey, updated);
       }
     }
-    if (recovered) await writeSnoozeFile({ ...file, owners,
+    if (recovered && file && owners) await writeSnoozeFile({ ...file, owners,
       updatedAt: new Date().toISOString() });
     return recovered;
   });

@@ -887,14 +887,18 @@ dependency graph, and runs Dependabot, CodeQL, secret/configuration, image,
 sidecar, audit, build, header, coverage, and browser gates.
 
 The multi-replica foundation now includes an optional encrypted Redis session
-repository for both administrators and members. Session IDs and owner indexes
+repository for both administrators and members, plus encrypted shared
+scheduled-send and snooze owner books. Session IDs and owner indexes
 are HMAC-opaque; strict provider-credential records use record/key-bound
 AES-256-GCM; idle touches, configuration replacement, expiry indexes,
 revocation, and capacity enforcement are atomic. Live Redis regressions prove
 cross-client survival, concurrent CAS touches, remote revocation, absence of
-raw bearer IDs/addresses/passwords, and fail-closed tamper handling. The roadmap
-checkbox remains open until scheduled-send and snooze jobs use shared
-transactional leases and the remaining writable-replica boundaries are closed.
+raw bearer IDs/addresses/passwords, and fail-closed tamper handling. Job
+mutations use renewable distributed locks and expiring leases while preserving
+scheduled-send uncertainty and snooze reconciliation. Local encrypted books
+migrate without plaintext exposure and are archived against rollback replay.
+The checkbox remains open until the remaining writable, idempotency, quarantine,
+and notice boundaries are closed.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

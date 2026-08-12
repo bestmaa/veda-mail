@@ -22,6 +22,17 @@ const dataDirectory = (): string =>
 export const scheduledJobFilePath = (): string =>
   path.join(/* turbopackIgnore: true */ dataDirectory(), FILE_NAME);
 
+export const archiveMigratedScheduledJobFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ scheduledJobFilePath(),
+      /* turbopackIgnore: true */ `${scheduledJobFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
+
 const emptyFile = (): ScheduledJobFile => ({
   keyCheck: scheduledJobKeyCheck(),
   owners: {},

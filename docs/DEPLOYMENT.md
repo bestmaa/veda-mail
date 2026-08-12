@@ -161,7 +161,10 @@ an atomic Redis repository. Raw bearer IDs, owners, addresses, and provider
 credentials never appear in Redis keys or plaintext values. Use `rediss://`, a
 no-eviction policy, persistence/backups, least-privilege credentials, and
 monitoring; a configured outage or invalid ciphertext fails access closed.
-`/api/ready` reports the configured session store as a bounded dependency and
+The same repository stores scheduled-send and snooze owner books as ciphertext.
+Enable it first with one replica: first access migrates the local JSON books and
+renames them with `.migrated-to-redis`; back up Redis before scaling out.
+`/api/ready` reports the configured shared state store as a bounded dependency and
 returns 503 while it cannot answer `PING`.
 
 A separate optional Redis-compatible backend coordinates only admin/member
@@ -169,8 +172,8 @@ login global, trusted-source, and
 subject windows across processes. Configure `VEDA_MAIL_RATE_LIMIT_REDIS_URL`
 with a secret-managed `rediss://` URL and an optional deployment-specific
 `VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
-configured backend fails login closed. Shared sessions still do not remove the
-one-replica requirement because durable jobs, send idempotency, quarantine,
+configured backend fails login closed. Shared sessions and jobs still do not
+remove the general one-replica requirement because send idempotency, quarantine,
 notices, non-login limits, and mutable stores are not yet shared.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool
