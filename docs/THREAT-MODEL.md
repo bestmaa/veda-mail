@@ -1425,8 +1425,8 @@ authentication, bounded strict JSON, request/subject throttles, and audit their
 own attempt/outcome. Append, read, and policy update apply the stricter age or
 count limit under the audit write queue. Expiration authenticates the last
 removed digest as the new anchor and preserves sequence/dropped-count checks.
-If every event expires, a pseudonymous system checkpoint preserves the chain
-and the prior file schema for rollback. It cannot detect or erase an older backup;
+If every event expires, a pseudonymous system checkpoint preserves a non-empty
+authenticated chain for later appends. It cannot detect or erase an older backup;
 operators must align backup/log rotation with the privacy notice.
 
 The offline backup drill accepts only an explicit source and empty output

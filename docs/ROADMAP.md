@@ -875,7 +875,7 @@ portability checkbox without claiming an unbounded whole-account migration.
 The trust and recovery slice adds an administrator-enforced security-audit
 retention policy (365 days/10,000 records by default, bounded to 1â€“3,650 days
 and 100â€“10,000 records), applies the stricter age/count limit immediately, and
-preserves a verifiable rollback-readable checkpoint even when every prior event
+preserves a verifiable authenticated checkpoint even when every prior event
 expires. A runnable offline backup drill rejects unsafe entries, creates and
 isolates a normalized archive restore, and proves paths, modes, sizes, and
 SHA-256 bytes before emitting a versioned evidence report. The privacy lifecycle

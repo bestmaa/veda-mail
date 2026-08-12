@@ -182,7 +182,7 @@ migration, database/schema migration, or additional network port is required.
 
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
-record is atomic and rollback-safe. Enforcement runs on audit append/read and
+record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
 immediately after policy updates; it requires no worker or provider change.
 
 Contacts create `/data/member-contacts.json` lazily on the first contact,
