@@ -25,7 +25,7 @@ export const runtime = "nodejs";
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "attachment-reserve",
       2_000,
@@ -34,7 +34,7 @@ export const POST = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("attachment-reserve", connection.id, 30, 60 * 1000);
+    await assertSubjectRateLimit("attachment-reserve", connection.id, 30, 60 * 1000);
     const input = attachmentReservationSchema.parse(
       await readJsonBody(request, 16 * 1024),
     );

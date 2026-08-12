@@ -42,12 +42,12 @@ export const runtime = "nodejs";
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(request, "mail-read", 20_000, 1_000, 60 * 1000);
+    await assertRequestRateLimit(request, "mail-read", 20_000, 1_000, 60 * 1000);
     const connection = await getCurrentConnection();
     if (request.headers.has(MAIL_SESSION_SCOPE_HEADER)) {
       assertMailSessionScope(request, connection);
     }
-    assertSubjectRateLimit("mail-read", connection.id, 300, 60 * 1000);
+    await assertSubjectRateLimit("mail-read", connection.id, 300, 60 * 1000);
     const query = parseWorkspaceQuery(request);
     const service = await getMailService(connection);
     const mailboxSearch = hasMailboxSearch(query.search);

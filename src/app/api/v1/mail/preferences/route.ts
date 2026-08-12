@@ -18,10 +18,10 @@ const MAX_REQUEST_BYTES = 1_024;
 export const PATCH = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "message-list-preferences", 5_000, 300, 60_000);
+    await assertRequestRateLimit(request, "message-list-preferences", 5_000, 300, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "message-list-preferences", connection.id, 30, 15 * 60_000,
     );
     const update = messageListPreferencesUpdateSchema.parse(

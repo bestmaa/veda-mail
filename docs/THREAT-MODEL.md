@@ -82,15 +82,15 @@ URLs, analytics, or client-readable cookies.
   Configured backend failure, tamper, or key mismatch denies access. Shared mode
   disables the process gateway cache so a remote revoke cannot leave a reusable
   credential-bearing provider gateway on another process.
-- Login throttles always use process-local global, trusted-source, and
-  normalized-subject windows. Operators may configure Redis for equivalent
-  cross-replica atomic windows; identifiers are HMAC-pseudonymized and a
-  configured unavailable backend fails login closed.
+- All route throttles keep process-local global, trusted-source, and/or subject
+  windows. Operators may configure Redis for equivalent cross-replica atomic
+  windows; identifiers are HMAC-pseudonymized and a configured unavailable
+  backend fails the protected request closed.
 - Administrator recovery is an interactive container command; the recovery
   token is not accepted by an HTTP route.
 
-Residual risk: default sessions and all non-login rate limits remain
-memory-local. Shared Redis sessions survive a process restart and the same
+Residual risk: default sessions remain memory-local. Shared Redis sessions
+survive a process restart and the same
 repository coordinates encrypted jobs, send idempotency, and delivery notices;
 quarantine and mutable repositories are not made multi-replica safe. Redis
 availability and the external key become availability dependencies; traffic

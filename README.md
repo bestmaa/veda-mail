@@ -255,10 +255,9 @@ Keep proxy trust disabled unless the deployment meets the requirements in the
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
 ```
 
-Administrator and member logins always use bounded in-process request,
-trusted-source, and account windows. A multi-process or multi-replica edge can
-add an open-source Redis-compatible shared login limiter without changing mail
-providers:
+Every protected API keeps bounded in-process request, trusted-source, and/or
+subject windows. A multi-process or multi-replica edge can add an open-source
+Redis-compatible shared limiter without changing mail providers:
 
 ```text
 VEDA_MAIL_RATE_LIMIT_REDIS_URL=rediss://user:password@redis.example.com:6379

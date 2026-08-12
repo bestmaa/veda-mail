@@ -28,10 +28,10 @@ export const runtime = "nodejs";
 export const GET = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-settings-export", 10_000, 30, 60_000);
+    await assertRequestRateLimit(request, "member-settings-export", 10_000, 30, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("member-settings-export", connection.id, 10, 15 * 60_000);
+    await assertSubjectRateLimit("member-settings-export", connection.id, 10, 15 * 60_000);
     const bundle = await exportPortableSettings(connection);
     await appendSecurityAudit({
       action: "member.settings.exported",
@@ -56,10 +56,10 @@ export const POST = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-settings-import", 10_000, 20, 60_000);
+    await assertRequestRateLimit(request, "member-settings-import", 10_000, 20, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("member-settings-import", connection.id, 5, 15 * 60_000);
+    await assertSubjectRateLimit("member-settings-import", connection.id, 5, 15 * 60_000);
     audit = securityAuditOperation({
       action: "member.settings.imported",
       actor: memberAuditActor(connection),

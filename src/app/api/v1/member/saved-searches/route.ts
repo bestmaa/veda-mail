@@ -12,7 +12,7 @@ import { readJsonBody } from "@/transport/http/read-json-body";
 export const runtime = "nodejs";
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-saved-search-read",
       10_000,
@@ -21,7 +21,7 @@ export const GET = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-saved-search-read",
       connection.id,
       120,
@@ -39,7 +39,7 @@ export const GET = async (request: Request) => {
 export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-saved-search-write",
       5_000,
@@ -48,7 +48,7 @@ export const PUT = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-saved-search-write",
       connection.id,
       30,

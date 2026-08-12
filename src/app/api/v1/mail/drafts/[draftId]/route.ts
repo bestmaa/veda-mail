@@ -39,7 +39,7 @@ const loadContext = async (request: Request, context: RouteContext) => {
 
 export const GET = async (request: Request, context: RouteContext) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-draft-read",
       20_000,
@@ -47,7 +47,7 @@ export const GET = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const { connection, providerDraftId } = await loadContext(request, context);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-draft-read",
       connection.id,
       300,
@@ -65,7 +65,7 @@ export const GET = async (request: Request, context: RouteContext) => {
 export const PUT = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-draft-write",
       10_000,
@@ -73,7 +73,7 @@ export const PUT = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const { connection, providerDraftId } = await loadContext(request, context);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-draft-write",
       connection.id,
       240,
@@ -103,7 +103,7 @@ export const PUT = async (request: Request, context: RouteContext) => {
 export const DELETE = async (request: Request, context: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "mail-draft-write",
       10_000,
@@ -111,7 +111,7 @@ export const DELETE = async (request: Request, context: RouteContext) => {
       60 * 1_000,
     );
     const { connection, providerDraftId } = await loadContext(request, context);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-draft-write",
       connection.id,
       240,

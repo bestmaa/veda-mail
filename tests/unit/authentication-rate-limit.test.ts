@@ -10,8 +10,8 @@ vi.mock("@/server/security/distributed-rate-limit", () => ({
   consumeDistributedRateLimit: mocks.consume,
 }));
 vi.mock("@/server/security/rate-limit", () => ({
-  assertRequestRateLimit: mocks.request,
-  assertSubjectRateLimit: mocks.subject,
+  assertLocalRequestRateLimit: mocks.request,
+  assertLocalSubjectRateLimit: mocks.subject,
   rateLimitSourceFor: mocks.source,
 }));
 

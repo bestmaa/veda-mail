@@ -1,4 +1,4 @@
-# Session security and shared login throttling
+# Session security and shared request throttling
 
 Veda Mail keeps provider credentials server-side and treats every session ID as
 a bearer secret. Administrator and member cookies are `HttpOnly`, `Secure` in
@@ -62,14 +62,13 @@ The readiness endpoint probes a configured repository and degrades while it is
 unavailable, without exposing its URL or Redis error text.
 
 This advances the multi-replica roadmap item. Do not enable multiple writable
-Veda Mail replicas yet: attachment quarantine, non-login limits, and mutable
-`/data` repositories still need their documented shared or single-writer
-replacements.
+Veda Mail replicas yet: attachment quarantine and mutable `/data` repositories
+still need their documented shared or single-writer replacements.
 
-## Optional Redis login limiter
+## Optional Redis request limiter
 
-Single-replica deployments need no additional service. To coordinate admin and
-member login windows across processes or edge replicas, configure:
+Single-replica deployments need no additional service. To coordinate every
+request/source/subject window across processes or edge replicas, configure:
 
 ```dotenv
 VEDA_MAIL_RATE_LIMIT_REDIS_URL=rediss://user:password@redis.example.com:6379
@@ -82,11 +81,11 @@ deployment, and a secret manager for the URL. The application uses one atomic
 Lua fixed-window operation per global/source/subject key. Keys contain only an
 HKDF/HMAC digest derived from `VEDA_MAIL_JOB_KEY`; raw accounts and addresses
 never leave the process. If a configured Redis backend is invalid or
-unavailable, login returns a recoverable 503 instead of silently bypassing the
-shared control. Existing process-local limits remain in front of Redis.
+unavailable, the protected request returns a recoverable 503 instead of
+silently bypassing the shared control. Existing process-local limits remain in
+front of Redis, and `/api/ready` reports the configured dependency.
 
-This limiter option coordinates authentication throttling only and is separate
-from `VEDA_MAIL_STATE_REDIS_URL`. Operators may use one appropriately isolated
-Redis service with distinct prefixes/credentials, but should grant only the
-commands each database needs. Other request limits, attachment quarantine, and
-mutable member repositories retain the documented single-replica boundary.
+This limiter is separate from `VEDA_MAIL_STATE_REDIS_URL`. Operators may use
+one appropriately isolated Redis service with distinct prefixes/credentials,
+but should grant only the commands each database needs. Attachment quarantine
+and mutable member repositories retain the documented single-replica boundary.

@@ -23,10 +23,10 @@ export const runtime = "nodejs";
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "message-source-import", 10_000, 60, 60_000);
+    await assertRequestRateLimit(request, "message-source-import", 10_000, 60, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("message-source-import", connection.id, 20, 15 * 60_000);
+    await assertSubjectRateLimit("message-source-import", connection.id, 20, 15 * 60_000);
     const service = await getMailService(connection);
     const mailboxId = parseMessageSourceImportMailbox(request);
     const mailbox = (await service.listMailboxes()).find(({ id }) => id === mailboxId);

@@ -173,14 +173,15 @@ compression, and remote-session cleanup are serialized across replicas.
 `/api/ready` reports the configured shared state store as a bounded dependency and
 returns 503 while it cannot answer `PING`.
 
-A separate optional Redis-compatible backend coordinates only admin/member
-login global, trusted-source, and
-subject windows across processes. Configure `VEDA_MAIL_RATE_LIMIT_REDIS_URL`
+A separate optional Redis-compatible backend coordinates every global,
+trusted-source, and subject window across processes. Configure
+`VEDA_MAIL_RATE_LIMIT_REDIS_URL`
 with a secret-managed `rediss://` URL and an optional deployment-specific
 `VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
-configured backend fails login closed. Shared sessions, jobs, send claims, and
-notices still do not remove the general one-replica requirement because
-quarantine, non-login limits, and mutable stores are not yet shared.
+configured backend fails protected requests closed. `/api/ready` probes it.
+Shared sessions, jobs, send claims, notices, and limits still do not remove the
+general one-replica requirement because quarantine and mutable stores are not
+yet shared.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool
 with the same 512 MiB/1,000-record process ceiling and random mode-0600 files in
@@ -317,7 +318,7 @@ VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=<optional dedicated Stalwart API key>
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
 VEDA_MAIL_TRUST_PROXY_HEADERS=false
-VEDA_MAIL_RATE_LIMIT_REDIS_URL=<optional rediss URL for shared login throttling>
+VEDA_MAIL_RATE_LIMIT_REDIS_URL=<optional rediss URL for shared request throttling>
 VEDA_MAIL_PUBLIC_URL=https://webmail.example.com
 VEDA_MAIL_CLAMAV_HOST=clamav
 VEDA_MAIL_CLAMAV_PORT=3310
@@ -446,8 +447,8 @@ claims do not apply to that sidecar.
 
 Keep one replica. Administrator/member provider sessions, delivery notices,
 send idempotency, and durable job coordinators may use the encrypted shared
-Redis repository; non-login rate limits and attachment quarantine remain
-process-local. The encrypted
+Redis repository, and request limits may use their separate shared Redis
+backend; attachment quarantine remains process-local. The encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized

@@ -6,6 +6,7 @@ describe("readiness dependency snapshot", () => {
   it("requires data, scanner, and configured shared session storage", async () => {
     const snapshot = await readinessSnapshot({
       checkData: vi.fn().mockResolvedValue(undefined),
+      checkRateLimitStore: vi.fn().mockResolvedValue(undefined),
       checkScanner: vi.fn().mockResolvedValue(undefined),
       checkSessionStore: vi.fn().mockRejectedValue(new Error("redis unavailable")),
     });
@@ -14,6 +15,7 @@ describe("readiness dependency snapshot", () => {
       { name: "data", status: "ok" },
       { name: "scanner", status: "ok" },
       { name: "session-store", status: "failed" },
+      { name: "rate-limit-store", status: "ok" },
     ]);
   });
 });

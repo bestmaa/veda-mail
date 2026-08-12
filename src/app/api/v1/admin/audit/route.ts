@@ -37,8 +37,8 @@ const parseQuery = (request: Request) => {
 export const GET = async (request: Request) => {
   try {
     await assertAdminAccess();
-    assertRequestRateLimit(request, "admin-security-audit-read", 5_000, 120, 60_000);
-    assertSubjectRateLimit(
+    await assertRequestRateLimit(request, "admin-security-audit-read", 5_000, 120, 60_000);
+    await assertSubjectRateLimit(
       "admin-security-audit-read",
       "administrator",
       120,

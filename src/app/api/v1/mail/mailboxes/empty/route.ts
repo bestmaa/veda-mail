@@ -24,11 +24,11 @@ export const POST = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "mailbox-empty", 10_000, 600, 60 * 1_000);
+    await assertRequestRateLimit(request, "mailbox-empty", 10_000, 600, 60 * 1_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
     const auditActor = memberAuditActor(connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mailbox-empty",
       connection.id,
       600,

@@ -26,7 +26,7 @@ const globalState = globalThis as typeof globalThis & {
 
 const backendUnavailable = (): never => {
   throw new ApiError(
-    "Sign-in protection is temporarily unavailable.",
+    "Request protection is temporarily unavailable.",
     "RATE_LIMIT_BACKEND_UNAVAILABLE",
     503,
   );
@@ -100,6 +100,19 @@ export const consumeDistributedRateLimit = async (input: {
         429,
       );
     }
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    activeClient.destroy();
+    delete globalState.__vedaMailRateLimitRedisClient;
+    backendUnavailable();
+  }
+};
+
+export const probeDistributedRateLimit = async (): Promise<void> => {
+  const activeClient = await client();
+  if (!activeClient) return;
+  try {
+    if (await activeClient.ping() !== "PONG") backendUnavailable();
   } catch (error) {
     if (error instanceof ApiError) throw error;
     activeClient.destroy();

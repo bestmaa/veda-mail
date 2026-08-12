@@ -60,7 +60,7 @@ export const GET = async (request: Request) => {
   try {
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-settings-read",
       connection.id,
       120,
@@ -105,7 +105,7 @@ export const PATCH = async (request: Request) => {
     assertSameOrigin(request);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("member-profile", connection.id, 20, 15 * 60 * 1000);
+    await assertSubjectRateLimit("member-profile", connection.id, 20, 15 * 60 * 1000);
     await assertOrganizationFeatureEnabled("memberProfileEditing");
     const input = memberProfileUpdateSchema.parse(
       await readJsonBody(request, MAX_MEMBER_SETTINGS_BODY_BYTES),
@@ -132,7 +132,7 @@ export const PUT = async (request: Request) => {
     assertSameOrigin(request);
     const verifiedConnection = await getCurrentConnection();
     assertMailSessionScope(request, verifiedConnection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-password",
       verifiedConnection.id,
       5,

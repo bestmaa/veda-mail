@@ -18,10 +18,10 @@ export const POST = async (request: Request) => {
   let body: ReadableStream<Uint8Array> | undefined;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "message-source-archive", 10_000, 30, 60_000);
+    await assertRequestRateLimit(request, "message-source-archive", 10_000, 30, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("message-source-archive", connection.id, 10, 15 * 60_000);
+    await assertSubjectRateLimit("message-source-archive", connection.id, 10, 15 * 60_000);
     const { messageIds } = await parseMessageSourceArchiveRequest(request);
     lease = acquireAttachmentDownloadLease(connection.id);
     body = await prepareMessageSourceArchive({

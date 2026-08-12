@@ -41,7 +41,7 @@ const draftIdFrom = (request: Request) =>
 const context = async (request: Request, route: RouteContext) => {
   const connection = await getCurrentConnection();
   assertMailSessionScope(request, connection);
-  assertSubjectRateLimit("attachment-transfer", connection.id, 120, 60 * 1000);
+  await assertSubjectRateLimit("attachment-transfer", connection.id, 120, 60 * 1000);
   const { attachmentId } = await route.params;
   return {
     attachmentId,
@@ -53,7 +53,7 @@ const context = async (request: Request, route: RouteContext) => {
 export const PUT = async (request: Request, route: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "attachment-upload", 500, 60, 60 * 1000);
+    await assertRequestRateLimit(request, "attachment-upload", 500, 60, 60 * 1000);
     const current = await context(request, route);
     const contentLength = parseAttachmentContentLength(
       request.headers.get("content-length"),
@@ -99,7 +99,7 @@ export const PUT = async (request: Request, route: RouteContext) => {
 export const DELETE = async (request: Request, route: RouteContext) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "attachment-remove", 2_000, 120, 60 * 1000);
+    await assertRequestRateLimit(request, "attachment-remove", 2_000, 120, 60 * 1000);
     const current = await context(request, route);
     await attachmentService().remove(current.attachmentId, current.scope);
     return new Response(null, {

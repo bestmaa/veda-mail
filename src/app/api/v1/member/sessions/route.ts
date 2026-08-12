@@ -40,8 +40,8 @@ export const GET = async (request: Request) => {
     if (!stored) {
       throw new ApiError("This mail connection expired.", "MEMBER_SESSION_EXPIRED", 401);
     }
-    assertRequestRateLimit(request, "member-session-management", 10_000, 240, 60_000);
-    assertSubjectRateLimit("member-session-management", connection.id, 120, 60_000);
+    await assertRequestRateLimit(request, "member-session-management", 10_000, 240, 60_000);
+    await assertSubjectRateLimit("member-session-management", connection.id, 120, 60_000);
     return apiSuccess({
       policy: {
         absoluteTtlSeconds: MEMBER_CONNECTION_TTL_SECONDS,
@@ -70,8 +70,8 @@ export const DELETE = async (request: Request) => {
     if (!stored) {
       throw new ApiError("This mail connection expired.", "MEMBER_SESSION_EXPIRED", 401);
     }
-    assertRequestRateLimit(request, "member-session-management", 10_000, 240, 60_000);
-    assertSubjectRateLimit("member-session-management", connection.id, 120, 60_000);
+    await assertRequestRateLimit(request, "member-session-management", 10_000, 240, 60_000);
+    await assertSubjectRateLimit("member-session-management", connection.id, 120, 60_000);
     const input = revokeSchema.parse(await readJsonBody(request, 4 * 1_024));
     const target = (await connectionStore.listForOwnerAsync(stored.ownerKey)).find((candidate) =>
       sessionManagementId("member", candidate.connection.id) === input.id,

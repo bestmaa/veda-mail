@@ -2,8 +2,8 @@ import "server-only";
 
 import { consumeDistributedRateLimit } from "@/server/security/distributed-rate-limit";
 import {
-  assertRequestRateLimit,
-  assertSubjectRateLimit,
+  assertLocalRequestRateLimit,
+  assertLocalSubjectRateLimit,
   rateLimitSourceFor,
 } from "@/server/security/rate-limit";
 
@@ -14,7 +14,7 @@ export const assertAuthenticationRequestRateLimit = async (
   trustedSourceLimit: number,
   durationMs: number,
 ): Promise<void> => {
-  assertRequestRateLimit(
+  assertLocalRequestRateLimit(
     request, scope, globalLimit, trustedSourceLimit, durationMs,
   );
   await consumeDistributedRateLimit({
@@ -36,7 +36,7 @@ export const assertAuthenticationSubjectRateLimit = async (
   limit: number,
   durationMs: number,
 ): Promise<void> => {
-  assertSubjectRateLimit(scope, subject, limit, durationMs);
+  assertLocalSubjectRateLimit(scope, subject, limit, durationMs);
   await consumeDistributedRateLimit({
     dimension: "subject", durationMs, limit, scope,
     subject: subject.trim().toLowerCase(),

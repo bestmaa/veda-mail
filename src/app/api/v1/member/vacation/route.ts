@@ -36,7 +36,7 @@ const workspace = async (request: Request) => {
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(request, "member-vacation-read", 10_000, 240, 60_000);
+    await assertRequestRateLimit(request, "member-vacation-read", 10_000, 240, 60_000);
     return apiSuccess(await workspace(request));
   } catch (error) {
     return apiFailure(error, "Unable to load automatic-reply settings.");
@@ -47,10 +47,10 @@ export const PUT = async (request: Request) => {
   let audit: ReturnType<typeof securityAuditOperation> | null = null;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "member-vacation-write", 5_000, 60, 60_000);
+    await assertRequestRateLimit(request, "member-vacation-write", 5_000, 60, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("member-vacation-write", connection.id, 20, 15 * 60_000);
+    await assertSubjectRateLimit("member-vacation-write", connection.id, 20, 15 * 60_000);
     const input = parseVacationResponseUpdate(
       await readJsonBody(request, MAX_VACATION_REQUEST_BYTES),
     );

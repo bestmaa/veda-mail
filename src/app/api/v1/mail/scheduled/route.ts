@@ -26,10 +26,10 @@ const MAX_REQUEST_BYTES = 1024 * 1024;
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(request, "scheduled-send-read", 10_000, 600, 60_000);
+    await assertRequestRateLimit(request, "scheduled-send-read", 10_000, 600, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("scheduled-send-read", connection.id, 120, 60_000);
+    await assertSubjectRateLimit("scheduled-send-read", connection.id, 120, 60_000);
     return apiSuccess(
       await scheduledSendStore.list(await scheduledMessageOwner(connection)),
     );
@@ -41,14 +41,14 @@ export const GET = async (request: Request) => {
 export const POST = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "scheduled-send-write", 5_000, 300, 60_000);
+    await assertRequestRateLimit(request, "scheduled-send-write", 5_000, 300, 60_000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("scheduled-send-write", connection.id, 30, 60_000);
+    await assertSubjectRateLimit("scheduled-send-write", connection.id, 30, 60_000);
     const parsed = createScheduledSendSchema.parse(
       await readJsonBody(request, MAX_REQUEST_BYTES),
     );
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "scheduled-send-recipient",
       connection.id,
       300,

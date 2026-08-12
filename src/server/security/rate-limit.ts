@@ -3,6 +3,8 @@ import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 
+import { consumeDistributedRateLimit } from
+  "@/server/security/distributed-rate-limit";
 import { ApiError } from "@/transport/http/api-error";
 
 interface RateWindow {
@@ -94,7 +96,7 @@ const consume = (
   current.count += cost;
 };
 
-export const assertRequestRateLimit = (
+export const assertLocalRequestRateLimit = (
   request: Request,
   scope: string,
   globalLimit: number,
@@ -114,7 +116,40 @@ export const assertRequestRateLimit = (
   }
 };
 
-export const assertSubjectRateLimit = (
+export const assertRequestRateLimit = async (
+  request: Request,
+  scope: string,
+  globalLimit: number,
+  trustedSourceLimit: number,
+  durationMs: number,
+): Promise<void> => {
+  assertLocalRequestRateLimit(
+    request,
+    scope,
+    globalLimit,
+    trustedSourceLimit,
+    durationMs,
+  );
+  const source = rateLimitSourceFor(request);
+  await consumeDistributedRateLimit({
+    dimension: "global",
+    durationMs,
+    limit: globalLimit,
+    scope,
+    subject: "all",
+  });
+  if (source) {
+    await consumeDistributedRateLimit({
+      dimension: "source",
+      durationMs,
+      limit: trustedSourceLimit,
+      scope,
+      subject: source,
+    });
+  }
+};
+
+export const assertLocalSubjectRateLimit = (
   scope: string,
   subject: string,
   limit: number,
@@ -129,4 +164,22 @@ export const assertSubjectRateLimit = (
     Date.now(),
     cost,
   );
+};
+
+export const assertSubjectRateLimit = async (
+  scope: string,
+  subject: string,
+  limit: number,
+  durationMs: number,
+  cost = 1,
+): Promise<void> => {
+  assertLocalSubjectRateLimit(scope, subject, limit, durationMs, cost);
+  await consumeDistributedRateLimit({
+    cost,
+    dimension: "subject",
+    durationMs,
+    limit,
+    scope,
+    subject: subject.trim(),
+  });
 };

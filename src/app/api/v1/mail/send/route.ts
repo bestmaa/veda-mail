@@ -71,10 +71,10 @@ export const POST = async (request: Request) => {
   let memoryLease: AttachmentSendMemoryLease | undefined;
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(request, "mail-send", 5_000, 300, 60 * 1000);
+    await assertRequestRateLimit(request, "mail-send", 5_000, 300, 60 * 1000);
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
+    await assertSubjectRateLimit("mail-send", connection.id, 30, 60 * 1000);
     const parsed = sendMessageSchema.parse(await readJsonBody(request));
     const content = canonicalizeOutgoingMailContent(parsed);
     const providerDraft =
@@ -85,7 +85,7 @@ export const POST = async (request: Request) => {
             id: parsed.providerDraftId,
           }
         : undefined;
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "mail-send-recipient",
       connection.id,
       MAX_RECIPIENTS_PER_CONNECTION_PER_MINUTE,

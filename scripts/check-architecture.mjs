@@ -2,6 +2,9 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { adminRouteHandlerViolations } from "./architecture/admin-route-check.mjs";
+import { unawaitedRateLimitCalls } from
+  "./architecture/async-rate-limit-check.mjs";
+import "./architecture/async-rate-limit-check.test.mjs";
 import { verifyAdminRouteChecker } from "./architecture/admin-route-check.self-test.mjs";
 import { verifySessionScopeRouteChecker } from "./architecture/session-scope-route-check.self-test.mjs";
 import { sessionScopeHandlerViolations } from "./architecture/session-scope-route-check.mjs";
@@ -95,6 +98,11 @@ for (const file of files) {
   const content = await readFile(file, "utf8");
   const relative = path.relative(process.cwd(), file);
   const portableRelative = relative.split(path.sep).join("/");
+  for (const line of unawaitedRateLimitCalls(relative, content)) {
+    violations.push(
+      `${relative}:${line} — Distributed rate-limit calls must be awaited`,
+    );
+  }
   for (const rule of rules) {
     if (rule.applies(file) && rule.pattern.test(content)) {
       violations.push(`${relative} — ${rule.message}`);

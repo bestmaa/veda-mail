@@ -18,7 +18,7 @@ export const runtime = "nodejs";
 
 export const GET = async (request: Request) => {
   try {
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-contact-read",
       10_000,
@@ -27,7 +27,7 @@ export const GET = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-contact-read",
       connection.id,
       120,
@@ -44,7 +44,7 @@ export const GET = async (request: Request) => {
 export const PUT = async (request: Request) => {
   try {
     assertSameOrigin(request);
-    assertRequestRateLimit(
+    await assertRequestRateLimit(
       request,
       "member-contact-write",
       5_000,
@@ -53,7 +53,7 @@ export const PUT = async (request: Request) => {
     );
     const connection = await getCurrentConnection();
     assertMailSessionScope(request, connection);
-    assertSubjectRateLimit(
+    await assertSubjectRateLimit(
       "member-contact-write",
       connection.id,
       30,
