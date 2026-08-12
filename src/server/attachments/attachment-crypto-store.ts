@@ -2,19 +2,19 @@ import "server-only";
 
 import {
   createCipheriv,
-  createDecipheriv,
   createHash,
   randomBytes,
 } from "node:crypto";
 import { link, mkdir, open, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { iterateAttachmentBody } from "@/server/attachments/attachment-body";
+import { decryptEncryptedAttachment } from
+  "@/server/attachments/attachment-crypto-decrypt";
 import {
   attachmentCryptoAad,
   attachmentCryptoFinalName,
   ATTACHMENT_CRYPTO_IV_BYTES,
   ATTACHMENT_CRYPTO_MAGIC,
-  ATTACHMENT_CRYPTO_TAG_BYTES,
   safeAttachmentCryptoPath,
   writeAttachmentCryptoBuffer,
 } from "@/server/attachments/attachment-crypto-format";
@@ -225,25 +225,7 @@ export const readEncryptedAttachment = async (
   const contents = await readFile(
     safeAttachmentCryptoPath(path.resolve(directory), name),
   );
-  const headerBytes =
-    ATTACHMENT_CRYPTO_MAGIC.byteLength + ATTACHMENT_CRYPTO_IV_BYTES;
-  if (
-    contents.byteLength !==
-      headerBytes + expectedBytes + ATTACHMENT_CRYPTO_TAG_BYTES ||
-    !contents
-      .subarray(0, ATTACHMENT_CRYPTO_MAGIC.byteLength)
-      .equals(ATTACHMENT_CRYPTO_MAGIC)
-  ) {
-    throw new Error("Encrypted attachment is corrupt.");
-  }
-  const iv = contents.subarray(ATTACHMENT_CRYPTO_MAGIC.byteLength, headerBytes);
-  const encrypted = contents.subarray(
-    headerBytes,
-    -ATTACHMENT_CRYPTO_TAG_BYTES,
+  return decryptEncryptedAttachment(
+    contents, attachmentId, expectedBytes, key,
   );
-  const tag = contents.subarray(-ATTACHMENT_CRYPTO_TAG_BYTES);
-  const decipher = createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAAD(attachmentCryptoAad(attachmentId, expectedBytes));
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 };

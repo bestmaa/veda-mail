@@ -5,6 +5,10 @@ export {
   createAttachmentQuarantine,
 } from "@/server/attachments/attachment-quarantine";
 export {
+  createSharedAttachmentQuarantine,
+  SharedAttachmentQuarantine,
+} from "@/server/attachments/shared-attachment-quarantine";
+export {
   normalizeAttachmentMimeType,
   parseAttachmentContentLength,
   sanitizeAttachmentFileName,

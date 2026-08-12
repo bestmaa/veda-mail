@@ -61,9 +61,10 @@ Disabling the backend does not migrate active ciphertext into process memory.
 The readiness endpoint probes a configured repository and degrades while it is
 unavailable, without exposing its URL or Redis error text.
 
-This advances the multi-replica roadmap item. Do not enable multiple writable
-Veda Mail replicas yet: attachment quarantine and mutable `/data` repositories
-still need their documented shared or single-writer replacements.
+This advances the multi-replica roadmap item. Shared mode also moves encrypted
+attachment metadata and chunked ciphertext into the repository under
+`VEDA_MAIL_ATTACHMENT_KEY`. Do not enable multiple writable Veda Mail replicas
+yet: mutable `/data` repositories still need transactional replacements.
 
 ## Optional Redis request limiter
 
@@ -87,5 +88,5 @@ front of Redis, and `/api/ready` reports the configured dependency.
 
 This limiter is separate from `VEDA_MAIL_STATE_REDIS_URL`. Operators may use
 one appropriately isolated Redis service with distinct prefixes/credentials,
-but should grant only the commands each database needs. Attachment quarantine
-and mutable member repositories retain the documented single-replica boundary.
+but should grant only the commands each database needs. Mutable member
+repositories retain the documented single-writer boundary.

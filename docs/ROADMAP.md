@@ -909,8 +909,11 @@ All route-specific global, trusted-source, and subject windows now retain their
 local front-line cap and also consume HMAC-opaque atomic Redis windows when the
 shared limiter is configured. Calls are statically required to await the
 fail-closed backend, weighted limits preserve cost, and readiness probes it.
-The checkbox remains open until the remaining writable and quarantine
-boundaries are closed.
+Attachment quarantine now shares AES-GCM-authenticated metadata and bounded
+encrypted ciphertext chunks through the state Redis repository. Atomic quotas
+and lifecycle transitions allow upload on one replica and claim/read/consume
+on another; tamper, missing chunks, or backend failure fail closed. The
+checkbox remains open until the remaining writable `/data` boundaries close.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

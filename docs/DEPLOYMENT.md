@@ -59,6 +59,7 @@ the deployment-specific values in `.env`:
 VEDA_MAIL_SETUP_TOKEN=your-64-character-generated-value
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=a-different-64-character-generated-value
 VEDA_MAIL_JOB_KEY=the-base64-output-from-openssl
+VEDA_MAIL_ATTACHMENT_KEY=a-separate-base64-32-byte-key-for-shared-quarantine
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=optional-dedicated-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
@@ -146,11 +147,17 @@ docker compose ps
 docker compose logs --tail=100 clamav
 ```
 
-Pending upload ciphertext is process-local temporary data, capped at 512 MiB
-and 1,000 active records. It expires after 30 minutes through a background
-sweep and is intentionally excluded from backups. Run one Veda Mail process
-per container; multi-replica operation requires a shared encrypted quarantine,
-session store, and coordinated rate limiter.
+Pending upload ciphertext defaults to process-local temporary data, capped at
+512 MiB and 1,000 active records. It expires after 30 minutes through a
+background sweep; local files are intentionally excluded from backups. When
+shared state Redis is configured, set the same independent
+`VEDA_MAIL_ATTACHMENT_KEY` on
+every replica. Metadata uses authenticated encryption and already-encrypted
+ciphertext is stored in bounded chunks behind opaque attachment IDs; reserve,
+quota, claim, release, consume, removal, and expiry transitions are serialized.
+Redis persistence may briefly capture these TTL-bound ephemeral chunks; an
+expired restore removes them automatically. Budget roughly 700 MiB plus Redis
+overhead for the base64-expanded 512 MiB maximum and keep a no-eviction policy.
 
 Interactive sessions idle-expire after 30 minutes and have a non-extendable
 12-hour absolute lifetime. They are individually revocable and process-local by
@@ -179,9 +186,9 @@ trusted-source, and subject window across processes. Configure
 with a secret-managed `rediss://` URL and an optional deployment-specific
 `VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX`. Redis keys are HMAC-pseudonymized and a
 configured backend fails protected requests closed. `/api/ready` probes it.
-Shared sessions, jobs, send claims, notices, and limits still do not remove the
-general one-replica requirement because quarantine and mutable stores are not
-yet shared.
+Shared sessions, jobs, send claims, notices, quarantine, and limits still do
+not remove the general one-replica requirement because mutable `/data` stores
+are not yet transactional across writers.
 
 Received-download ciphertext is a separate 15-minute, request-scoped spool
 with the same 512 MiB/1,000-record process ceiling and random mode-0600 files in
@@ -314,6 +321,7 @@ VEDA_MAIL_SETUP_TOKEN=<openssl rand -hex 32>
 VEDA_MAIL_ADMIN_RECOVERY_TOKEN=<a separate openssl rand -hex 32 value>
 VEDA_MAIL_DATA_DIR=/data
 VEDA_MAIL_JOB_KEY=<a separate base64-encoded 32-byte key>
+VEDA_MAIL_ATTACHMENT_KEY=<required with shared-state Redis>
 VEDA_MAIL_ALLOWED_PROVIDER_HOSTS=mail.example.com
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=<optional dedicated Stalwart API key>
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
@@ -445,17 +453,17 @@ official init process currently starts as root before dropping to ClamAV
 service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
-Keep one replica. Administrator/member provider sessions, delivery notices,
-send idempotency, and durable job coordinators may use the encrypted shared
-Redis repository, and request limits may use their separate shared Redis
-backend; attachment quarantine remains process-local. The encrypted
+Keep one writable replica until the mutable repositories below are replaced.
+Administrator/member provider sessions, delivery notices, send idempotency,
+durable job coordinators, and attachment quarantine may use the encrypted
+shared Redis repository, and request limits may use their separate backend. The
+encrypted
 `/data/member-signatures.json`, `/data/member-templates.json`,
 `/data/member-contacts.json`, `/data/mailbox-appearance.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized
 compare-and-write paths; multiple replicas sharing those writable files can
-lose updates. Scaling still requires atomic shared job/send ledgers and
-transactional replacement
-for all per-member metadata stores.
+lose updates. Scaling still requires transactional replacement for all
+per-member metadata stores.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup
 advances in bounded authenticated requests while the member mailbox is open;

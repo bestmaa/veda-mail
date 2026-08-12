@@ -10,6 +10,7 @@ import type { DraftId } from "@/domain/shared/brand";
 import {
   AttachmentQuarantineError,
   createAttachmentQuarantine,
+  createSharedAttachmentQuarantine,
   type AttachmentScanner,
   type AttachmentScope,
 } from "@/server/attachments";
@@ -18,6 +19,8 @@ import {
   MagicNumberMimeDetector,
 } from "@/server/security/attachment-inspection";
 import { scheduleAttachmentScanner } from "@/server/security/attachment-scan-scheduler";
+import { sharedStateRedisConfigured } from
+  "@/server/shared-state/shared-state-redis";
 import { getMailService } from "@/server/mail/mail-service";
 import { getMailContentPolicy } from "@/server/organization/mail-content-policy.service";
 import { logError } from "@/server/observability/structured-log";
@@ -26,8 +29,11 @@ import { ApiError } from "@/transport/http/api-error";
 const globalAttachments = globalThis as typeof globalThis & {
   __vedaMailAttachmentCleanupTimer?: NodeJS.Timeout;
   __vedaMailAttachmentScanner?: AttachmentScanner;
-  __vedaMailAttachmentService?: ReturnType<typeof createAttachmentQuarantine>;
+  __vedaMailAttachmentService?: AttachmentService;
 };
+type AttachmentService =
+  | ReturnType<typeof createAttachmentQuarantine>
+  | ReturnType<typeof createSharedAttachmentQuarantine>;
 const ATTACHMENT_DIRECTORY_PREFIX = "veda-mail-attachments-";
 const ATTACHMENT_EXPIRY_SWEEP_MS = 60 * 1_000;
 const MAX_ORPHAN_DIRECTORIES_PER_SWEEP = 128;
@@ -80,7 +86,7 @@ export const removeAttachmentOrphanDirectories = (
 };
 
 export const scheduleAttachmentExpirySweep = (
-  service: ReturnType<typeof createAttachmentQuarantine>,
+  service: AttachmentService,
   intervalMs = ATTACHMENT_EXPIRY_SWEEP_MS,
 ): NodeJS.Timeout => {
   if (!Number.isSafeInteger(intervalMs) || intervalMs < 1) {
@@ -102,13 +108,22 @@ export const attachmentService = () => {
   if (process.env.NODE_ENV === "production") {
     removeAttachmentOrphanDirectories();
   }
-  const service = createAttachmentQuarantine({
+  if (sharedStateRedisConfigured() &&
+    !process.env["VEDA_MAIL_ATTACHMENT_KEY"]?.trim()) {
+    throw new Error(
+      "VEDA_MAIL_ATTACHMENT_KEY is required for shared attachment quarantine.",
+    );
+  }
+  const options = {
     directory: mkdtempSync(
       path.join(tmpdir(), `${ATTACHMENT_DIRECTORY_PREFIX}${process.pid}-`),
     ),
     mimeDetector: new MagicNumberMimeDetector(),
     scanner: attachmentScanner(),
-  });
+  };
+  const service = sharedStateRedisConfigured()
+    ? createSharedAttachmentQuarantine(options)
+    : createAttachmentQuarantine(options);
   globalAttachments.__vedaMailAttachmentService = service;
   globalAttachments.__vedaMailAttachmentCleanupTimer =
     scheduleAttachmentExpirySweep(service);
