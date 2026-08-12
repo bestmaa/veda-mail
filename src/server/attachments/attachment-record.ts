@@ -61,6 +61,12 @@ export const transitionAttachment = (
   record.state = next;
 };
 
+export const attachmentStateConflict = (message: string): never => {
+  throw new AttachmentQuarantineError(
+    message, "ATTACHMENT_STATE_CONFLICT", 409,
+  );
+};
+
 export const attachmentSnapshot = (
   record: StoredAttachment,
 ): AttachmentSnapshot => ({

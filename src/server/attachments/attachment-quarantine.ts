@@ -24,6 +24,8 @@ import {
   resolveAttachmentQuotas,
   sanitizeAttachmentFileName,
 } from "@/server/attachments/attachment-security";
+import { resolveAttachmentLifetimeOptions } from
+  "@/server/attachments/attachment-quarantine-options";
 import type {
   AttachmentBody,
   AttachmentQuarantineOptions,
@@ -32,10 +34,6 @@ import type {
   AttachmentSnapshot,
 } from "@/server/attachments/attachment-types";
 import { uploadQuarantinedAttachment } from "@/server/attachments/attachment-upload";
-
-const DEFAULT_TTL_MS = 30 * 60 * 1000;
-const DEFAULT_UPLOAD_IDLE_TIMEOUT_MS = 30 * 1000;
-const DEFAULT_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
 export class AttachmentQuarantine {
   readonly #directory: string;
@@ -50,44 +48,16 @@ export class AttachmentQuarantine {
   readonly #uploadTimeoutMs: number;
 
   public constructor(options: AttachmentQuarantineOptions) {
-    if (
-      !options.scanner ||
-      typeof options.scanner.scan !== "function" ||
-      !options.mimeDetector ||
-      typeof options.mimeDetector.detect !== "function"
-    ) {
-      throw new TypeError("Attachment scanner and MIME detector are required.");
-    }
-    const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
-    if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) {
-      throw new RangeError("Attachment TTL must be a positive safe integer.");
-    }
-    const uploadTimeoutMs =
-      options.uploadTimeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS;
-    const uploadIdleTimeoutMs =
-      options.uploadIdleTimeoutMs ?? DEFAULT_UPLOAD_IDLE_TIMEOUT_MS;
-    if (
-      !Number.isSafeInteger(uploadIdleTimeoutMs) ||
-      uploadIdleTimeoutMs <= 0
-    ) {
-      throw new RangeError(
-        "Attachment upload idle timeout must be a positive safe integer.",
-      );
-    }
-    if (!Number.isSafeInteger(uploadTimeoutMs) || uploadTimeoutMs <= 0) {
-      throw new RangeError(
-        "Attachment upload timeout must be a positive safe integer.",
-      );
-    }
+    const lifetime = resolveAttachmentLifetimeOptions(options);
     this.#directory = path.resolve(options.directory);
     this.#key = resolveAttachmentEncryptionKey(options.encryptionKey);
     this.#mimeDetector = options.mimeDetector;
     this.#now = options.now ?? Date.now;
     this.#quotas = resolveAttachmentQuotas(options.quotas);
     this.#scanner = options.scanner;
-    this.#ttlMs = ttlMs;
-    this.#uploadIdleTimeoutMs = uploadIdleTimeoutMs;
-    this.#uploadTimeoutMs = uploadTimeoutMs;
+    this.#ttlMs = lifetime.ttlMs;
+    this.#uploadIdleTimeoutMs = lifetime.uploadIdleTimeoutMs;
+    this.#uploadTimeoutMs = lifetime.uploadTimeoutMs;
   }
 
   public async reserve(

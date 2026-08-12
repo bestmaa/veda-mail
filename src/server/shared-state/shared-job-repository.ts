@@ -10,6 +10,7 @@ import {
 import { ApiError } from "@/transport/http/api-error";
 
 export type SharedJobKind =
+  | "attachment-quarantine"
   | "delivery-notice"
   | "scheduled-send"
   | "send-idempotency"

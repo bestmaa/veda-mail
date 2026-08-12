@@ -1317,10 +1317,12 @@ npm run check:lines
 - Installation, branding, service profile, member 2FA, encrypted member
   signatures and reusable templates, and the secret-free mailbox-provisioning
   idempotency ledger are durable on `/data`.
-- Pending attachment uploads are encrypted, process-local quarantine data with
-  a 30-minute TTL; a one-minute background sweep expires them without another
-  request, and production startup removes bounded orphan quarantine
-  directories. They are not mailbox storage or backup content.
+- Pending attachment uploads are encrypted quarantine data with a 30-minute
+  TTL. Local mode uses process-private temporary files and a one-minute sweep.
+  Shared-state mode stores authenticated encrypted metadata plus bounded
+  ciphertext chunks in Redis; a global lifecycle lock serializes quotas and
+  state transitions so another replica can claim and read the exact bytes.
+  They are not mailbox storage or backup content.
 - Member connections and ordinary gateway credentials are memory-only for 12
   hours by default. When `VEDA_MAIL_STATE_REDIS_URL` is configured, strict
   session records are AES-256-GCM encrypted under `VEDA_MAIL_JOB_KEY`, stored
@@ -1334,9 +1336,8 @@ npm run check:lines
   Explicit scheduled jobs carry a separate bounded encrypted credential copy.
 - Restarting the process signs every member out in the default local mode;
   configured shared sessions survive while Redis and the matching key remain.
-- A multi-replica deployment additionally needs shared attachment quarantine
-  and transactional replacements for the remaining process-serialized mutable
-  files.
+- A multi-replica deployment still needs transactional replacements for the
+  remaining process-serialized mutable files.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

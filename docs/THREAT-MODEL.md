@@ -92,9 +92,10 @@ URLs, analytics, or client-readable cookies.
 Residual risk: default sessions remain memory-local. Shared Redis sessions
 survive a process restart and the same
 repository coordinates encrypted jobs, send idempotency, and delivery notices;
-quarantine and mutable repositories are not made multi-replica safe. Redis
-availability and the external key become availability dependencies; traffic
-analysis exposes ciphertext sizes and access timing.
+attachment quarantine uses the same shared availability boundary with an
+independent encryption key. Mutable `/data` repositories are not yet
+multi-replica safe. Redis availability and external keys become availability
+dependencies; traffic analysis exposes ciphertext sizes and access timing.
 
 ### Stalwart mailbox provisioning
 
@@ -917,14 +918,18 @@ limiter and encrypted shared session repository.
   removal is enumeration-safe and cannot mutate the owner record.
 - Raw uploads require exact `Content-Length` and enforce 10-file, 18 MiB
   per-file/aggregate, 36 MiB per-session, and process-wide 512 MiB/1,000-record
-  quarantine limits while streaming. Empty files are rejected.
+  quarantine limits while streaming. Shared mode makes the latter limits
+  deployment-wide under a Redis lifecycle lock. Empty files are rejected.
 - Filenames are Unicode-normalized, traversal/control characters are removed,
   and browser MIME claims are replaced by bounded magic-number inspection.
   Unverified JSON, XML, calendar, CSV, and other textual claims downgrade to
   `text/plain`; arbitrary UTF-8 cannot retain a structured browser MIME claim.
 - Plaintext is hashed while streaming and stored only as AES-256-GCM
-  ciphertext in a private temporary directory. Send re-verifies the
-  authentication tag, byte length, and SHA-256 digest.
+  ciphertext. Local mode uses a private temporary directory; shared mode uses
+  bounded base64 chunks plus separately authenticated metadata under an
+  independent key. Redis keys contain only random attachment IDs, and
+  filenames, scope bindings, hashes, and bytes are never plaintext there. Send
+  re-verifies the authentication tag, byte length, and SHA-256 digest.
 - The complete stream is scanned through ClamAV `INSTREAM`. Infection,
   unavailable scanner, incomplete consumption, MIME-detector failure, and
   storage failure all fail closed before a provider receives bytes. A
@@ -933,7 +938,9 @@ limiter and encrypted shared session repository.
   resource retention without rejecting steadily progressing mobile uploads.
 - A background sweep enforces the 30-minute TTL without user traffic, and
   bounded production-startup cleanup removes ciphertext orphaned by a prior
-  process.
+  process. Redis TTLs independently expire shared records and chunks. Claim,
+  read, release, consume, removal, multi-file settlement, and quotas are
+  serialized so replicas cannot observe partial lifecycle transitions.
 - Browser requests carry only quarantine IDs; JMAP blob IDs and IMAP part
   locators remain inside their provider adapter.
 - Draft saves reuse the same inspected quarantine and memory-budget path as

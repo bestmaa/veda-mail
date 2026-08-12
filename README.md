@@ -265,8 +265,8 @@ VEDA_MAIL_RATE_LIMIT_REDIS_PREFIX=veda-mail:rate-limit:v1
 ```
 
 Shared limiter keys are HMAC-pseudonymized; email addresses and client IPs are
-not Redis keys. A configured backend fails closed for login if unreachable.
-Leave the URL empty for the supported single-replica topology.
+not Redis keys. A configured backend fails protected requests closed if
+unreachable. Leave the URL empty for a single-replica topology.
 
 The setup token is not an administrator password or recovery token. It is only proof that the
 person claiming a fresh installation can read its deployment secrets. Keep it
@@ -296,9 +296,11 @@ cannot be replayed as cookies. Member provider credentials are process-memory
 only except for the minimum
 encrypted copy in an explicitly scheduled job. A restart signs members out but
 the background queue continues. Optional shared-state Redis provides encrypted
-sessions, delivery notices, immediate-send idempotency, and transactional
-scheduled-send/snooze books, but run one general writable replica until the
-remaining mutable and temporary stores are shared.
+sessions, delivery notices, immediate-send idempotency, transactional
+scheduled-send/snooze books, and encrypted attachment quarantine. Shared
+quarantine requires the same independent `VEDA_MAIL_ATTACHMENT_KEY` on every
+replica. Run one general writable replica until the remaining mutable `/data`
+stores are transactional.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

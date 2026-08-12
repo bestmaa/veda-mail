@@ -346,6 +346,11 @@ filenames may replay jobs. Immediate-send claims and replay receipts are also
 Redis-backed; drain active sends before rollback or duplicate protection can be
 lost. Delivery notices are Redis-backed in shared-state mode; older images will
 not display them and rollback can strand their ciphertext until re-upgrade.
+Shared attachment quarantine additionally requires the same
+`VEDA_MAIL_ATTACHMENT_KEY` on every replica. Drain or let local pending uploads
+expire before enabling it: process-local quarantine is intentionally ephemeral
+and is not migrated. Drain shared pending uploads before rollback because older
+images cannot read their metadata or chunks; deleting Redis data discards them.
 Older images ignore the session variables and sign
 users out. Encrypted jobs continue when the exact key is preserved. Warn users before
 maintenance and check the queue for review-only interrupted sends after an
