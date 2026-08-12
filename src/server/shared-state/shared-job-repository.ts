@@ -9,7 +9,7 @@ import {
 } from "@/server/shared-state/shared-state-redis";
 import { ApiError } from "@/transport/http/api-error";
 
-export type SharedJobKind = "scheduled-send" | "snooze";
+export type SharedJobKind = "scheduled-send" | "send-idempotency" | "snooze";
 
 const LOCK_TTL_MS = 60_000;
 const LOCK_WAIT_MS = 5_000;
@@ -162,6 +162,7 @@ export const sharedJobRepository = {
     kind: SharedJobKind,
     owner: string,
     serialized: string | null,
+    expiresAt?: number,
   ): Promise<void> {
     await translateFailure(async () => {
       await runSharedStateRedis(async (client) => {
@@ -170,7 +171,10 @@ export const sharedJobRepository = {
           transaction.del(ownerKey(kind, owner));
           transaction.sRem(ownersKey(kind), owner);
         } else {
-          transaction.set(ownerKey(kind, owner), serialized);
+          const ttl = expiresAt === undefined ? undefined : Math.ceil(expiresAt - Date.now());
+          if (ttl !== undefined && ttl <= 0) unavailable();
+          if (ttl === undefined) transaction.set(ownerKey(kind, owner), serialized);
+          else transaction.set(ownerKey(kind, owner), serialized, { PX: ttl });
           transaction.sAdd(ownersKey(kind), owner);
         }
         await transaction.exec();

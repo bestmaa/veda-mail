@@ -750,6 +750,17 @@ portable exact-once proof is impossible. The encrypted credential exception is
 limited to explicitly scheduled jobs and deleted with the job. One application
 replica remains the default boundary; shared Redis removes this queue-local limit.
 
+Immediate sends use a separate idempotency boundary keyed by the authenticated
+connection and client draft UUID. In shared-state mode, HMAC-opaque connection
+keys address AES-256-GCM buckets containing strict fingerprints, random claim
+tokens, bounded receipts, and expiry metadata. A renewable distributed lock
+enforces the existing global, per-connection, pending-count, and byte caps.
+Exactly one replica owns provider I/O; peers poll the encrypted record and replay
+the canonical receipt. Changed fingerprints conflict, stale tokens cannot settle
+a newer claim, and session revocation removes the bucket. Polling is request-
+bounded and returns `MAIL_SEND_IN_PROGRESS` without releasing the durable claim,
+so an unconfirmed provider call is not retried merely because one request ended.
+
 Undo Send reuses this queue with a distinct `undo` purpose and a server-bounded
 short deadline. The composer first saves the exact provider draft, receives the
 created opaque job ID, closes only after durable admission, and shows a global

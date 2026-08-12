@@ -13,6 +13,9 @@ import {
   sendIntentFingerprint,
 } from "@/server/mail/send-intent-fingerprint";
 import { ApiError } from "@/transport/http/api-error";
+import { sharedStateRedisConfigured } from "@/server/shared-state/shared-state-redis";
+import { sharedSendIdempotencyStore } from
+  "@/server/mail/shared-send-idempotency-store";
 
 export interface SendIdempotencyOwner {
   readonly draftId: DraftId;
@@ -50,6 +53,13 @@ const inactive = (): never => {
 const outcomeReceipt = (outcome: SendIdempotencyOutcome): SendReceipt => {
   if (outcome.kind === "completed") return outcome.receipt;
   if (outcome.kind === "failed") throw outcome.error;
+  if (outcome.kind === "in-progress") {
+    throw new ApiError(
+      "This send is still being confirmed. Wait before retrying.",
+      "MAIL_SEND_IN_PROGRESS",
+      409,
+    );
+  }
   throw new ApiError(
     "The mail session ended while this send was pending.",
     "MAIL_SEND_SESSION_ENDED",
@@ -85,27 +95,26 @@ export const prepareIdempotentSend = async (
   };
 };
 
-export const completeIdempotentSend = (
+export const completeIdempotentSend = async (
   connection: ProviderConnection,
   owner: SendIdempotencyOwner,
   receipt: SendReceipt,
-): SendReceipt =>
-  sendIdempotencyStore.complete(
-    connection.id,
-    owner.draftId,
-    owner.token,
-    receipt,
-  ) ?? receipt;
+): Promise<SendReceipt> => {
+  const completed = sharedStateRedisConfigured()
+    ? await sharedSendIdempotencyStore.complete(connection.id, owner.draftId,
+      owner.token, receipt)
+    : sendIdempotencyStore.complete(connection.id, owner.draftId, owner.token, receipt);
+  return completed ?? receipt;
+};
 
-export const failIdempotentSend = (
+export const failIdempotentSend = async (
   connection: ProviderConnection,
   owner: SendIdempotencyOwner,
   error: unknown,
-): void => {
-  sendIdempotencyStore.fail(
-    connection.id,
-    owner.draftId,
-    owner.token,
-    error,
-  );
+): Promise<void> => {
+  if (sharedStateRedisConfigured()) {
+    await sharedSendIdempotencyStore.fail(connection.id, owner.draftId, owner.token);
+  } else {
+    sendIdempotencyStore.fail(connection.id, owner.draftId, owner.token, error);
+  }
 };

@@ -342,7 +342,9 @@ local sessions; disabling it does not decrypt/migrate Redis sessions. It does
 migrate scheduled-send and snooze books on first access and renames their local
 files with `.migrated-to-redis`. Start one new replica, verify the Redis backup,
 then scale out. Older images cannot process Redis queues; restoring the archived
-filenames may replay jobs. Older images ignore the session variables and sign
+filenames may replay jobs. Immediate-send claims and replay receipts are also
+Redis-backed; drain active sends before rollback or duplicate protection can be
+lost. Older images ignore the session variables and sign
 users out. Encrypted jobs continue when the exact key is preserved. Warn users before
 maintenance and check the queue for review-only interrupted sends after an
 ungraceful stop.

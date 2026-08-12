@@ -188,7 +188,7 @@ export const POST = async (request: Request) => {
           id: id.message(`receipt-${randomUUID()}`),
           submittedAt: new Date().toISOString(),
         });
-        receipt = completeIdempotentSend(connection, owner, receipt);
+        receipt = await completeIdempotentSend(connection, owner, receipt);
       } catch (error) {
         if (uploadIds.length > 0) {
           await quarantine.release(uploadIds, scope).catch(() => {
@@ -228,7 +228,7 @@ export const POST = async (request: Request) => {
       }
       return apiSuccess(receipt, { status: 201 });
     } catch (error) {
-      failIdempotentSend(connection, owner, error);
+      await failIdempotentSend(connection, owner, error);
       throw error;
     }
   } catch (error) {
