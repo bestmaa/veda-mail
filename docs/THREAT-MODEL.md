@@ -59,8 +59,10 @@ URLs, analytics, or client-readable cookies.
   cross-replica setup winner and prevents stale administrator, provider-profile,
   or branding-metadata overwrites. Key mismatch, oversized state, ciphertext
   tamper, migration conflict, or Redis failure fails access closed. The archived
-  local record remains sensitive but is not current; logo bytes remain on the
-  shared data volume.
+  local record remains sensitive but is not current. Logos use a separate
+  content-addressed ciphertext blob whose Redis key is HMAC-opaque and whose
+  authenticated context includes the exact filename; local logos migrate on
+  first read and are archived for rollback.
 - Administrator passwords use scrypt. Authenticator secrets are encrypted and
   backup codes are stored as salted digests.
 - Shared member-2FA mode migrates each local entry behind an HMAC-opaque owner
@@ -108,7 +110,7 @@ attachment quarantine uses the same shared availability boundary with an
 independent encryption key. Member-2FA records use the installation session
 secret rather than `VEDA_MAIL_JOB_KEY`; shared mode retrieves that secret from
 the encrypted installation singleton. Remaining mutable `/data` repositories
-and logo bytes are not yet fully multi-replica safe. Redis availability and
+are not yet fully multi-replica safe. Redis availability and
 external keys become availability
 dependencies; traffic analysis exposes ciphertext sizes and access timing.
 

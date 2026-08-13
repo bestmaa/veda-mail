@@ -1400,7 +1400,8 @@ npm run check:lines
   the encrypted mailbox-provisioning ledger also uses Redis CAS for one global
   provider-I/O owner and replay result;
   the encrypted installation singleton uses Redis CAS for setup and metadata
-  changes, while its content-addressed logo bytes still require shared `/data`;
+  changes, and its content-addressed logos use HMAC-opaque, filename-bound
+  encrypted Redis blobs;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

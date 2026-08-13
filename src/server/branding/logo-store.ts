@@ -5,6 +5,8 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
+import { sharedBrandLogoStore } from
+  "@/server/branding/shared-brand-logo-store";
 import { ApiError } from "@/transport/http/api-error";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
@@ -67,8 +69,10 @@ export const normalizeLogoUpload = async (
   }
 };
 
-export const writeBrandLogo = async (contents: Buffer): Promise<string> => {
-  const fileName = brandLogoFileName(contents);
+const writeLocalBrandLogo = async (
+  fileName: string,
+  contents: Buffer,
+): Promise<void> => {
   const destination = logoPath(fileName);
   const directory = path.dirname(destination);
   const temporary = path.join(directory, `.logo.${crypto.randomUUID()}.webp`);
@@ -96,10 +100,9 @@ export const writeBrandLogo = async (contents: Buffer): Promise<string> => {
     throw error;
   }
   await unlink(/* turbopackIgnore: true */ temporary).catch(() => undefined);
-  return fileName;
 };
 
-export const readBrandLogo = async (
+const readLocalBrandLogo = async (
   fileName: string,
 ): Promise<Buffer | null> => {
   const source = logoPath(fileName);
@@ -113,7 +116,7 @@ export const readBrandLogo = async (
   }
 };
 
-export const removeBrandLogo = async (fileName: string): Promise<void> => {
+const removeLocalBrandLogo = async (fileName: string): Promise<void> => {
   const source = logoPath(fileName);
   await unlink(
     /* turbopackIgnore: true */ source,
@@ -122,4 +125,47 @@ export const removeBrandLogo = async (fileName: string): Promise<void> => {
       throw error;
     }
   });
+};
+
+const archiveLocalBrandLogo = async (fileName: string): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ logoPath(fileName),
+      /* turbopackIgnore: true */ `${logoPath(fileName)}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
+
+export const writeBrandLogo = async (contents: Buffer): Promise<string> => {
+  const fileName = brandLogoFileName(contents);
+  if (sharedBrandLogoStore.configured()) {
+    await sharedBrandLogoStore.put(fileName, contents);
+  } else {
+    await writeLocalBrandLogo(fileName, contents);
+  }
+  return fileName;
+};
+
+export const readBrandLogo = async (
+  fileName: string,
+): Promise<Buffer | null> => {
+  logoPath(fileName);
+  if (!sharedBrandLogoStore.configured()) return readLocalBrandLogo(fileName);
+  const shared = await sharedBrandLogoStore.get(fileName);
+  if (shared) return shared;
+  const local = await readLocalBrandLogo(fileName);
+  if (!local) return null;
+  await sharedBrandLogoStore.put(fileName, local);
+  await archiveLocalBrandLogo(fileName);
+  return local;
+};
+
+export const removeBrandLogo = async (fileName: string): Promise<void> => {
+  logoPath(fileName);
+  if (sharedBrandLogoStore.configured()) {
+    await sharedBrandLogoStore.remove(fileName);
+  }
+  await removeLocalBrandLogo(fileName);
 };

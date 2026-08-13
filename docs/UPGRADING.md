@@ -18,9 +18,12 @@ record now migrates on first access to a whole-record AES-256-GCM Redis
 singleton and the file is renamed with `.migrated-to-redis`. Start one upgraded
 replica, verify the archive and a consistent Redis backup, then scale out.
 Preserve the exact `VEDA_MAIL_JOB_KEY`, Redis prefix, rollback archive, and
-`/data/branding` assets. Drain setup and administrator/profile/branding writes
+logo archives. Drain setup and administrator/profile/branding writes
 before rollback: older images read the archived local filename and cannot see
-newer Redis revisions. Logo bytes still require shared `/data` across replicas.
+newer Redis revisions. Existing logos migrate to filename-bound encrypted Redis
+blobs on first read and are archived locally; new shared-mode uploads exist only
+in Redis, so older rollback images cannot display them without a restored local
+asset.
 
 Member 2FA now migrates from `/data/member-security.json` to shared-state Redis
 on first access. Verify the `.migrated-to-redis` archive and Redis backup on one
