@@ -220,8 +220,12 @@ provider's supported migration tooling.
 ## Setup lock
 
 Once completed, `/setup` cannot be claimed again merely by knowing the setup
-token. Do not edit or delete `/data/installation.json` manually. Back up
-`/data` immediately after setup and before every upgrade.
+token. In local mode, do not edit or delete `/data/installation.json` manually.
+With shared-state Redis configured, first access encrypts and migrates that
+record, leaves `installation.json.migrated-to-redis` only as a rollback archive,
+and makes Redis authoritative. Do not restore or rename the archive while the
+shared service is live. Back up `/data`, Redis, the exact job key, and Redis
+prefix immediately after setup and before every upgrade.
 
 After setup, sign in to `/admin`, open **Security**, and enable authenticator
 2FA. Save all one-time backup codes. If credentials or second factors are

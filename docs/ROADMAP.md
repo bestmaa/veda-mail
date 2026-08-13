@@ -952,6 +952,12 @@ The mailbox-provisioning idempotency ledger now migrates as a separately
 encrypted whole-record singleton. Exact Redis CAS admits one provider-I/O owner,
 remote waiters replay the safe terminal result, and definite versus uncertain
 failure semantics remain fail-closed across replicas.
+The complete installation record now follows the same external-key encrypted
+singleton boundary. Guarded migration archives the local file, exact Redis CAS
+admits one cross-replica first-run setup and prevents stale administrator,
+provider-profile, or branding-metadata writes, and wrong-key/tampered/oversized
+state fails closed. Content-addressed logo bytes remain on shared `/data`, so
+the overall multi-replica checkbox stays open.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

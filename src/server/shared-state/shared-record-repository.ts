@@ -11,6 +11,7 @@ import { ApiError } from "@/transport/http/api-error";
 
 export type SharedRecordKind =
   | "data-retention-policy"
+  | "installation"
   | "mail-content-policy"
   | "mail-user-idempotency"
   | "organization-policy"
@@ -20,6 +21,7 @@ const LOCK_TTL_MS = 60_000;
 const LOCK_WAIT_MS = 5_000;
 const MAX_RECORD_BYTES: Readonly<Record<SharedRecordKind, number>> = {
   "data-retention-policy": 8 * 1_024,
+  "installation": 3 * 1_024 * 1_024,
   "mail-content-policy": 48 * 1_024,
   "mail-user-idempotency": 3 * 1_024 * 1_024,
   "organization-policy": 8 * 1_024,

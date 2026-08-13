@@ -171,6 +171,13 @@ monitoring; a configured outage or invalid ciphertext fails access closed.
 The same repository stores scheduled-send and snooze owner books as ciphertext.
 Enable it first with one replica: first access migrates the local JSON books and
 renames them with `.migrated-to-redis`; back up Redis before scaling out.
+It also migrates the complete `installation.json` record under a separate
+AES-256-GCM subkey and archives the local file. Redis then becomes authoritative
+for the session secret, administrator hash/2FA, provider profile, and branding
+metadata; exact CAS protects setup and later replacements. Preserve the exact
+job key, Redis prefix, Redis persistence, and rollback archive together. Logo
+bytes remain under `/data/branding`, so every replica must mount the same
+writable volume until that asset boundary is moved.
 It also stores connection-scoped immediate-send claims and bounded replay
 receipts as ciphertext. Exactly one replica owns provider I/O; peers poll and
 replay the result, while a configured Redis outage fails send state closed.

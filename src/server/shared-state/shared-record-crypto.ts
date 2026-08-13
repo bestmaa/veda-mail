@@ -37,7 +37,7 @@ export const encryptSharedRecord = (
   const ciphertext = Buffer.concat([
     cipher.update(JSON.stringify(value), "utf8"), cipher.final(),
   ]);
-  const maxBytes = kind === "mail-user-idempotency"
+  const maxBytes = kind === "mail-user-idempotency" || kind === "installation"
     ? 2 * 1_024 * 1_024
     : 32 * 1_024;
   if (ciphertext.byteLength > maxBytes) {

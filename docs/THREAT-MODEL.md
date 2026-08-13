@@ -54,6 +54,13 @@ URLs, analytics, or client-readable cookies.
 
 - First-run setup requires a deployment secret and becomes permanently locked
   for the data volume after completion.
+- Shared-state mode migrates the complete installation record into a dedicated
+  AES-256-GCM envelope under `VEDA_MAIL_JOB_KEY`. Exact Redis CAS admits one
+  cross-replica setup winner and prevents stale administrator, provider-profile,
+  or branding-metadata overwrites. Key mismatch, oversized state, ciphertext
+  tamper, migration conflict, or Redis failure fails access closed. The archived
+  local record remains sensitive but is not current; logo bytes remain on the
+  shared data volume.
 - Administrator passwords use scrypt. Authenticator secrets are encrypted and
   backup codes are stored as salted digests.
 - Shared member-2FA mode migrates each local entry behind an HMAC-opaque owner
@@ -99,8 +106,10 @@ survive a process restart and the same
 repository coordinates encrypted jobs, send idempotency, and delivery notices;
 attachment quarantine uses the same shared availability boundary with an
 independent encryption key. Member-2FA records use the installation session
-secret rather than `VEDA_MAIL_JOB_KEY`. Mutable `/data` repositories are not yet
-multi-replica safe. Redis availability and external keys become availability
+secret rather than `VEDA_MAIL_JOB_KEY`; shared mode retrieves that secret from
+the encrypted installation singleton. Remaining mutable `/data` repositories
+and logo bytes are not yet fully multi-replica safe. Redis availability and
+external keys become availability
 dependencies; traffic analysis exposes ciphertext sizes and access timing.
 
 ### Stalwart mailbox provisioning

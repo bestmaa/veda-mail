@@ -79,3 +79,14 @@ export const writeInstallation = async (
     throw error;
   }
 };
+
+export const archiveMigratedInstallation = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ installationPath(),
+      /* turbopackIgnore: true */ `${installationPath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

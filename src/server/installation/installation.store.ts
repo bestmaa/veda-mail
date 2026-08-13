@@ -1,9 +1,6 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
-
 import {
-  DEFAULT_PUBLIC_REPOSITORY_URL,
   type BrandingSnapshot,
   type AdminTwoFactor,
   type InstallationRecord,
@@ -19,7 +16,14 @@ import {
   readInstallation,
   writeInstallation,
 } from "@/server/installation/installation-file";
+import { installationBrandingSnapshot } from "@/server/installation/installation-branding-snapshot";
 import { installationRecordSchema } from "@/server/installation/installation.schema";
+import { createInstallationRecord } from "@/server/installation/installation-record";
+import {
+  ensureInstallationMigrated,
+  replaceSharedInstallation,
+  sharedInstallation,
+} from "@/server/installation/installation-shared";
 import { mailServiceProfileInputSchema } from "@/server/mail-service/mail-service-profile.schema";
 import { withSetupLock } from "@/server/installation/setup-lock";
 import { ApiError } from "@/transport/http/api-error";
@@ -56,21 +60,24 @@ const serializeWrite = async <T>(task: () => Promise<T>): Promise<T> => {
   return result;
 };
 
-const snapshot = (
-  installation: InstallationRecord | null,
-): BrandingSnapshot => ({
-  accentColor: installation?.organization.accentColor ?? "#ff6b57",
-  logoUrl: installation?.organization.logoFileName
-    ? "/api/v1/branding/logo"
-    : null,
-  organizationName:
-    installation?.organization.organizationName ?? "Your organization",
-  primaryColor: installation?.organization.primaryColor ?? "#27276f",
-  productName: installation?.organization.productName ?? "Veda Mail",
-  publicRepositoryUrl:
-    installation?.organization.publicRepositoryUrl ??
-    DEFAULT_PUBLIC_REPOSITORY_URL,
-});
+const SHARED_RETRY_LIMIT = 10;
+
+const setupRequired = (): ApiError =>
+  new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
+
+const sharedConflict = (): ApiError =>
+  new ApiError(
+    "Installation settings are busy. Try again.",
+    "INSTALLATION_SHARED_CONFLICT",
+    503,
+  );
+
+const currentInstallation = async (): Promise<InstallationRecord | null> => {
+  if (await ensureInstallationMigrated()) {
+    return (await sharedInstallation()).installation;
+  }
+  return readInstallation();
+};
 
 export const installationStore = {
   async complete(
@@ -78,52 +85,44 @@ export const installationStore = {
   ): Promise<InstallationRecord> {
     return serializeWrite(() =>
       withSetupLock(async () => {
-        if (await readInstallation()) {
+        const shared = await ensureInstallationMigrated();
+        const current = shared
+          ? await sharedInstallation()
+          : { installation: await readInstallation(), serialized: null };
+        if (current.installation) {
           throw new ApiError(
             "First-run setup has already been completed.",
             "SETUP_ALREADY_COMPLETED",
             409,
           );
         }
-        const draft = await createDraft();
-        const now = new Date().toISOString();
-        const mailProfile: MailServiceProfile = {
-          ...mailServiceProfileInputSchema.parse(draft.mailProfile),
-          createdAt: now,
-          updatedAt: now,
-          version: 1,
-        };
-        const installation = installationRecordSchema.parse({
-          installedAt: now,
-          mailProfile,
-          organization: draft.organization,
-          owner: {
-            authVersion: 1,
-            password: draft.owner.password,
-            twoFactor: null,
-            updatedAt: now,
-            username: draft.owner.username,
-          },
-          sessionSecret: randomBytes(48).toString("base64url"),
-          updatedAt: now,
-          version: 1,
-        });
-        await createInstallation(installation);
+        const installation = createInstallationRecord(await createDraft());
+        if (shared) {
+          if (!(await replaceSharedInstallation(current, installation))) {
+            throw new ApiError(
+              "First-run setup has already been completed.",
+              "SETUP_ALREADY_COMPLETED",
+              409,
+            );
+          }
+        } else {
+          await createInstallation(installation);
+        }
         return installation;
       }),
     );
   },
 
   async get(): Promise<InstallationRecord | null> {
-    return readInstallation();
+    return currentInstallation();
   },
 
   async getBranding(): Promise<BrandingSnapshot> {
-    return snapshot(await readInstallation());
+    return installationBrandingSnapshot(await currentInstallation());
   },
 
   async isInstalled(): Promise<boolean> {
-    return Boolean(await readInstallation());
+    return Boolean(await currentInstallation());
   },
 
   async updateMailProfile(
@@ -131,24 +130,32 @@ export const installationStore = {
   ): Promise<MailServiceProfile> {
     const parsed = mailServiceProfileInputSchema.parse(input);
     return serializeWrite(async () => {
-      const current = await readInstallation();
-      if (!current) {
-        throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
+      const shared = await ensureInstallationMigrated();
+      for (let attempt = 0; attempt < (shared ? SHARED_RETRY_LIMIT : 1); attempt += 1) {
+        const record = shared
+          ? await sharedInstallation()
+          : { installation: await readInstallation(), serialized: null };
+        const current = record.installation;
+        if (!current) throw setupRequired();
+        const now = new Date().toISOString();
+        const mailProfile: MailServiceProfile = {
+          ...parsed,
+          createdAt: current.mailProfile.createdAt,
+          updatedAt: now,
+          version: 1,
+        };
+        const updated = installationRecordSchema.parse({
+          ...current,
+          mailProfile,
+          updatedAt: now,
+        });
+        if (!shared) {
+          await writeInstallation(updated);
+          return mailProfile;
+        }
+        if (await replaceSharedInstallation(record, updated)) return mailProfile;
       }
-      const now = new Date().toISOString();
-      const mailProfile: MailServiceProfile = {
-        ...parsed,
-        createdAt: current.mailProfile.createdAt,
-        updatedAt: now,
-        version: 1,
-      };
-      const updated = installationRecordSchema.parse({
-        ...current,
-        mailProfile,
-        updatedAt: now,
-      });
-      await writeInstallation(updated);
-      return mailProfile;
+      throw sharedConflict();
     });
   },
 
@@ -161,18 +168,28 @@ export const installationStore = {
     updated: InstallationRecord;
   }> {
     return serializeWrite(async () => {
-      const current = await readInstallation();
-      if (!current) {
-        throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
+      const shared = await ensureInstallationMigrated();
+      for (let attempt = 0; attempt < (shared ? SHARED_RETRY_LIMIT : 1); attempt += 1) {
+        const record = shared
+          ? await sharedInstallation()
+          : { installation: await readInstallation(), serialized: null };
+        const current = record.installation;
+        if (!current) throw setupRequired();
+        const organization = await createOrganization(current.organization);
+        const updated = installationRecordSchema.parse({
+          ...current,
+          organization,
+          updatedAt: new Date().toISOString(),
+        });
+        if (!shared) {
+          await writeInstallation(updated);
+          return { previous: current.organization, updated };
+        }
+        if (await replaceSharedInstallation(record, updated)) {
+          return { previous: current.organization, updated };
+        }
       }
-      const organization = await createOrganization(current.organization);
-      const updated = installationRecordSchema.parse({
-        ...current,
-        organization,
-        updatedAt: new Date().toISOString(),
-      });
-      await writeInstallation(updated);
-      return { previous: current.organization, updated };
+      throw sharedConflict();
     });
   },
 
@@ -185,31 +202,39 @@ export const installationStore = {
     },
   ): Promise<InstallationRecord> {
     return serializeWrite(async () => {
-      const current = await readInstallation();
-      if (!current) {
-        throw new ApiError("Complete setup first.", "SETUP_REQUIRED", 503);
-      }
-      if (current.owner.authVersion !== expectedAuthVersion) {
-        throw new ApiError(
-          "Administrator account changed. Sign in and try again.",
-          "ADMIN_ACCOUNT_CHANGED",
-          409,
-        );
-      }
-      const now = new Date().toISOString();
-      const updated = installationRecordSchema.parse({
-        ...current,
-        owner: {
-          authVersion: current.owner.authVersion + 1,
-          password: owner.password,
-          twoFactor: owner.twoFactor,
+      const shared = await ensureInstallationMigrated();
+      for (let attempt = 0; attempt < (shared ? SHARED_RETRY_LIMIT : 1); attempt += 1) {
+        const record = shared
+          ? await sharedInstallation()
+          : { installation: await readInstallation(), serialized: null };
+        const current = record.installation;
+        if (!current) throw setupRequired();
+        if (current.owner.authVersion !== expectedAuthVersion) {
+          throw new ApiError(
+            "Administrator account changed. Sign in and try again.",
+            "ADMIN_ACCOUNT_CHANGED",
+            409,
+          );
+        }
+        const now = new Date().toISOString();
+        const updated = installationRecordSchema.parse({
+          ...current,
+          owner: {
+            authVersion: current.owner.authVersion + 1,
+            password: owner.password,
+            twoFactor: owner.twoFactor,
+            updatedAt: now,
+            username: owner.username,
+          },
           updatedAt: now,
-          username: owner.username,
-        },
-        updatedAt: now,
-      });
-      await writeInstallation(updated);
-      return updated;
+        });
+        if (!shared) {
+          await writeInstallation(updated);
+          return updated;
+        }
+        if (await replaceSharedInstallation(record, updated)) return updated;
+      }
+      throw sharedConflict();
     });
   },
 };
