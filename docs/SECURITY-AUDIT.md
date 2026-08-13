@@ -1,6 +1,6 @@
 # Security audit log
 
-Veda Mail keeps a local, privacy-bounded security audit trail for protected
+Veda Mail keeps a privacy-bounded security audit trail for protected
 control-plane and mailbox actions. An authenticated administrator can inspect
 it from **Administration → Audit log**. The API is
 `GET /api/v1/admin/audit`; it is administrator-only, rate-limited,
@@ -63,8 +63,12 @@ wrong-key stores fail closed.
 The store retains the newest 10,000 events. When the bound is crossed, it
 records the removed chain tip as the new anchor and increments `droppedCount`,
 so the retained suffix remains verifiable and the UI discloses expiry. Writes
-are process-serialized, mode 0600, fsynced, and atomically renamed. Keep exactly
-one Veda Mail writer on a `/data` volume.
+are process-serialized, mode 0600, fsynced, and atomically renamed in local
+mode. When shared-state Redis is configured, the complete verified file is
+wrapped in AES-256-GCM and migrated once without exposing event fields in
+Redis. Exact-record compare-and-set retries serialize append and retention
+updates across replicas while preserving one global sequence and HMAC chain.
+Backend, ciphertext, key, or compare-and-set exhaustion errors fail closed.
 
 The chain detects changes inside the current file; it cannot independently
 prove that an attacker with volume-write access did not restore an older,
@@ -75,10 +79,13 @@ checksums, restricted volume access, and external alerts for rollback evidence.
 
 - Keep the exact `VEDA_MAIL_JOB_KEY` with the installation. A different key
   intentionally makes the log unreadable. There is no in-place key migration.
-- Back up `security-audit.json` with the complete `/data` snapshot and back up
-  the external key separately in the deployment secret manager.
-- Before restore, preserve the current log and checksum. Restoring an older
-  volume also rolls audit history back to that snapshot.
+- In local mode, back up `security-audit.json` with the complete `/data`
+  snapshot. In shared mode, back up Redis consistently; the
+  `.migrated-to-redis` file is a rollback archive, not the current log.
+  Back up the external key separately in either mode.
+- Before restore, preserve the current log or shared record and its checksum.
+  Restoring an older generation also rolls audit history back to that snapshot.
+  Drain audit-producing traffic before restoring Redis or a rollback archive.
 - A missing file is a valid empty log. A malformed or non-pristine empty file
   is not accepted.
 - Treat `failure` and `partial` outcomes as investigation signals. Correlate

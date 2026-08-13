@@ -79,3 +79,14 @@ export const writeSecurityAuditFile = async (
     throw error;
   }
 };
+
+export const archiveMigratedSecurityAuditFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ securityAuditFilePath(),
+      /* turbopackIgnore: true */ `${securityAuditFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

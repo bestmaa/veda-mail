@@ -19,14 +19,17 @@ upgraded replica before scaling. Preserve `installation.json` (its session
 secret protects these records) and the Redis prefix, and drain member sign-ins
 and 2FA changes before restoring the archive for rollback.
 
-The security-audit release creates `/data/security-audit.json` on the first
-recorded event. It uses dedicated HKDF/HMAC subkeys derived from the existing
+The security audit uses dedicated HKDF/HMAC subkeys derived from the existing
 32-byte `VEDA_MAIL_JOB_KEY`; no new variable, provider migration, Stalwart
-setting, or port is required. Preserve that exact key, back up the strict
-mode-0600 file with the whole volume, and keep one writable application replica.
-Older releases ignore the file. After upgrading, open **Administration → Audit
-log** and verify an administrator policy-save attempt/success pair. Do not merge
-files from different snapshots or rotate the root key in place.
+setting, or port is required. In local mode, preserve the strict mode-0600
+`/data/security-audit.json` file. With shared-state Redis configured, first
+access verifies that file, encrypts the complete chain with AES-256-GCM, stores
+it through exact-record CAS, and archives the local file as
+`.migrated-to-redis`. Verify the archive and a consistent Redis backup before
+scaling. Preserve the exact job key and Redis prefix, and drain audit-producing
+traffic before restoring the archive or Redis for rollback. After upgrading,
+open **Administration → Audit log** and verify an administrator policy-save
+attempt/success pair. Do not merge snapshots or rotate the root key in place.
 
 The capability-policy release adds `/data/organization-policy.json` only after
 an administrator saves policy. No environment variable, provider migration,

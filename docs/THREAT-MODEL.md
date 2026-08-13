@@ -1370,11 +1370,13 @@ events. Actor and target identities are keyed pseudonyms; raw addresses,
 usernames, provider IDs, message/mailbox IDs, content, IP addresses, and user
 agents are excluded. Protected mutations durably record an attempt before the
 side effect, then success, failure, or partial settlement. HMAC-chained entries,
-a whole-file MAC, key check, monotonic sequence, mode-0600 atomic replacement,
-and verification on every read detect modification, truncation, and wrong-key
-restores. A valid older whole-file rollback cannot be detected without an
+a whole-file MAC, key check, monotonic sequence, and verification on every read
+detect modification, truncation, and wrong-key restores. Local mode uses
+mode-0600 atomic replacement. Shared mode wraps the whole verified file in
+AES-256-GCM and uses exact-record Redis CAS so concurrent replicas preserve one
+sequence, chain, and retention decision without exposing event fields in Redis
+plaintext. A valid older snapshot rollback cannot be detected without an
 external checkpoint, so operators preserve off-host generations and checksums.
-The file writer remains inside the documented single-replica boundary.
 
 ## Administrative capability-policy threats
 

@@ -935,6 +935,10 @@ desired revisions and short-lived provider deployment intents; a superseding
 rule mutation also erases the encrypted provider connection.
 Member-2FA entries now migrate as fully encrypted HMAC-opaque owner records;
 exact Redis CAS makes recovery-code consumption one-time across replicas.
+The complete verified security-audit file now migrates under an additional
+AES-256-GCM envelope; exact-record CAS preserves one global HMAC chain,
+monotonic sequence, and retention decision across replicas while Redis exposes
+none of the event fields as plaintext.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

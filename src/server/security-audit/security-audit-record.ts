@@ -133,6 +133,15 @@ export type SecurityAuditAppend = Pick<SecurityAuditEntry,
   "requestId" | "targetId" | "targetType"
 >;
 
+export const encryptedSecurityAuditSchema = z.object({
+  algorithm: z.literal("aes-256-gcm"),
+  ciphertext: z.string().min(1).max(24 * 1_024 * 1_024),
+  iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
+  tag: z.string().regex(/^[A-Za-z0-9_-]{22}$/u),
+}).strict();
+
+export type EncryptedSecurityAudit = z.infer<typeof encryptedSecurityAuditSchema>;
+
 export const emptySecurityAuditFile = (): SecurityAuditFile => ({
   anchor: null,
   droppedCount: 0,
