@@ -131,6 +131,12 @@ Redis backup on one upgraded replica before scaling. Preserve the installation
 session secret and prefix, and drain label/deletion/mailbox-empty operations
 before restoring the archive for rollback.
 
+Mail-rule books now migrate from `/data/member-rules.json` to shared-state Redis
+on first access. Verify the `.migrated-to-redis` archive and Redis backup on one
+upgraded replica before scaling. Preserve `VEDA_MAIL_JOB_KEY` and the Redis
+prefix, and drain rule edits and provider deployment operations before restoring
+the archive for rollback. A restored book with the wrong job key fails closed.
+
 Conversation views require no environment variable, provider configuration,
 mailbox migration, database/schema change, or new port. They add bounded
 provider reads when a message is opened: 25 results per browser page and no

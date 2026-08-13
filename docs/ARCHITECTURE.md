@@ -843,11 +843,15 @@ original timeout or socket failure for diagnosis without exposing credentials.
 
 `/data/member-rules.json` stores the desired rule book, deployment revision,
 provider state/hash/script ID, and bounded audit under an owner-isolated
-AES-256-GCM envelope. A deployment first commits an encrypted intent containing
-the current provider connection, performs provider I/O, then CAS-finalizes and
-erases the connection for every result. This is not a durable worker queue. A
-subsequent retry requires a current authenticated mailbox session and reconciles
-an exact already-active owned script before issuing another mutation.
+AES-256-GCM envelope. Shared-state mode migrates each existing ciphertext owner
+record to Redis once and archives the local file; exact-record compare-and-set
+then preserves revision and deployment-intent conflicts across replicas. A
+deployment first commits an encrypted intent containing the current provider
+connection, performs provider I/O, then CAS-finalizes and erases the connection
+for every result. A superseding rule mutation also erases that connection. This
+is not a durable worker queue. A subsequent retry requires a current
+authenticated mailbox session and reconciles an exact already-active owned
+script before issuing another mutation.
 
 Script ownership is separate from script naming. The compiler prepends an
 installation-key HMAC bound to the exact generated body; the adapter must

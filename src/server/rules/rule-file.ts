@@ -90,3 +90,14 @@ export const writeRuleFile = async (value: RuleFile): Promise<void> => {
     throw error;
   }
 };
+
+export const archiveMigratedRuleFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ ruleFilePath(),
+      /* turbopackIgnore: true */ `${ruleFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

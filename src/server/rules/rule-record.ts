@@ -71,7 +71,7 @@ export const storedRuleBookSchema = z.object({
   }
 });
 
-const encryptedRuleBookSchema = z.object({
+export const encryptedRuleBookSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
   ciphertext: z.string().min(1).max(4 * 1024 * 1024),
   iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),

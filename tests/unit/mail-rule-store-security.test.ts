@@ -9,6 +9,7 @@ import {
   appendRuleAudit,
   type RuleAuditEntry,
 } from "@/server/rules/rule-audit";
+import { decryptRuleBook } from "@/server/rules/rule-crypto";
 import { ruleFilePath } from "@/server/rules/rule-file";
 import { ruleFileSchema } from "@/server/rules/rule-record";
 import { ruleStore } from "@/server/rules/rule-store";
@@ -91,6 +92,33 @@ describe("mail rule store security", () => {
     await expect(ruleStore.get(owner)).rejects.toMatchObject({
       code: "MAIL_RULE_STORE_UNAVAILABLE",
     });
+  });
+
+  it("erases a superseded deployment connection on rule mutation", async () => {
+    const created = await ruleStore.put(owner, {
+      definition, expectedRevision: null, operation: "create",
+    });
+    const work = await ruleStore.persistDeploymentIntent(owner, created.revision!, {
+      config: { accessToken: "provider-secret" },
+      createdAt: "2026-08-04T00:00:00.000Z",
+      displayName: "Private provider",
+      id: id.connection("11111111-1111-4111-8111-111111111111"),
+      providerId: id.provider("mock"),
+    });
+    const pending = await ruleStore.get(owner);
+    await ruleStore.put(owner, {
+      definition: { ...definition, name: "New desired rule" },
+      expectedRevision: pending.revision,
+      operation: "create",
+    });
+    const file = ruleFileSchema.parse(
+      JSON.parse(await readFile(ruleFilePath(), "utf8")),
+    );
+    const ownerKey = Object.keys(file.owners)[0]!;
+    expect(decryptRuleBook(file.owners[ownerKey]!, ownerKey).connection)
+      .toBeNull();
+    await expect(ruleStore.getDeploymentWork(owner, work.intentId)).rejects
+      .toMatchObject({ code: "MAIL_RULE_DEPLOYMENT_CONFLICT" });
   });
 
   it("bounds audit history to redacted control-plane metadata", () => {
