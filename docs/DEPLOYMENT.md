@@ -520,7 +520,8 @@ templates, contacts, calendar events, label catalogs, mail rules, member 2FA,
 mailbox appearance, and the encrypted whole-record security audit trail migrate
 there on first access, and request limits may use their separate backend.
 The global data-retention and organization capability policies also migrate as
-encrypted singleton records with exact-record CAS.
+encrypted singleton records with exact-record CAS, as does the global
+mail-content policy used by upload, draft, and delivery enforcement.
 Scaling still requires transactional replacement for the remaining mutable
 metadata stores.
 

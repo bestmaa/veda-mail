@@ -1004,6 +1004,10 @@ limiter and encrypted shared session repository.
   immediate or scheduled delivery. Block rules precede allow rules; declared
   MIME is never authoritative, policy changes cover saved drafts, unknown
   saved-attachment sizes fail closed, and rejected uploads are deleted.
+- Local mode keeps the strict mail-content policy in a mode-0600 atomic file.
+  Shared mode encrypts the complete record under a dedicated subkey and uses
+  exact-record Redis CAS, preventing replicas from silently applying divergent
+  limits. Wrong-key, malformed, oversized, or tampered records fail closed.
 - Concurrent sends share an 18 MiB FIFO plaintext-memory budget with bounded
   waiters and timeout. Capacity is acquired before decrypting and released
   after provider submission or any failure.

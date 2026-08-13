@@ -1335,6 +1335,9 @@ current age/count decision.
 The organization capability policy follows the same separate-key encrypted
 singleton contract, preventing replicas from enforcing divergent member
 password, profile, or 2FA-enrollment permissions.
+The mail-content policy is another independently keyed encrypted singleton;
+exact Redis CAS gives upload, draft, immediate-send, and scheduled-send paths
+one current attachment/message enforcement policy across replicas.
 
 ## Enforced invariants
 
@@ -1381,7 +1384,8 @@ npm run check:lines
   revisioned saved-search/signature/template/contact/calendar-event books,
   label catalogs, mailbox appearance, and the encrypted security audit trail
   are already shared records; the global data-retention policy is a shared
-  encrypted singleton, as is the organization capability policy;
+  encrypted singleton, as are the organization capability and mail-content
+  policies;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

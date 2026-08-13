@@ -945,6 +945,9 @@ retains the local rollback archive.
 The organization capability policy now uses the same guarded encrypted
 singleton boundary, so member password, profile, and 2FA-enrollment permissions
 remain consistent across replicas.
+The mail-content policy now follows as an independently encrypted singleton;
+exact Redis CAS keeps attachment/message limits and allow/block rules consistent
+across upload, draft, immediate-send, and scheduled-send replicas.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit
