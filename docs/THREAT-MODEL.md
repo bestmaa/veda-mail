@@ -56,6 +56,11 @@ URLs, analytics, or client-readable cookies.
   for the data volume after completion.
 - Administrator passwords use scrypt. Authenticator secrets are encrypted and
   backup codes are stored as salted digests.
+- Shared member-2FA mode migrates each local entry behind an HMAC-opaque owner
+  key and a whole-record AES-256-GCM envelope. Exact-record Redis CAS admits
+  only one recovery-code consumer; tamper, migration conflict, or backend
+  failure denies verification. Ciphertext length and access timing remain
+  observable.
 - Member provider credentials live only in server process memory unless the
   member explicitly schedules a provider-backed draft. That bounded job copy
   is AES-256-GCM encrypted under the external `VEDA_MAIL_JOB_KEY`, is never
@@ -93,7 +98,8 @@ Residual risk: default sessions remain memory-local. Shared Redis sessions
 survive a process restart and the same
 repository coordinates encrypted jobs, send idempotency, and delivery notices;
 attachment quarantine uses the same shared availability boundary with an
-independent encryption key. Mutable `/data` repositories are not yet
+independent encryption key. Member-2FA records use the installation session
+secret rather than `VEDA_MAIL_JOB_KEY`. Mutable `/data` repositories are not yet
 multi-replica safe. Redis availability and external keys become availability
 dependencies; traffic analysis exposes ciphertext sizes and access timing.
 

@@ -13,6 +13,12 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+Member 2FA now migrates from `/data/member-security.json` to shared-state Redis
+on first access. Verify the `.migrated-to-redis` archive and Redis backup on one
+upgraded replica before scaling. Preserve `installation.json` (its session
+secret protects these records) and the Redis prefix, and drain member sign-ins
+and 2FA changes before restoring the archive for rollback.
+
 The security-audit release creates `/data/security-audit.json` on the first
 recorded event. It uses dedicated HKDF/HMAC subkeys derived from the existing
 32-byte `VEDA_MAIL_JOB_KEY`; no new variable, provider migration, Stalwart

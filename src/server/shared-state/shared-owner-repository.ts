@@ -17,6 +17,7 @@ export type SharedOwnerKind =
   | "label-catalogs"
   | "mailbox-appearance"
   | "mail-rules"
+  | "member-two-factor"
   | "message-list-preferences"
   | "saved-searches";
 
@@ -31,6 +32,7 @@ const MAX_RECORD_BYTES: Readonly<Record<SharedOwnerKind, number>> = {
   "label-catalogs": (4 * 1_024 * 1_024) + 1_024,
   "mailbox-appearance": (2 * 1_024 * 1_024) + 1_024,
   "mail-rules": (4 * 1_024 * 1_024) + 1_024,
+  "member-two-factor": (32 * 1_024) + 1_024,
   "message-list-preferences": 512 * 1_024,
   "saved-searches": (2 * 1_024 * 1_024) + 1_024,
 };

@@ -60,7 +60,10 @@ After upstream provider authentication, the member security service checks the
 provider-independent Veda TOTP overlay. Encrypted TOTP URIs and salted
 one-time backup-code digests are stored atomically in
 `${VEDA_MAIL_DATA_DIR}/member-security.json`. This layer protects Veda sessions
-without requiring a mailbox-management API.
+without requiring a mailbox-management API. Shared-state mode migrates each
+member into an HMAC-opaque, owner-bound AES-256-GCM Redis record and archives
+the local file. Exact-record CAS makes one-time recovery-code consumption
+atomic across replicas.
 
 An admin cookie cannot read mail. A member cookie cannot change organization
 or provider settings. Neither browser receives the administrator hash, signing
