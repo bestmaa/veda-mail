@@ -48,7 +48,6 @@ import {
   getStalwartMailUpdateMode,
   waitForStalwartMailUpdate,
 } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-update";
-
 export class StalwartMailGateway implements MailGateway {
   private readonly accountManager: StalwartAccountManager;
   private readonly client: StalwartJmapClient;
@@ -116,10 +115,12 @@ export class StalwartMailGateway implements MailGateway {
     return this.ruleAdapter({}).getCapability();
   }
 
-  public getSnoozeCapability() { return this.snooze.getCapability(); }
-  public getVacationCapability() { return this.vacation.getCapability(); }
-  public getVacationResponse() { return this.vacation.get(); }
-  public updateVacationResponse(input: VacationResponseUpdate) {
+  public getSnoozeCapability() { return this.snooze.getCapability(); } public getVacationCapability() { return this.vacation.getCapability(); }
+  public async getDelegationCapability() { return { reason: "This JMAP connection does not advertise a supported mail-delegation capability.",
+  supported: false } as const; } public async listDelegations() { return []; }
+  public async updateDelegation(): Promise<never> { throw new Error("Mail delegation is unavailable through this JMAP connection."); }
+  public async deleteDelegation(): Promise<never> { throw new Error("Mail delegation is unavailable through this JMAP connection."); }
+  public getVacationResponse() { return this.vacation.get(); } public updateVacationResponse(input: VacationResponseUpdate) {
     return this.vacation.set(input); }
   public async getSnoozeAccountScope() {
     const origin = new URL(this.config.baseUrl).origin.toLowerCase();
@@ -127,8 +128,7 @@ export class StalwartMailGateway implements MailGateway {
     return createHash("sha256").update(JSON.stringify([origin, accountId]))
       .digest("base64url");
   }
-  public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); }
-  public preflightSnooze(input: SnoozePreflightInput) {
+  public snoozeMailboxIntent() { return this.snooze.mailboxIntent(); } public preflightSnooze(input: SnoozePreflightInput) {
     return this.snooze.preflight(input);
   }
   public inspectSnooze(plan: SnoozeProviderPlan) {

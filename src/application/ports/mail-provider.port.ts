@@ -59,6 +59,11 @@ import type {
   VacationResponseUpdate,
 } from "@/domain/mail/vacation";
 import type {
+  DelegationCapability,
+  DelegationEntry,
+  DelegationUpdate,
+} from "@/domain/mail/delegation";
+import type {
   MailboxEmptyInput,
   MailboxEmptyResult,
 } from "@/domain/mail/mailbox-empty";
@@ -103,6 +108,7 @@ export interface MailGateway {
   getAccount(): Promise<MailAccount>;
   getDraft(providerDraftId: ProviderDraftId): Promise<DraftDetail>;
   getDraftCapability(): Promise<DraftCapability>;
+  getDelegationCapability(): Promise<DelegationCapability>;
   getLabelCapability(mailboxId: MailboxId): Promise<LabelCapability>;
   getMemberProfile(): Promise<MemberProfile>;
   getMailUpdateMode(): Promise<MailUpdateMode>;
@@ -112,6 +118,7 @@ export interface MailGateway {
   getTwoFactorEnabled(): Promise<boolean>;
   getVacationCapability(): Promise<VacationCapability>;
   getVacationResponse(): Promise<VacationResponse>;
+  listDelegations(): Promise<readonly DelegationEntry[]>;
   getMessage(messageId: MessageId): Promise<MessageDetail>;
   getConversation(query: ConversationQuery): Promise<ConversationPage>;
   listMessageAttachments(
@@ -137,6 +144,8 @@ export interface MailGateway {
   testConnection(): Promise<void>;
   updateTwoFactor(input: MemberTwoFactorUpdate): Promise<void>;
   updateVacationResponse(input: VacationResponseUpdate): Promise<VacationResponse>;
+  updateDelegation(input: DelegationUpdate): Promise<readonly DelegationEntry[]>;
+  deleteDelegation(identifier: string): Promise<readonly DelegationEntry[]>;
   updateMemberProfile(input: MemberProfileUpdate): Promise<MemberProfile>;
 }
 

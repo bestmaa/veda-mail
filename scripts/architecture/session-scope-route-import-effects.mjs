@@ -169,7 +169,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
   ["@/server/contacts/contact-store", new Set(["contactStore"])], ["@/server/contacts/contact-owner", new Set(["contactOwnerForConnection"])],
   ["@/server/saved-searches/saved-search-schema", new Set(["parseSavedSearchPutOperation"])],
   ["@/server/saved-searches/saved-search-store", new Set(["savedSearchStore"])], ["@/server/saved-searches/saved-search-owner", new Set(["savedSearchOwnerForConnection"])],
-  ["@/server/vacation/vacation-schema", new Set(["parseVacationResponseUpdate"])], ["@/server/vacation/vacation-update.service", new Set(["updateVacationResponse"])],
+  ["@/server/vacation/vacation-schema", new Set(["parseVacationResponseUpdate"])], ["@/server/vacation/vacation-update.service", new Set(["updateVacationResponse"])], ["@/server/delegation/delegation-schema", new Set(["parseDelegationDelete", "parseDelegationUpdate"])],
   [
     "@/server/contacts/contact-vcard",
     new Set(["exportVCards", "importVCards", "VCARD_LIMITS"]),

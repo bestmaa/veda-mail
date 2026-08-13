@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentConnection: vi.fn(),
   getVacationCapability: vi.fn(),
   getVacationResponse: vi.fn(),
+  getDelegationCapability: vi.fn(),
   updateVacationResponse: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ vi.mock("@/server/mail/gateway-cache", () => ({
   resolveGateway: vi.fn(async () => ({
     getVacationCapability: mocks.getVacationCapability,
     getVacationResponse: mocks.getVacationResponse,
+    getDelegationCapability: mocks.getDelegationCapability,
     updateVacationResponse: mocks.updateVacationResponse,
   })),
 }));
@@ -57,6 +59,7 @@ beforeEach(() => {
   mocks.getCurrentConnection.mockResolvedValue(connection);
   mocks.getVacationCapability.mockResolvedValue({ supported: true });
   mocks.getVacationResponse.mockResolvedValue(response);
+  mocks.getDelegationCapability.mockResolvedValue({ supported: false, reason: "Unavailable" });
   mocks.updateVacationResponse.mockResolvedValue({ ...response, revision: "state-2" });
 });
 

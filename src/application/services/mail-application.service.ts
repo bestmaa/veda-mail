@@ -142,6 +142,14 @@ export class MailApplicationService {
   public getSnoozeAccountScope() { return this.gateway.getSnoozeAccountScope(); }
   public getSnoozeCapability() { return this.gateway.getSnoozeCapability(); }
   public getVacationCapability() { return this.gateway.getVacationCapability(); }
+  public getDelegationCapability() { return this.gateway.getDelegationCapability(); }
+  public listDelegations() { return this.gateway.listDelegations(); }
+  public updateDelegation(input: Parameters<MailGateway["updateDelegation"]>[0]) {
+    return this.gateway.updateDelegation(input);
+  }
+  public deleteDelegation(identifier: string) {
+    return this.gateway.deleteDelegation(identifier);
+  }
   public getVacationResponse() { return this.gateway.getVacationResponse(); }
   public updateVacationResponse(input: VacationResponseUpdate) {
     return this.gateway.updateVacationResponse(input);

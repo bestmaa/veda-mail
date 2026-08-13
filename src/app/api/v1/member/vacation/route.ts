@@ -23,10 +23,7 @@ const scopedGateway = async (request: Request) => {
 const workspace = async (request: Request) => {
   const { gateway } = await scopedGateway(request);
   const capability = await gateway.getVacationCapability();
-  const delegation = {
-    reason: "This provider does not advertise a supported mail-delegation capability.",
-    supported: false,
-  } as const;
+  const delegation = await gateway.getDelegationCapability();
   return {
     capability,
     delegation,

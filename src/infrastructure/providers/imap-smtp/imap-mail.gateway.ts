@@ -9,6 +9,7 @@ import type {
 } from "@/domain/mail/rule";
 import type { SnoozePreflightInput, SnoozeProviderPlan } from "@/domain/mail/snooze";
 import type { VacationResponseUpdate } from "@/domain/mail/vacation";
+import type { DelegationUpdate } from "@/domain/mail/delegation";
 import type {
   AttachmentDownload,
   AttachmentDownloadInput,
@@ -45,6 +46,7 @@ import {
 } from "@/infrastructure/providers/imap-smtp/manage-sieve-gateway";
 import { SmtpAttachmentCapability } from "@/infrastructure/providers/imap-smtp/smtp-attachment-capability";
 import { ImapSnoozeAdapter } from "@/infrastructure/providers/imap-smtp/imap-snooze-adapter";
+import { ImapDelegationAdapter } from "@/infrastructure/providers/imap-smtp/imap-delegation-adapter";
 import { sameDraftContent } from "@/infrastructure/providers/stalwart-jmap/stalwart-draft.mapper";
 import { importImapMessageSource } from "@/infrastructure/providers/imap-smtp/imap-message-source-import";
 import {
@@ -56,14 +58,14 @@ const unsupported = (feature: string): never => {
 };
 export class ImapSmtpMailGateway implements MailGateway {
   private readonly attachmentCapability: SmtpAttachmentCapability;
-  private readonly drafts: ImapDraftStore;
+  private readonly drafts: ImapDraftStore; private readonly delegation: ImapDelegationAdapter;
   private readonly reader: ImapMailReader;
   private readonly mailboxes: ImapMailboxManager;
   private readonly writer: ImapMailWriter;
   private readonly snooze: ImapSnoozeAdapter;
   public constructor(private readonly config: ImapSmtpMemberConfig) {
     this.attachmentCapability = new SmtpAttachmentCapability(config);
-    this.drafts = new ImapDraftStore(config);
+    this.drafts = new ImapDraftStore(config); this.delegation = new ImapDelegationAdapter(config);
     this.reader = new ImapMailReader(config);
     this.mailboxes = new ImapMailboxManager(config);
     this.writer = new ImapMailWriter(config, this.attachmentCapability);
@@ -73,7 +75,6 @@ export class ImapSmtpMailGateway implements MailGateway {
     void _input;
     unsupported("Password changes");
   }
-
   public cleanupLabel(input: LabelCleanupInput) {
     return withImapClient(this.config, (client) => cleanupImapLabel(
       client,
@@ -93,11 +94,8 @@ export class ImapSmtpMailGateway implements MailGateway {
   public discardDraft(providerDraftId: ProviderDraftId, expectedRevision: string) {
     return this.drafts.discard(providerDraftId, expectedRevision);
   }
-  public getAccount() {
-    return this.reader.getAccount();
-  }
-  public async getMailUpdateMode() { return "poll" as const; }
-  public async waitForMailUpdate() { return { mode: "poll" as const,
+  public getAccount() { return this.reader.getAccount(); }
+  public async getMailUpdateMode() { return "poll" as const; } public async waitForMailUpdate() { return { mode: "poll" as const,
     retryAfterMs: 60_000, shouldRefresh: true }; }
 
   public getDraft(providerDraftId: ProviderDraftId) {
@@ -107,6 +105,8 @@ export class ImapSmtpMailGateway implements MailGateway {
   public getDraftCapability() {
     return this.drafts.capability();
   }
+  public getDelegationCapability() { return this.delegation.getCapability(); } public listDelegations() { return this.delegation.list(); }
+  public updateDelegation(input: DelegationUpdate) { return this.delegation.set(input); } public deleteDelegation(identifier: string) { return this.delegation.delete(identifier); }
   public getLabelCapability(mailboxId: Parameters<ImapMailReader["getLabelCapability"]>[0]) {
     return this.reader.getLabelCapability(mailboxId);
   }

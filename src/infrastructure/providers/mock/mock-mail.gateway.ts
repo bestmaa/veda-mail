@@ -8,8 +8,7 @@ import type { AttachmentDownloadInput,
   MessageMutation,
   SendMessageInput,
 } from "@/domain/mail/mail";
-import type { LabelCleanupInput } from "@/domain/mail/label";
-import type { ConversationQuery } from "@/domain/mail/conversation";
+import type { LabelCleanupInput } from "@/domain/mail/label"; import type { ConversationQuery } from "@/domain/mail/conversation";
 import type { CalendarPartDownloadInput } from "@/domain/mail/calendar";
 import type { MailboxEmptyInput } from "@/domain/mail/mailbox-empty";
 import type { RuleDeploymentInput, RulePreviewInput } from "@/domain/mail/rule";
@@ -45,7 +44,8 @@ export class MockMailGateway implements MailGateway {
   public async getMailUpdateMode() { return "poll" as const; } public async waitForMailUpdate() { return { mode: "poll" as const, retryAfterMs: 60_000, shouldRefresh: true }; }
   private readonly attachmentContents = createMockAttachmentContents();
   private readonly drafts = new MockDraftStore();
-  private readonly mailboxes = new MockMailboxStore();
+  private readonly mailboxes = new MockMailboxStore(); private delegations: {
+    access: "manage" | "read"; identifier: string }[] = [];
   private vacation: VacationResponse = { fromDate: null, htmlBody: null, isEnabled: false,
     revision: "mock-vacation-1", subject: null, textBody: null, toDate: null };
   public readonly discardDraft = this.drafts.discard.bind(this.drafts);
@@ -59,18 +59,18 @@ export class MockMailGateway implements MailGateway {
   public async getSnoozeCapability() { return {
     maxMessages: 100, snoozedMailboxId: mockMailboxIds.snoozed,
     supported: true } as const; }
-  public async getVacationCapability() { return { supported: true } as const; }
-  public async getVacationResponse() { return this.vacation; }
-  public async updateVacationResponse(input: VacationResponseUpdate) {
+  public async getVacationCapability() { return { supported: true } as const; } public async getDelegationCapability() { return { mailbox: "INBOX", supported: true } as const; } public async listDelegations() { return this.delegations; }
+  public async updateDelegation(input: { access: "manage" | "read"; identifier: string }) { this.delegations = [...this.delegations.filter(({ identifier }) => identifier.toLowerCase() !== input.identifier.toLowerCase()), input]
+    .sort((left, right) => left.identifier.localeCompare(right.identifier));
+    return this.delegations; }
+  public async deleteDelegation(identifier: string) { this.delegations = this.delegations.filter((entry) => entry.identifier.toLowerCase() !== identifier.toLowerCase()); return this.delegations; }
+  public async getVacationResponse() { return this.vacation; } public async updateVacationResponse(input: VacationResponseUpdate) {
     if (input.expectedRevision !== this.vacation.revision) {
       throw new Error("Vacation settings changed in another session."); }
     this.vacation = { ...input, revision: `mock-vacation-${crypto.randomUUID()}` };
     return this.vacation; }
-  public async getSnoozeAccountScope() {
-    return createHash("sha256").update("veda-mail/mock-account").digest("base64url"); }
-  public async snoozeMailboxIntent() { return mockSnoozeMailbox(); }
-  public async preflightSnooze(input: SnoozePreflightInput) {
-    return preflightMockSnooze(this.messages, input); }
+  public async getSnoozeAccountScope() { return createHash("sha256").update("veda-mail/mock-account").digest("base64url"); }
+  public async snoozeMailboxIntent() { return mockSnoozeMailbox(); } public async preflightSnooze(input: SnoozePreflightInput) { return preflightMockSnooze(this.messages, input); }
   public async inspectSnooze(plan: SnoozeProviderPlan) {
     if (plan.kind !== "jmap") throw new Error("Snooze provider mismatch.");
     return inspectMockSnooze(this.messages, plan); }
