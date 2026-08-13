@@ -1332,6 +1332,9 @@ restoration of an older internally valid snapshot without an external checkpoint
 The strict global retention-policy record also migrates under a distinct
 AES-256-GCM subkey and uses exact-record CAS, so every replica applies one
 current age/count decision.
+The organization capability policy follows the same separate-key encrypted
+singleton contract, preventing replicas from enforcing divergent member
+password, profile, or 2FA-enrollment permissions.
 
 ## Enforced invariants
 
@@ -1378,7 +1381,7 @@ npm run check:lines
   revisioned saved-search/signature/template/contact/calendar-event books,
   label catalogs, mailbox appearance, and the encrypted security audit trail
   are already shared records; the global data-retention policy is a shared
-  encrypted singleton;
+  encrypted singleton, as is the organization capability policy;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

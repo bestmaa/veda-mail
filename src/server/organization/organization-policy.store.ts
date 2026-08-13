@@ -11,8 +11,16 @@ import {
   organizationFeaturePolicySchema,
   organizationPolicyRecordSchema,
 } from "@/server/organization/organization-policy.schema";
+import {
+  decryptSharedRecord,
+  encryptSharedRecord,
+} from "@/server/shared-state/shared-record-crypto";
+import { sharedRecordRepository } from
+  "@/server/shared-state/shared-record-repository";
 
 const DATA_FILE = "organization-policy.json";
+const SHARED_KIND = "organization-policy" as const;
+const SHARED_RETRY_LIMIT = 10;
 
 interface StoreState {
   writeQueue: Promise<void>;
@@ -30,19 +38,47 @@ const dataDirectory = (): string =>
   process.env["VEDA_MAIL_DATA_DIR"] ??
   path.join(/*turbopackIgnore: true*/ process.cwd(), "data");
 const policyPath = (): string => path.join(dataDirectory(), DATA_FILE);
+const archivePath = (): string => `${policyPath()}.migrated-to-redis`;
+let migrationPromise: Promise<boolean> | undefined;
 
-const read = async (): Promise<OrganizationFeaturePolicy> => {
+const readRecord = async () => {
   try {
-    const record = organizationPolicyRecordSchema.parse(
+    return organizationPolicyRecordSchema.parse(
       JSON.parse(await readFile(policyPath(), "utf8")),
     );
-    return record.policy;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { ...DEFAULT_ORGANIZATION_FEATURE_POLICY };
-    }
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
+};
+const localRead = async (): Promise<OrganizationFeaturePolicy> =>
+  (await readRecord())?.policy ?? { ...DEFAULT_ORGANIZATION_FEATURE_POLICY };
+const archive = async (): Promise<void> => {
+  try { await rename(policyPath(), archivePath()); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};
+const ensureMigrated = async (): Promise<boolean> => {
+  if (!sharedRecordRepository.configured()) return false;
+  migrationPromise ??= sharedRecordRepository.ensureMigrated(
+    SHARED_KIND,
+    async () => {
+      const record = await readRecord();
+      return record ? encryptSharedRecord(SHARED_KIND, record) : null;
+    },
+    archive,
+  );
+  return migrationPromise;
+};
+const sharedRead = async () => {
+  const serialized = await sharedRecordRepository.get(SHARED_KIND);
+  return {
+    policy: serialized
+      ? decryptSharedRecord(SHARED_KIND, serialized, organizationPolicyRecordSchema).policy
+      : { ...DEFAULT_ORGANIZATION_FEATURE_POLICY },
+    serialized,
+  };
 };
 
 const serializeWrite = async <T>(task: () => Promise<T>): Promise<T> => {
@@ -55,11 +91,26 @@ const serializeWrite = async <T>(task: () => Promise<T>): Promise<T> => {
 };
 
 export const organizationPolicyStore = {
-  get: read,
+  async get(): Promise<OrganizationFeaturePolicy> {
+    return await ensureMigrated() ? (await sharedRead()).policy : localRead();
+  },
 
   put(policy: OrganizationFeaturePolicy): Promise<OrganizationFeaturePolicy> {
     const parsed = organizationFeaturePolicySchema.parse(policy);
     return serializeWrite(async () => {
+      if (await ensureMigrated()) {
+        for (let attempt = 0; attempt < SHARED_RETRY_LIMIT; attempt += 1) {
+          const current = await sharedRead();
+          const record = {
+            policy: parsed, updatedAt: new Date().toISOString(), version: 1 as const,
+          };
+          if (await sharedRecordRepository.compareAndSet(
+            SHARED_KIND, current.serialized,
+            encryptSharedRecord(SHARED_KIND, record),
+          )) return parsed;
+        }
+        throw new Error("The shared organization policy changed too frequently.");
+      }
       const directory = dataDirectory();
       const temporary = path.join(
         directory,

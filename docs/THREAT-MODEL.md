@@ -1400,11 +1400,14 @@ purpose.
 
 Concurrent writes, truncated files, or rollback could otherwise create an
 ambiguous policy. The separate record is strict and versioned, written mode
-0600 through a process-serialized temporary file and atomic rename. Missing
+0600 through a process-serialized temporary file and atomic rename in local
+mode. Shared mode encrypts the complete record under a dedicated subkey and
+uses exact-record CAS across replicas; wrong-key and tampered ciphertext fail
+closed. Missing
 state uses explicit enabled compatibility defaults; malformed state fails
 closed as an application error rather than being silently repaired. Keeping
 policy outside strict `installation.json` lets older releases ignore it during
-rollback. The existing one-writable-replica boundary still applies. A host
+rollback. A host
 administrator with `/data` write access remains trusted and can change policy;
 these controls do not restrict direct IMAP, SMTP, provider webmail, or provider
 administration outside Veda Mail.
