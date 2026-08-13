@@ -933,6 +933,8 @@ concurrent metadata changes, cleanup leases, tombstones, and mailbox-empty
 checkpoints. Encrypted mail-rule books now migrate with exact-record CAS for
 desired revisions and short-lived provider deployment intents; a superseding
 rule mutation also erases the encrypted provider connection.
+Member-2FA entries now migrate as fully encrypted HMAC-opaque owner records;
+exact Redis CAS makes recovery-code consumption one-time across replicas.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

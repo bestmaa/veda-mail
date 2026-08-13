@@ -1,92 +1,37 @@
 import "server-only";
 
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import * as OTPAuth from "otpauth";
-import { z } from "zod";
 
+import {
+  decryptOtpUrl,
+  encryptOtpUrl,
+  normalizedMemberEmail,
+} from "@/server/auth/member-two-factor-crypto";
+import {
+  readMemberSecurityFile,
+  writeMemberSecurityFile,
+} from "@/server/auth/member-two-factor-file";
+import {
+  type MemberSecurity,
+  memberSecurityFileSchema,
+  type RecoveryDigest,
+} from "@/server/auth/member-two-factor-record";
+import {
+  ensureMemberSecurityMigrated,
+  replaceSharedMemberSecurity,
+  sharedMemberSecurity,
+} from "@/server/auth/member-two-factor-shared";
 import { installationStore } from "@/server/installation/installation.store";
-const FILE_NAME = "member-security.json";
-const CONTEXT = "veda-mail/member-two-factor/v1";
-const digestSchema = z.object({
-  algorithm: z.literal("sha256"),
-  digest: z.string().min(1),
-  salt: z.string().min(1),
-});
-const encryptedSchema = z.object({
-  algorithm: z.literal("aes-256-gcm"),
-  ciphertext: z.string().min(1),
-  iv: z.string().min(1),
-  tag: z.string().min(1),
-});
-const memberSchema = z.object({
-  enabledAt: z.string().datetime(),
-  otpUrl: encryptedSchema,
-  recoveryCodes: z.array(digestSchema).max(10),
-});
-const fileSchema = z.object({
-  members: z.record(z.string(), memberSchema),
-  updatedAt: z.string().datetime(),
-  version: z.literal(1),
-});
-type SecurityFile = z.infer<typeof fileSchema>;
-type MemberSecurity = z.infer<typeof memberSchema>;
-type RecoveryDigest = z.infer<typeof digestSchema>;
 
 const globalState = globalThis as typeof globalThis & {
   __vedaMailMemberSecurityQueue?: Promise<void>;
 };
 globalState.__vedaMailMemberSecurityQueue ??= Promise.resolve();
-
-const dataDirectory = (): string =>
-  process.env["VEDA_MAIL_DATA_DIR"] ??
-  path.join(/*turbopackIgnore: true*/ process.cwd(), "data");
-const filePath = (): string => path.join(dataDirectory(), FILE_NAME);
-const normalizedEmail = (email: string): string => email.trim().toLowerCase();
-const emptyFile = (): SecurityFile => ({
-  members: {},
-  updatedAt: new Date(0).toISOString(),
-  version: 1,
-});
-
-const read = async (): Promise<SecurityFile> => {
-  try {
-    return fileSchema.parse(JSON.parse(await readFile(filePath(), "utf8")));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyFile();
-    throw error;
-  }
-};
-
-const write = async (value: SecurityFile): Promise<void> => {
-  const directory = dataDirectory();
-  const temporary = path.join(directory, `.${FILE_NAME}.${crypto.randomUUID()}`);
-  await mkdir(directory, { mode: 0o700, recursive: true });
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-    mode: 0o600,
-  });
-  try {
-    await rename(temporary, filePath());
-  } catch (error) {
-    await unlink(temporary).catch(() => undefined);
-    throw error;
-  }
-};
-
 const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
   const result = globalState.__vedaMailMemberSecurityQueue!.then(task, task);
   globalState.__vedaMailMemberSecurityQueue = result.then(
-    () => undefined,
-    () => undefined,
+    () => undefined, () => undefined,
   );
   return result;
 };
@@ -96,153 +41,132 @@ const secret = async (): Promise<string> => {
   if (!installation) throw new Error("Veda Mail is not installed.");
   return installation.sessionSecret;
 };
-const key = (sessionSecret: string): Buffer =>
-  createHash("sha256").update(CONTEXT).update("\0").update(sessionSecret).digest();
-const aad = (email: string): Buffer => Buffer.from(`${CONTEXT}\0${email}`);
-
-const encrypt = (
-  value: string,
-  email: string,
-  sessionSecret: string,
-): MemberSecurity["otpUrl"] => {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key(sessionSecret), iv);
-  cipher.setAAD(aad(email));
-  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
-  return {
-    algorithm: "aes-256-gcm",
-    ciphertext: ciphertext.toString("base64url"),
-    iv: iv.toString("base64url"),
-    tag: cipher.getAuthTag().toString("base64url"),
-  };
-};
-
-const decrypt = (
-  value: MemberSecurity["otpUrl"],
-  email: string,
-  sessionSecret: string,
-): string => {
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    key(sessionSecret),
-    Buffer.from(value.iv, "base64url"),
-  );
-  decipher.setAAD(aad(email));
-  decipher.setAuthTag(Buffer.from(value.tag, "base64url"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(value.ciphertext, "base64url")),
-    decipher.final(),
-  ]).toString("utf8");
-};
-
-const normalizeCode = (value: string): string =>
+const normalizeCode = (value: string) =>
   value.trim().toUpperCase().replaceAll(" ", "");
 const digest = (code: string, salt: Buffer): RecoveryDigest => ({
   algorithm: "sha256",
-  digest: createHash("sha256")
-    .update(salt)
-    .update("\0")
-    .update(normalizeCode(code))
-    .digest("base64url"),
+  digest: createHash("sha256").update(salt).update("\0")
+    .update(normalizeCode(code)).digest("base64url"),
   salt: salt.toString("base64url"),
 });
 const matches = (code: string, stored: RecoveryDigest): boolean => {
-  const candidate = digest(code, Buffer.from(stored.salt, "base64url"));
-  const left = Buffer.from(candidate.digest, "base64url");
-  const right = Buffer.from(stored.digest, "base64url");
-  return left.length === right.length && timingSafeEqual(left, right);
+  const candidate = Buffer.from(
+    digest(code, Buffer.from(stored.salt, "base64url")).digest,
+    "base64url",
+  );
+  const expected = Buffer.from(stored.digest, "base64url");
+  return candidate.length === expected.length && timingSafeEqual(candidate, expected);
 };
 const recoveryCodes = () => {
   const codes = Array.from({ length: 10 }, () =>
-    randomBytes(9).toString("hex").toUpperCase().match(/.{1,6}/g)!.join("-"),
-  );
-  return {
-    codes,
-    digests: codes.map((code) => digest(code, randomBytes(16))),
-  };
+    randomBytes(9).toString("hex").toUpperCase().match(/.{1,6}/gu)!.join("-"));
+  return { codes, digests: codes.map((code) => digest(code, randomBytes(16))) };
 };
+const verifiesTotp = (
+  member: MemberSecurity, email: string, code: string, sessionSecret: string,
+): boolean => {
+  if (!/^\d{6}$/u.test(code.trim())) return false;
+  const authenticator = OTPAuth.URI.parse(
+    decryptOtpUrl(member.otpUrl, email, sessionSecret),
+  );
+  return authenticator instanceof OTPAuth.TOTP &&
+    authenticator.validate({ token: code.trim(), window: 1 }) !== null;
+};
+
+const sharedMode = (sessionSecret: string) =>
+  ensureMemberSecurityMigrated(sessionSecret);
 
 export const memberTwoFactorSecurity = {
   async isEnabled(email: string): Promise<boolean> {
-    return Boolean((await read()).members[normalizedEmail(email)]);
+    const normalized = normalizedMemberEmail(email);
+    const sessionSecret = await secret();
+    if (await sharedMode(sessionSecret)) {
+      return Boolean((await sharedMemberSecurity(normalized, sessionSecret)).security);
+    }
+    return Boolean((await readMemberSecurityFile()).members[normalized]);
   },
+
   async enable(email: string, otpUrl: string) {
     return serialized(async () => {
-      const normalized = normalizedEmail(email);
-      const current = await read();
-      if (current.members[normalized]) throw new Error("2FA is already enabled.");
+      const normalized = normalizedMemberEmail(email);
+      const sessionSecret = await secret();
       const recovery = recoveryCodes();
-      const next = {
-        ...current,
-        members: {
-          ...current.members,
-          [normalized]: {
-            enabledAt: new Date().toISOString(),
-            otpUrl: encrypt(otpUrl, normalized, await secret()),
-            recoveryCodes: recovery.digests,
-          },
-        },
-        updatedAt: new Date().toISOString(),
+      const now = new Date().toISOString();
+      const updated: MemberSecurity = {
+        enabledAt: now,
+        otpUrl: encryptOtpUrl(otpUrl, normalized, sessionSecret),
+        recoveryCodes: recovery.digests,
       };
-      await write(fileSchema.parse(next));
+      if (await sharedMode(sessionSecret)) {
+        const current = await sharedMemberSecurity(normalized, sessionSecret);
+        if (current.security) throw new Error("2FA is already enabled.");
+        if (!await replaceSharedMemberSecurity(current, updated, sessionSecret)) {
+          throw new Error("2FA is already enabled.");
+        }
+        return recovery.codes;
+      }
+      const current = await readMemberSecurityFile();
+      if (current.members[normalized]) throw new Error("2FA is already enabled.");
+      await writeMemberSecurityFile(memberSecurityFileSchema.parse({
+        ...current,
+        members: { ...current.members, [normalized]: updated },
+        updatedAt: now,
+      }));
       return recovery.codes;
     });
   },
 
   async verify(email: string, code: string): Promise<boolean> {
     return serialized(async () => {
-      const normalized = normalizedEmail(email);
-      const current = await read();
-      const member = current.members[normalized];
-      if (!member) return false;
+      const normalized = normalizedMemberEmail(email);
       try {
-        if (/^\d{6}$/.test(code.trim())) {
-          const authenticator = OTPAuth.URI.parse(
-            decrypt(member.otpUrl, normalized, await secret()),
-          );
-          if (
-            authenticator instanceof OTPAuth.TOTP &&
-            authenticator.validate({ token: code.trim(), window: 1 }) !== null
-          ) return true;
+        const sessionSecret = await secret();
+        if (await sharedMode(sessionSecret)) {
+          const current = await sharedMemberSecurity(normalized, sessionSecret);
+          if (!current.security) return false;
+          if (verifiesTotp(current.security, normalized, code, sessionSecret)) return true;
+          const index = current.security.recoveryCodes.findIndex((value) =>
+            matches(code, value));
+          if (index < 0) return false;
+          const updated = { ...current.security, recoveryCodes:
+            current.security.recoveryCodes.filter((_, item) => item !== index) };
+          return replaceSharedMemberSecurity(current, updated, sessionSecret);
         }
-        const index = member.recoveryCodes.findIndex((stored) =>
-          matches(code, stored),
-        );
+        const current = await readMemberSecurityFile();
+        const member = current.members[normalized];
+        if (!member) return false;
+        if (verifiesTotp(member, normalized, code, sessionSecret)) return true;
+        const index = member.recoveryCodes.findIndex((value) => matches(code, value));
         if (index < 0) return false;
-        const updated = {
+        await writeMemberSecurityFile(memberSecurityFileSchema.parse({
           ...current,
-          members: {
-            ...current.members,
-            [normalized]: {
-              ...member,
-              recoveryCodes: member.recoveryCodes.filter(
-                (_stored, currentIndex) => currentIndex !== index,
-              ),
-            },
-          },
+          members: { ...current.members, [normalized]: { ...member,
+            recoveryCodes: member.recoveryCodes.filter((_, item) => item !== index) } },
           updatedAt: new Date().toISOString(),
-        };
-        await write(fileSchema.parse(updated));
+        }));
         return true;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     });
   },
 
   async disable(email: string): Promise<void> {
     await serialized(async () => {
-      const normalized = normalizedEmail(email);
-      const current = await read();
+      const normalized = normalizedMemberEmail(email);
+      const sessionSecret = await secret();
+      if (await sharedMode(sessionSecret)) {
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const current = await sharedMemberSecurity(normalized, sessionSecret);
+          if (!current.security ||
+              await replaceSharedMemberSecurity(current, null, sessionSecret)) return;
+        }
+        throw new Error("Member 2FA changed concurrently.");
+      }
+      const current = await readMemberSecurityFile();
       const members = { ...current.members };
       delete members[normalized];
-      await write(
-        fileSchema.parse({
-          ...current,
-          members,
-          updatedAt: new Date().toISOString(),
-        }),
-      );
+      await writeMemberSecurityFile(memberSecurityFileSchema.parse({
+        ...current, members, updatedAt: new Date().toISOString(),
+      }));
     });
   },
 };

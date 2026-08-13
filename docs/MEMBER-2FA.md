@@ -34,9 +34,21 @@ installation session secret. The member email is authenticated as encryption
 context so records cannot be swapped between accounts. The file is created
 with mode `0600` and updated atomically.
 
+When shared-state Redis is configured, first access converts each local member
+entry into a separate HMAC-opaque owner record and wraps the entire entry in a
+second owner-bound AES-256-GCM envelope. Redis therefore contains neither the
+member email, TOTP URI, enabled timestamp, recovery digest, nor recovery-code
+count in plaintext. Exact-record compare-and-set admits one recovery-code
+consumer across replicas. The local file is retained as
+`member-security.json.migrated-to-redis` for rollback; Redis is current after
+migration.
+
 Back up the complete `/data` volume. Restoring only `installation.json` without
 `member-security.json`, or restoring the two files from different points in
-time, can lose or invalidate member 2FA state.
+time, can lose or invalidate member 2FA state. In shared mode, include a
+consistent Redis backup and preserve the installation session secret and Redis
+prefix. Drain 2FA verification/enrollment changes before restoring the local
+archive for rollback.
 
 Mailbox passwords and messages are not written to this file. Provider
 credentials remain only in the process-local member session and disappear on
