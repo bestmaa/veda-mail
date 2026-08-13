@@ -41,15 +41,20 @@ Setup, administrator, and member trust boundaries are separate:
 On a fresh volume, the setup token authorizes one installation claim but is
 never persisted. Setup persists a scrypt administrator hash, random 48-byte
 session secret, auth version, branding, public repository link, and the
-mail-provider profile in `${VEDA_MAIL_DATA_DIR}/installation.json`. The
-normalized WebP logo uses a content-addressed filename under
-`${VEDA_MAIL_DATA_DIR}/branding/`.
+mail-provider profile in `${VEDA_MAIL_DATA_DIR}/installation.json`. With shared
+state configured, first access encrypts that complete record under the external
+`VEDA_MAIL_JOB_KEY`, commits it to Redis once, and archives the local file.
+Exact-record CAS protects first-run creation and every administrator, provider
+profile, and branding-metadata replacement across replicas. The normalized WebP
+logo remains a content-addressed file under `${VEDA_MAIL_DATA_DIR}/branding/`.
 
 Setup also persists the selected provider, server-side settings, display name,
 and allowed domains in that same atomic record. A cross-process file lock and
-create-only final commit ensure concurrent setup attempts cannot replace an
-existing installation. Once installation state is complete, `/setup` is
-locked independently of the environment token.
+create-only final commit ensure concurrent local setup attempts cannot replace
+an existing installation. Shared mode adds an exact Redis CAS, so setup attempts
+from different replicas also admit only one final installation. Once
+installation state is complete, `/setup` is locked independently of the
+environment token.
 
 A member supplies email and password. The selected `ProviderModule` combines
 those credentials with the service profile, tests the connection, and creates
@@ -1394,6 +1399,8 @@ npm run check:lines
   policies;
   the encrypted mailbox-provisioning ledger also uses Redis CAS for one global
   provider-I/O owner and replay result;
+  the encrypted installation singleton uses Redis CAS for setup and metadata
+  changes, while its content-addressed logo bytes still require shared `/data`;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

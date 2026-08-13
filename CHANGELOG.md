@@ -73,6 +73,13 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Shared-state Redis now migrates the complete installation record into a
+  dedicated external-key AES-256-GCM envelope. Exact-record CAS admits one
+  cross-replica setup winner and serializes administrator, provider-profile,
+  and branding-metadata changes; wrong keys, tamper, oversized state, and
+  migration conflicts fail closed. The local record is archived for rollback,
+  while content-addressed logo bytes remain on shared `/data`.
+
 - Added provider-independent print-friendly views for the selected message or
   its complete conversation. The session-scoped, same-origin preparation path
   reuses the JMAP/IMAP contracts, re-sanitizes hostile HTML without images,

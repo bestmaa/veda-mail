@@ -74,6 +74,11 @@ The organization capability policy likewise becomes an encrypted Redis
 singleton, with its local archive retained only for rollback.
 The mail-content policy also becomes a separately encrypted singleton; after
 migration its Redis record, not the local archive, is authoritative.
+The complete installation record likewise becomes an encrypted Redis singleton.
+After migration, Redis—not `installation.json.migrated-to-redis`—contains the
+current session secret, administrator account, provider profile, and branding
+metadata. Back up the exact `VEDA_MAIL_JOB_KEY`, Redis prefix/generation, local
+rollback archive, and `/data/branding` logo assets as one recovery set.
 Short-lived
 immediate-send claim and replay records are also Redis-only; losing them can
 remove duplicate-send protection for provider I/O that already happened, so
@@ -120,7 +125,8 @@ In shared mode Redis holds the current encrypted provisioning ledger and the
 prefix, drain mailbox creation before restore, and never merge ledger snapshots
 or remove an uncertain pending entry to manufacture a retry.
 
-Always back up the entire volume as one unit. `installation.json` contains the
+Always back up the entire volume as one unit. In local mode,
+`installation.json` contains the
 session secret required to decrypt `member-security.json`,
 `member-signatures.json`, `member-templates.json`, `member-contacts.json`,
 `member-calendar-events.json`, `mailbox-appearance.json`, and
@@ -130,6 +136,9 @@ unrecoverable. Although
 the metadata files contain encrypted owner buckets rather than raw addresses
 or content, the same backup also contains
 its decryption key. Protect the archive as sensitive mailbox-adjacent data.
+In shared mode, the authoritative encrypted installation record in Redis
+contains that same session secret after decryption, so the consistent Redis
+backup replaces the local installation file in this dependency set.
 
 Signature, template, contact, calendar-event, mailbox-appearance,
 label-catalog, organization-policy, and mail-content-policy write serialization

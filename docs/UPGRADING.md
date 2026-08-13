@@ -13,6 +13,15 @@ publish GitHub Releases or version tags. Do not deploy a moving branch or the
 4. Run the new version in staging against a dedicated test mailbox.
 5. Confirm Node.js, Docker, and reverse-proxy requirements.
 
+With shared-state Redis configured, the complete `/data/installation.json`
+record now migrates on first access to a whole-record AES-256-GCM Redis
+singleton and the file is renamed with `.migrated-to-redis`. Start one upgraded
+replica, verify the archive and a consistent Redis backup, then scale out.
+Preserve the exact `VEDA_MAIL_JOB_KEY`, Redis prefix, rollback archive, and
+`/data/branding` assets. Drain setup and administrator/profile/branding writes
+before rollback: older images read the archived local filename and cannot see
+newer Redis revisions. Logo bytes still require shared `/data` across replicas.
+
 Member 2FA now migrates from `/data/member-security.json` to shared-state Redis
 on first access. Verify the `.migrated-to-redis` archive and Redis backup on one
 upgraded replica before scaling. Preserve `installation.json` (its session
