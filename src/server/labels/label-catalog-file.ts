@@ -68,3 +68,14 @@ export const writeLabelCatalogFile = async (value: LabelCatalogFile): Promise<vo
     throw error;
   }
 };
+
+export const archiveMigratedLabelCatalogFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ labelCatalogFilePath(),
+      /* turbopackIgnore: true */ `${labelCatalogFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

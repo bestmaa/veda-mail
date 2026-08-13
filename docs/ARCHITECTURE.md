@@ -534,6 +534,10 @@ NFKC-normalized, single-line, unique after case folding, and limited to 100
 characters and 255 UTF-8 bytes; each account is capped at 256 labels. Browser
 APIs accept only catalog IDs, enforce the current mail-session scope, and
 resolve an active owner-bound catalog record before any provider mutation.
+Shared-state mode migrates each existing AES-GCM envelope to Redis behind the
+same HMAC-opaque owner key. Every catalog mutation uses bounded exact-record CAS
+retry, so concurrent label, deletion-lease, and mailbox-empty checkpoints are
+reapplied instead of silently overwriting another replica.
 
 JMAP maps a label to an Email keyword. Before changing it, the adapter reloads
 authoritative keywords, mailbox membership, Email state, every containing
@@ -1359,8 +1363,8 @@ npm run check:lines
   configured shared sessions survive while Redis and the matching key remain.
 - A multi-replica deployment still needs transactional replacements for the
   remaining process-serialized mutable files. Message-list preferences,
-  revisioned saved-search/signature/template/contact/calendar-event books, and
-  mailbox appearance are already shared owner records;
+  revisioned saved-search/signature/template/contact/calendar-event books,
+  label catalogs, and mailbox appearance are already shared owner records;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

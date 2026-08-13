@@ -928,7 +928,9 @@ migrate with exact-record CAS; bounded retry reapplies automatic recipient
 history after concurrent manual edits. The checkbox remains open until the other
 writable `/data` boundaries close. Encrypted calendar-event books now migrate
 through the same boundary with exact-record CAS and preserved empty-book
-revisions.
+revisions. Encrypted label catalogs now migrate with bounded CAS retry, retaining
+concurrent metadata changes, cleanup leases, tombstones, and mailbox-empty
+checkpoints.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

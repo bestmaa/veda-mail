@@ -50,7 +50,7 @@ export const storedLabelCatalogSchema = z.object({
     value.mailboxEmptyOperations.map(({ mailboxId }) => mailboxId),
   ).size === value.mailboxEmptyOperations.length);
 
-const encryptedCatalogSchema = z.object({
+export const encryptedLabelCatalogSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
   ciphertext: z.string().min(1).max(4 * 1_024 * 1_024),
   iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
@@ -60,7 +60,7 @@ const encryptedCatalogSchema = z.object({
 export const labelCatalogFileSchema = z.object({
   owners: z.record(
     z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-    encryptedCatalogSchema,
+    encryptedLabelCatalogSchema,
   ),
   updatedAt: z.string().datetime(),
   version: z.literal(1),
