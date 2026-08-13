@@ -39,6 +39,7 @@ export interface VacationResponseUpdate {
 
 export interface VacationWorkspace {
   readonly capability: VacationCapability;
-  readonly delegation: VacationCapability;
+  readonly delegation: DelegationCapability;
   readonly response: VacationResponse | null;
 }
+import type { DelegationCapability } from "@/domain/mail/delegation";

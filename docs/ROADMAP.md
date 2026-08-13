@@ -545,7 +545,7 @@ search](./ADVANCED-SEARCH.md).
   import/export
 - [x] RFC 5545 calendar invitation display, accept/maybe/decline, and `.ics`
   import/export; CalDAV integration remains capability-gated
-- [ ] Vacation responder and delegation only where the provider advertises them
+- [x] Vacation responder and delegation only where the provider advertises them
 
 Acceptance: restart, duplicate-delivery, daylight-saving, and provider-outage
 tests prove scheduled work is not lost or executed twice.
@@ -610,9 +610,18 @@ dated HTML composite through `CHECKSCRIPT`, upload, activation, exact reload,
 and disable. The account, active script, container, and exact named volumes were
 then removed. The source-IP-restricted production runner now covers the same
 vacation round trip alongside rules and remains the deployment acceptance gate.
-Current Stalwart sharing documentation advertises calendar, address-book, and
-file sharing, not mail delegation, so delegation is not invented or
-over-advertised and keeps this combined checkbox open.
+Mailbox delegation is now implemented for Standard IMAP connections that
+advertise the RFC 4314 `ACL` capability. The bounded first release manages the
+`INBOX` ACL through read-only (`lr`) and manage-mail (`lrswite`) presets,
+excludes send-as, account impersonation, child-mailbox management, posting, and
+ACL administration, and confirms every mutation with exact provider readback.
+Owner, universal, anonymous, negative, control-character, and overlong
+identifiers are protected; the private scoped route adds same-origin writes,
+strict bounded bodies, subject rate limits, and identifier-free audit events.
+JMAP connections remain explicitly unsupported because their mail
+session does not advertise an interoperable mail-sharing capability. Mock UI
+acceptance covers add, reload, and removal without overstating the permission
+scope. See [Mailbox delegation](./MAILBOX-DELEGATION.md).
 
 The provider-independent Snooze slice is released and deployed. It persists a
 unique owned mailbox intent before provider mutation, encrypts owner-scoped jobs
