@@ -31,6 +31,12 @@ traffic before restoring the archive or Redis for rollback. After upgrading,
 open **Administration → Audit log** and verify an administrator policy-save
 attempt/success pair. Do not merge snapshots or rotate the root key in place.
 
+When shared-state Redis is enabled, the data-retention policy similarly migrates
+on first access into an AES-256-GCM singleton record and the local file becomes
+`.migrated-to-redis`. Exact-record CAS gives every replica one current policy.
+Preserve the same job key and Redis prefix, verify the archive and Redis backup,
+and drain audit reads/writes and policy changes before rollback restore.
+
 The capability-policy release adds `/data/organization-policy.json` only after
 an administrator saves policy. No environment variable, provider migration,
 Stalwart change, port, or mailbox migration is required. Until that first save,

@@ -9,11 +9,12 @@ import {
 } from "@/server/shared-state/shared-state-redis";
 import { ApiError } from "@/transport/http/api-error";
 
-export type SharedRecordKind = "security-audit";
+export type SharedRecordKind = "data-retention-policy" | "security-audit";
 
 const LOCK_TTL_MS = 60_000;
 const LOCK_WAIT_MS = 5_000;
 const MAX_RECORD_BYTES: Readonly<Record<SharedRecordKind, number>> = {
+  "data-retention-policy": 8 * 1_024,
   "security-audit": 24 * 1_024 * 1_024,
 };
 const RELEASE_SCRIPT = `

@@ -1485,8 +1485,11 @@ access control, encryption, bounded retention, reverse-proxy redaction, metric
 token rotation, per-replica scraping, and alert thresholds. The supported
 single-writable-replica boundary is unchanged.
 
-Security-audit retention is a separate strict mode-0600 policy with defaults of
-365 days and 10,000 records. Administrator writes require same origin, admin
+Security-audit retention defaults to 365 days and 10,000 records. Local mode
+uses a separate strict mode-0600 policy. Shared mode encrypts the complete
+policy under a dedicated key and uses exact-record CAS so replicas cannot apply
+silently divergent limits; wrong-key, malformed, or tampered records fail
+closed. Administrator writes require same origin, admin
 authentication, bounded strict JSON, request/subject throttles, and audit their
 own attempt/outcome. Append, read, and policy update apply the stricter age or
 count limit under the audit write queue. Expiration authenticates the last

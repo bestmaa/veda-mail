@@ -68,6 +68,8 @@ mailbox-color read-modify-write operations remain atomic in Redis, and an empty
 book deletes its shared record. Contact recipient-history writes retry bounded
 CAS conflicts so they do not erase simultaneous manual changes. Label catalog
 writes also retry bounded CAS conflicts and retain tombstones and active leases.
+The data-retention policy also moves into a distinct whole-record ciphertext;
+its archived local file is no longer current after migration.
 Short-lived
 immediate-send claim and replay records are also Redis-only; losing them can
 remove duplicate-send protection for provider I/O that already happened, so
