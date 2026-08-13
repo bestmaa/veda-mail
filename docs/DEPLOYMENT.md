@@ -253,6 +253,12 @@ encrypted empty-book revision, matching the local store contract. Verify the
 archive and Redis backup on one upgraded replica before scaling, and preserve
 the installation session secret and Redis prefix.
 
+Portable label catalogs migrate as existing authenticated ciphertext from
+`/data/mail-label-catalog.json`. Bounded exact-record CAS retries preserve
+concurrent label changes, deletion leases, tombstones, and mailbox-empty
+checkpoints across replicas. Verify the archive and Redis backup on one upgraded
+replica before scaling, and preserve the installation session secret and prefix.
+
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
 record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
@@ -502,13 +508,10 @@ Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
 shared Redis repository; message-list preferences, saved searches, signatures,
-templates, contacts, calendar events, and mailbox appearance migrate there on first access, and request limits may use their
-separate backend. The encrypted
-`/data/member-templates.json`, `/data/member-contacts.json`, and
-`/data/mail-label-catalog.json` stores also use process-local serialized
-compare-and-write paths; multiple replicas sharing those writable files can
-lose updates. Scaling still requires transactional replacement for all
-per-member metadata stores.
+templates, contacts, calendar events, label catalogs, and mailbox appearance
+migrate there on first access, and request limits may use their separate backend.
+Scaling still requires transactional replacement for the remaining per-member
+metadata stores.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup
 advances in bounded authenticated requests while the member mailbox is open;

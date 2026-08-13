@@ -689,6 +689,11 @@ use the JMAP adapter. The appearance writer is process-local, so one writable
   Colors come from a fixed palette. The account catalog uses HMAC owner keys,
   HKDF-derived AES-256-GCM keys, owner-bound additional data, strict decrypted
   schemas, mode-0600 temporary files, fsync, and atomic replacement.
+  Shared mode migrates only authenticated ciphertext behind the existing
+  HMAC-opaque owner key. Bounded exact-envelope CAS retries reapply concurrent
+  label, deletion-lease, tombstone, and mailbox-empty checkpoint changes.
+  Names, IDs, colors, provider cursors, and account identities remain absent
+  from Redis plaintext; tamper and backend failure fail closed.
 - JMAP additions are authorized against all current containing mailboxes,
   capacity-checked, conditioned on current Email state, result-confirmed, and
   retried only once after a state mismatch. IMAP additions fail closed unless
@@ -711,8 +716,7 @@ use the JMAP adapter. The appearance writer is process-local, so one writable
   active single and bulk applications through provider completion, preventing
   deletion from finalizing behind an already-authorized in-flight mutation.
 
-Residual risk: the encrypted catalog writer is process-local and requires one
-writable Veda Mail replica. IMAP has no account-global message identity, so a
+Residual risk: IMAP has no account-global message identity, so a
 copied message may carry an independent label flag. A remote client can race by
 reapplying a raw provider keyword after final verification; the tombstoned ID
 does not become a Veda label and later cleanup remains an operator concern.

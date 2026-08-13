@@ -125,6 +125,12 @@ Redis backup on one upgraded replica before scaling. Preserve the installation
 session secret and prefix, and drain event imports/removals before restoring the
 archive for rollback.
 
+Portable label catalogs now migrate from `/data/mail-label-catalog.json` to
+shared-state Redis on first access. Verify the `.migrated-to-redis` archive and
+Redis backup on one upgraded replica before scaling. Preserve the installation
+session secret and prefix, and drain label/deletion/mailbox-empty operations
+before restoring the archive for rollback.
+
 Conversation views require no environment variable, provider configuration,
 mailbox migration, database/schema change, or new port. They add bounded
 provider reads when a message is opened: 25 results per browser page and no
