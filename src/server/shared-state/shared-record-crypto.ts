@@ -11,7 +11,7 @@ import type { SharedRecordKind } from
 
 const envelopeSchema = z.object({
   algorithm: z.literal("aes-256-gcm"),
-  ciphertext: z.string().regex(/^[A-Za-z0-9_-]{1,43691}$/u),
+  ciphertext: z.string().min(1).max(2_796_203).regex(/^[A-Za-z0-9_-]+$/u),
   iv: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
   tag: z.string().regex(/^[A-Za-z0-9_-]{22}$/u),
   version: z.literal(1),
@@ -37,8 +37,11 @@ export const encryptSharedRecord = (
   const ciphertext = Buffer.concat([
     cipher.update(JSON.stringify(value), "utf8"), cipher.final(),
   ]);
-  if (ciphertext.byteLength > 32 * 1_024) {
-    throw new RangeError("Shared singleton record exceeds 32 KiB.");
+  const maxBytes = kind === "mail-user-idempotency"
+    ? 2 * 1_024 * 1_024
+    : 32 * 1_024;
+  if (ciphertext.byteLength > maxBytes) {
+    throw new RangeError("Shared singleton record exceeds its safe size limit.");
   }
   return JSON.stringify({
     algorithm: "aes-256-gcm",

@@ -12,6 +12,7 @@ import { ApiError } from "@/transport/http/api-error";
 export type SharedRecordKind =
   | "data-retention-policy"
   | "mail-content-policy"
+  | "mail-user-idempotency"
   | "organization-policy"
   | "security-audit";
 
@@ -20,6 +21,7 @@ const LOCK_WAIT_MS = 5_000;
 const MAX_RECORD_BYTES: Readonly<Record<SharedRecordKind, number>> = {
   "data-retention-policy": 8 * 1_024,
   "mail-content-policy": 48 * 1_024,
+  "mail-user-idempotency": 3 * 1_024 * 1_024,
   "organization-policy": 8 * 1_024,
   "security-audit": 24 * 1_024 * 1_024,
 };
@@ -136,7 +138,9 @@ export const sharedRecordRepository = {
   },
 
   async get(kind: SharedRecordKind): Promise<string | null> {
-    return (await run((client) => client.get(recordKey(kind)))) ?? null;
+    const value = (await run((client) => client.get(recordKey(kind)))) ?? null;
+    if (value !== null) assertRecord(kind, value);
+    return value;
   },
 
   async compareAndSet(

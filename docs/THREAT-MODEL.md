@@ -124,9 +124,12 @@ dependencies; traffic analysis exposes ciphertext sizes and access timing.
   External-directory domains fail closed and must be managed at their source.
 - Responses contain only bounded identity/quota metadata. Password credentials,
   API keys, roles, permissions, and groups are never requested for presentation.
-- A UUID idempotency key, keyed non-secret intent fingerprint, and serialized durable
-  ledger prevent duplicate creation within the supported single-replica
-  deployment. A crash or indeterminate upstream mutation is reported as
+- A UUID idempotency key, keyed non-secret intent fingerprint, and durable
+  ledger prevent duplicate creation. Local mode serializes a mode-0600 atomic
+  file. Shared mode encrypts the complete ledger under a dedicated subkey and
+  uses exact Redis CAS to admit one provider-I/O owner across replicas. Remote
+  waiters receive the encrypted terminal replay; definite failure removes the
+  claim, while uncertain failure, crash, or owner-lease expiry is reported as
   uncertain and is never blindly retried. Completed replays are explicitly
   labeled; the UI warns that the first attempt's password remains active.
 
@@ -135,9 +138,8 @@ tenant scope. A compromised Veda process or deployment secret manager can use
 that authority. Restrict key permissions, expiry, source IP, and egress;
 rotate it after suspected exposure. Creation changes the upstream system of
 record and cannot be rolled back by restoring Veda's `/data` volume.
-The file-backed provisioning ledger is not a distributed lock; keep Veda Mail
-at one replica until a shared session, rate-limit, and idempotency backend is
-implemented.
+Redis availability and the exact `VEDA_MAIL_JOB_KEY` become fail-closed
+dependencies in shared mode. The local rollback archive is not current state.
 
 ### Browser response isolation
 

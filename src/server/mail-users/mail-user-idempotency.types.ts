@@ -8,6 +8,8 @@ export interface MailUserIdempotencyEntryBase {
 
 export interface MailUserIdempotencyPendingEntry
   extends MailUserIdempotencyEntryBase {
+  readonly ownerExpiresAt?: number;
+  readonly ownerToken?: string;
   readonly state: "pending";
 }
 
