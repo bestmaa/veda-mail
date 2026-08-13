@@ -939,6 +939,9 @@ The complete verified security-audit file now migrates under an additional
 AES-256-GCM envelope; exact-record CAS preserves one global HMAC chain,
 monotonic sequence, and retention decision across replicas while Redis exposes
 none of the event fields as plaintext.
+The audit data-retention policy now follows as a separate AES-256-GCM singleton;
+exact Redis CAS gives every replica one age/count policy and guarded migration
+retains the local rollback archive.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

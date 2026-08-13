@@ -1329,6 +1329,9 @@ encrypts the complete file with AES-256-GCM and uses exact-record Redis CAS for
 append and retention mutations, preserving a single cross-replica sequence and
 chain without placing event fields in Redis plaintext. Neither mode can detect
 restoration of an older internally valid snapshot without an external checkpoint.
+The strict global retention-policy record also migrates under a distinct
+AES-256-GCM subkey and uses exact-record CAS, so every replica applies one
+current age/count decision.
 
 ## Enforced invariants
 
@@ -1374,7 +1377,8 @@ npm run check:lines
   remaining process-serialized mutable files. Message-list preferences,
   revisioned saved-search/signature/template/contact/calendar-event books,
   label catalogs, mailbox appearance, and the encrypted security audit trail
-  are already shared records;
+  are already shared records; the global data-retention policy is a shared
+  encrypted singleton;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

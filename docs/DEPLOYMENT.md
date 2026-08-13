@@ -261,8 +261,12 @@ replica before scaling, and preserve the installation session secret and prefix.
 
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
-record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
-immediately after policy updates; it requires no worker or provider change.
+record is atomic, and older builds ignore it. With shared-state Redis, first
+access encrypts and migrates the complete record, archives the local file, and
+exact-record CAS makes replacement atomic across replicas. Preserve the job key,
+Redis prefix, archive, and a consistent Redis backup. Enforcement runs on audit
+append/read and immediately after policy updates; it requires no worker or
+provider change.
 
 Contacts create `/data/member-contacts.json` lazily on the first contact,
 group, or confirmed recent-recipient write. The file contains only HMAC-indexed,
