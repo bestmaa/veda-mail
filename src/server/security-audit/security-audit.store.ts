@@ -27,11 +27,17 @@ import {
   type SecurityAuditFile,
   securityAuditFileSchema,
 } from "@/server/security-audit/security-audit-record";
+import {
+  ensureSecurityAuditMigrated,
+  replaceSharedSecurityAudit,
+  sharedSecurityAudit,
+} from "@/server/security-audit/security-audit-shared";
 
 const globalState = globalThis as typeof globalThis & {
   __vedaMailSecurityAuditQueue?: Promise<void>;
 };
 globalState.__vedaMailSecurityAuditQueue ??= Promise.resolve();
+const SHARED_RETRY_LIMIT = 10;
 
 const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
   const result = globalState.__vedaMailSecurityAuditQueue!.then(task, task);
@@ -150,10 +156,41 @@ export const retainSecurityAuditFile = (
 const retained = async (current: SecurityAuditFile): Promise<SecurityAuditFile> =>
   retainSecurityAuditFile(current, await dataRetentionPolicyStore.get());
 
+const sharedMode = (): Promise<boolean> => ensureSecurityAuditMigrated();
+
+const sharedConflict = (): never => {
+  throw new Error("The shared security audit changed too frequently.");
+};
+
+const sharedRetained = async (): Promise<SecurityAuditFile> => {
+  for (let attempt = 0; attempt < SHARED_RETRY_LIMIT; attempt += 1) {
+    const current = await sharedSecurityAudit();
+    const updated = await retained(current.file);
+    if (updated === current.file ||
+        await replaceSharedSecurityAudit(current, updated)) return updated;
+  }
+  return sharedConflict();
+};
+
 export const securityAuditStore = {
   async append(input: SecurityAuditAppend): Promise<SecurityAuditEntry> {
     return serialized(async () => {
       const policy = await dataRetentionPolicyStore.get();
+      if (await sharedMode()) {
+        for (let attempt = 0; attempt < SHARED_RETRY_LIMIT; attempt += 1) {
+          const current = await sharedSecurityAudit();
+          const updated = retainSecurityAuditFile(
+            appendSecurityAuditFile(
+              current.file, input, policy.securityAuditMaxEntries,
+            ),
+            policy,
+          );
+          if (await replaceSharedSecurityAudit(current, updated)) {
+            return updated.entries.at(-1)!;
+          }
+        }
+        return sharedConflict();
+      }
       const updated = retainSecurityAuditFile(
         appendSecurityAuditFile(await verified(), input, policy.securityAuditMaxEntries),
         policy,
@@ -164,6 +201,10 @@ export const securityAuditStore = {
   },
   async applyRetention(): Promise<void> {
     await serialized(async () => {
+      if (await sharedMode()) {
+        await sharedRetained();
+        return;
+      }
       const current = await verified();
       const updated = await retained(current);
       if (updated !== current) await writeSecurityAuditFile(updated);
@@ -171,20 +212,24 @@ export const securityAuditStore = {
   },
   async list(input: { readonly beforeSequence?: number; readonly limit?: number } = {}) {
     return serialized(async () => {
-    const current = await verified();
-    const file = await retained(current);
-    if (file !== current) await writeSecurityAuditFile(file);
-    const limit = Math.min(200, Math.max(1, input.limit ?? 100));
-    const entries = input.beforeSequence === undefined
-      ? file.entries
-      : file.entries.filter(({ sequence }) => sequence < input.beforeSequence!);
-    const page = entries.slice(-limit).reverse();
-    return {
-      droppedCount: file.droppedCount,
-      entries: page,
-      nextCursor: page.length === limit ? page.at(-1)!.sequence : null,
-      verifiedAt: new Date().toISOString(),
-    };
+      let file: SecurityAuditFile;
+      if (await sharedMode()) file = await sharedRetained();
+      else {
+        const current = await verified();
+        file = await retained(current);
+        if (file !== current) await writeSecurityAuditFile(file);
+      }
+      const limit = Math.min(200, Math.max(1, input.limit ?? 100));
+      const entries = input.beforeSequence === undefined
+        ? file.entries
+        : file.entries.filter(({ sequence }) => sequence < input.beforeSequence!);
+      const page = entries.slice(-limit).reverse();
+      return {
+        droppedCount: file.droppedCount,
+        entries: page,
+        nextCursor: page.length === limit ? page.at(-1)!.sequence : null,
+        verifiedAt: new Date().toISOString(),
+      };
     });
   },
 };

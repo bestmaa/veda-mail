@@ -1319,14 +1319,16 @@ dedicated HKDF-derived HMAC keys; raw account, provider, rule, mailbox, message,
 contact, and calendar identities never enter the record. Authentication events
 use the same contract without storing credentials or source-network metadata.
 
-The mode-0600 version-1 file is bounded to 10,000 entries, process-serialized,
-fsynced, and atomically replaced. An entry-chain HMAC plus whole-file HMAC,
+The local mode-0600 version-1 file is bounded to 10,000 entries,
+process-serialized, fsynced, and atomically replaced. An entry-chain HMAC plus whole-file HMAC,
 key-check, and monotonic sequence are verified before every append or read.
 Retention advances the authenticated anchor and disclosed dropped count. The
 administrator API returns only verified reverse pages and remains inside the
-authenticated, rate-limited, private/no-store boundary. The store inherits the
-single-writer runtime restriction and cannot detect restoration of an older
-internally valid whole-file snapshot without an external checkpoint.
+authenticated, rate-limited, private/no-store boundary. Shared-state mode
+encrypts the complete file with AES-256-GCM and uses exact-record Redis CAS for
+append and retention mutations, preserving a single cross-replica sequence and
+chain without placing event fields in Redis plaintext. Neither mode can detect
+restoration of an older internally valid snapshot without an external checkpoint.
 
 ## Enforced invariants
 
@@ -1371,7 +1373,8 @@ npm run check:lines
 - A multi-replica deployment still needs transactional replacements for the
   remaining process-serialized mutable files. Message-list preferences,
   revisioned saved-search/signature/template/contact/calendar-event books,
-  label catalogs, and mailbox appearance are already shared owner records;
+  label catalogs, mailbox appearance, and the encrypted security audit trail
+  are already shared records;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

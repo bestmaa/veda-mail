@@ -56,10 +56,14 @@ not part of `/data`. Scheduled-send and snooze books also move to authenticated
 Redis ciphertext on first use; include Redis persistence and a consistent Redis
 backup in every recovery drill. `.migrated-to-redis` files are rollback guards,
 not the current queues. Message-list preference, saved-search, signature,
-template, contact, calendar-event, label-catalog, mail-rule, member-2FA, and mailbox-color owner records also move as their existing
+template, contact, calendar-event, label-catalog, mail-rule, member-2FA, and
+mailbox-color owner records also move as their existing
 authenticated ciphertext; Redis, not their archived local files, is current
 after migration. Member-2FA entries receive a new whole-record ciphertext
-envelope during migration. Saved-search, signature, template, contact, calendar-event, and mail-rule revisions plus
+envelope during migration. The verified security-audit file likewise moves
+under a whole-record AES-256-GCM envelope; Redis becomes the current global
+chain and the archived local file is only a rollback guard. Saved-search,
+signature, template, contact, calendar-event, and mail-rule revisions plus
 mailbox-color read-modify-write operations remain atomic in Redis, and an empty
 book deletes its shared record. Contact recipient-history writes retry bounded
 CAS conflicts so they do not erase simultaneous manual changes. Label catalog
@@ -83,9 +87,12 @@ simply changing the secret makes those stores fail closed. Preserve this key
 for the installation lifetime and rehearse any exceptional migration on an
 isolated restored copy first.
 
-An older whole-volume restore also rolls the audit trail back. Before restore,
-retain the current `security-audit.json` and its backup checksum as external
-evidence. Do not merge audit files: each valid file is one authenticated chain.
+An older `/data` or Redis restore also rolls the audit trail back. Before
+restore, retain the current local file or shared Redis record and its backup
+checksum as external evidence. Drain audit-producing traffic, restore the
+matching Redis generation or rollback archive, and keep the same job key and
+Redis prefix. Do not merge audit snapshots: each valid record is one
+authenticated chain.
 
 Interrupted-compose recovery is browser-local IndexedDB state bound to one
 member session. It is not stored in `/data`, is not included in server backups,

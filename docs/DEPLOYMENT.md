@@ -513,9 +513,10 @@ Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
 shared Redis repository; message-list preferences, saved searches, signatures,
 templates, contacts, calendar events, label catalogs, mail rules, member 2FA,
-and mailbox appearance migrate there on first access, and request limits may
-use their separate backend. Scaling still requires transactional replacement
-for the remaining per-member metadata stores.
+mailbox appearance, and the encrypted whole-record security audit trail migrate
+there on first access, and request limits may use their separate backend.
+Scaling still requires transactional replacement for the remaining mutable
+metadata stores.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup
 advances in bounded authenticated requests while the member mailbox is open;
