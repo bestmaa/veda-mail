@@ -1390,8 +1390,8 @@ npm run check:lines
   Explicit scheduled jobs carry a separate bounded encrypted credential copy.
 - Restarting the process signs every member out in the default local mode;
   configured shared sessions survive while Redis and the matching key remain.
-- A multi-replica deployment still needs transactional replacements for the
-  remaining process-serialized mutable files. Message-list preferences,
+- Local mode supports one writable replica. Shared mode provides transactional
+  replacements for durable application state. Message-list preferences,
   revisioned saved-search/signature/template/contact/calendar-event books,
   label catalogs, mailbox appearance, and the encrypted security audit trail
   are already shared records; the global data-retention policy is a shared
@@ -1404,6 +1404,10 @@ npm run check:lines
   encrypted Redis blobs;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
+- The architecture gate inventories every server module that directly owns
+  durable `/data` state and requires its explicit shared-state bridge. The local
+  setup lock is advisory because Redis CAS is authoritative, and the readiness
+  module only probes the filesystem; neither owns application state.
 
 The browser never talks directly to a provider. Cookies are opaque, HttpOnly,
 SameSite=Lax, and Secure in production. Stalwart provider origins use HTTPS,

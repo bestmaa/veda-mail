@@ -314,7 +314,9 @@ envelope; first-run creation and administrator/profile/branding metadata writes
 use exact Redis CAS. Normalized content-addressed logos also migrate into
 filename-bound encrypted Redis blobs with HMAC-opaque keys.
 Revisioned and read-modify-write stores use atomic compare-and-set. Run one
-general writable replica until the remaining mutable `/data` stores are transactional.
+replica in local mode. Multi-replica mode requires the shared-state and request-
+limiter Redis backends, identical external encryption keys and prefixes, and
+their documented persistence, TLS, no-eviction, and readiness controls.
 
 Back up `/data` before every upgrade. See the
 [backup and recovery guide](docs/BACKUP-AND-RECOVERY.md).

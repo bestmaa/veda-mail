@@ -8,6 +8,9 @@ import "./architecture/async-rate-limit-check.test.mjs";
 import { verifyAdminRouteChecker } from "./architecture/admin-route-check.self-test.mjs";
 import { verifySessionScopeRouteChecker } from "./architecture/session-scope-route-check.self-test.mjs";
 import { sessionScopeHandlerViolations } from "./architecture/session-scope-route-check.mjs";
+import { sharedDurableStateViolations } from
+  "./architecture/shared-durable-state-check.mjs";
+import "./architecture/shared-durable-state-check.test.mjs";
 
 const sourceRoot = path.resolve("src");
 const routeSuffix = `${path.sep}route.ts`;
@@ -94,10 +97,12 @@ verifyAdminRouteChecker();
 verifySessionScopeRouteChecker();
 const files = await collectFiles(sourceRoot);
 const violations = [];
+const sourceContents = new Map();
 for (const file of files) {
   const content = await readFile(file, "utf8");
   const relative = path.relative(process.cwd(), file);
   const portableRelative = relative.split(path.sep).join("/");
+  sourceContents.set(portableRelative, content);
   for (const line of unawaitedRateLimitCalls(relative, content)) {
     violations.push(
       `${relative}:${line} — Distributed rate-limit calls must be awaited`,
@@ -145,6 +150,7 @@ for (const file of files) {
     }
   }
 }
+violations.push(...sharedDurableStateViolations(sourceContents));
 
 if (violations.length > 0) {
   console.error("Architecture boundary violations:");
