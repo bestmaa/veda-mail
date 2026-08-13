@@ -40,11 +40,12 @@ and drain audit reads/writes and policy changes before rollback restore.
 The capability-policy release adds `/data/organization-policy.json` only after
 an administrator saves policy. No environment variable, provider migration,
 Stalwart change, port, or mailbox migration is required. Until that first save,
-all controls retain their prior enabled behavior without creating a file. Back
-up the strict versioned mode-0600 record with `/data`. Older images ignore this
-separate file, so rollback remains parse-compatible; restore the matching file
-when returning to a newer image. Its writer supports one writable application
-replica, matching the current deployment boundary.
+all controls retain their prior enabled behavior without creating a file. Local
+mode keeps the strict versioned mode-0600 record in `/data`. Shared-state mode
+encrypts and migrates it on first access, archives the file, and uses exact
+Redis CAS across replicas. Preserve the job key and Redis prefix, verify the
+archive and Redis backup, and drain policy reads/writes before rollback restore.
+Older images ignore the separate local file, preserving parser compatibility.
 
 The outbound-content-policy release separately adds
 `/data/mail-content-policy.json` only after an administrator saves those
