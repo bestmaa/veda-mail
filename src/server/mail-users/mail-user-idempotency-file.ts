@@ -38,11 +38,16 @@ const base = {
 };
 
 const entrySchema = z.discriminatedUnion("state", [
-  z.object({ ...base, state: z.literal("pending") }).strict(),
+  z.object({
+    ...base,
+    ownerExpiresAt: z.number().int().positive().optional(),
+    ownerToken: z.string().uuid().optional(),
+    state: z.literal("pending"),
+  }).strict(),
   z.object({ ...base, result: resultSchema, state: z.literal("completed") }).strict(),
 ]);
 
-const ledgerSchema = z
+export const mailUserIdempotencyLedgerSchema = z
   .object({
     entries: z.record(z.string().uuid(), entrySchema),
     version: z.literal(1),
@@ -72,7 +77,7 @@ export const readMailUserIdempotencyLedger =
       if (contents.byteLength > MAX_MAIL_USER_IDEMPOTENCY_FILE_BYTES) {
         throw new Error("The mailbox provisioning ledger exceeds its safe size limit.");
       }
-      return ledgerSchema.parse(
+      return mailUserIdempotencyLedgerSchema.parse(
         JSON.parse(contents.toString("utf8")),
       ) as MailUserIdempotencyLedger;
     } catch (error) {
@@ -88,7 +93,7 @@ export const readMailUserIdempotencyLedger =
 export const writeMailUserIdempotencyLedger = async (
   ledger: MailUserIdempotencyLedger,
 ): Promise<void> => {
-  const parsed = ledgerSchema.parse(ledger);
+  const parsed = mailUserIdempotencyLedgerSchema.parse(ledger);
   const contents = `${JSON.stringify(parsed)}\n`;
   if (Buffer.byteLength(contents) > MAX_MAIL_USER_IDEMPOTENCY_FILE_BYTES) {
     throw new Error("The mailbox provisioning ledger exceeds its safe size limit.");
@@ -121,5 +126,16 @@ export const writeMailUserIdempotencyLedger = async (
     await handle?.close().catch(() => undefined);
     await unlink(/* turbopackIgnore: true */ temporary).catch(() => undefined);
     throw error;
+  }
+};
+
+export const archiveMigratedMailUserIdempotencyFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ mailUserIdempotencyFilePath(),
+      /* turbopackIgnore: true */ `${mailUserIdempotencyFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 };

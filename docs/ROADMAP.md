@@ -948,6 +948,10 @@ remain consistent across replicas.
 The mail-content policy now follows as an independently encrypted singleton;
 exact Redis CAS keeps attachment/message limits and allow/block rules consistent
 across upload, draft, immediate-send, and scheduled-send replicas.
+The mailbox-provisioning idempotency ledger now migrates as a separately
+encrypted whole-record singleton. Exact Redis CAS admits one provider-I/O owner,
+remote waiters replay the safe terminal result, and definite versus uncertain
+failure semantics remain fail-closed across replicas.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

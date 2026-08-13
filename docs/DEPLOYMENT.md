@@ -522,6 +522,8 @@ there on first access, and request limits may use their separate backend.
 The global data-retention and organization capability policies also migrate as
 encrypted singleton records with exact-record CAS, as does the global
 mail-content policy used by upload, draft, and delivery enforcement.
+The encrypted mailbox-provisioning ledger also migrates on first access; exact
+Redis CAS admits one cross-replica provider-I/O owner and shares safe replays.
 Scaling still requires transactional replacement for the remaining mutable
 metadata stores.
 

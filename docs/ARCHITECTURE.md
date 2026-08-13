@@ -102,7 +102,7 @@ credentials, roles, permissions, groups, and unknown fields never cross the
 infrastructure boundary.
 
 Account creation requires Veda administrator password/2FA step-up. A durable,
-bounded, atomic `0600` idempotency ledger records a keyed intent fingerprint
+bounded idempotency ledger records a keyed intent fingerprint
 and safe terminal result for 24 hours. It never records the initial mailbox
 password or a password-derived verifier. Expired safe metadata is removed on
 the next provisioning access. A persisted pending entry after a crash is
@@ -111,6 +111,12 @@ API distinguishes a replay from a fresh creation so the UI never claims that
 a newly re-entered password replaced the first attempt's password. The
 profile revision verified during step-up is checked again before constructing
 the adapter, so a concurrent provider edit aborts before any secret is sent.
+Local mode uses an atomic mode-0600 file and process queue. Shared mode encrypts
+the complete ledger under a dedicated subkey and uses exact Redis CAS to admit
+one owner across replicas. Remote waiters poll the encrypted result, completed
+replays drop the short-lived owner token, definite failures remove the claim,
+and uncertain failures or an expired two-minute owner lease remain orphaned
+rather than allowing duplicate provider I/O.
 
 The deterministic demo provider is registered only in development and test.
 Production registries contain deployable providers only.
@@ -1386,6 +1392,8 @@ npm run check:lines
   are already shared records; the global data-retention policy is a shared
   encrypted singleton, as are the organization capability and mail-content
   policies;
+  the encrypted mailbox-provisioning ledger also uses Redis CAS for one global
+  provider-I/O owner and replay result;
   revisioned/read-modify-write stores use Redis CAS so replicas cannot silently
   overwrite one another.
 

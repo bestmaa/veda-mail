@@ -307,6 +307,8 @@ also migrates as an encrypted singleton record.
 The global organization capability policy uses the same encrypted singleton
 boundary and exact-record compare-and-set, as does the global mail-content
 policy that controls attachment and message limits.
+The mailbox-provisioning ledger also migrates as encrypted whole-record state;
+atomic Redis CAS admits one provider-I/O owner and shares its safe replay result.
 Revisioned and read-modify-write stores use atomic compare-and-set. Run one
 general writable replica until the remaining mutable `/data` stores are transactional.
 

@@ -89,6 +89,11 @@ enabling it, create a dedicated least-privilege Stalwart API key as documented i
 The feature adds a bounded `/data/mail-user-provisioning-idempotency.json`
 file on first creation attempt; older versions ignore it. Back it up with the
 matching installation and do not delete a pending entry to force a retry.
+With shared-state Redis enabled, first access encrypts and migrates the complete
+ledger and archives the local file. Exact Redis CAS admits one creation owner
+across replicas and shares safe replays. Preserve the job key and Redis prefix,
+verify the archive and Redis backup, and drain mailbox creation before rollback.
+Never restore or delete a pending/orphaned claim to force provider I/O.
 
 Message-list preferences add
 `/data/message-list-preferences.json` on first save. It contains encrypted,

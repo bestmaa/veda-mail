@@ -5,14 +5,27 @@ import {
   readMailUserIdempotencyLedger,
   writeMailUserIdempotencyLedger,
 } from "@/server/mail-users/mail-user-idempotency-file";
+import {
+  MAX_MAIL_USER_IDEMPOTENCY_ENTRIES,
+  MAIL_USER_IDEMPOTENCY_TTL_MS,
+} from "@/server/mail-users/mail-user-idempotency-policy";
+import {
+  ensureMailUserIdempotencyMigrated,
+  resetMailUserIdempotencyMigrationForTests,
+} from "@/server/mail-users/mail-user-idempotency-shared";
+import {
+  beginSharedMailUserIdempotency,
+  completeSharedMailUserIdempotency,
+  failSharedMailUserIdempotency,
+} from "@/server/mail-users/mail-user-idempotency-shared-store";
 import type {
   LiveMailUserProvision,
   MailUserIdempotencyBegin,
   MailUserIdempotencyLedger,
 } from "@/server/mail-users/mail-user-idempotency.types";
 
-export const MAIL_USER_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1_000;
-export const MAX_MAIL_USER_IDEMPOTENCY_ENTRIES = 512;
+export { MAIL_USER_IDEMPOTENCY_TTL_MS } from
+  "@/server/mail-users/mail-user-idempotency-policy";
 
 interface MailUserIdempotencyState {
   readonly live: Map<string, LiveMailUserProvision>;
@@ -68,6 +81,9 @@ const readPrunedLedger = async (
 export const mailUserIdempotencyStore = {
   begin(key: string, fingerprint: string): Promise<MailUserIdempotencyBegin> {
     return serialized(async () => {
+      if (await ensureMailUserIdempotencyMigrated()) {
+        return beginSharedMailUserIdempotency(key, fingerprint);
+      }
       const now = Date.now();
       const ledger = await readPrunedLedger(now);
       const existing = ledger.entries[key];
@@ -122,6 +138,9 @@ export const mailUserIdempotencyStore = {
     result: AdminMailUserCreateResult,
   ): Promise<AdminMailUserCreateResult> {
     return serialized(async () => {
+      if (await ensureMailUserIdempotencyMigrated()) {
+        return completeSharedMailUserIdempotency(key, fingerprint, token, result);
+      }
       const live = state.live.get(key);
       if (
         !live ||
@@ -164,6 +183,10 @@ export const mailUserIdempotencyStore = {
     preserve: boolean,
   ): Promise<void> {
     return serialized(async () => {
+      if (await ensureMailUserIdempotencyMigrated()) {
+        await failSharedMailUserIdempotency(key, fingerprint, token, preserve);
+        return;
+      }
       const live = state.live.get(key);
       if (!live || live.token !== token || live.fingerprint !== fingerprint) return;
       try {
@@ -183,5 +206,6 @@ export const mailUserIdempotencyStore = {
   clearMemoryForTests(): void {
     state.live.clear();
     state.queue = Promise.resolve();
+    resetMailUserIdempotencyMigrationForTests();
   },
 };

@@ -115,6 +115,10 @@ and `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binds its destination. Neither is
 `/data` does not undo any mailbox already created in
 Stalwart. Preserve the idempotency ledger with the installation so a restored
 service does not blindly repeat a recent provisioning intent.
+In shared mode Redis holds the current encrypted provisioning ledger and the
+`.migrated-to-redis` file is rollback-only. Preserve the exact job key and
+prefix, drain mailbox creation before restore, and never merge ledger snapshots
+or remove an uncertain pending entry to manufacture a retry.
 
 Always back up the entire volume as one unit. `installation.json` contains the
 session secret required to decrypt `member-security.json`,
