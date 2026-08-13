@@ -305,7 +305,8 @@ member-2FA, mailbox-color, and the encrypted whole-record security audit trail
 migrate to the same repository on first access. The global data-retention policy
 also migrates as an encrypted singleton record.
 The global organization capability policy uses the same encrypted singleton
-boundary and exact-record compare-and-set.
+boundary and exact-record compare-and-set, as does the global mail-content
+policy that controls attachment and message limits.
 Revisioned and read-modify-write stores use atomic compare-and-set. Run one
 general writable replica until the remaining mutable `/data` stores are transactional.
 

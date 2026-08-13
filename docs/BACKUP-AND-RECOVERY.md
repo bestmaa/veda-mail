@@ -72,6 +72,8 @@ The data-retention policy also moves into a distinct whole-record ciphertext;
 its archived local file is no longer current after migration.
 The organization capability policy likewise becomes an encrypted Redis
 singleton, with its local archive retained only for rollback.
+The mail-content policy also becomes a separately encrypted singleton; after
+migration its Redis record, not the local archive, is authoritative.
 Short-lived
 immediate-send claim and replay records are also Redis-only; losing them can
 remove duplicate-send protection for provider I/O that already happened, so
@@ -127,7 +129,7 @@ its decryption key. Protect the archive as sensitive mailbox-adjacent data.
 
 Signature, template, contact, calendar-event, mailbox-appearance,
 label-catalog, organization-policy, and mail-content-policy write serialization
-is process-local in local-file mode. Keep
+is process-local only in local-file mode. Keep
 exactly one Veda Mail process writing the volume, and stop that writer or use
 an operator-verified atomic whole-volume snapshot. Never mount one writable
 `/data` directory into multiple application replicas or merge individual
