@@ -78,7 +78,8 @@ and the project follows [Semantic Versioning](https://semver.org/).
   cross-replica setup winner and serializes administrator, provider-profile,
   and branding-metadata changes; wrong keys, tamper, oversized state, and
   migration conflicts fail closed. The local record is archived for rollback,
-  while content-addressed logo bytes remain on shared `/data`.
+  and content-addressed logo bytes use separately encrypted, filename-bound,
+  HMAC-indexed Redis blobs with guarded local migration.
 
 - Added provider-independent print-friendly views for the selected message or
   its complete conversation. The session-scoped, same-origin preparation path

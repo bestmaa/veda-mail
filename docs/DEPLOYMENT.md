@@ -176,8 +176,11 @@ AES-256-GCM subkey and archives the local file. Redis then becomes authoritative
 for the session secret, administrator hash/2FA, provider profile, and branding
 metadata; exact CAS protects setup and later replacements. Preserve the exact
 job key, Redis prefix, Redis persistence, and rollback archive together. Logo
-bytes remain under `/data/branding`, so every replica must mount the same
-writable volume until that asset boundary is moved.
+bytes are separately encrypted and stored behind HMAC-opaque Redis keys. First
+read migrates an existing local logo and renames it with
+`.migrated-to-redis`; new uploads go directly to Redis. Verify the logo archive
+and Redis backup before removing a shared `/data` mount. A wrong key, swapped or
+tampered blob, oversized record, or Redis outage fails logo access closed.
 It also stores connection-scoped immediate-send claims and bounded replay
 receipts as ciphertext. Exactly one replica owns provider I/O; peers poll and
 replay the result, while a configured Redis outage fails send state closed.

@@ -78,7 +78,10 @@ The complete installation record likewise becomes an encrypted Redis singleton.
 After migration, Redis—not `installation.json.migrated-to-redis`—contains the
 current session secret, administrator account, provider profile, and branding
 metadata. Back up the exact `VEDA_MAIL_JOB_KEY`, Redis prefix/generation, local
-rollback archive, and `/data/branding` logo assets as one recovery set.
+rollback archive, and any `.migrated-to-redis` logo assets as one recovery set.
+Redis is authoritative for migrated and newly uploaded logo ciphertext; the
+content-addressed filename is authenticated as part of each blob, and Redis
+keys do not expose that filename.
 Short-lived
 immediate-send claim and replay records are also Redis-only; losing them can
 remove duplicate-send protection for provider I/O that already happened, so

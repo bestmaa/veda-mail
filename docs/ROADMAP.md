@@ -956,8 +956,10 @@ The complete installation record now follows the same external-key encrypted
 singleton boundary. Guarded migration archives the local file, exact Redis CAS
 admits one cross-replica first-run setup and prevents stale administrator,
 provider-profile, or branding-metadata writes, and wrong-key/tampered/oversized
-state fails closed. Content-addressed logo bytes remain on shared `/data`, so
-the overall multi-replica checkbox stays open.
+state fails closed. Content-addressed logos now use HMAC-opaque Redis indexes,
+filename-bound AES-256-GCM blobs, guarded first-read migration, and local
+rollback archives. The overall checkbox stays open for the remaining mutable
+`/data` boundaries.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit
