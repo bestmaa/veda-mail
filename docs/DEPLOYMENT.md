@@ -281,9 +281,13 @@ Mail rules create `/data/member-rules.json` lazily on the first rule mutation.
 Keep that file with the matching external `VEDA_MAIL_JOB_KEY`: owner indexes,
 rule books, deployment state, redacted audit entries, and the short-lived
 deployment intent are encrypted with Rules-specific HKDF subkeys. A restored
-file with the wrong key fails closed. Keep one writer for the mounted `/data`
-volume. Successful or failed provider deployment removes the stored provider
-connection; native Sieve executes the rule without a Veda worker.
+file with the wrong key fails closed. When shared-state Redis is configured,
+the ciphertext owner records migrate on first access and the local file becomes
+the `.migrated-to-redis` rollback archive. Rule revisions and deployment intents
+then use exact-record Redis compare-and-set across replicas. Without Redis, keep
+one writer for the mounted `/data` volume. Successful, failed, or superseded
+provider deployment removes the stored provider connection; native Sieve
+executes the rule without a Veda worker.
 
 Snooze creates `/data/snooze-jobs.json` lazily on first use. Keep it with the
 same `VEDA_MAIL_JOB_KEY`: owner indexes include a stable provider-account scope,
@@ -508,10 +512,10 @@ Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
 shared Redis repository; message-list preferences, saved searches, signatures,
-templates, contacts, calendar events, label catalogs, and mailbox appearance
-migrate there on first access, and request limits may use their separate backend.
-Scaling still requires transactional replacement for the remaining per-member
-metadata stores.
+templates, contacts, calendar events, label catalogs, mail rules, and mailbox
+appearance migrate there on first access, and request limits may use their
+separate backend. Scaling still requires transactional replacement for the
+remaining per-member metadata stores.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup
 advances in bounded authenticated requests while the member mailbox is open;

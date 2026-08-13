@@ -930,7 +930,9 @@ writable `/data` boundaries close. Encrypted calendar-event books now migrate
 through the same boundary with exact-record CAS and preserved empty-book
 revisions. Encrypted label catalogs now migrate with bounded CAS retry, retaining
 concurrent metadata changes, cleanup leases, tombstones, and mailbox-empty
-checkpoints.
+checkpoints. Encrypted mail-rule books now migrate with exact-record CAS for
+desired revisions and short-lived provider deployment intents; a superseding
+rule mutation also erases the encrypted provider connection.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit

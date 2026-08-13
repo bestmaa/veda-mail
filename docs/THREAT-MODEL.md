@@ -1149,9 +1149,12 @@ operator monitoring.
   audit are owner-isolated in `/data/member-rules.json`. The file uses
   AES-256-GCM and an HMAC owner index under a Rules-specific HKDF namespace of
   `VEDA_MAIL_JOB_KEY`, mode-0600 atomic replacement, a 64-MiB ceiling, and a
-  10,000-owner ceiling. Provider credentials exist in that ciphertext only
-  during a committed deployment intent and are erased on every final outcome;
-  there is no background credential-bearing retry worker.
+  10,000-owner ceiling. Shared-state mode migrates the existing ciphertext
+  owner records to Redis and uses exact-record CAS so stale replicas cannot
+  overwrite a rule revision or deployment intent. Provider credentials exist
+  in that ciphertext only during a committed deployment intent and are erased
+  on every final outcome or superseding desired-rule mutation; there is no
+  background credential-bearing retry worker.
 - Dry-run is read-only, capped at 100 messages, returns only bounded message
   facts and planned actions, and rejects a condition when the provider cannot
   expose the exact fact. In particular, an SMTP envelope-recipient condition
