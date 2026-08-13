@@ -465,6 +465,11 @@ metadata.
   retry to retain concurrent contacts and groups. Names, addresses, groups, and
   history remain absent from Redis plaintext; tamper and backend failure fail
   closed, and empty books remove their shared owner record.
+- Calendar-event books migrate only authenticated ciphertext behind HMAC-opaque
+  owner keys. Exact-envelope CAS preserves revision conflicts across replicas;
+  even an empty book remains encrypted to retain its anti-stale-write revision.
+  Event content and account identities stay absent from Redis plaintext, while
+  tamper, migration conflict, and backend failure fail closed.
 - Formatting locale is a closed canonical allowlist, while a time-zone value is
   length bounded and must be `auto` or a runtime-valid IANA identifier. Neither
   value is forwarded to JMAP or IMAP/SMTP. Older encrypted records and clients

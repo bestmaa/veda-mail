@@ -92,3 +92,14 @@ export const writeCalendarEventFile = async (
     throw error;
   }
 };
+
+export const archiveMigratedCalendarEventFile = async (): Promise<void> => {
+  try {
+    await rename(
+      /* turbopackIgnore: true */ calendarEventFilePath(),
+      /* turbopackIgnore: true */ `${calendarEventFilePath()}.migrated-to-redis`,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+};

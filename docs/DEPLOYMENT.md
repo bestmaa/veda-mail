@@ -246,6 +246,13 @@ concurrent contact or group edit is retained. Empty contact books remove their
 shared record. Verify the archive and Redis backup on one upgraded replica,
 and preserve the installation session secret and Redis prefix.
 
+Calendar events migrate as existing authenticated ciphertext from
+`/data/member-calendar-events.json`. Exact-record CAS preserves revision
+conflicts across replicas. Removing the final event deliberately retains its
+encrypted empty-book revision, matching the local store contract. Verify the
+archive and Redis backup on one upgraded replica before scaling, and preserve
+the installation session secret and Redis prefix.
+
 Audit retention creates `/data/data-retention-policy.json` only after the
 administrator changes its 365-day/10,000-record defaults. The strict mode-0600
 record is atomic, and older builds ignore it. Enforcement runs on audit append/read and
@@ -495,7 +502,7 @@ Keep one writable replica until the mutable repositories below are replaced.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
 shared Redis repository; message-list preferences, saved searches, signatures,
-templates, contacts, and mailbox appearance migrate there on first access, and request limits may use their
+templates, contacts, calendar events, and mailbox appearance migrate there on first access, and request limits may use their
 separate backend. The encrypted
 `/data/member-templates.json`, `/data/member-contacts.json`, and
 `/data/mail-label-catalog.json` stores also use process-local serialized

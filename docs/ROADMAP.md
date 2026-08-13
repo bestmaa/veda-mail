@@ -926,7 +926,9 @@ books now follow the same ciphertext-only migration and CAS contract, deleting
 the shared owner record with the final template. Encrypted contact books also
 migrate with exact-record CAS; bounded retry reapplies automatic recipient
 history after concurrent manual edits. The checkbox remains open until the other
-writable `/data` boundaries close.
+writable `/data` boundaries close. Encrypted calendar-event books now migrate
+through the same boundary with exact-record CAS and preserved empty-book
+revisions.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit
