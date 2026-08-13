@@ -522,7 +522,10 @@ official init process currently starts as root before dropping to ClamAV
 service users, so the application container's unprivileged-user/capability
 claims do not apply to that sidecar.
 
-Keep one writable replica until the mutable repositories below are replaced.
+Keep one writable replica in local mode. For multiple writable replicas,
+configure the shared-state Redis repository and distributed request-limiter
+Redis on every replica with identical URLs/prefixes and required encryption
+keys, plus TLS, persistence, no-eviction, monitoring, and readiness controls.
 Administrator/member provider sessions, delivery notices, send idempotency,
 durable job coordinators, and attachment quarantine may use the encrypted
 shared Redis repository; message-list preferences, saved searches, signatures,
@@ -534,14 +537,15 @@ encrypted singleton records with exact-record CAS, as does the global
 mail-content policy used by upload, draft, and delivery enforcement.
 The encrypted mailbox-provisioning ledger also migrates on first access; exact
 Redis CAS admits one cross-replica provider-I/O owner and shares safe replays.
-Scaling still requires transactional replacement for the remaining mutable
-metadata stores.
+The installation singleton and content-addressed logo blobs complete the
+durable metadata boundary. An architecture check rejects a new direct `/data`
+owner until it declares an explicit shared-state policy.
 
 Portable-label deletion needs no worker or new environment variable. Cleanup
 advances in bounded authenticated requests while the member mailbox is open;
-encrypted progress resumes after a restart or later sign-in. Keep the single
-writable replica rule so in-flight label mutations and deletion share the same
-owner/label operation queue.
+encrypted progress resumes after a restart or later sign-in. Local mode relies
+on one writable replica; shared mode uses the encrypted catalog CAS and cleanup
+lease so in-flight label mutations and deletion coordinate across replicas.
 
 ## Post-deployment checks
 

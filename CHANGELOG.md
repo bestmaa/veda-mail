@@ -73,6 +73,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added an architecture gate that inventories every direct durable `/data`
+  owner and requires an explicit shared-state bridge. Together with encrypted
+  installation and logo storage, this closes the multi-replica repository
+  roadmap item; local mode remains single-replica and shared mode requires the
+  documented Redis, key, prefix, readiness, and rate-limit configuration.
+
 - Shared-state Redis now migrates the complete installation record into a
   dedicated external-key AES-256-GCM envelope. Exact-record CAS admits one
   cross-replica setup winner and serializes administrator, provider-profile,

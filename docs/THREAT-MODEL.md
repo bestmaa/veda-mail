@@ -109,8 +109,9 @@ repository coordinates encrypted jobs, send idempotency, and delivery notices;
 attachment quarantine uses the same shared availability boundary with an
 independent encryption key. Member-2FA records use the installation session
 secret rather than `VEDA_MAIL_JOB_KEY`; shared mode retrieves that secret from
-the encrypted installation singleton. Remaining mutable `/data` repositories
-are not yet fully multi-replica safe. Redis availability and
+the encrypted installation singleton. Local mode remains single-replica;
+shared mode requires both documented Redis services, identical keys/prefixes,
+and shared dependency readiness on every replica. Redis availability and
 external keys become availability
 dependencies; traffic analysis exposes ciphertext sizes and access timing.
 

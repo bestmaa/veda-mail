@@ -852,7 +852,7 @@ Automated browser evidence separately proves 320 CSS-pixel RTL reflow.
   export, and destructive mailbox actions
 - [x] Session inventory/revocation, idle/absolute expiry, CSRF review, login
   throttling, and distributed rate-limit option
-- [ ] Encrypted shared session and job repositories for multi-replica operation
+- [x] Encrypted shared session and job repositories for multi-replica operation
 - [x] Export/import of settings, contacts, rules, and mail in standard formats
 - [x] Backup/restore drill, data-retention controls, privacy documentation,
   threat model, SBOM, provenance, dependency policy, and release checklist
@@ -958,8 +958,10 @@ admits one cross-replica first-run setup and prevents stale administrator,
 provider-profile, or branding-metadata writes, and wrong-key/tampered/oversized
 state fails closed. Content-addressed logos now use HMAC-opaque Redis indexes,
 filename-bound AES-256-GCM blobs, guarded first-read migration, and local
-rollback archives. The overall checkbox stays open for the remaining mutable
-`/data` boundaries.
+rollback archives. Every durable `/data` owner now has an explicit shared-state
+policy, enforced by the architecture gate; the only direct local exceptions are
+the advisory setup lock and read-only readiness probe. This closes the encrypted
+multi-replica repository checkbox while keeping local mode single-replica.
 
 The administration capability matrix and organization policy controls shipped
 through PR #100 in production commit
