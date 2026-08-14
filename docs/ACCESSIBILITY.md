@@ -65,6 +65,33 @@ Current automated evidence is enforced in CI. The roadmap checkbox remains
 open until the two screen-reader rows and forced-colors row are executed against
 the deployed build and their results are recorded.
 
+### Current release evidence (in progress)
+
+The 2026-08-14 production audit is running against deployed commit `27c45d7`
+with Chrome `151.0.7922.138` on Windows 11. The following deployed checks have
+passed:
+
+- The first Tab stop exposes **Skip to message list**. Activating it moves focus
+  to the Inbox heading and retains a visible two-pixel focus indicator.
+- The keyboard-shortcut guide moves focus into the dialog. Escape closes it and
+  restores focus to its trigger.
+- Account settings moves focus to its close control. Enter or Escape closes the
+  dialog and restores focus to the account-settings trigger.
+- The composer exposes labelled recipient, subject, message, formatting,
+  attachment, scheduling, draft, and send controls. Attempting an empty send
+  produces the assertive `Add at least one recipient.` validation message, and
+  Escape closes the empty composer and restores its trigger.
+- At 640 and 320 CSS-pixel viewports, the deployed mailbox has no page-level
+  horizontal overflow. At 320 pixels, both the compose dialog and the full
+  account-settings dialog remain inside the viewport without horizontal
+  overflow. This is responsive-reflow evidence equivalent to 200% and 400%
+  zoom on a 1280-pixel-wide viewport; the separate manual Chrome zoom row is
+  still pending.
+
+NVDA speech output, Chrome's native 200% and 400% zoom controls, the Windows
+reduced-motion and forced-colors preferences, and macOS Safari with VoiceOver
+remain pending. These partial results do not close the roadmap milestone.
+
 ## Content boundary
 
 Veda Mail sanitizes inbound HTML and preserves useful semantic elements, but it
