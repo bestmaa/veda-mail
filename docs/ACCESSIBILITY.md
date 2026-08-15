@@ -106,6 +106,12 @@ following deployed checks have passed:
 - The permanent-delete alert dialog announced its title, irreversible-action
   description, safe Cancel button, and destructive action. Escape cancelled the
   dialog without deleting the message and restored focus to the trigger.
+- A synthetic self-addressed message with subject
+  `Veda Mail NVDA acceptance 2026-08-15` was successfully submitted on
+  2026-08-15. The deployed UI incremented both Inbox and Sent Items and the
+  Sent Items mailbox exposed the exact subject and body. The NVDA session did
+  not retain foreground focus during submission, so this proves delivery but
+  does not yet prove the successful-Send announcement.
 
 A successful synthetic Send announcement, Chrome's native 200% and 400% zoom
 controls, the Windows reduced-motion and forced-colors preferences, and macOS
