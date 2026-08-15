@@ -1293,6 +1293,13 @@ forced-colors acceptance matrix. Sanitized sender HTML remains untrusted
 content, and Veda Mail does not claim that external message authors supplied
 accessible structure or alternatives.
 
+Workspace-owned live regions stay mounted across transient surfaces such as
+the composer. A send updates the same polite, atomic region from `Sending…` to
+`Message sent.` before the composer unmounts, so assistive technology observes
+completion without coupling announcement lifetime to dialog lifetime. These
+announcements remain generic and never include recipients, subjects, message
+content, provider errors, or credentials.
+
 ## Localization boundary
 
 Formatting locale and IANA time zone are encrypted, owner-isolated application

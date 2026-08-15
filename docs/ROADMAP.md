@@ -745,7 +745,7 @@ store, route, provider, MIME, component, and browser suites, this closes the RFC
 - [x] In-app and opt-in Web Notifications with privacy-safe content controls
 - [x] PWA installability and an explicitly bounded offline cache
 - [x] Network reconnection, stale-state indicators, and safe retry behavior
-- [ ] WCAG 2.2 AA keyboard, focus, contrast, zoom/reflow, motion, and
+- [x] WCAG 2.2 AA keyboard, focus, contrast, zoom/reflow, motion, and
   screen-reader audit
 - [x] Localization foundation, locale-aware dates/numbers, RTL layout, and
   selectable time zone
@@ -828,11 +828,17 @@ reduced motion, forced-colors focus, and accessible branding contrast. The live
 Stalwart test mailbox loaded after the 1m 19s Dokploy rollout; activating the
 skip link with Enter moved focus to the Inbox heading and retained a visible
 2px focus ring. The public health endpoint returned `ok` with private no-store
-and transport/security headers. The checkbox remains open until the remediated
-build's successful-Send status is confirmed with deployed NVDA and Chrome.
-Windows forced-colors acceptance is recorded in `docs/ACCESSIBILITY.md`; the
-project owner deferred macOS Safari and VoiceOver until compatible hardware is
-available.
+and transport/security headers. The final live-region remediation was released
+through PR #184 and deployed in production commit
+`ca58632909c92d16d1623e83aa2a4bb5a1ba8591` as OCI index
+`sha256:35c342ece3dc2f9aba1b6f1d9f513f2ce044fdeba33dc5a5dd37139733fea4bd`.
+Official NVDA `2026.1.1` in foreground Chrome announced `Sending…` and then
+`Message sent.` for a synthetic self-addressed message; Inbox and Sent Items
+both exposed its exact subject and body. This completes the current Windows
+WCAG 2.2 engineering acceptance milestone. Windows forced-colors evidence is
+recorded in `docs/ACCESSIBILITY.md`; the project owner deferred macOS Safari and
+VoiceOver until compatible hardware is available, so that row is not
+represented as passing.
 
 The provider-independent localization foundation is released through PR #97
 and deployed in production commit

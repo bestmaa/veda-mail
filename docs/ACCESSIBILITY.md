@@ -66,11 +66,15 @@ requires the Windows screen-reader row against the deployed build. The project
 owner deferred the unavailable macOS/Safari row on 2026-08-15; it remains a
 future compatibility validation and is not represented as a passing result.
 
-### Current release evidence (in progress)
+### Current Windows release evidence
 
 The production audit began on 2026-08-14 and continued on 2026-08-15 against
 deployed commit `27c45d7` with Chrome `151.0.7922.138` on Windows 11. The
-following deployed checks have passed:
+successful-Send remediation was then released through PR #184 and deployed on
+2026-08-16 from commit `ca58632909c92d16d1623e83aa2a4bb5a1ba8591` as immutable
+OCI index
+`sha256:35c342ece3dc2f9aba1b6f1d9f513f2ce044fdeba33dc5a5dd37139733fea4bd`.
+The following deployed checks have passed:
 
 - The first Tab stop exposes **Skip to message list**. Activating it moves focus
   to the Inbox heading and retains a visible two-pixel focus indicator.
@@ -132,7 +136,14 @@ following deployed checks have passed:
   the composer-owned live region unmounted when a successful send closed the
   dialog. The remediation keeps a polite, atomic `Message sent.` status mounted
   in the workspace and resets it when the next composer opens. Automated
-  component coverage is passing; deployed NVDA confirmation remains pending.
+  component coverage passed before release.
+- The remediated production build was re-tested with official NVDA `2026.1.1`,
+  add-ons disabled, and the Veda Mail Chrome window visibly foregrounded. A
+  Windows-level pointer activation of Send caused NVDA to record `Sending…`
+  followed by `Message sent.`. The composer closed, Inbox incremented from four
+  to five, Sent Items incremented from six to seven, and both mailboxes exposed
+  the exact subject and body of the synthetic self-addressed message
+  `Veda Mail NVDA live region pass 2026-08-16`.
 - With Windows client-area animations temporarily disabled, Chrome reported
   `prefers-reduced-motion: reduce`. Veda Mail computed animation and transition
   durations of `0.01ms` and root scrolling as `auto`, as required by the
@@ -146,9 +157,11 @@ following deployed checks have passed:
   animations, transparency, and Chrome zoom were restored to their original
   values after the test.
 
-A successful synthetic Send announcement against the remediated deployed build
-remains pending. macOS Safari with VoiceOver is explicitly deferred because no
-Mac is available; it does not block the current Windows acceptance milestone.
+The Windows/NVDA, zoom/reflow, reduced-motion, and forced-colors rows are
+accepted for this release. Only synthetic, non-sensitive mailbox content was
+used. macOS Safari with VoiceOver is explicitly deferred because no Mac is
+available; it is not represented as passing and does not block the current
+Windows acceptance milestone.
 
 ## Content boundary
 
