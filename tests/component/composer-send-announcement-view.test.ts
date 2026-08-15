@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 import { ComposerSendAnnouncementView } from "@/presentation/features/mail-workspace/ui/composer-send-announcement.view";
 
 describe("composer send announcement", () => {
+  it("does not add an empty status landmark before a send", () => {
+    const html = renderToStaticMarkup(createElement(
+      ComposerSendAnnouncementView, { announcement: "" }));
+    expect(html).toBe("");
+  });
+
   it("keeps the successful send status mounted after the composer closes", () => {
     const html = renderToStaticMarkup(createElement(
       ComposerSendAnnouncementView,
