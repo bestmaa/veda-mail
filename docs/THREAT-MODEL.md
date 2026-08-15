@@ -1376,6 +1376,17 @@ state, and retain the privacy curtain. Status and alert semantics expose
 offline, checking, stale, and restored phases without storing connectivity or
 mail data in browser persistence.
 
+## Assistive-technology status boundary
+
+Persistent live regions can outlive a transient dialog, so their content is a
+privacy boundary as well as an accessibility contract. Veda Mail limits the
+workspace-owned send region to generic progress and completion text, clears it
+when the next composer opens, and never places recipients, subjects, body text,
+provider errors, tokens, or credentials in the announcement. The region holds
+no durable state and adds no browser storage or telemetry. Deployed manual
+acceptance uses synthetic, non-sensitive messages and records only bounded
+status text and delivery counts.
+
 ## Logging and observability
 
 Logs may contain opaque request, connection, provider, and error identifiers,
