@@ -67,9 +67,9 @@ the deployed build and their results are recorded.
 
 ### Current release evidence (in progress)
 
-The 2026-08-14 production audit is running against deployed commit `27c45d7`
-with Chrome `151.0.7922.138` on Windows 11. The following deployed checks have
-passed:
+The production audit began on 2026-08-14 and continued on 2026-08-15 against
+deployed commit `27c45d7` with Chrome `151.0.7922.138` on Windows 11. The
+following deployed checks have passed:
 
 - The first Tab stop exposes **Skip to message list**. Activating it moves focus
   to the Inbox heading and retains a visible two-pixel focus indicator.
@@ -87,10 +87,30 @@ passed:
   overflow. This is responsive-reflow evidence equivalent to 200% and 400%
   zoom on a 1280-pixel-wide viewport; the separate manual Chrome zoom row is
   still pending.
+- Official NVDA `2026.1.1` with add-ons disabled announced the Veda Mail Chrome
+  window and the skip link's name, role, visited state, and same-page target.
+  Activating the link announced `Inbox, heading, level 1`.
+- NVDA announced mailbox folders and Search mail with its editable autocomplete
+  semantics. An existing synthetic message in Trash announced its subject as a
+  level-two heading; reader controls announced Reply, Reply all, and Forward,
+  and returning to the list restored focus to that message's Open button.
+- The compose dialog announced its dialog name, To autocomplete combobox, Cc
+  and Bcc disclosure buttons, Subject edit, and required multiline Message body.
+  Empty Send announced `alert, Add at least one recipient.`, and Escape restored
+  focus to the Compose message trigger.
+- The keyboard-shortcut guide announced its dialog title, close button, 22-item
+  shortcut list, key/action pairs, and the explanation of suspended shortcuts.
+  Account settings announced its dialog title, initial close button, loading
+  state, and required Display name edit. Both dialogs restored their triggers
+  on Escape.
+- The permanent-delete alert dialog announced its title, irreversible-action
+  description, safe Cancel button, and destructive action. Escape cancelled the
+  dialog without deleting the message and restored focus to the trigger.
 
-NVDA speech output, Chrome's native 200% and 400% zoom controls, the Windows
-reduced-motion and forced-colors preferences, and macOS Safari with VoiceOver
-remain pending. These partial results do not close the roadmap milestone.
+A successful synthetic Send announcement, Chrome's native 200% and 400% zoom
+controls, the Windows reduced-motion and forced-colors preferences, and macOS
+Safari with VoiceOver remain pending. These partial results do not close the
+roadmap milestone.
 
 ## Content boundary
 
