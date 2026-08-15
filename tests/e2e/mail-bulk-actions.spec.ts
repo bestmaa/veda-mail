@@ -69,7 +69,9 @@ test("bulk updates loaded messages and keeps only failures selected", async ({
     name: "Mark selected messages as unread",
   }).click();
 
-  await expect(page.getByRole("status")).toContainText("Updating 2 messages");
+  await expect(page.getByRole("status").filter({
+    hasText: "Updating 2 messages",
+  })).toContainText("Updating 2 messages");
   await expect(page.locator('article[aria-busy="true"]')).toHaveCount(2);
   releaseMutation();
 
