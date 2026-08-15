@@ -62,8 +62,8 @@ assistive technology, version, date, tester, and result for:
 | Contrast | Windows forced-colors mode | Focus, selection, inputs, primary and destructive actions |
 
 Current automated evidence is enforced in CI. The roadmap checkbox remains
-open until the two screen-reader rows and forced-colors row are executed against
-the deployed build and their results are recorded.
+open until both screen-reader rows are complete against the deployed build and
+their results are recorded.
 
 ### Current release evidence (in progress)
 
@@ -84,9 +84,13 @@ following deployed checks have passed:
 - At 640 and 320 CSS-pixel viewports, the deployed mailbox has no page-level
   horizontal overflow. At 320 pixels, both the compose dialog and the full
   account-settings dialog remain inside the viewport without horizontal
-  overflow. This is responsive-reflow evidence equivalent to 200% and 400%
-  zoom on a 1280-pixel-wide viewport; the separate manual Chrome zoom row is
-  still pending.
+  overflow.
+- Chrome's native zoom controls were exercised at 200% and 400% on a 1920-pixel
+  display. Chrome reported 960 and 480 CSS-pixel viewports respectively, with
+  device-pixel ratios of 2 and 4. At both levels, the mailbox, message reader,
+  compose dialog, and full account-settings dialog had no page-level horizontal
+  overflow. The compose and settings dialogs remained inside the viewport and
+  had no internal horizontal overflow. Zoom was restored to 100% after the test.
 - Official NVDA `2026.1.1` with add-ons disabled announced the Veda Mail Chrome
   window and the skip link's name, role, visited state, and same-page target.
   Activating the link announced `Inbox, heading, level 1`.
@@ -112,11 +116,28 @@ following deployed checks have passed:
   Sent Items mailbox exposed the exact subject and body. The NVDA session did
   not retain foreground focus during submission, so this proves delivery but
   does not yet prove the successful-Send announcement.
+- A second authorized self-addressed message with subject
+  `Veda Mail NVDA announcement retry 2026-08-15` was also submitted. Inbox and
+  Sent Items both incremented to two and exposed the exact subject and body.
+  NVDA remained attached to the foreground YouTube tab while the browser
+  extension submitted the message in a background Veda Mail tab, so this retry
+  again proves delivery but not the successful-Send announcement. A later
+  foreground-only probe reproduced and documented that tab-focus limitation.
+- With Windows client-area animations temporarily disabled, Chrome reported
+  `prefers-reduced-motion: reduce`. Veda Mail computed animation and transition
+  durations of `0.01ms` and root scrolling as `auto`, as required by the
+  reduced-motion stylesheet. The Windows animation preference was restored.
+- With Windows High Contrast temporarily enabled, Chrome reported
+  `forced-colors: active`. Veda Mail exposed system foreground/background and
+  border colors for the focused account control, Search mail input, selected
+  Inbox, primary compose action, and permanent-delete confirmation. Cancel
+  closed the destructive dialog without deleting the message and restored focus
+  to the permanent-delete trigger. High Contrast, its flags and scheme,
+  animations, transparency, and Chrome zoom were restored to their original
+  values after the test.
 
-A successful synthetic Send announcement, Chrome's native 200% and 400% zoom
-controls, the Windows reduced-motion and forced-colors preferences, and macOS
-Safari with VoiceOver remain pending. These partial results do not close the
-roadmap milestone.
+A successful synthetic Send announcement and macOS Safari with VoiceOver remain
+pending. These partial results do not close the roadmap milestone.
 
 ## Content boundary
 
