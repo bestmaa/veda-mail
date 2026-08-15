@@ -47,12 +47,10 @@ export const useComposerModel = (
   emailTemplates: EmailTemplatesModel = emptyTemplates, scheduledSendEnabled = true,
   sendPreferences: ComposerSendPreferences = DEFAULT_COMPOSER_SEND_PREFERENCES, preferredTimeZone?: string,
 ) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [openAccountKey, setOpenAccountKey] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); const [openAccountKey, setOpenAccountKey] = useState("");
+  const [isSending, setIsSending] = useState(false); const [sendAnnouncement, setSendAnnouncement] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [confirmClose, setConfirmClose] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false); const [confirmDiscard, setConfirmDiscard] = useState(false);
   const accountKeyRef = useRef(accountKey);
   const markUnsavedRef = useRef<() => void>(() => undefined);
   const markProgrammaticRef = useRef<() => void>(() => undefined);
@@ -151,6 +149,7 @@ export const useComposerModel = (
   });
   const beginOpen = useCallback((title: ComposerTitle) => {
     if (!accountKey || !isComposerReady || recoveryFlow.hasCandidate) return null;
+    setSendAnnouncement("");
     returnFocus.remember();
     draft.reset();
     resetEditor();
@@ -216,7 +215,8 @@ export const useComposerModel = (
     isDraftReadOnly: !draft.canEdit,
     onDraftSent: () => { draft.markSent(); onDraftChanged(); },
     onSendUncertain: draft.markSendUncertain,
-    onSent, openAccountKey, providerDraft: draft.providerDraft,
+    onSent: (receipt, emails) => { setSendAnnouncement("Message sent."); onSent(receipt, emails); },
+    openAccountKey, providerDraft: draft.providerDraft,
     recovery: recovery.journal.port, recoveryCheckpoint,
     saveDraft: draft.saveDetail,
     resetFields: resetEditor, restoreFocus: returnFocus.restore,
@@ -244,6 +244,6 @@ export const useComposerModel = (
     openSavedDraft, sendConfirmation, undoSend: undoSend.view,
     requiresSignOutConfirmation: draft.hasUnsavedChanges || recoveryFlow.hasPersistedRecovery,
     removeAttachment: attachments.remove, retryAttachment: attachments.retry,
-    schedule, signatures, templates,
+    schedule, sendAnnouncement, signatures, templates,
   };
 };

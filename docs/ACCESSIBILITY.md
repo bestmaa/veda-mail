@@ -61,9 +61,10 @@ assistive technology, version, date, tester, and result for:
 | Motion | Reduced-motion OS preference | Loading, dialogs, notices, hover/focus transitions |
 | Contrast | Windows forced-colors mode | Focus, selection, inputs, primary and destructive actions |
 
-Current automated evidence is enforced in CI. The roadmap checkbox remains
-open until both screen-reader rows are complete against the deployed build and
-their results are recorded.
+Current automated evidence is enforced in CI. The current roadmap checkbox
+requires the Windows screen-reader row against the deployed build. The project
+owner deferred the unavailable macOS/Safari row on 2026-08-15; it remains a
+future compatibility validation and is not represented as a passing result.
 
 ### Current release evidence (in progress)
 
@@ -123,6 +124,15 @@ following deployed checks have passed:
   extension submitted the message in a background Veda Mail tab, so this retry
   again proves delivery but not the successful-Send announcement. A later
   foreground-only probe reproduced and documented that tab-focus limitation.
+- Further authorized foreground retries confirmed delivery through five Inbox
+  and Sent Items copies. With the correct Veda Mail tab visibly foregrounded,
+  NVDA announced the compose dialog and the Send control changing to
+  `Sending…`; it did not announce successful completion even though Drafts
+  cleared and Inbox and Sent Items incremented. This isolated a product defect:
+  the composer-owned live region unmounted when a successful send closed the
+  dialog. The remediation keeps a polite, atomic `Message sent.` status mounted
+  in the workspace and resets it when the next composer opens. Automated
+  component coverage is passing; deployed NVDA confirmation remains pending.
 - With Windows client-area animations temporarily disabled, Chrome reported
   `prefers-reduced-motion: reduce`. Veda Mail computed animation and transition
   durations of `0.01ms` and root scrolling as `auto`, as required by the
@@ -136,8 +146,9 @@ following deployed checks have passed:
   animations, transparency, and Chrome zoom were restored to their original
   values after the test.
 
-A successful synthetic Send announcement and macOS Safari with VoiceOver remain
-pending. These partial results do not close the roadmap milestone.
+A successful synthetic Send announcement against the remediated deployed build
+remains pending. macOS Safari with VoiceOver is explicitly deferred because no
+Mac is available; it does not block the current Windows acceptance milestone.
 
 ## Content boundary
 

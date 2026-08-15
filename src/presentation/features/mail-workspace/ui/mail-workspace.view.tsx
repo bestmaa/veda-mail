@@ -7,6 +7,7 @@ import { ReaderDestroyConfirmationConnector } from "@/presentation/features/mail
 import { MemberSignOutConfirmationConnector } from "@/presentation/features/mail-workspace/connectors/member-sign-out-confirmation.connector";
 import { MessageMoveDialogConnector } from "@/presentation/features/mail-workspace/connectors/message-move-dialog.connector";
 import type { MailWorkspaceViewProps } from "@/presentation/features/mail-workspace/mail-workspace.view-model";
+import { ComposerSendAnnouncementView } from "@/presentation/features/mail-workspace/ui/composer-send-announcement.view";
 import { AccountSettingsView } from "@/presentation/features/mail-workspace/ui/account-settings.view";
 import { ComposerView } from "@/presentation/features/mail-workspace/ui/composer.view";
 import { EmptyReaderView } from "@/presentation/features/mail-workspace/ui/empty-reader.view";
@@ -179,6 +180,7 @@ export const MailWorkspaceView = (props: MailWorkspaceViewProps) => {
       deliveryNotice={props.deliveryNotice}
       recipients={props.recipientSuggestions}
     />
+    <ComposerSendAnnouncementView announcement={props.composer.sendAnnouncement} />
     <AccountSettingsView settings={props.settings} />
     <ReaderFocusConnector
       isLoading={props.reader?.isLoading ?? false}

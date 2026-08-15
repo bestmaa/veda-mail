@@ -147,6 +147,9 @@ test("pending send locks stale link mutations", async ({ page }) => {
 
   gate.release();
   await expect(dialog).toBeHidden();
+  await expect(page.getByRole("status").filter({
+    hasText: "Message sent.",
+  })).toHaveText("Message sent.");
 });
 
 test("pending send disables formatting-loss choices", async ({ page }) => {
