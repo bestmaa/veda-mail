@@ -61,9 +61,94 @@ assistive technology, version, date, tester, and result for:
 | Motion | Reduced-motion OS preference | Loading, dialogs, notices, hover/focus transitions |
 | Contrast | Windows forced-colors mode | Focus, selection, inputs, primary and destructive actions |
 
-Current automated evidence is enforced in CI. The roadmap checkbox remains
-open until the two screen-reader rows and forced-colors row are executed against
-the deployed build and their results are recorded.
+Current automated evidence is enforced in CI. The current roadmap checkbox
+requires the Windows screen-reader row against the deployed build. The project
+owner deferred the unavailable macOS/Safari row on 2026-08-15; it remains a
+future compatibility validation and is not represented as a passing result.
+
+### Current release evidence (in progress)
+
+The production audit began on 2026-08-14 and continued on 2026-08-15 against
+deployed commit `27c45d7` with Chrome `151.0.7922.138` on Windows 11. The
+following deployed checks have passed:
+
+- The first Tab stop exposes **Skip to message list**. Activating it moves focus
+  to the Inbox heading and retains a visible two-pixel focus indicator.
+- The keyboard-shortcut guide moves focus into the dialog. Escape closes it and
+  restores focus to its trigger.
+- Account settings moves focus to its close control. Enter or Escape closes the
+  dialog and restores focus to the account-settings trigger.
+- The composer exposes labelled recipient, subject, message, formatting,
+  attachment, scheduling, draft, and send controls. Attempting an empty send
+  produces the assertive `Add at least one recipient.` validation message, and
+  Escape closes the empty composer and restores its trigger.
+- At 640 and 320 CSS-pixel viewports, the deployed mailbox has no page-level
+  horizontal overflow. At 320 pixels, both the compose dialog and the full
+  account-settings dialog remain inside the viewport without horizontal
+  overflow.
+- Chrome's native zoom controls were exercised at 200% and 400% on a 1920-pixel
+  display. Chrome reported 960 and 480 CSS-pixel viewports respectively, with
+  device-pixel ratios of 2 and 4. At both levels, the mailbox, message reader,
+  compose dialog, and full account-settings dialog had no page-level horizontal
+  overflow. The compose and settings dialogs remained inside the viewport and
+  had no internal horizontal overflow. Zoom was restored to 100% after the test.
+- Official NVDA `2026.1.1` with add-ons disabled announced the Veda Mail Chrome
+  window and the skip link's name, role, visited state, and same-page target.
+  Activating the link announced `Inbox, heading, level 1`.
+- NVDA announced mailbox folders and Search mail with its editable autocomplete
+  semantics. An existing synthetic message in Trash announced its subject as a
+  level-two heading; reader controls announced Reply, Reply all, and Forward,
+  and returning to the list restored focus to that message's Open button.
+- The compose dialog announced its dialog name, To autocomplete combobox, Cc
+  and Bcc disclosure buttons, Subject edit, and required multiline Message body.
+  Empty Send announced `alert, Add at least one recipient.`, and Escape restored
+  focus to the Compose message trigger.
+- The keyboard-shortcut guide announced its dialog title, close button, 22-item
+  shortcut list, key/action pairs, and the explanation of suspended shortcuts.
+  Account settings announced its dialog title, initial close button, loading
+  state, and required Display name edit. Both dialogs restored their triggers
+  on Escape.
+- The permanent-delete alert dialog announced its title, irreversible-action
+  description, safe Cancel button, and destructive action. Escape cancelled the
+  dialog without deleting the message and restored focus to the trigger.
+- A synthetic self-addressed message with subject
+  `Veda Mail NVDA acceptance 2026-08-15` was successfully submitted on
+  2026-08-15. The deployed UI incremented both Inbox and Sent Items and the
+  Sent Items mailbox exposed the exact subject and body. The NVDA session did
+  not retain foreground focus during submission, so this proves delivery but
+  does not yet prove the successful-Send announcement.
+- A second authorized self-addressed message with subject
+  `Veda Mail NVDA announcement retry 2026-08-15` was also submitted. Inbox and
+  Sent Items both incremented to two and exposed the exact subject and body.
+  NVDA remained attached to the foreground YouTube tab while the browser
+  extension submitted the message in a background Veda Mail tab, so this retry
+  again proves delivery but not the successful-Send announcement. A later
+  foreground-only probe reproduced and documented that tab-focus limitation.
+- Further authorized foreground retries confirmed delivery through five Inbox
+  and Sent Items copies. With the correct Veda Mail tab visibly foregrounded,
+  NVDA announced the compose dialog and the Send control changing to
+  `Sending…`; it did not announce successful completion even though Drafts
+  cleared and Inbox and Sent Items incremented. This isolated a product defect:
+  the composer-owned live region unmounted when a successful send closed the
+  dialog. The remediation keeps a polite, atomic `Message sent.` status mounted
+  in the workspace and resets it when the next composer opens. Automated
+  component coverage is passing; deployed NVDA confirmation remains pending.
+- With Windows client-area animations temporarily disabled, Chrome reported
+  `prefers-reduced-motion: reduce`. Veda Mail computed animation and transition
+  durations of `0.01ms` and root scrolling as `auto`, as required by the
+  reduced-motion stylesheet. The Windows animation preference was restored.
+- With Windows High Contrast temporarily enabled, Chrome reported
+  `forced-colors: active`. Veda Mail exposed system foreground/background and
+  border colors for the focused account control, Search mail input, selected
+  Inbox, primary compose action, and permanent-delete confirmation. Cancel
+  closed the destructive dialog without deleting the message and restored focus
+  to the permanent-delete trigger. High Contrast, its flags and scheme,
+  animations, transparency, and Chrome zoom were restored to their original
+  values after the test.
+
+A successful synthetic Send announcement against the remediated deployed build
+remains pending. macOS Safari with VoiceOver is explicitly deferred because no
+Mac is available; it does not block the current Windows acceptance milestone.
 
 ## Content boundary
 

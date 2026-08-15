@@ -138,7 +138,7 @@ export interface ComposerViewModel {
   readonly onToggleBcc: () => void;
   readonly onToggleCc: () => void;
   readonly recoveryPrompt: ComposerRecoveryPromptViewModel;
-  readonly schedule: ComposerScheduleViewModel;
+  readonly schedule: ComposerScheduleViewModel; readonly sendAnnouncement: string;
   readonly sendConfirmation: ComposerConfirmationViewModel;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
   readonly showBcc: boolean;

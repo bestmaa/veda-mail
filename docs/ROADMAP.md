@@ -828,9 +828,11 @@ reduced motion, forced-colors focus, and accessible branding contrast. The live
 Stalwart test mailbox loaded after the 1m 19s Dokploy rollout; activating the
 skip link with Enter moved focus to the Inbox heading and retained a visible
 2px focus ring. The public health endpoint returned `ok` with private no-store
-and transport/security headers. The checkbox remains open until deployed NVDA
-with Chrome, VoiceOver with Safari, and manual Windows forced-colors acceptance
-are executed and recorded in `docs/ACCESSIBILITY.md`.
+and transport/security headers. The checkbox remains open until the remediated
+build's successful-Send status is confirmed with deployed NVDA and Chrome.
+Windows forced-colors acceptance is recorded in `docs/ACCESSIBILITY.md`; the
+project owner deferred macOS Safari and VoiceOver until compatible hardware is
+available.
 
 The provider-independent localization foundation is released through PR #97
 and deployed in production commit

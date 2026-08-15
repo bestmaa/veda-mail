@@ -49,6 +49,7 @@ const model = (): ComposerViewModel => ({
     minimum: "2026-08-02T09:00", onCancel: vi.fn(), onConfirm: vi.fn(),
     onOpen: vi.fn(), onTimeInput: vi.fn(), timeZone: "Asia/Calcutta",
   },
+  sendAnnouncement: "",
   sendConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   subject: "", subjectInput: vi.fn(), title: "Edit draft",
   to: "recipient@example.com", toInput: vi.fn(),

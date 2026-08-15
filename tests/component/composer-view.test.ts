@@ -74,7 +74,7 @@ const composer = (overrides: Partial<ComposerViewModel> = {}): ComposerViewModel
     onCancel: vi.fn(), onConfirm: vi.fn(), onOpen: vi.fn(),
     onTimeInput: vi.fn(), timeZone: "Asia/Calcutta",
   },
-  sendConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
+  sendAnnouncement: "", sendConfirmation: { isOpen: false, onCancel: vi.fn(), onConfirm: vi.fn() },
   showBcc: false,
   showCc: false,
   subject: "",
