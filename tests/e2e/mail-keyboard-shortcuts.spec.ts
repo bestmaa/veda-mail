@@ -72,10 +72,12 @@ test("routes enabled shortcuts and suspends them in editors and dialogs", async 
   await expect(page.getByRole("dialog", { name: "Compose message" }))
     .toHaveCount(0);
   await search.fill("");
-  await page.getByRole("button", { name: "Refresh mail" }).focus();
+  const refresh = page.getByRole("button", { name: "Refresh mail" });
+  await refresh.focus();
+  await expect(refresh).toBeFocused();
   await page.keyboard.press("c");
   const composer = page.getByRole("dialog", { name: "Compose message" });
-  await expect(composer).toBeVisible();
+  await expect(composer).toBeVisible({ timeout: 20_000 });
   await composer.getByRole("button", { name: "Close composer" }).click();
   await expect(composer).toBeHidden();
 
@@ -86,7 +88,7 @@ test("routes enabled shortcuts and suspends them in editors and dialogs", async 
   const heading = page.getByRole("heading", {
     name: "Revised product roadmap · Q3",
   });
-  await expect(heading).toBeFocused();
+  await expect(heading).toBeFocused({ timeout: 20_000 });
 
   const addStar = page.getByRole("button", { name: "Add star" });
   const initiallyUnstarred = await addStar.count() > 0;

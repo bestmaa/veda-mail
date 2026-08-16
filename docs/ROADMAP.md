@@ -622,6 +622,18 @@ JMAP connections remain explicitly unsupported because their mail
 session does not advertise an interoperable mail-sharing capability. Mock UI
 acceptance covers add, reload, and removal without overstating the permission
 scope. See [Mailbox delegation](./MAILBOX-DELEGATION.md).
+PR #180 merged as `27c45d7fd6f8e0d77258bede056ee8c3e6ad7147`; protected-main
+run `31699194858` passed and published the multi-platform image index
+`sha256:deb301861ba034d6d0547ba773a4fcca8fd814c61f69ad9a2c920a90941d13df`.
+On 2026-08-14 Dokploy pinned that immutable release and completed the production
+rollout in 36 seconds. The running amd64 container image ID matched the published
+manifest config digest `sha256:330ddb5e9552d3adbd449ec85d2dc547d722d5eaa8d85250b2327911646586b6`;
+Veda Mail and ClamAV reported healthy, public liveness returned HTTP 200 `ok`,
+readiness returned HTTP 200 with `data`, `scanner`, `session-store`, and
+`rate-limit-store` checks `ok`, security headers remained intact, and `/setup`
+redirected to the locked administration route. No provider ACL was mutated as
+part of promotion; live delegation remains capability-gated to an explicitly
+configured Standard IMAP account.
 
 The provider-independent Snooze slice is released and deployed. It persists a
 unique owned mailbox intent before provider mutation, encrypts owner-scoped jobs
