@@ -2,6 +2,7 @@ import type {
   AdminMailUserDetail,
   AdminMailUserSummary,
 } from "@/domain/admin/mail-user";
+import type { MailForwardingSnapshot } from "@/domain/admin/mail-forwarding";
 import { fetchData } from "@/transport/client/api-request";
 
 export type {
@@ -61,6 +62,37 @@ export const adminMailUsersApi = {
     return fetchData<{ readonly user: AdminMailUserDetail }>(
       `/api/v1/admin/users/${encodeURIComponent(accountId)}${query({ domain })}`,
       { cache: "no-store", ...(signal ? { signal } : {}) },
+    );
+  },
+
+  getForwarding(accountId: string, domain: string, signal?: AbortSignal) {
+    return fetchData<MailForwardingSnapshot>(
+      `/api/v1/admin/users/${encodeURIComponent(accountId)}/forwarding${query({ domain })}`,
+      { cache: "no-store", ...(signal ? { signal } : {}) },
+    );
+  },
+
+  setForwarding(accountId: string, domain: string, input: {
+    readonly confirmDestinationEmail: string;
+    readonly currentAdminPassword: string;
+    readonly destinationEmail: string;
+    readonly expectedRevision: number;
+    readonly otpCode?: string;
+  }) {
+    return fetchData<MailForwardingSnapshot>(
+      `/api/v1/admin/users/${encodeURIComponent(accountId)}/forwarding${query({ domain })}`,
+      { body: JSON.stringify(input), method: "PUT" },
+    );
+  },
+
+  removeForwarding(accountId: string, domain: string, input: {
+    readonly currentAdminPassword: string;
+    readonly expectedRevision: number;
+    readonly otpCode?: string;
+  }) {
+    return fetchData<MailForwardingSnapshot>(
+      `/api/v1/admin/users/${encodeURIComponent(accountId)}/forwarding${query({ domain })}`,
+      { body: JSON.stringify(input), method: "DELETE" },
     );
   },
 

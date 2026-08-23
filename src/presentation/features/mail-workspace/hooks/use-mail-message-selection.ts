@@ -39,6 +39,7 @@ export const useMailMessageSelection = (input: {
       !isCurrentRequest(requestId) ||
       !commitMessage(message, requestScope)
     ) return;
+    setIsReaderLoading(false);
     if (message.isUnread) {
       const result = validateBulkMessageMutationResult(
         await mailApi.mutateMessages({

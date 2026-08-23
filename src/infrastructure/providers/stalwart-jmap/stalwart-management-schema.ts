@@ -133,9 +133,31 @@ const setErrorSchema = z
 export const stalwartSetResultSchema = z
   .object({
     created: z.record(z.string().max(128), createdObjectSchema).optional(),
+    destroyed: z.array(idSchema).max(256).optional(),
     notCreated: z.record(z.string().max(128), setErrorSchema).optional(),
+    notDestroyed: z.record(z.string().max(128), setErrorSchema).optional(),
+    notUpdated: z.record(z.string().max(128), setErrorSchema).optional(),
+    updated: z.record(z.string().max(512), z.unknown()).optional(),
   })
   .passthrough();
+
+export const stalwartSystemScriptSchema = z.object({
+  contents: z.string().max(768 * 1_024),
+  description: z.string().max(512).nullable().optional(),
+  id: idSchema,
+  isActive: z.boolean().optional(),
+  name: z.string().min(1).max(128),
+}).strip();
+
+export const stalwartMtaStageDataSchema = z.object({
+  id: z.literal("singleton"),
+  script: z.object({
+    else: z.string().max(128),
+    match: z.array(z.object({
+      if: z.string().max(1_024), then: z.string().max(128),
+    }).strict()).max(128).optional(),
+  }).strict(),
+}).passthrough();
 
 export const stalwartMethodErrorSchema = z
   .object({ type: z.string().min(1).max(128) })

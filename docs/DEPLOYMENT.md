@@ -73,6 +73,12 @@ VEDA_MAIL_CLAMAV_PORT=3310
 VEDA_MAIL_CLAMD_CONFIG_PATH=./config/clamd.conf
 ```
 
+If administrator-managed forwarding is enabled, grant the dedicated Stalwart
+key only the additional Sieve/MTA permissions listed in the
+[forwarding runbook](ADMIN-MAIL-FORWARDING.md). Before production use, verify a
+local copy, an external copy, strict-DMARC behavior, disable behavior, and the
+audit trail with a controlled mailbox.
+
 The provider allowlist contains hostnames only. The public URL is the Veda Mail
 origin, uses HTTPS, and has no trailing slash. Then:
 

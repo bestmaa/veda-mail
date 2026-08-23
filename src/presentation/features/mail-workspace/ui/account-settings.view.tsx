@@ -1,4 +1,5 @@
 import {
+  Forward,
   KeyRound,
   LoaderCircle,
   ServerCog,
@@ -161,6 +162,19 @@ export const AccountSettingsView = ({
               </form>
 
               <EmailSignatureSettingsView settings={settings.signatures} />
+
+              {settings.forwarding.enabled ? (
+                <section aria-labelledby="member-forwarding-title" className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <Forward aria-hidden className="mt-0.5 text-indigo-600" size={20} />
+                    <div>
+                      <h3 className="font-bold text-slate-900" id="member-forwarding-title">Administrator-managed forwarding</h3>
+                      <p className="mt-1 break-words text-xs leading-5 text-slate-700">Incoming mail is copied to <strong>{settings.forwarding.destinationEmail}</strong>. A copy stays in this mailbox. Status: <strong>{settings.forwarding.status}</strong>.</p>
+                      <p className="mt-2 text-[11px] text-slate-600">Only an administrator can change or disable this setting.</p>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
 
               <NewMailNotificationSettingsView notifications={settings.notifications} />
 

@@ -39,7 +39,7 @@ export const encryptSharedRecord = (
   ]);
   const maxBytes = kind === "mail-user-idempotency" || kind === "installation"
     ? 2 * 1_024 * 1_024
-    : 32 * 1_024;
+    : kind === "mail-forwarding" ? 512 * 1_024 : 32 * 1_024;
   if (ciphertext.byteLength > maxBytes) {
     throw new RangeError("Shared singleton record exceeds its safe size limit.");
   }

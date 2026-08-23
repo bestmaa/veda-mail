@@ -137,6 +137,7 @@ const REVIEWED_HELPER_EXPORTS = new Map([
     new Set(["saveDraftWithAttachments"]),
   ],
   ["@/server/mail/gateway-cache", new Set(["resolveGateway"])],
+  ["@/server/mail-forwarding/member-mail-forwarding", new Set(["readMemberMailForwarding"])],
   ["@/server/observability/structured-log", new Set(["logError"])],
   ["@/server/mail/mail-update-wait", new Set(["waitForMailUpdate"])],
   ["@/server/security/attachment-inspection", new Set(["MagicNumberMimeDetector"])],
@@ -232,7 +233,6 @@ const hasExport = (registry, moduleName, exportName) => registry.get(moduleName)
   false;
 export const isAuthWrapperExport = (moduleName, exportName) =>
   hasExport(AUTH_WRAPPER_EXPORTS, moduleName, exportName);
-
 export const isRequestUtilityExport = (moduleName, exportName) =>
   hasExport(REQUEST_UTILITY_EXPORTS, moduleName, exportName) ||
   hasExport(REVIEWED_HELPER_EXPORTS, moduleName, exportName);

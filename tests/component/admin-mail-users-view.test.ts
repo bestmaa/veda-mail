@@ -39,6 +39,27 @@ const model = (
     storageLabel: "1 KiB of 10 KiB",
     timeZone: "Asia/Calcutta",
   },
+  forwarding: {
+    adminPassword: "",
+    adminPasswordInput: vi.fn(),
+    availability: "available",
+    confirmation: "",
+    confirmationInput: vi.fn(),
+    destination: "",
+    destinationInput: vi.fn(),
+    error: null,
+    isEnabled: false,
+    isLoading: false,
+    isSaving: false,
+    onDisable: vi.fn(),
+    onEnable: vi.fn(),
+    otpCode: "",
+    otpCodeInput: vi.fn(),
+    reason: null,
+    requiresOtp: true,
+    status: null,
+    success: null,
+  },
   domainInput: vi.fn(),
   domains: ["example.com"],
   error: null,
@@ -85,7 +106,7 @@ describe("admin mailbox users view", () => {
   it("uses password-manager-safe fields and conditional admin OTP", () => {
     const html = render(model());
 
-    expect(html.match(/type="password"/g)).toHaveLength(3);
+    expect(html.match(/type="password"/g)).toHaveLength(4);
     expect(html.match(/autocomplete="new-password"/gi)).toHaveLength(2);
     expect(html).toMatch(/autocomplete="current-password"/i);
     expect(html).toMatch(/autocomplete="one-time-code"/i);

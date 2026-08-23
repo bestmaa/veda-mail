@@ -529,6 +529,22 @@ Immediately before DELETE it issues STATUS and aborts if any message exists.
 IMAP cannot make that final check and DELETE atomic, so a remote delivery in
 that narrow interval remains a documented provider limitation.
 
+## Administrator-managed forwarding
+
+Forwarding is a separate admin control plane, not a member mail-rule action.
+An admin-scoped, same-origin API verifies the mailbox against the allowed-domain
+provider directory, requires password/2FA step-up, and applies optimistic
+ledger revisions. The encrypted singleton ledger migrates from a mode-0600
+local record to shared Redis with exact-record CAS.
+
+The Stalwart adapter compiles the full desired map, including current aliases,
+into its owned trusted Sieve system script and uses `redirect :copy`. It selects
+that script only when the DATA stage is disabled or already selects the exact
+Veda name; any other selection fails closed. Provider reconciliation precedes
+an `active` transition, and failed disable reconciliation restores a visible
+error intent instead of reporting a false disabled state. See
+[the forwarding design and runbook](ADMIN-MAIL-FORWARDING.md).
+
 Mailbox color is presentation metadata rather than a JMAP or IMAP standard.
 The fixed `/data/mailbox-appearance.json` sidecar stores no raw email address,
 mailbox ID, or color outside authenticated ciphertext. HMAC-SHA-256 keys select

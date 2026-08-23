@@ -6,6 +6,7 @@ const policies = new Map([
   ["src/server/installation/installation-file.ts", "src/server/installation/installation-shared.ts"],
   ["src/server/labels/label-catalog-file.ts", "src/server/labels/label-catalog-access.ts"],
   ["src/server/mail-users/mail-user-idempotency-file.ts", "src/server/mail-users/mail-user-idempotency-store.ts"],
+  ["src/server/mail-forwarding/mail-forwarding.store.ts", "src/server/mail-forwarding/mail-forwarding.store.ts"],
   ["src/server/mailboxes/mailbox-appearance-file.ts", "src/server/mailboxes/mailbox-appearance.store.ts"],
   ["src/server/organization/data-retention-policy.store.ts", "src/server/organization/data-retention-policy.store.ts"],
   ["src/server/organization/mail-content-policy.store.ts", "src/server/organization/mail-content-policy.store.ts"],

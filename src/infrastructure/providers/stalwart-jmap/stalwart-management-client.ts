@@ -142,7 +142,7 @@ export class StalwartManagementClient {
         throw new StalwartManagementRequestError("invalid-response", mutation);
       }
       throw new StalwartManagementRequestError(
-        "method-rejected",
+        parsedError.data.type === "forbidden" ? "auth" : "method-rejected",
         mutation && parsedError.data.type === "serverPartialFail",
       );
     }

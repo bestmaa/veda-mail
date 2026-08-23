@@ -138,6 +138,7 @@ can:
 - Search and page through a bounded provider-backed result
 - View safe account details without credentials, roles, or raw permissions
 - Create an ordinary user with an initial password
+- Configure or disable one admin-controlled external forwarding destination
 
 Creating a user requires the current Veda administrator password and, when
 enabled, an authenticator or unused backup code. Veda Mail hard-codes the
@@ -167,6 +168,12 @@ for least-privilege API-key permissions and rotation.
 After provisioning, give the member the Veda Mail URL. The member signs in
 using the full email address and initial mailbox password and should change it
 through a provider-supported account workflow.
+
+Automatic forwarding is administrator-only, always keeps a local copy, covers
+the primary address and current aliases, rejects every managed-domain target,
+and requires administrator step-up. Members can see but cannot mutate the
+setting. Provider conflicts and delivery caveats are documented in
+[Administrator-managed mail forwarding](ADMIN-MAIL-FORWARDING.md).
 
 ## Member two-factor authentication
 
