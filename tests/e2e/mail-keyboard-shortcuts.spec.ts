@@ -87,6 +87,8 @@ test("routes enabled shortcuts and suspends them in editors and dialogs", async 
     name: "Revised product roadmap · Q3",
   });
   await expect(heading).toBeFocused();
+  await expect(page.getByRole("button", { name: "Mark as unread" }))
+    .toBeEnabled({ timeout: 20_000 });
 
   const addStar = page.getByRole("button", { name: "Add star" });
   const initiallyUnstarred = await addStar.count() > 0;

@@ -13,6 +13,7 @@ export type SharedRecordKind =
   | "data-retention-policy"
   | "installation"
   | "mail-content-policy"
+  | "mail-forwarding"
   | "mail-user-idempotency"
   | "organization-policy"
   | "security-audit";
@@ -23,6 +24,7 @@ const MAX_RECORD_BYTES: Readonly<Record<SharedRecordKind, number>> = {
   "data-retention-policy": 8 * 1_024,
   "installation": 3 * 1_024 * 1_024,
   "mail-content-policy": 48 * 1_024,
+  "mail-forwarding": 768 * 1_024,
   "mail-user-idempotency": 3 * 1_024 * 1_024,
   "organization-policy": 8 * 1_024,
   "security-audit": 24 * 1_024 * 1_024,

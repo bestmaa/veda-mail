@@ -10,10 +10,14 @@ import {
 const origin = "http://127.0.0.1:3101";
 const setupToken = "playwright-setup-token-1234567890";
 
-export const expectNoSeriousAccessibilityViolations = async (page: Page) => {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
+export const expectNoSeriousAccessibilityViolations = async (
+  page: Page,
+  include?: string,
+) => {
+  let audit = new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]);
+  if (include) audit = audit.include(include);
+  const results = await audit.analyze();
   const violations = results.violations
     .filter(({ impact }) => impact === "critical" || impact === "serious")
     .map(({ help, id, nodes }) => ({
@@ -80,7 +84,15 @@ export const signIn = async (page: Page) => {
 export const mailSessionScopeHeaders = async (
   page: Page,
 ): Promise<Readonly<Record<string, string>>> => {
-  const response = await page.request.get("/api/v1/mail/workspace");
+  let response;
+  try {
+    response = await page.request.get("/api/v1/mail/workspace");
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("ECONNRESET")) {
+      throw error;
+    }
+    response = await page.request.get("/api/v1/mail/workspace");
+  }
   expect(response.ok()).toBe(true);
   const payload = (await response.json()) as {
     readonly data: { readonly sessionScope: string };

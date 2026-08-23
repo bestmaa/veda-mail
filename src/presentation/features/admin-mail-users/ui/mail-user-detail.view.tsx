@@ -1,12 +1,16 @@
 import { LoaderCircle, Mail, MapPin, Tag } from "lucide-react";
 
 import type { AdminMailUserDetailViewModel } from "@/presentation/features/admin-mail-users/admin-mail-users.view-model";
+import type { AdminMailForwardingViewModel } from "@/presentation/features/admin-mail-users/admin-mail-users.view-model";
+import { MailForwardingView } from "@/presentation/features/admin-mail-users/ui/mail-forwarding.view";
 
 export const MailUserDetailView = ({
   detail,
   isLoading,
+  forwarding,
 }: {
   readonly detail: AdminMailUserDetailViewModel | null;
+  readonly forwarding: AdminMailForwardingViewModel;
   readonly isLoading: boolean;
 }) => (
   <section
@@ -27,6 +31,7 @@ export const MailUserDetailView = ({
           <p className="font-extrabold text-slate-900">{detail.displayName}</p>
           <p className="mt-1 break-all text-xs text-slate-500">{detail.email}</p>
         </div>
+        <MailForwardingView model={forwarding} />
         <dl className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           <div><dt className="font-bold text-slate-400">Created</dt><dd className="mt-1 font-semibold">{detail.createdLabel}</dd></div>
           <div><dt className="font-bold text-slate-400">Storage</dt><dd className="mt-1 font-semibold">{detail.storageLabel}</dd></div>

@@ -52,6 +52,15 @@ export interface MemberPasswordInput {
   readonly otpCode?: string;
 }
 
+export type MemberForwardingSnapshot =
+  | { readonly enabled: false }
+  | {
+      readonly destinationEmail: string;
+      readonly enabled: true;
+      readonly keepLocalCopy: true;
+      readonly status: "active" | "applying" | "error";
+    };
+
 export interface SessionResult {
   readonly authenticated: boolean;
   readonly mfaRequired?: boolean;
@@ -131,6 +140,14 @@ export const memberSettingsApi = {
         method: "PATCH",
       },
     );
+  },
+};
+
+export const memberForwardingApi = {
+  get(sessionScope: string) {
+    return fetchData<MemberForwardingSnapshot>("/api/v1/member/forwarding", {
+      headers: mailSessionScopeHeaders(sessionScope),
+    });
   },
 };
 

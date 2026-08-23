@@ -29,8 +29,17 @@ Members authenticate with their own full email address and mailbox password.
 ### Stalwart mailbox-user management
 
 The optional `/admin` mailbox-user feature uses Stalwart's management JMAP
-capability. Create a dedicated API key in Stalwart, select **Replace**
-permission mode, and grant only:
+capability. On Stalwart v0.16, account creation also verifies that the caller
+can grant every permission inherited by the new account's default **User**
+role. A **Replace** API key containing only the management methods below can
+therefore list accounts but cannot create one; Stalwart returns `forbidden`.
+
+Use a dedicated Stalwart automation account whose effective permissions are
+the normal **User** role plus the management permissions below, and create its
+API key in **Inherit** mode. Do not use an API key that inherits an unrestricted
+administrator/superuser account. If your deployment generates a **Replace**
+key instead, it must contain both the permissions below and the complete
+effective permission set of the configured default **User** role:
 
 ```text
 authenticate
@@ -42,6 +51,12 @@ sysAccountGet
 sysAccountCreate
 sysActionCreate
 actionInvalidateNegativeCaches
+sysMtaStageDataGet
+sysMtaStageDataUpdate
+sysSieveSystemScriptQuery
+sysSieveSystemScriptGet
+sysSieveSystemScriptCreate
+sysSieveSystemScriptUpdate
 ```
 
 Set an expiry and `allowedIps` restriction when the deployment topology makes
@@ -50,6 +65,17 @@ secret manager as `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY`. Never put it in the
 Veda provider configuration: that profile is persisted and returned to the
 admin settings browser. The key cannot log in to mail protocols, but it can
 provision accounts, so rotate/revoke it like a production credential.
+
+The Sieve/MTA permissions are needed only for administrator-managed
+forwarding. Omit them if that feature will not be used. Veda Mail refuses to
+overwrite an existing DATA-stage script; see the
+[forwarding runbook](ADMIN-MAIL-FORWARDING.md).
+
+After creating or rotating the key, test both an account query and a disposable
+mailbox creation. Read/query success alone does not prove that v0.16 will allow
+the key to grant the default User role. A `MAIL_USER_PROVIDER_AUTH` response on
+creation means the effective key permissions are incomplete; Veda never logs
+Stalwart's private error description or the credential.
 
 Also set `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` to the exact HTTPS origin of
 that Stalwart server, for example `https://mail.example.com` (no path). Veda

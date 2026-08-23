@@ -64,6 +64,50 @@ describe("Stalwart mailbox password policy boundaries", () => {
     ).rejects.toMatchObject({ code: "invalid-input" });
   });
 
+  it("maps a Stalwart v0.16 permission rejection to provider auth", async () => {
+    installManagementFetch((call) => {
+      const common = commonReadHandler(call);
+      if (common) return common;
+      if (call.method === "x:Authentication/get") {
+        return { payload: authentication };
+      }
+      if (call.method === "x:Account/query") {
+        return { payload: queryResult([]) };
+      }
+      if (call.method === "x:Account/set") {
+        return {
+          payload: { notCreated: { user: { type: "forbidden" } } },
+        };
+      }
+      throw new Error(`Unexpected method ${call.method}`);
+    });
+
+    await expect(
+      createAdministrator().createUser(input),
+    ).rejects.toMatchObject({ code: "provider-auth" });
+  });
+
+  it("maps a Stalwart v0.16 forbidden method response to provider auth", async () => {
+    installManagementFetch((call) => {
+      const common = commonReadHandler(call);
+      if (common) return common;
+      if (call.method === "x:Authentication/get") {
+        return { payload: authentication };
+      }
+      if (call.method === "x:Account/query") {
+        return { payload: queryResult([]) };
+      }
+      if (call.method === "x:Account/set") {
+        return { method: "error", payload: { type: "forbidden" } };
+      }
+      throw new Error(`Unexpected method ${call.method}`);
+    });
+
+    await expect(
+      createAdministrator().createUser(input),
+    ).rejects.toMatchObject({ code: "provider-auth" });
+  });
+
   it("accepts 1000 password characters but rejects 1001", async () => {
     const { calls } = installManagementFetch((call) => {
       const common = commonReadHandler(call);

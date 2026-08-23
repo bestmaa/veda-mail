@@ -1187,8 +1187,14 @@ operator monitoring.
   same origin, optimistic revision, subject/request rate limits, and bounded
   JSON. Browser capability filtering is usability only; the compiler and
   provider adapter enforce capabilities again.
-- External redirect/forward and body/regex rules are deliberately absent from
-  v1, preventing automatic-forward loops and a new data-exfiltration surface.
+- External redirect/forward remains absent from member-created rules. The
+  separate administrator-only forwarding control requires step-up, permits one
+  external target, keeps a local copy, rejects managed-domain destinations,
+  encrypts desired state, audits outcomes, authenticates its provider script
+  with a deployment-key marker, and fails closed on any DATA-stage or reserved
+  script-name conflict. Destination ownership is verified out of band;
+  DMARC rejection and authorized-administrator exfiltration remain residual
+  risks. See [the forwarding threat controls](ADMIN-MAIL-FORWARDING.md).
 
 ### Imports and exports
 

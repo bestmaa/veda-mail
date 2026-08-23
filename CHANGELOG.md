@@ -9,6 +9,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Stalwart v0.16 mailbox creation permission rejections now surface as a safe
+  management-credential error instead of an invalid-response error. The setup
+  guide now documents v0.16's requirement that the provisioning credential be
+  able to grant the default User role, including a scoped automation-account
+  recipe and a disposable creation check.
+- Pinned transitive `deepmerge-ts` 8.0.2 for the mail parsing and HTML-to-text
+  path, removing the recursive-object stack-exhaustion advisory while retaining
+  the existing MIME and rich-text regression coverage.
 - Standard IMAP/SMTP Rules now consume the RFC 5804 capability greeting that a
   ManageSieve server reissues after STARTTLS before sending the first command.
   This prevents every authenticated response from being associated with the
@@ -72,6 +80,14 @@ and the project follows [Semantic Versioning](https://semver.org/).
   19m44s of its previous 20-minute limit
 
 ### Added
+
+- Added administrator-only, per-mailbox automatic external forwarding for
+  Stalwart. A password/2FA step-up protected admin control compiles primary
+  addresses and aliases into one owned DATA-stage `redirect :copy` system
+  script, keeps local copies, rejects managed-domain loop risks, stores desired
+  state in an encrypted CAS ledger, audits privacy-bounded outcomes, and gives
+  members read-only visibility. Provider conflicts fail closed and failed
+  disable operations remain visibly in error until reconciled.
 
 - Added an architecture gate that inventories every direct durable `/data`
   owner and requires an explicit shared-state bridge. Together with encrypted

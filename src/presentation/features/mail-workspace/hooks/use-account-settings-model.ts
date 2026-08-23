@@ -12,7 +12,7 @@ import { useVacationSettingsModel } from "@/presentation/features/mail-workspace
 import { useMailImportModel } from "@/presentation/features/mail-workspace/hooks/use-mail-import-model";
 import { ignoreMailSessionFailure, type MailSessionFailureHandler } from "@/presentation/features/mail-workspace/hooks/mail-session-failure";
 import { useModalDialogFocus } from "@/presentation/shared/hooks/use-modal-dialog-focus";
-import { memberSettingsApi, type MemberSettingsSnapshot } from "@/transport/client/api-client";
+import { memberForwardingApi, memberSettingsApi, type MemberForwardingSnapshot, type MemberSettingsSnapshot } from "@/transport/client/api-client";
 export const useAccountSettingsModel = (
   fallbackEmail: string,
   fallbackName: string,
@@ -27,6 +27,7 @@ export const useAccountSettingsModel = (
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<MemberSettingsSnapshot | null>(null);
+  const [forwarding, setForwarding] = useState<MemberForwardingSnapshot>({ enabled: false });
   const [displayName, setDisplayName] = useState(fallbackName);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
@@ -48,21 +49,15 @@ export const useAccountSettingsModel = (
   const mailImport = useMailImportModel(sessionScope, rules.mailboxes, refreshWorkspace, handleSessionFailure);
   useLayoutEffect(() => {
     scopeRef.current = sessionScope;
-    setIsOpen(false);
-    setIsCloseConfirmationOpen(false);
-    setIsLoading(false);
-    setSnapshot(null);
+    setIsOpen(false); setIsCloseConfirmationOpen(false); setIsLoading(false);
+    setSnapshot(null); setForwarding({ enabled: false });
     setDisplayName(fallbackName);
-    setProfileError(null);
-    setProfileSuccess(null);
-    setIsProfileSaving(false);
+    setProfileError(null); setProfileSuccess(null); setIsProfileSaving(false);
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setOtpCode("");
-    setPasswordError(null);
-    setPasswordSuccess(null);
-    setIsPasswordSaving(false);
+    setPasswordError(null); setPasswordSuccess(null); setIsPasswordSaving(false);
     resetTwoFactor(false);
     resetMemberSessions();
   }, [fallbackName, handleSessionFailure, resetMemberSessions, resetTwoFactor, sessionScope]);
@@ -93,11 +88,14 @@ export const useAccountSettingsModel = (
       setProfileError("Mailbox settings are still loading.");
       return;
     }
-    void memberSettingsApi
-      .get(requestScope)
-      .then((next) => {
+    void Promise.all([
+      memberSettingsApi.get(requestScope),
+      memberForwardingApi.get(requestScope),
+    ])
+      .then(([next, nextForwarding]) => {
         if (scopeRef.current !== requestScope) return;
         setSnapshot(next);
+        setForwarding(nextForwarding);
         setDisplayName(next.profile.displayName);
         resetTwoFactor(next.security.twoFactorEnabled);
       })
@@ -204,6 +202,7 @@ export const useAccountSettingsModel = (
     },
     displayName,
     email: snapshot?.profile.email ?? fallbackEmail,
+    forwarding,
     isLoading, mailImport,
     isOpen,
     notifications,

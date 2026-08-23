@@ -240,7 +240,8 @@ VEDA_MAIL_CLAMAV_PORT=3310
 
 `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` and its exact HTTPS
 `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding are optional and enable only the
-Stalwart admin mailbox-user feature. Keep the key in the deployment secret
+Stalwart admin mailbox-user and administrator-managed forwarding features. Keep
+the key in the deployment secret
 manager; it is never part of the provider profile or returned to browser
 JavaScript. Veda refuses to send it when the active provider origin differs.
 
@@ -325,6 +326,7 @@ Back up `/data` before every upgrade. See the
 
 - [Installation and first-run setup](docs/INSTALLATION.md)
 - [Organization administration](docs/ADMINISTRATION.md)
+- [Administrator-managed mail forwarding](docs/ADMIN-MAIL-FORWARDING.md)
 - [Docker, Dokploy, and reverse proxies](docs/DEPLOYMENT.md)
 - [Observability, dashboards, and alerts](docs/OBSERVABILITY.md)
 - [Security audit log and operator response](docs/SECURITY-AUDIT.md)

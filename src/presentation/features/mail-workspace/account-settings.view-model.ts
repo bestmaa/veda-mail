@@ -18,6 +18,13 @@ export interface AccountSettingsViewModel {
   readonly closeConfirmation: EmailSignatureConfirmationViewModel;
   readonly displayName: string;
   readonly email: string;
+  readonly forwarding:
+    | { readonly enabled: false }
+    | {
+        readonly destinationEmail: string;
+        readonly enabled: true;
+        readonly status: "active" | "applying" | "error";
+      };
   readonly isLoading: boolean;
   readonly isOpen: boolean;
   readonly mailImport: MailImportViewModel;

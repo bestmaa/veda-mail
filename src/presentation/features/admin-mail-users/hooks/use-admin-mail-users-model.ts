@@ -1,5 +1,4 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -10,7 +9,6 @@ import {
   type ChangeEventHandler,
   type FormEventHandler,
 } from "react";
-
 import {
   mailUserDetail,
   mailUserListItem,
@@ -23,7 +21,7 @@ import {
   type BoundAdminMailUsersSnapshot,
 } from "@/presentation/features/admin-mail-users/admin-mail-users-snapshot";
 import type { AdminMailUsersViewProps } from "@/presentation/features/admin-mail-users/admin-mail-users.view-model";
-import { useAdminMailUserCreateModel } from "@/presentation/features/admin-mail-users/hooks/use-admin-mail-user-create-model";
+import { useAdminMailUserCreateModel } from "@/presentation/features/admin-mail-users/hooks/use-admin-mail-user-create-model"; import { useAdminMailForwardingModel } from "@/presentation/features/admin-mail-users/hooks/use-admin-mail-forwarding-model";
 import {
   adminMailUsersApi,
   type AdminMailUserDetail,
@@ -68,6 +66,9 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
     },
     [reportError, unauthorized],
   );
+  const { load: loadForwarding, reset: resetForwarding, ...forwarding } =
+    useAdminMailForwardingModel({ handleFailure,
+      requiresOtp: boundSnapshot?.value.adminTwoFactorEnabled ?? false });
 
   const load = useCallback(
     async (domain?: string, searchTerm = "") => {
@@ -80,6 +81,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
       detailRequest.current = null;
       setIsDetailLoading(false);
       setDetail(null);
+      resetForwarding();
       setError(null);
       try {
         const next = await adminMailUsersApi.getSnapshot({
@@ -99,7 +101,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
         if (sequence === requestSequence.current) setIsLoading(false);
       }
     },
-    [handleFailure],
+    [handleFailure, resetForwarding],
   );
 
   useEffect(() => {
@@ -167,11 +169,10 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
       setIsDetailLoading(true);
       setError(null);
       try {
-        const result = await adminMailUsersApi.getDetail(
-          id,
-          selectedDomain,
-          request.signal,
-        );
+        const [result] = await Promise.all([
+          adminMailUsersApi.getDetail(id, selectedDomain, request.signal),
+          loadForwarding({ domain: selectedDomain, id }, request.signal),
+        ]);
         if (detailRequest.current !== request) return;
         setDetail(result.user);
       } catch (caught) {
@@ -182,7 +183,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
         if (detailRequest.current === request) setIsDetailLoading(false);
       }
     },
-    [handleFailure, selectedDomain],
+    [handleFailure, loadForwarding, selectedDomain],
   );
   const onCreated = useCallback((user: AdminMailUserDetail, domain: string) => {
     if (selectedDomainValue.current !== domain) return;
@@ -222,7 +223,6 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
   const [capabilityTitle, capabilityDescription] = adminMailUsersCapabilityCopy(
     snapshot?.status ?? null,
   );
-
   return {
     capabilityDescription,
     capabilityTitle,
@@ -231,6 +231,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
     domainInput: onDomainInput,
     domains: snapshot?.allowedDomains ?? [],
     error,
+    forwarding,
     isDetailLoading,
     isLoading,
     isLoadingMore,

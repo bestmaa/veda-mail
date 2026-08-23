@@ -52,9 +52,17 @@ export class StalwartMailUserProvisioner {
         if (await this.safeFindExact(domain, input)) {
           throw duplicateMailUserError();
         }
+        if (error.type === "forbidden") {
+          throw new MailUserAdministrationError(
+            "provider-auth",
+            "Stalwart denied permission to create the mailbox.",
+          );
+        }
         if (
           error.type === "invalidProperties" ||
-          error.type === "invalidArguments"
+          error.type === "invalidArguments" ||
+          error.type === "invalidForeignKey" ||
+          error.type === "validationFailed"
         ) {
           throw new MailUserAdministrationError(
             "invalid-input",

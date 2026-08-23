@@ -107,6 +107,18 @@ across replicas and shares safe replays. Preserve the job key and Redis prefix,
 verify the archive and Redis backup, and drain mailbox creation before rollback.
 Never restore or delete a pending/orphaned claim to force provider I/O.
 
+Administrator-managed forwarding reuses the same scoped Stalwart management
+credential but requires the additional permissions listed in
+[the forwarding runbook](ADMIN-MAIL-FORWARDING.md). The feature is disabled
+until both management variables are configured and the provider DATA stage is
+either disabled or already selects Veda Mail's owned script. Back up the exact
+`VEDA_MAIL_JOB_KEY` and `/data/mail-forwarding.enc.json`; shared-state mode
+migrates that encrypted ledger to Redis and archives the local file. Start one
+replica, verify the provider script and test both local and external delivery,
+then scale out. Before rollback, disable every forward and confirm that the
+owned script contains no redirects. Do not overwrite or delete an
+operator-owned DATA-stage script.
+
 Message-list preferences add
 `/data/message-list-preferences.json` on first save. It contains encrypted,
 account-isolated density, newest/oldest order, preview, send confirmation, and
