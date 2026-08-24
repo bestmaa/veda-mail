@@ -19,7 +19,7 @@ provider adapter boundary. Stalwart JMAP and standard IMAP/SMTP are included.
 - Provider-independent member authenticator 2FA with backup codes
 - Organization name, product name, logo, colors, and repository link
 - Allowed-domain controls and a protected provider configuration
-- Secure Stalwart mailbox-user listing, details, and creation with admin
+- Secure Stalwart mailbox-user listing, details, creation, access disable, and deletion with admin
   password/2FA step-up, durable idempotency, and a server-only management key
 - Signed cursor-paginated inbox and search with per-account compact,
   comfortable, or spacious density, newest/oldest order, and an optional
@@ -150,6 +150,7 @@ least-privilege key described in the
 ```dotenv
 VEDA_MAIL_STALWART_MANAGEMENT_API_KEY=one-time-displayed-api-key
 VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN=https://mail.example.com
+VEDA_MAIL_PROTECTED_MAILBOXES=automation@example.com
 ```
 
 Provider allowlist entries are hostnames only—no scheme, path, or port. Then:
@@ -240,7 +241,7 @@ VEDA_MAIL_CLAMAV_PORT=3310
 
 `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` and its exact HTTPS
 `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` binding are optional and enable only the
-Stalwart admin mailbox-user and administrator-managed forwarding features. Keep
+Stalwart admin mailbox-user lifecycle and administrator-managed forwarding features. Keep
 the key in the deployment secret
 manager; it is never part of the provider profile or returned to browser
 JavaScript. Veda refuses to send it when the active provider origin differs.

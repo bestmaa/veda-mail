@@ -89,7 +89,7 @@ the current administrator a replacement token.
 It then creates a normalized `MailGateway`. This keeps login and admin routes
 free of Stalwart-specific field names.
 
-Mailbox provisioning uses a separate optional
+Mailbox provisioning and lifecycle use a separate optional
 `MailUserAdministrationPort`; it is never added to the member `MailGateway`.
 Only the Stalwart adapter implements this port. A server resolver reads
 `VEDA_MAIL_STALWART_MANAGEMENT_API_KEY` from the process environment and
@@ -106,9 +106,10 @@ normalized allowed-domain set. Provider records are projected into a safe DTO;
 credentials, roles, permissions, groups, and unknown fields never cross the
 infrastructure boundary.
 
-Account creation requires Veda administrator password/2FA step-up. A durable,
-bounded idempotency ledger records a keyed intent fingerprint
-and safe terminal result for 24 hours. It never records the initial mailbox
+Account creation, access disable, and deletion require Veda administrator
+password/2FA step-up. Disable/delete additionally require the complete exact
+mailbox email. A durable, bounded idempotency ledger records a keyed intent
+fingerprint and operation-specific safe terminal result for 24 hours. It never records the initial mailbox
 password or a password-derived verifier. Expired safe metadata is removed on
 the next provisioning access. A persisted pending entry after a crash is
 treated as an uncertain outcome and blocks a blind provider retry. The
@@ -122,6 +123,14 @@ one owner across replicas. Remote waiters poll the encrypted result, completed
 replays drop the short-lived owner token, definite failures remove the claim,
 and uncertain failures or an expired two-minute owner lease remain orphaned
 rather than allowing duplicate provider I/O.
+
+Lifecycle orchestration removes a matching Veda-managed forwarding entry and
+revokes all HMAC-owner-indexed member sessions before the account mutation.
+Stalwart disable uses `x:Account/set` update with an empty credential
+collection; delete uses the exact resolved ID in `destroy`. Any applied cleanup
+marks the audit operation partial if a later step fails. A provider mutation
+whose terminal replay result cannot be persisted leaves an orphaned claim,
+preventing a blind repeat of an irreversible call.
 
 The deterministic demo provider is registered only in development and test.
 Production registries contain deployable providers only.

@@ -95,6 +95,15 @@ export const getMailForwardingSnapshot = async (
   } catch (error) { return providerFailure(error); }
 };
 
+export const getManagedMailForwarding = async (sourceEmail: string) => {
+  const ledger = await mailForwardingStore.get();
+  return {
+    configuration: ledger.entries.find((entry) =>
+      entry.sourceEmail.toLowerCase() === sourceEmail.toLowerCase()) ?? null,
+    revision: ledger.revision,
+  };
+};
+
 const nextLedger = (
   current: MailForwardingLedger,
   entries: readonly MailForwardingConfiguration[],

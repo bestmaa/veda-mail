@@ -4,18 +4,21 @@ import type {
   AdminMailUserCreateInput,
   AdminMailUserDetailInput,
   AdminMailUserListInput,
+  AdminMailUserLifecycleInput,
   MailUserAdministrationPort,
 } from "@/application/ports/mail-user-administration.port";
 import type {
   AdminMailUserCreateResult,
   AdminMailUserDetail,
   AdminMailUserPage,
+  AdminMailUserLifecycleResult,
   MailUserCreationAvailability,
 } from "@/domain/admin/mail-user";
 import { StalwartManagementClient } from "@/infrastructure/providers/stalwart-jmap/stalwart-management-client";
 import { StalwartMailUserDirectory } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-user-directory";
 import { translateMailUserError } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-user-errors";
 import { StalwartMailUserProvisioner } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-user-provisioner";
+import { StalwartMailUserLifecycle } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-user-lifecycle";
 
 export interface StalwartMailUserAdministratorConfig {
   readonly allowedDomains: readonly string[];
@@ -29,6 +32,7 @@ export class StalwartMailUserAdministrator
 {
   private readonly directory: StalwartMailUserDirectory;
   private readonly provisioner: StalwartMailUserProvisioner;
+  private readonly lifecycle: StalwartMailUserLifecycle;
 
   public constructor(config: StalwartMailUserAdministratorConfig) {
     const client = new StalwartManagementClient({
@@ -41,6 +45,7 @@ export class StalwartMailUserAdministrator
       config.allowedDomains,
     );
     this.provisioner = new StalwartMailUserProvisioner(client, this.directory);
+    this.lifecycle = new StalwartMailUserLifecycle(client, this.directory);
   }
 
   public async getCreationAvailability(
@@ -78,6 +83,16 @@ export class StalwartMailUserAdministrator
   ): Promise<AdminMailUserCreateResult> {
     try {
       return await this.provisioner.create(input);
+    } catch (error) {
+      throw translateMailUserError(error);
+    }
+  }
+
+  public async mutateUser(
+    input: AdminMailUserLifecycleInput,
+  ): Promise<AdminMailUserLifecycleResult> {
+    try {
+      return await this.lifecycle.mutate(input);
     } catch (error) {
       throw translateMailUserError(error);
     }

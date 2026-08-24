@@ -49,6 +49,8 @@ sysDomainGet
 sysAccountQuery
 sysAccountGet
 sysAccountCreate
+sysAccountUpdate
+sysAccountDestroy
 sysActionCreate
 actionInvalidateNegativeCaches
 sysMtaStageDataGet
@@ -66,8 +68,11 @@ Veda provider configuration: that profile is persisted and returned to the
 admin settings browser. The key cannot log in to mail protocols, but it can
 provision accounts, so rotate/revoke it like a production credential.
 
-The Sieve/MTA permissions are needed only for administrator-managed
-forwarding. Omit them if that feature will not be used. Veda Mail refuses to
+`sysAccountUpdate` enables **Disable access**, and `sysAccountDestroy` enables
+permanent deletion. Omit either permission when that lifecycle action must be
+denied at the provider boundary; Stalwart returns `forbidden` and Veda records
+the failed audited attempt. The Sieve/MTA permissions are needed only for
+administrator-managed forwarding. Omit them if that feature will not be used. Veda Mail refuses to
 overwrite an existing DATA-stage script; see the
 [forwarding runbook](ADMIN-MAIL-FORWARDING.md).
 
@@ -76,6 +81,12 @@ mailbox creation. Read/query success alone does not prove that v0.16 will allow
 the key to grant the default User role. A `MAIL_USER_PROVIDER_AUTH` response on
 creation means the effective key permissions are incomplete; Veda never logs
 Stalwart's private error description or the credential.
+
+Set `VEDA_MAIL_PROTECTED_MAILBOXES` to a comma-separated list of complete,
+case-insensitive mailbox addresses used by automation or integrations. Veda
+also protects every `postmaster@…` and `abuse@…` account automatically. The
+protection is enforced again on the server immediately before mutation; it is
+not only a hidden browser button.
 
 Also set `VEDA_MAIL_STALWART_MANAGEMENT_ORIGIN` to the exact HTTPS origin of
 that Stalwart server, for example `https://mail.example.com` (no path). Veda

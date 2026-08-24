@@ -1,4 +1,4 @@
-import type { AdminMailUserCreateResult } from "@/domain/admin/mail-user";
+import type { AdminMailUserOperationResult } from "@/domain/admin/mail-user";
 
 export interface MailUserIdempotencyEntryBase {
   readonly createdAt: string;
@@ -15,7 +15,7 @@ export interface MailUserIdempotencyPendingEntry
 
 export interface MailUserIdempotencyCompletedEntry
   extends MailUserIdempotencyEntryBase {
-  readonly result: AdminMailUserCreateResult;
+  readonly result: AdminMailUserOperationResult;
   readonly state: "completed";
 }
 
@@ -29,7 +29,7 @@ export interface MailUserIdempotencyLedger {
 }
 
 export type MailUserIdempotencyOutcome =
-  | { readonly kind: "completed"; readonly result: AdminMailUserCreateResult }
+  | { readonly kind: "completed"; readonly result: AdminMailUserOperationResult }
   | { readonly error: unknown; readonly kind: "failed" };
 
 export type MailUserIdempotencyBegin =
@@ -38,7 +38,7 @@ export type MailUserIdempotencyBegin =
   | { readonly kind: "orphaned" }
   | { readonly kind: "owner"; readonly token: string }
   | { readonly kind: "pending"; readonly outcome: Promise<MailUserIdempotencyOutcome> }
-  | { readonly kind: "replay"; readonly result: AdminMailUserCreateResult };
+  | { readonly kind: "replay"; readonly result: AdminMailUserOperationResult };
 
 export interface LiveMailUserProvision {
   readonly fingerprint: string;

@@ -1,32 +1,13 @@
 "use client";
 import { useRouter } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEventHandler,
-  type FormEventHandler,
-} from "react";
-import {
-  mailUserDetail,
-  mailUserListItem,
-} from "@/presentation/features/admin-mail-users/admin-mail-users.formatters";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEventHandler, type FormEventHandler } from "react";
+import { mailUserDetail, mailUserListItem } from "@/presentation/features/admin-mail-users/admin-mail-users.formatters";
 import { isAdminSessionUnauthorized } from "@/presentation/features/admin-mail-users/admin-mail-users-errors";
-import {
-  adminMailUsersCapabilityCopy,
-  adminMailUsersSnapshotForDomain,
-  bindAdminMailUsersSnapshot,
-  type BoundAdminMailUsersSnapshot,
-} from "@/presentation/features/admin-mail-users/admin-mail-users-snapshot";
+import { adminMailUsersCapabilityCopy, adminMailUsersSnapshotForDomain, bindAdminMailUsersSnapshot, type BoundAdminMailUsersSnapshot } from "@/presentation/features/admin-mail-users/admin-mail-users-snapshot";
 import type { AdminMailUsersViewProps } from "@/presentation/features/admin-mail-users/admin-mail-users.view-model";
 import { useAdminMailUserCreateModel } from "@/presentation/features/admin-mail-users/hooks/use-admin-mail-user-create-model"; import { useAdminMailForwardingModel } from "@/presentation/features/admin-mail-users/hooks/use-admin-mail-forwarding-model";
-import {
-  adminMailUsersApi,
-  type AdminMailUserDetail,
-} from "@/transport/client/admin-mail-users-api";
-
+import { useAdminMailUserLifecycleBinding } from "@/presentation/features/admin-mail-users/hooks/use-admin-mail-user-lifecycle-binding";
+import { adminMailUsersApi, type AdminMailUserDetail } from "@/transport/client/admin-mail-users-api";
 export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
   const router = useRouter();
   const [boundSnapshot, setBoundSnapshot] =
@@ -43,7 +24,6 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
   const requestSequence = useRef(0);
   const detailRequest = useRef<AbortController | null>(null);
   const selectedDomainValue = useRef("");
-
   const unauthorized = useCallback(() => {
     router.replace("/admin/login");
     router.refresh();
@@ -69,7 +49,18 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
   const { load: loadForwarding, reset: resetForwarding, ...forwarding } =
     useAdminMailForwardingModel({ handleFailure,
       requiresOtp: boundSnapshot?.value.adminTwoFactorEnabled ?? false });
-
+  const {
+    load: loadLifecycle,
+    model: lifecycle,
+    reset: resetLifecycle,
+  } = useAdminMailUserLifecycleBinding({
+    handleFailure,
+    reportSuccess,
+    requiresOtp: boundSnapshot?.value.adminTwoFactorEnabled ?? false,
+    resetForwarding,
+    setBoundSnapshot,
+    setDetail,
+  });
   const load = useCallback(
     async (domain?: string, searchTerm = "") => {
       const sequence = ++requestSequence.current;
@@ -82,6 +73,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
       setIsDetailLoading(false);
       setDetail(null);
       resetForwarding();
+      resetLifecycle();
       setError(null);
       try {
         const next = await adminMailUsersApi.getSnapshot({
@@ -101,9 +93,8 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
         if (sequence === requestSequence.current) setIsLoading(false);
       }
     },
-    [handleFailure, resetForwarding],
+    [handleFailure, resetForwarding, resetLifecycle],
   );
-
   useEffect(() => {
     void load();
     return () => {
@@ -112,7 +103,6 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
       detailRequest.current = null;
     };
   }, [load]);
-
   const onDomainInput: ChangeEventHandler<HTMLSelectElement> = useCallback(
     (event) => {
       const domain = event.target.value;
@@ -175,6 +165,12 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
         ]);
         if (detailRequest.current !== request) return;
         setDetail(result.user);
+        loadLifecycle({
+          ...(result.user.lifecycle ? { capability: result.user.lifecycle } : {}),
+          domain: selectedDomain,
+          email: result.user.email,
+          id: result.user.id,
+        });
       } catch (caught) {
         if (!request.signal.aborted) {
           handleFailure(caught, "Unable to load mailbox details.");
@@ -183,7 +179,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
         if (detailRequest.current === request) setIsDetailLoading(false);
       }
     },
-    [handleFailure, loadForwarding, selectedDomain],
+    [handleFailure, loadForwarding, loadLifecycle, selectedDomain],
   );
   const onCreated = useCallback((user: AdminMailUserDetail, domain: string) => {
     if (selectedDomainValue.current !== domain) return;
@@ -232,6 +228,7 @@ export const useAdminMailUsersModel = (): AdminMailUsersViewProps => {
     domains: snapshot?.allowedDomains ?? [],
     error,
     forwarding,
+    lifecycle,
     isDetailLoading,
     isLoading,
     isLoadingMore,

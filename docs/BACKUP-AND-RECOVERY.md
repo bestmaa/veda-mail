@@ -38,8 +38,9 @@ the supplied Compose deployment.
 - Optional normalized WebP logo
 - Mail-provider endpoint and allowed-domain configuration, embedded in the
   atomic installation record
-- Bounded `mail-user-provisioning-idempotency.json` safe results and keyed
-  intent fingerprints; it contains no initial mailbox password
+- Bounded `mail-user-provisioning-idempotency.json` provisioning/lifecycle safe
+  results and keyed intent fingerprints; it contains no mailbox or administrator
+  password and no provider credential
 - Encrypted scheduled-message content, provider-draft references, retry state,
   and the minimum provider credential required by the background worker in
   `scheduled-jobs.json`

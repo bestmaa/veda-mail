@@ -10,6 +10,7 @@ import type { InstallationRecord } from "@/domain/installation/installation";
 import { createStalwartMailUserAdministrator } from "@/infrastructure/providers/stalwart-jmap/stalwart-mail-user-administrator";
 import { installationStore } from "@/server/installation/installation.store";
 import { mailServiceProfileRevision } from "@/server/mail-service/mail-service-profile-revision";
+import { protectMailUserLifecycle } from "@/server/mail-users/mail-user-lifecycle-protection";
 import { ApiError } from "@/transport/http/api-error";
 
 const providerError = new Map<
@@ -18,12 +19,14 @@ const providerError = new Map<
 >([
   ["configuration", ["MAIL_USER_ADMIN_CONFIGURATION", "Mailbox administration is not configured correctly.", 503]],
   ["create-outcome-unknown", ["MAIL_USER_CREATE_OUTCOME_UNKNOWN", "Stalwart could not confirm whether the mailbox was created. Check Stalwart before retrying.", 503]],
+  ["lifecycle-outcome-unknown", ["MAIL_USER_LIFECYCLE_OUTCOME_UNKNOWN", "Stalwart could not confirm the mailbox lifecycle outcome. Check Stalwart before retrying.", 503]],
   ["domain-disabled", ["MAIL_USER_DOMAIN_DISABLED", "Mailbox creation is disabled for this domain.", 409]],
   ["domain-not-found", ["MAIL_USER_DOMAIN_NOT_FOUND", "The configured mail domain was not found in Stalwart.", 409]],
   ["duplicate", ["MAIL_USER_ALREADY_EXISTS", "That mailbox already exists.", 409]],
   ["external-directory", ["MAIL_USER_EXTERNAL_DIRECTORY", "This Stalwart instance uses an external directory; create the mailbox there.", 409]],
   ["invalid-input", ["MAIL_USER_INVALID_INPUT", "Stalwart rejected the mailbox details.", 400]],
   ["not-found", ["MAIL_USER_NOT_FOUND", "Mailbox user not found.", 404]],
+  ["protected-account", ["MAIL_USER_PROTECTED", "This operational or automation mailbox is protected.", 409]],
   ["provider-auth", ["MAIL_USER_PROVIDER_AUTH", "Stalwart rejected the management credential.", 503]],
   ["provider-response", ["MAIL_USER_PROVIDER_RESPONSE", "Stalwart returned an invalid management response.", 502]],
   ["provider-unavailable", ["MAIL_USER_PROVIDER_UNAVAILABLE", "Stalwart mailbox administration is temporarily unavailable.", 503]],
@@ -169,7 +172,7 @@ export const getAdminMailUsersSnapshot = async (input: {
   }
 };
 
-const requireAdministrator = async (
+export const requireAdminMailUserAdministrator = async (
   domain: string,
   expectedProfileRevision?: string,
 ) => {
@@ -201,7 +204,9 @@ const requireAdministrator = async (
 
 export const getAdminMailUser = async (domain: string, userId: string) => {
   try {
-    return await (await requireAdministrator(domain)).getUser({ domain, userId });
+    return protectMailUserLifecycle(
+      await (await requireAdminMailUserAdministrator(domain)).getUser({ domain, userId }),
+    );
   } catch (error) {
     return mapMailUserAdministrationError(error);
   }
@@ -218,7 +223,7 @@ export const createAdminMailUser = async (
   const domain = input.email.slice(input.email.lastIndexOf("@") + 1);
   try {
     return await (
-      await requireAdministrator(domain, expectedProfileRevision)
+      await requireAdminMailUserAdministrator(domain, expectedProfileRevision)
     ).createUser(input);
   } catch (error) {
     return mapMailUserAdministrationError(error);

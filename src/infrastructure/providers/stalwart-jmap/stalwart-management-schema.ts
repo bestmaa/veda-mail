@@ -130,6 +130,8 @@ const setErrorSchema = z
   .object({ type: z.string().min(1).max(128) })
   .passthrough();
 
+export type StalwartSetError = z.infer<typeof setErrorSchema>;
+
 export const stalwartSetResultSchema = z
   .object({
     created: z.record(z.string().max(128), createdObjectSchema).optional(),

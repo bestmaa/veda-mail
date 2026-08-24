@@ -37,7 +37,10 @@ export const mailUserProvisioningFingerprint = (
 const outcomeResult = (
   outcome: MailUserIdempotencyOutcome,
 ): AdminMailUserCreateResult => {
-  if (outcome.kind === "completed") return outcome.result;
+  if (outcome.kind === "completed" && outcome.result.outcome === "created") {
+    return outcome.result;
+  }
+  if (outcome.kind === "completed") return conflict();
   throw outcome.error;
 };
 
@@ -81,7 +84,10 @@ export const provisionAdminMailUser = async (
       503,
     );
   }
-  if (begun.kind === "replay") return replayedResult(begun.result);
+  if (begun.kind === "replay") {
+    if (begun.result.outcome !== "created") return conflict();
+    return replayedResult(begun.result);
+  }
   if (begun.kind === "pending") {
     return replayedResult(outcomeResult(await begun.outcome));
   }
@@ -89,12 +95,14 @@ export const provisionAdminMailUser = async (
   try {
     const result = await createAdminMailUser(intent, profileRevision);
     try {
-      return await mailUserIdempotencyStore.complete(
+      const completed = await mailUserIdempotencyStore.complete(
         key,
         fingerprint,
         begun.token,
         result,
       );
+      if (completed.outcome !== "created") return conflict();
+      return completed;
     } catch {
       const error = outcomeUnknown();
       await mailUserIdempotencyStore
