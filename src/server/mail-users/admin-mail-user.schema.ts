@@ -88,6 +88,12 @@ export const adminMailUserIdempotencyKeySchema = z
   .string()
   .uuid("Send a UUID Idempotency-Key header.");
 
+export const adminMailUserLifecycleSchema = z.object({
+  confirmationEmail: email,
+  currentAdminPassword: z.string().min(1).max(1_024),
+  otpCode: z.string().trim().min(1).max(64).optional(),
+}).strict();
+
 const queryParameterError = (name: string, message: string): z.ZodError =>
   new z.ZodError([{ code: "custom", message, path: [name] }]);
 

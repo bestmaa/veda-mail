@@ -9,6 +9,7 @@ type DirectoryProps = Pick<
   | "create"
   | "domainInput"
   | "forwarding"
+  | "lifecycle"
   | "domains"
   | "isDetailLoading"
   | "isLoadingMore"
@@ -62,7 +63,7 @@ export const MailUserDirectoryView = (model: DirectoryProps) => (
           </button>
         ) : null}
       </div>
-      <MailUserDetailView detail={model.detail} forwarding={model.forwarding} isLoading={model.isDetailLoading} />
+      <MailUserDetailView detail={model.detail} forwarding={model.forwarding} isLoading={model.isDetailLoading} lifecycle={model.lifecycle} />
     </div>
   </section>
 );

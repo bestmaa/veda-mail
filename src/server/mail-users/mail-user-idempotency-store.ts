@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AdminMailUserCreateResult } from "@/domain/admin/mail-user";
+import type { AdminMailUserOperationResult } from "@/domain/admin/mail-user";
 import {
   readMailUserIdempotencyLedger,
   writeMailUserIdempotencyLedger,
@@ -52,8 +52,8 @@ const serialized = async <T>(task: () => Promise<T>): Promise<T> => {
 };
 
 const cloneResult = (
-  result: AdminMailUserCreateResult,
-): AdminMailUserCreateResult => structuredClone(result);
+  result: AdminMailUserOperationResult,
+): AdminMailUserOperationResult => structuredClone(result);
 
 const prune = (
   ledger: MailUserIdempotencyLedger,
@@ -135,8 +135,8 @@ export const mailUserIdempotencyStore = {
     key: string,
     fingerprint: string,
     token: string,
-    result: AdminMailUserCreateResult,
-  ): Promise<AdminMailUserCreateResult> {
+    result: AdminMailUserOperationResult,
+  ): Promise<AdminMailUserOperationResult> {
     return serialized(async () => {
       if (await ensureMailUserIdempotencyMigrated()) {
         return completeSharedMailUserIdempotency(key, fingerprint, token, result);

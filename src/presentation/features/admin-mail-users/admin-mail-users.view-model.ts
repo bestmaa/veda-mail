@@ -22,6 +22,25 @@ export interface AdminMailUserDetailViewModel {
   readonly timeZone: string;
 }
 
+export interface AdminMailUserLifecycleViewModel {
+  readonly adminPassword: string;
+  readonly adminPasswordInput: ChangeEventHandler<HTMLInputElement>;
+  readonly available: boolean;
+  readonly confirmation: string;
+  readonly confirmationInput: ChangeEventHandler<HTMLInputElement>;
+  readonly email: string | null;
+  readonly isSaving: boolean;
+  readonly onCancel: () => void;
+  readonly onDelete: () => void;
+  readonly onDisable: () => void;
+  readonly onSubmit: FormEventHandler<HTMLFormElement>;
+  readonly operation: "disable" | "delete" | null;
+  readonly otpCode: string;
+  readonly otpCodeInput: ChangeEventHandler<HTMLInputElement>;
+  readonly protected: boolean;
+  readonly requiresOtp: boolean;
+}
+
 export interface AdminMailForwardingViewModel {
   readonly adminPassword: string;
   readonly adminPasswordInput: ChangeEventHandler<HTMLInputElement>;
@@ -71,6 +90,7 @@ export interface AdminMailUsersViewProps {
   readonly create: AdminMailUserCreateViewModel;
   readonly detail: AdminMailUserDetailViewModel | null;
   readonly forwarding: AdminMailForwardingViewModel;
+  readonly lifecycle: AdminMailUserLifecycleViewModel;
   readonly domainInput: ChangeEventHandler<HTMLSelectElement>;
   readonly domains: readonly string[];
   readonly error: string | null;

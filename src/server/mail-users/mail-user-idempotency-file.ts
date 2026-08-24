@@ -31,6 +31,16 @@ const resultSchema = z
   })
   .strict();
 
+const lifecycleResultSchema = z.object({
+  email: z.string().email().max(320),
+  forwardingRemoved: z.boolean(),
+  outcome: z.enum(["disabled", "deleted"]),
+  sessionsRevoked: z.number().int().nonnegative().max(10_000),
+  userId: z.string().min(1).max(512),
+}).strict();
+
+const operationResultSchema = z.union([resultSchema, lifecycleResultSchema]);
+
 const base = {
   createdAt: z.string().datetime(),
   expiresAt: z.number().int().positive(),
@@ -44,7 +54,7 @@ const entrySchema = z.discriminatedUnion("state", [
     ownerToken: z.string().uuid().optional(),
     state: z.literal("pending"),
   }).strict(),
-  z.object({ ...base, result: resultSchema, state: z.literal("completed") }).strict(),
+  z.object({ ...base, result: operationResultSchema, state: z.literal("completed") }).strict(),
 ]);
 
 export const mailUserIdempotencyLedgerSchema = z

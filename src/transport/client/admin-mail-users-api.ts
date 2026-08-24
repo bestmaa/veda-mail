@@ -36,6 +36,12 @@ export interface CreateAdminMailUserInput {
   readonly password: string;
 }
 
+export interface AdminMailUserLifecycleInput {
+  readonly confirmationEmail: string;
+  readonly currentAdminPassword: string;
+  readonly otpCode?: string;
+}
+
 const query = (values: Readonly<Record<string, string | undefined>>): string => {
   const parameters = new URLSearchParams();
   for (const [name, value] of Object.entries(values)) {
@@ -62,6 +68,30 @@ export const adminMailUsersApi = {
     return fetchData<{ readonly user: AdminMailUserDetail }>(
       `/api/v1/admin/users/${encodeURIComponent(accountId)}${query({ domain })}`,
       { cache: "no-store", ...(signal ? { signal } : {}) },
+    );
+  },
+
+  mutateLifecycle(
+    accountId: string,
+    domain: string,
+    operation: "disable" | "delete",
+    input: AdminMailUserLifecycleInput,
+    idempotencyKey: string,
+  ) {
+    return fetchData<{
+      readonly email: string;
+      readonly forwardingRemoved: boolean;
+      readonly outcome: "disabled" | "deleted";
+      readonly replayed: boolean;
+      readonly sessionsRevoked: number;
+      readonly userId: string;
+    }>(
+      `/api/v1/admin/users/${encodeURIComponent(accountId)}${query({ domain })}`,
+      {
+        body: JSON.stringify(input),
+        headers: { "Idempotency-Key": idempotencyKey },
+        method: operation === "delete" ? "DELETE" : "PATCH",
+      },
     );
   },
 

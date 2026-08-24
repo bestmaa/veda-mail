@@ -9,8 +9,15 @@ export interface AdminMailUserSummary {
 }
 
 export interface AdminMailUserDetail extends AdminMailUserSummary {
+  readonly lifecycle?: MailUserLifecycleCapability;
   readonly locale: string | null;
   readonly timeZone: string | null;
+}
+
+export interface MailUserLifecycleCapability {
+  readonly available: boolean;
+  readonly protected: boolean;
+  readonly reason: "protected-account" | null;
 }
 
 export interface AdminMailUserPage {
@@ -31,15 +38,29 @@ export interface AdminMailUserCreateResult {
   readonly warning?: "cache-invalidation-failed";
 }
 
+export interface AdminMailUserLifecycleResult {
+  readonly email: string;
+  readonly forwardingRemoved: boolean;
+  readonly outcome: "disabled" | "deleted";
+  readonly sessionsRevoked: number;
+  readonly userId: string;
+}
+
+export type AdminMailUserOperationResult =
+  | AdminMailUserCreateResult
+  | AdminMailUserLifecycleResult;
+
 export type MailUserAdministrationErrorCode =
   | "configuration"
   | "create-outcome-unknown"
+  | "lifecycle-outcome-unknown"
   | "domain-disabled"
   | "domain-not-found"
   | "duplicate"
   | "external-directory"
   | "invalid-input"
   | "not-found"
+  | "protected-account"
   | "provider-auth"
   | "provider-response"
   | "provider-unavailable";

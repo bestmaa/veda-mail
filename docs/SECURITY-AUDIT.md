@@ -27,7 +27,10 @@ state change. They then write `success`, `failure`, or `partial`. If the attempt
 cannot be persisted, the mutation fails closed. A `partial` event means the
 state change may have applied but final audit settlement did not complete;
 operators must reconcile it before retrying. Idempotent mailbox provisioning
-retains its separate replay contract.
+and lifecycle operations retain their separate replay contract. Mailbox
+lifecycle events are `admin.mail-user.disabled` and
+`admin.mail-user.deleted`; their target is an HMAC pseudonym and the optional
+count is the number of member sessions revoked.
 
 ## Privacy boundary
 

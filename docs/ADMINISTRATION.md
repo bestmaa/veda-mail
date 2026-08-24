@@ -138,6 +138,8 @@ can:
 - Search and page through a bounded provider-backed result
 - View safe account details without credentials, roles, or raw permissions
 - Create an ordinary user with an initial password
+- Disable mailbox access while preserving provider mailbox data
+- Permanently delete a mailbox and its provider data
 - Configure or disable one admin-controlled external forwarding destination
 
 Creating a user requires the current Veda administrator password and, when
@@ -156,11 +158,23 @@ Mail's allowed-domain list. Creation is disabled when the domain or global
 authentication configuration uses LDAP, SQL, OIDC, or another external
 directory; create the identity in that source directory instead.
 
-The current feature does not suspend, delete, reset, or change roles/quotas.
-Those actions and all lifecycle operations for Standard IMAP + SMTP remain in
-the provider's own administration surface. To revoke access, disable/reset the
-provider mailbox or remove its domain from the allowed list. Restarting Veda
-Mail signs out all members because member sessions are process-local.
+Lifecycle actions are available only in the administrator mailbox detail.
+Both require current administrator password, configured authenticator or
+backup code, a UUID idempotency key, and exact re-entry of the full mailbox
+address. **Disable access** replaces the Stalwart credential collection with
+an empty collection, revokes every Veda member session for that address,
+removes Veda-managed forwarding, and preserves mailbox data. Stalwart has no
+native reversible account-enabled flag; re-enabling therefore requires an
+operator to set new credentials in Stalwart. **Delete permanently** destroys
+the provider account and its data and cannot be undone.
+
+`postmaster@…`, `abuse@…`, and addresses listed in
+`VEDA_MAIL_PROTECTED_MAILBOXES` cannot be disabled or deleted. Unsupported
+providers do not expose lifecycle controls. All Standard IMAP + SMTP lifecycle
+operations remain in the provider's own administration surface.
+
+See [mailbox-user lifecycle](ADMIN-MAILBOX-LIFECYCLE.md) for failure recovery,
+idempotency, audit, and operational verification.
 
 See [mail-server setup](MAIL-SERVER-SETUP.md#stalwart-mailbox-user-management)
 for least-privilege API-key permissions and rotation.

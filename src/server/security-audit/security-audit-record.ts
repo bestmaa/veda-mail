@@ -16,6 +16,8 @@ export const securityAuditActionSchema = z.enum([
   "admin.mail-forwarding.disabled",
   "admin.mail-forwarding.enabled",
   "admin.mail-user.created",
+  "admin.mail-user.deleted",
+  "admin.mail-user.disabled",
   "admin.organization.updated",
   "admin.retention.updated",
   "admin.session.revoked",

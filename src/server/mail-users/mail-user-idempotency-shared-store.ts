@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AdminMailUserCreateResult } from "@/domain/admin/mail-user";
+import type { AdminMailUserOperationResult } from "@/domain/admin/mail-user";
 import {
   MAIL_USER_IDEMPOTENCY_POLL_MS,
   MAIL_USER_IDEMPOTENCY_OWNER_MS,
@@ -20,7 +20,7 @@ import type {
 } from "@/server/mail-users/mail-user-idempotency.types";
 import { ApiError } from "@/transport/http/api-error";
 
-const clone = (result: AdminMailUserCreateResult): AdminMailUserCreateResult =>
+const clone = (result: AdminMailUserOperationResult): AdminMailUserOperationResult =>
   structuredClone(result);
 const pause = () => new Promise((resolve) =>
   setTimeout(resolve, MAIL_USER_IDEMPOTENCY_POLL_MS));
@@ -138,8 +138,8 @@ export const completeSharedMailUserIdempotency = async (
   key: string,
   fingerprint: string,
   token: string,
-  result: AdminMailUserCreateResult,
-): Promise<AdminMailUserCreateResult> => {
+  result: AdminMailUserOperationResult,
+): Promise<AdminMailUserOperationResult> => {
   for (let attempt = 0; attempt < MAIL_USER_IDEMPOTENCY_SHARED_RETRIES; attempt += 1) {
     const current = await sharedMailUserIdempotencyLedger();
     const ledger = prune(current.ledger, Date.now());

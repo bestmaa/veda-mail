@@ -121,6 +121,7 @@ export const mapStalwartUserDetail = (
   domain: ResolvedStalwartDomain,
 ): AdminMailUserDetail => ({
   ...mapStalwartUserSummary(account, domain),
+  lifecycle: { available: true, protected: false, reason: null },
   locale: account.locale ?? null,
   timeZone: account.timeZone ?? null,
 });
