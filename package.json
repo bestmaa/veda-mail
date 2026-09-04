@@ -58,7 +58,7 @@
     "@lexical/clipboard": "0.44.0",
     "@lexical/html": "0.44.0",
     "@lexical/link": "0.44.0",
-    "@lexical/list": "0.44.0",
+    "@lexical/list": "0.49.0",
     "@lexical/react": "0.44.0",
     "@lexical/rich-text": "0.44.0",
     "@lexical/selection": "0.44.0",
